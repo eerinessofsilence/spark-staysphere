@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.*.local
+!.env.example
+node_modules/
+.next/
+.vinext/
+dist/
+.wrangler/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+npm-debug.log*
+*.tsbuildinfo
