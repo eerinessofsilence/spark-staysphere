@@ -20,6 +20,10 @@ The repository contains a Vinext/React/TypeScript site foundation, strict Zod do
 - OTA integrations require official partner access; no scraping.
 - Live payment is out of scope. Production must use provider-hosted/tokenized collection.
 
+## Commit conventions
+
+Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message. Format: `type(scope): summary` in the imperative mood, e.g. `feat(booking): add idempotent hold confirmation`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff. This applies to every commit in this repository, not just feature work.
+
 ## Next implementation order
 
 1. Build the connected guest-facing room search/catalog and detail route.

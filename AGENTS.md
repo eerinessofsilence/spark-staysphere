@@ -15,6 +15,10 @@ Build a white-label interactive hotel discovery and direct-booking product. The 
 - Recheck price and availability immediately before confirmation and use an idempotency key for booking creation.
 - Prefer accessible semantic controls, visible focus states, keyboard navigation, and mobile-first layouts.
 
+## Commit conventions
+
+Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message like "update files" or "fix stuff". Format: `type(scope): summary` in the imperative mood, e.g. `fix(booking-service): recheck price before confirming`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff.
+
 ## Commands
 
 ```bash
