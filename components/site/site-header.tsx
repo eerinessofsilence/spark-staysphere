@@ -39,18 +39,23 @@ export function SiteHeader({ stayQuery, className }: SiteHeaderProps) {
           </span>
           <span className="leading-tight">
             <span className="block text-[13px] font-semibold tracking-[0.14em] uppercase">Spark</span>
-            <span className="block text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+            {/* The second line is the first thing to go when space is tight. */}
+            <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase sm:block">
               StaySphere 360
             </span>
           </span>
         </Link>
 
-        <nav aria-label="Primary" className="ml-auto hidden items-center gap-1 md:flex">
+        <nav aria-label="Primary" className="ml-auto flex items-center gap-0.5 sm:gap-1">
           {navigation.map((item) => (
             <Link
               key={item.href}
               href={item.href === '/admin' ? item.href : `${item.href}${suffix}`}
-              className="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+              className={cn(
+                'flex min-h-11 items-center rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground sm:px-3',
+                // The logo already goes home; drop the duplicate link on narrow screens.
+                item.href === '/' && 'hidden md:flex',
+              )}
             >
               {item.label}
             </Link>
@@ -59,9 +64,9 @@ export function SiteHeader({ stayQuery, className }: SiteHeaderProps) {
 
         <Link
           href={`/rooms${suffix}`}
-          className="ml-auto flex min-h-11 items-center rounded-xl bg-cyan px-4 text-sm font-semibold text-ink transition-colors hover:bg-cyan/85 md:ml-2"
+          className="ml-1 flex min-h-11 shrink-0 items-center rounded-xl bg-cyan px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-cyan/85 sm:ml-2 sm:px-4"
         >
-          Book a room
+          Book<span className="hidden sm:inline">&nbsp;a room</span>
         </Link>
       </div>
     </header>

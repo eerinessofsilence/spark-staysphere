@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 import { MediaBadges } from './media-badges';
 import { RoomVisual, roomZones, zoneLabels, type RoomZone } from './room-visual';
 
+/** Pointer travel before a press becomes a pan rather than a click. */
+const PAN_THRESHOLD_PX = 6;
+
 /**
  * Zone switcher plus a simulated 360° pan. The pan is a horizontal camera on the
  * procedural artwork, not a photographic tile set — labelled as a preview so the
@@ -19,7 +22,12 @@ export function RoomGallery({ room }: { room: RoomType }) {
   const [panning, setPanning] = React.useState(false);
   const [offset, setOffset] = React.useState(0);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const drag = React.useRef<{ pointerId: number; startX: number; startOffset: number } | null>(null);
+  const drag = React.useRef<{
+    pointerId: number;
+    startX: number;
+    startOffset: number;
+    captured: boolean;
+  } | null>(null);
 
   // A studio has no separate living area; everything else does above 55 m².
   const zones = roomZones.filter((candidate) => candidate !== 'living' || room.areaM2 >= 55);
@@ -33,13 +41,27 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!panning || event.button !== 0) return;
-    drag.current = { pointerId: event.pointerId, startX: event.clientX, startOffset: offset };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // The viewer controls sit inside the stage; a press on one is not a pan.
+    if ((event.target as HTMLElement).closest('button, a')) return;
+    drag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startOffset: offset,
+      captured: false,
+    };
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const state = drag.current;
     if (!state || state.pointerId !== event.pointerId) return;
+
+    // Capturing on pointerdown would retarget pointerup and suppress child clicks.
+    if (!state.captured) {
+      if (Math.abs(event.clientX - state.startX) < PAN_THRESHOLD_PX) return;
+      state.captured = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+
     const width = event.currentTarget.clientWidth || 1;
     const next = state.startOffset + ((event.clientX - state.startX) / width) * 100;
     setOffset(Math.max(-18, Math.min(18, next)));

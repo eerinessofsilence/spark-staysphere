@@ -37,11 +37,11 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               <h1 className="text-display mt-4 text-[clamp(2.75rem,8vw,5.5rem)]">{hotel.name}</h1>
               <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
                 A cliffside house of {totalRooms} room types above a working fishing cove. Look
-                around the property, open the exact room you want, then book it direct —{' '}
-                {hotel.tagline.toLowerCase()}
+                around the property, open the exact room you want, and book it direct.
               </p>
+              <p className="text-display mt-3 text-xl text-cyan-dark">{hotel.tagline}</p>
             </div>
-            <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1 lg:gap-3">
+            <dl className="grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-1 lg:gap-3">
               <Stat label="Available now" value={`${availableRooms} of ${totalRooms}`} />
               <Stat
                 label="From"
@@ -53,7 +53,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
 
           <HotelScene
             stayQuery={stayQuery}
-            className="mt-8 aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9]"
+            className="mt-8 aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2/1]"
           />
 
           <div className="mt-6">
@@ -152,9 +152,9 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3">
-      <dt className="eyebrow text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold">{value}</dd>
+    <div className="rounded-2xl border border-border bg-card px-3 py-2.5 sm:px-4 sm:py-3">
+      <dt className="eyebrow text-[10px] text-muted-foreground sm:text-[11px]">{label}</dt>
+      <dd className="mt-1 text-base font-semibold sm:text-lg">{value}</dd>
     </div>
   );
 }

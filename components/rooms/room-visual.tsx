@@ -46,9 +46,10 @@ function ViewContent({ view, seed }: { view: RoomType['view']; seed: number }) {
   if (view === 'sea') {
     return (
       <>
-        <rect x="150" y="196" width="340" height="102" fill={palette.ground} />
-        <circle cx={250 + (seed % 180)} cy="168" r="20" fill="#F7E3C4" opacity="0.9" />
-        {[214, 234, 254, 274].map((y, index) => (
+        <rect x="150" y="180" width="340" height="118" fill={palette.ground} />
+        <rect x="150" y="262" width="340" height="36" fill="#1E5157" />
+        <circle cx={250 + (seed % 180)} cy="150" r="20" fill="#F7E3C4" opacity="0.9" />
+        {[204, 226, 248, 270].map((y, index) => (
           <rect
             key={y}
             x={168 + ((seed + index * 47) % 120)}
@@ -59,7 +60,7 @@ function ViewContent({ view, seed }: { view: RoomType['view']; seed: number }) {
             opacity={0.3 - index * 0.05}
           />
         ))}
-        <path d="M392 196 L392 168 L414 196 Z" fill="#F2F1EC" opacity="0.85" />
+        <path d="M392 180 L392 150 L414 180 Z" fill="#F2F1EC" opacity="0.85" />
       </>
     );
   }
@@ -137,16 +138,26 @@ function ZoneFurniture({ zone, seed }: { zone: RoomZone; seed: number }) {
         {/* Headboard */}
         <rect x="196" y="238" width="248" height="66" rx="8" fill="#B79B7A" />
         <rect x="196" y="238" width="248" height="10" rx="5" fill="#A6886A" />
+        {[258, 320, 382].map((x) => (
+          <rect key={x} x={x} y="252" width="2" height="48" fill="#A6886A" opacity="0.7" />
+        ))}
         {/* Mattress and linen */}
         <rect x="176" y="300" width="288" height="76" rx="10" fill="#F6F4EE" />
         <rect x="176" y="336" width="288" height="40" rx="10" fill="#E2DED2" />
         <rect x="212" y="290" width="80" height="30" rx="8" fill="#FFFFFF" opacity="0.95" />
         <rect x="308" y="290" width="80" height="30" rx="8" fill="#FFFFFF" opacity="0.95" />
         {/* Bedside table and lamp */}
-        <rect x="96" y="316" width="62" height="60" rx="6" fill="#8E7458" />
-        <rect x="120" y="284" width="6" height="34" fill="#3A3A36" />
-        <path d="M104 284 L142 284 L134 262 L112 262 Z" fill="#F7E3C4" opacity="0.92" />
-        <circle cx={520 + (seed % 12)} cy="352" r="22" fill="#4E5B4A" opacity="0.85" />
+        <rect x="108" y="316" width="62" height="60" rx="6" fill="#8E7458" />
+        <rect x="136" y="284" width="6" height="34" fill="#3A3A36" />
+        <path d="M118 284 L156 284 L148 262 L126 262 Z" fill="#F7E3C4" opacity="0.92" />
+        <g transform={`translate(${514 + (seed % 10)} 298)`}>
+          <path d="M-17 54 L17 54 L13 80 L-13 80 Z" fill="#B0805C" />
+          <ellipse cx="0" cy="54" rx="17" ry="4" fill="#96694A" />
+          <path d="M0 54 L0 18" stroke="#3E5138" strokeWidth="3" />
+          <ellipse cx="-13" cy="26" rx="14" ry="7" fill="#4E7145" transform="rotate(-25 -13 26)" />
+          <ellipse cx="13" cy="17" rx="14" ry="7" fill="#5A8050" transform="rotate(20 13 17)" />
+          <ellipse cx="-4" cy="7" rx="12" ry="6" fill="#456A3E" transform="rotate(-8 -4 7)" />
+        </g>
       </>
     );
   }

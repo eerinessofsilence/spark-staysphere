@@ -13,3 +13,5 @@ test-results/
 .DS_Store
 npm-debug.log*
 *.tsbuildinfo
+.playwright/
+e2e/.artifacts/

@@ -187,8 +187,9 @@ export function ResortMassing({ className, orbit = 0 }: ResortMassingProps) {
         ))}
 
         {/* Rooftop terrace on the top setback */}
-        <rect x="560" y="112" width="80" height="6" fill="#05E6EC" opacity="0.6" />
-        <rect x="586" y="86" width="4" height="28" fill="#F2F1EC" opacity="0.6" />
+        <rect x="556" y="156" width="88" height="6" fill="#05E6EC" opacity="0.6" />
+        <rect x="586" y="122" width="4" height="34" fill="#F2F1EC" opacity="0.6" />
+        <circle cx="588" cy="120" r="3" fill="#05E6EC" />
 
         {/* Spa annex, right of the tower */}
         <rect x="790" y="428" width="120" height="86" fill="#DFDDD4" opacity="0.9" />
