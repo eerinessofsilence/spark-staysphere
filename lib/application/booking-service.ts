@@ -7,7 +7,15 @@ import type {
   PmsAdapter,
   QuoteRequest,
 } from '../domain/ports';
-import type { Booking, BookingRequest, PaymentAttempt, Quote } from '../domain/schemas';
+import type {
+  AddOn,
+  Booking,
+  BookingRequest,
+  PaymentAttempt,
+  Quote,
+  RatePlan,
+  RoomType,
+} from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
 
 export type BookingErrorCode =
@@ -27,6 +35,14 @@ export class BookingError extends Error {
     super(message);
     this.name = 'BookingError';
   }
+}
+
+export interface BookingConfirmation {
+  booking: Booking;
+  room: RoomType | null;
+  ratePlan: RatePlan | null;
+  addOns: AddOn[];
+  payments: PaymentAttempt[];
 }
 
 const REFERENCE_ALPHABET = 'ACDEFGHJKLMNPQRTUVWXY3456789';
@@ -56,6 +72,23 @@ export class BookingService {
     const booking = await this.repository.getBookingByReference(reference);
     if (!booking) throw new BookingError('not_found', `No booking found for ${reference}.`);
     return booking;
+  }
+
+  /** Everything the confirmation page needs, resolved through the repository port. */
+  async getConfirmation(reference: string): Promise<BookingConfirmation> {
+    const booking = await this.getByReference(reference);
+    const rooms = await this.repository.listRooms(booking.hotelId);
+    const room = rooms.find((candidate) => candidate.id === booking.roomTypeId) ?? null;
+    const ratePlans = room ? await this.repository.listRatePlans(room.id) : [];
+    const allAddOns = await this.repository.listAddOns(booking.hotelId);
+
+    return {
+      booking,
+      room,
+      ratePlan: ratePlans.find((plan) => plan.id === booking.ratePlanId) ?? null,
+      addOns: allAddOns.filter((addOn) => booking.addOnIds.includes(addOn.id)),
+      payments: await this.repository.listPaymentAttempts(booking.id),
+    };
   }
 
   /**
