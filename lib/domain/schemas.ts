@@ -35,6 +35,7 @@ export const ratePlanSchema = z.object({
   nightlyPrice: z.number().nonnegative(),
   currency: currencySchema,
   breakfastIncluded: z.boolean(),
+  includedServices: z.array(z.string()),
   cancellationPolicy: z.string(),
   otaComparisonPrice: z.number().nonnegative().optional(),
 });
@@ -98,6 +99,82 @@ export const integrationStatusSchema = z.object({
   lastSyncAt: z.string().datetime().nullable(),
 });
 
+/** What the guest is shopping for. Every price in the app is derived from this. */
+export const stayCriteriaSchema = z
+  .object({
+    checkIn: z.string().date(),
+    checkOut: z.string().date(),
+    adults: z.number().int().min(1).max(8),
+    children: z.number().int().min(0).max(6),
+  })
+  .refine((value) => value.checkOut > value.checkIn, {
+    message: 'Check-out must be after check-in.',
+    path: ['checkOut'],
+  });
+
+export const addOnLineSchema = z.object({
+  addOnId: z.string(),
+  name: z.string(),
+  pricingUnit: addOnSchema.shape.pricingUnit,
+  unitPrice: z.number().nonnegative(),
+  quantity: z.number().int().positive(),
+  total: z.number().nonnegative(),
+});
+
+export const priceBreakdownSchema = z.object({
+  nights: z.number().int().positive(),
+  nightlyPrice: z.number().nonnegative(),
+  roomTotal: z.number().nonnegative(),
+  addOnLines: z.array(addOnLineSchema),
+  addOnsTotal: z.number().nonnegative(),
+  taxesAndFees: z.number().nonnegative(),
+  total: z.number().nonnegative(),
+  currency: currencySchema,
+  /** Demo-only comparison figure. Never sourced from a live OTA. */
+  otaComparisonTotal: z.number().nonnegative().nullable(),
+  directSaving: z.number().nonnegative(),
+});
+
+export const quoteSchema = z.object({
+  roomTypeId: z.string(),
+  ratePlanId: z.string(),
+  checkIn: z.string().date(),
+  checkOut: z.string().date(),
+  adults: z.number().int().positive(),
+  children: z.number().int().nonnegative(),
+  addOnIds: z.array(z.string()),
+  available: z.boolean(),
+  status: roomStatusSchema,
+  remaining: z.number().int().nonnegative(),
+  price: priceBreakdownSchema,
+  expiresAt: z.string().datetime(),
+});
+
+/** A room presented for sale: inventory, rate, and money already resolved. */
+export const roomOfferSchema = z.object({
+  room: roomTypeSchema,
+  ratePlan: ratePlanSchema,
+  status: roomStatusSchema,
+  remaining: z.number().int().nonnegative(),
+  price: priceBreakdownSchema,
+});
+
+/** Everything a caller must supply to create a booking. Server owns id/reference/total. */
+export const bookingRequestSchema = z.object({
+  idempotencyKey: z.string().min(8),
+  hotelId: z.string(),
+  roomTypeId: z.string(),
+  ratePlanId: z.string(),
+  checkIn: z.string().date(),
+  checkOut: z.string().date(),
+  adults: z.number().int().positive(),
+  children: z.number().int().nonnegative(),
+  guest: guestSchema,
+  addOnIds: z.array(z.string()),
+  /** Total shown to the guest at review time; confirmation fails if it drifted. */
+  expectedTotal: z.number().nonnegative(),
+});
+
 export type Hotel = z.infer<typeof hotelSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type RatePlan = z.infer<typeof ratePlanSchema>;
@@ -107,3 +184,11 @@ export type Guest = z.infer<typeof guestSchema>;
 export type PaymentAttempt = z.infer<typeof paymentAttemptSchema>;
 export type Booking = z.infer<typeof bookingSchema>;
 export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
+export type RoomStatus = z.infer<typeof roomStatusSchema>;
+export type Currency = z.infer<typeof currencySchema>;
+export type StayCriteria = z.infer<typeof stayCriteriaSchema>;
+export type AddOnLine = z.infer<typeof addOnLineSchema>;
+export type PriceBreakdown = z.infer<typeof priceBreakdownSchema>;
+export type Quote = z.infer<typeof quoteSchema>;
+export type RoomOffer = z.infer<typeof roomOfferSchema>;
+export type BookingRequest = z.infer<typeof bookingRequestSchema>;

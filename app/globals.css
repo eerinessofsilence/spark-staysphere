@@ -10,6 +10,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: Georgia, 'Times New Roman', 'Noto Serif', serif;
   --color-ink: var(--ink);
   --color-canvas: var(--canvas);
   --color-cyan: var(--cyan);
@@ -154,5 +155,48 @@ body {
   }
   html {
     @apply font-sans;
+  }
+  /* Design system: visible cyan focus ring with offset on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--cyan-dark);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Editorial display type. Tight tracking, weight 400. */
+  .text-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.04;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  /* Soft, low-contrast elevation. Borders do the structural work. */
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgb(10 13 14 / 4%), 0 12px 32px -16px rgb(10 13 14 / 18%);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 2px 4px rgb(10 13 14 / 5%), 0 28px 60px -28px rgb(10 13 14 / 26%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

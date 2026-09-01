@@ -1,106 +1,160 @@
-const sidebarWidths = [74, 58, 82, 66, 71, 54];
-const articleWidths = [100, 97, 94, 98, 86];
+import Link from 'next/link';
+import { ArrowRight, Building2, ShieldCheck, Sparkles, Waves } from 'lucide-react';
+import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
+import { buildQuery, parseCriteria, toIsoDate } from '@/lib/application/search-params';
+import { formatMoney } from '@/lib/formatting';
+import { HotelScene } from '@/components/hotel/hotel-scene';
+import { RoomCard } from '@/components/rooms/room-card';
+import { StaySearchBar } from '@/components/search/stay-search-bar';
+import { Eyebrow } from '@/components/site/eyebrow';
+import { SiteFooter } from '@/components/site/site-footer';
+import { SiteHeader } from '@/components/site/site-header';
+import { defaultRoomFilters } from '@/lib/application/catalog-service';
 
-export default function Home() {
+export default async function HomePage({ searchParams }: PageProps<'/'>) {
+  const params = await searchParams;
+  const criteria = parseCriteria(params);
+  const stayQuery = buildQuery({ criteria });
+  const today = toIsoDate(new Date());
+
+  const { hotel, offers, availableRooms, totalRooms, facets } = await catalogService.search(
+    DEMO_HOTEL_SLUG,
+    criteria,
+    defaultRoomFilters,
+  );
+  const highlights = offers.slice(0, 3);
+
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#fbfaf8] text-zinc-900">
-      <header
-        aria-hidden="true"
-        className="grid h-[76px] grid-cols-[1fr_auto_1fr] items-center border-b border-stone-200 bg-white/95 px-6 sm:px-14"
-      >
-        <div className="flex items-center gap-3">
-          <span className="h-9 w-9 rounded-full bg-stone-100" />
-          <span className="h-3.5 w-28 rounded-full bg-stone-100" />
-        </div>
-        <span className="hidden h-9 w-[min(30vw,420px)] rounded-xl bg-stone-100 sm:block" />
-        <div className="flex items-center justify-end gap-3">
-          <span className="hidden h-9 w-9 rounded-full bg-stone-100 sm:block" />
-          <span className="h-9 w-24 rounded-xl bg-stone-100" />
-        </div>
-      </header>
+    <>
+      <SiteHeader stayQuery={stayQuery} />
+      <main id="main">
+        <section className="mx-auto max-w-[1400px] px-4 pt-10 pb-6 sm:px-6 lg:px-10 lg:pt-16">
+          <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+            <div>
+              <Eyebrow>
+                {hotel.location} · {totalRooms} room types
+              </Eyebrow>
+              <h1 className="text-display mt-4 text-[clamp(2.75rem,8vw,5.5rem)]">{hotel.name}</h1>
+              <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                A cliffside house of {totalRooms} room types above a working fishing cove. Look
+                around the property, open the exact room you want, then book it direct —{' '}
+                {hotel.tagline.toLowerCase()}
+              </p>
+            </div>
+            <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1 lg:gap-3">
+              <Stat label="Available now" value={`${availableRooms} of ${totalRooms}`} />
+              <Stat
+                label="From"
+                value={`${formatMoney(facets.priceRange.min, hotel.currency)}/night`}
+              />
+              <Stat label="Direct booking" value="Best rate" />
+            </dl>
+          </div>
 
-      <div
-        aria-hidden="true"
-        className="grid h-[calc(100%-76px)] grid-cols-[180px_minmax(0,1fr)_260px] gap-10 px-6 pb-24 pt-10 opacity-55 max-lg:grid-cols-[150px_minmax(0,1fr)] max-sm:grid-cols-1 sm:px-14"
-      >
-        <aside className="hidden border-r border-stone-200 pr-7 sm:block">
-          <div className="mb-6 h-2.5 w-16 rounded-full bg-stone-200" />
-          <div className="space-y-4">
-            {sidebarWidths.map((width) => (
-              <div key={width} className="flex items-center gap-3">
-                <span className="h-4 w-4 rounded bg-stone-200" />
-                <span
-                  className="h-2.5 rounded-full bg-stone-200"
-                  style={{ width: `${width}%` }}
-                />
+          <HotelScene
+            stayQuery={stayQuery}
+            className="mt-8 aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9]"
+          />
+
+          <div className="mt-6">
+            <h2 className="sr-only">Search rooms</h2>
+            <StaySearchBar criteria={criteria} minDate={today} />
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1400px] px-4 py-12 sm:px-6 lg:px-10">
+          <div className="grid gap-6 sm:grid-cols-3">
+            {[
+              {
+                icon: Waves,
+                title: 'See the actual room',
+                body: 'Every room type has its own view, floor, and terrace drawn to scale — no stock photography standing in for a room you did not book.',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Book direct, pay less',
+                body: 'Direct rates include breakfast and the beach club, and are compared against a demo partner-site price on every card.',
+              },
+              {
+                icon: Building2,
+                title: 'One connected journey',
+                body: 'Search, inspect, add services, and confirm in one flow. Prices are rechecked server-side right before you confirm.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-3xl border border-border bg-card p-6 shadow-soft">
+                <span className="grid size-10 place-items-center rounded-2xl bg-cyan/15 text-cyan-dark">
+                  <item.icon className="size-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
               </div>
             ))}
           </div>
-          <div className="mb-6 mt-9 h-2.5 w-24 rounded-full bg-stone-200" />
-          <div className="space-y-4">
-            {sidebarWidths.slice(0, 3).map((width) => (
-              <span
-                key={width}
-                className="block h-2.5 rounded-full bg-stone-200"
-                style={{ width: `${width}%` }}
-              />
-            ))}
-          </div>
-        </aside>
+        </section>
 
-        <article className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <div className="space-y-3">
-            <div className="h-2.5 w-28 rounded-full bg-stone-200" />
-            <div className="h-7 w-4/5 rounded-lg bg-stone-200" />
-            <div className="h-7 w-3/5 rounded-lg bg-stone-200" />
-          </div>
-          <div className="min-h-[240px] flex-1 rounded-2xl bg-stone-200" />
-          <div className="flex items-center gap-3">
-            <span className="h-9 w-9 rounded-full bg-stone-200" />
-            <span className="h-2.5 w-28 rounded-full bg-stone-200" />
-          </div>
-          <div className="space-y-2">
-            {articleWidths.map((width) => (
-              <span
-                key={width}
-                className="block h-2.5 rounded-full bg-stone-200"
-                style={{ width: `${width}%` }}
-              />
-            ))}
-          </div>
-        </article>
-
-        <aside className="space-y-5 max-lg:hidden">
-          {[0, 1].map((card) => (
-            <div
-              key={card}
-              className="space-y-4 rounded-2xl border border-stone-200 bg-white/70 p-6"
-            >
-              <span className="block h-10 w-10 rounded-full bg-stone-200" />
-              <span className="block h-3 w-3/5 rounded-full bg-stone-200" />
-              <span className="block h-2.5 w-full rounded-full bg-stone-200" />
-              <span className="block h-2.5 w-4/5 rounded-full bg-stone-200" />
-              <span className="block h-8 w-24 rounded-lg bg-stone-200" />
+        <section className="mx-auto max-w-[1400px] px-4 pb-4 sm:px-6 lg:px-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Eyebrow>Recommended for your dates</Eyebrow>
+              <h2 className="text-display mt-2 text-3xl sm:text-4xl">Where to stay</h2>
             </div>
-          ))}
-        </aside>
-      </div>
+            <Link
+              href={`/rooms?${stayQuery}`}
+              className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-canvas"
+            >
+              All {totalRooms} room types
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
 
-      <output
-        aria-live="polite"
-        aria-atomic="true"
-        className="absolute left-1/2 top-[clamp(96px,13vh,122px)] w-[min(620px,calc(100%-40px))] -translate-x-1/2 rounded-[18px] border border-stone-200 bg-white/95 px-5 py-5 shadow-[0_18px_50px_rgb(24_24_27/9%)] backdrop-blur-sm"
-      >
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.09em] text-stone-500">
-          Building your site
-        </p>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Your site is taking shape
-        </h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Your first version will appear here automatically when it’s ready.
-        </p>
-      </output>
-    </main>
+          {highlights.length === 0 ? (
+            <p className="mt-8 rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">
+              Nothing is bookable for those dates. Try a different stay above.
+            </p>
+          ) : (
+            <div className="mt-8 grid gap-6">
+              {highlights.map((offer) => (
+                <RoomCard key={offer.room.id} offer={offer} stayQuery={stayQuery} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mx-auto max-w-[1400px] px-4 py-14 sm:px-6 lg:px-10">
+          <div className="flex flex-col items-start gap-6 rounded-3xl bg-ink p-8 text-[#F2F1EC] sm:flex-row sm:items-center sm:justify-between sm:p-10">
+            <div>
+              <p className="eyebrow flex items-center gap-2 text-cyan">
+                <Sparkles className="size-4" aria-hidden="true" />
+                Demo booking
+              </p>
+              <h2 className="text-display mt-3 max-w-lg text-3xl sm:text-4xl">
+                Take the whole journey, end to end.
+              </h2>
+              <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#A4ABAC]">
+                Search, inspect a room, add services, and confirm. Payment is simulated and clearly
+                labelled — no card details are ever collected.
+              </p>
+            </div>
+            <Link
+              href={`/rooms?${stayQuery}`}
+              className="flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-cyan px-6 text-sm font-semibold text-ink hover:bg-cyan/85"
+            >
+              Explore rooms
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+      <dt className="eyebrow text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold">{value}</dd>
+    </div>
   );
 }
