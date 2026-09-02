@@ -1,4 +1,3 @@
-import { addDays, format, parseISO } from 'date-fns';
 import type { DemoControlPort, HotelRepository } from '../domain/ports';
 import type {
   Availability,
@@ -7,11 +6,14 @@ import type {
   PaymentAttempt,
   RoomStatus,
 } from '../domain/schemas';
+import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
 import { demoAddOns, demoHotel, demoRates, demoRooms } from './mock-data';
 
 /**
- * Process-local demo state. It resets with the worker isolate; production swaps
- * this module for a Postgres-backed repository behind the same port.
+ * Process-local in-memory demo state. This is the fallback used whenever no
+ * D1 binding is configured (see durable-hotel-repository.ts), and it is also
+ * exactly what ran before persistence existed — bookings, overrides, and
+ * holds here reset with the worker isolate.
  */
 const bookingsByIdempotencyKey = new Map<string, Booking>();
 const bookingsByReference = new Map<string, Booking>();
@@ -29,67 +31,10 @@ const integrationStatuses: IntegrationStatus[] = [
   { adapter: 'crm', mode: 'mock', connected: false, lastSyncAt: null },
 ];
 
-/** Physical units per room type. Rarer rooms sell out more often in the demo. */
-const baseUnits: Record<string, number> = {
-  'room_deluxe-sea': 8,
-  'room_garden-studio': 7,
-  'room_panorama-suite': 4,
-  'room_pool-terrace': 6,
-  'room_family-residence': 4,
-  'room_skyline-loft': 5,
-  'room_coastal-twin': 8,
-  'room_asteria-penthouse': 2,
-};
-
-function unitsFor(roomTypeId: string): number {
-  return baseUnits[roomTypeId] ?? 5;
-}
-
-/** Stable 32-bit hash so availability is identical on server render and reload. */
-function hash(input: string): number {
-  let value = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    value ^= input.charCodeAt(index);
-    value = Math.imul(value, 16777619);
-  }
-  return Math.abs(value);
-}
-
-export function statusForRemaining(remaining: number): RoomStatus {
-  if (remaining <= 0) return 'sold_out';
-  if (remaining === 1) return 'last_room';
-  if (remaining <= 3) return 'limited';
-  return 'available';
-}
-
-function nightsInRange(from: string, to: string): string[] {
-  const start = parseISO(from);
-  const end = parseISO(to);
-  if (Number.isNaN(start.getTime())) return [];
-  if (Number.isNaN(end.getTime()) || end <= start) return [format(start, 'yyyy-MM-dd')];
-
-  const dates: string[] = [];
-  for (let cursor = start; cursor < end; cursor = addDays(cursor, 1)) {
-    dates.push(format(cursor, 'yyyy-MM-dd'));
-    if (dates.length > 60) break;
-  }
-  return dates;
-}
-
 function remainingOn(roomTypeId: string, date: string): number {
-  const override = roomStatusOverrides.get(roomTypeId);
-  const units = unitsFor(roomTypeId);
-  if (override === 'sold_out') return 0;
-  if (override === 'last_room') return 1;
-  if (override === 'limited') return Math.min(units, 2);
-  if (override === 'available') return units;
-
-  // Cubed load skews occupancy low, so most nights are sellable and scarcity
-  // states stay rare enough to be a demonstration rather than a dead end.
-  const load = (hash(`${roomTypeId}|${date}`) % 100) / 100;
-  const taken = Math.round(units * load ** 3);
+  const override = roomStatusOverrides.get(roomTypeId) ?? null;
   const held = demoHolds.get(`${roomTypeId}|${date}`) ?? 0;
-  return Math.max(0, units - taken - held);
+  return resolveRemaining(roomTypeId, date, override, held);
 }
 
 export const mockHotelRepository: HotelRepository = {

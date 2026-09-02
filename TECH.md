@@ -37,9 +37,39 @@ module that imports `lib/infrastructure`.
 UI's server actions and the HTTP route handlers, so both entry points re-derive price on the server
 and neither trusts a client-supplied total.
 
-`lib/infrastructure` holds eight demo room types with rates and add-ons, an in-memory repository
-with deterministic date-aware availability, mock implementations of every adapter port, and the
-`DemoControlPort` backing `/admin` (status overrides, add-on enablement, integration status rows).
+`lib/infrastructure` holds eight demo room types with rates and add-ons (static seed data, never
+persisted), an in-memory repository with deterministic date-aware availability, mock
+implementations of every adapter port, and the `DemoControlPort` backing `/admin` (status
+overrides, add-on enablement, integration status rows).
+
+## Persistence
+
+Bookings, payment attempts, room-status overrides, add-on toggles, and confirmed-booking
+inventory holds are durable: `lib/application/container.ts` exports
+`durableHotelRepository`/`durableDemoControlPort` (`lib/infrastructure/durable-hotel-repository.ts`),
+which resolve a D1 binding *at call time* (never once at module load, since `env` bindings are
+only guaranteed once a request is in flight — see `lib/infrastructure/cloudflare-env.ts`) and read
+through D1 when one is configured, falling back to the process-local in-memory store from before
+otherwise.
+
+D1 is enabled by setting `"d1": "DB"` in `.openai/hosting.json` (see
+`@openai/sites-vite-plugin`'s README and the `d1_databases` block in `vite.config.ts`, which was
+already scaffolded for this). `npm run dev`/`vinext dev` then run against a real, locally emulated
+D1 database via `@cloudflare/vite-plugin` — no Cloudflare account or `wrangler login` is needed for
+this; Miniflare persists the SQLite file under `.wrangler/state/v3` (gitignored) across `vinext
+dev` restarts, which is what makes local demo bookings survive a restart. The Site Creator
+platform is expected to provision the real D1 database that this same binding name resolves to in
+production.
+
+Schema (`lib/infrastructure/d1-schema.ts`) is applied with idempotent `CREATE TABLE IF NOT EXISTS`
+statements the first time any D1 function runs per isolate — there is no migration runner. Each
+statement must be a single line: `D1Database.exec()` splits its input on `\n`, not `;`, so a
+multi-line `CREATE TABLE` silently breaks into unparsable fragments; schema init uses `batch()`
+with one prepared statement per table instead.
+
+The room/rate/add-on *catalog* (names, prices, descriptions) is never written to D1 — it stays
+static seed data in `mock-data.ts` in both backends, since nothing in the guest or admin UI edits
+it. Only the state a booking or an admin action actually mutates is durable.
 
 ## Production source of truth
 

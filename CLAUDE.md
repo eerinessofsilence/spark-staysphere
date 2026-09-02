@@ -17,15 +17,20 @@ The UI is photography-led: hero areas with hotspots, room galleries, and license
 photography stored locally in `public/images`. Playwright covers the golden path at 1440px and
 390px.
 
-Still future work: a database, auth on `/admin`, the property's own photography, and production
-PMS, channel manager, payment, and CRM integrations.
+Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
+in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
+and TECH.md's Persistence section.
+
+Still future work: auth on `/admin`, the property's own photography, and production PMS, channel
+manager, payment, and CRM integrations.
 
 ## Technical decisions
 
 - TypeScript strict mode; Zod is the runtime contract boundary.
 - Business rules live in `lib/application`, not React components.
 - Data access goes through `HotelRepository` and integration ports in `lib/domain/ports.ts`.
-- Demo state is in memory and resets with the process.
+- Bookings, payment attempts, admin overrides, and inventory holds are durable (D1, falling back
+  to in-memory). The room/rate/add-on catalog is always static seed data, in every backend.
 - All money flows through `buildPriceBreakdown` in `lib/domain/pricing.ts`; components never
   compute a total.
 - `lib/application/container.ts` is the only module that may import `lib/infrastructure`.
@@ -46,7 +51,7 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 2. ~~Quote → hold → demo payment → booking confirmation.~~ Done.
 3. ~~`/admin` demo and mock adapter controls.~~ Done.
 4. ~~Photography-led redesign with the design rules enshrined.~~ Done.
-5. Persist demo state (D1 or Redis) so bookings survive a restart and are shared across isolates.
+5. ~~Persist demo state (D1) so bookings survive a restart and are shared across isolates.~~ Done.
 6. Replace stock photography with the property's own, and add real 360 tiles if the property has them.
 7. Auth on `/admin`, then the first real PMS or channel-manager adapter behind the existing ports.
 8. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.

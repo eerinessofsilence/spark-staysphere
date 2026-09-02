@@ -63,6 +63,9 @@ computes a price: every total on screen comes from a server quote.
 - Payment is **demo only**. No card fields are rendered and no card data is collected.
 - Photography is **licensed stock** from Unsplash standing in for the property's own, stored
   locally in `public/images` and credited in `public/images/CREDITS.md`. Nothing is hotlinked.
+- Bookings, payment attempts, admin overrides, and inventory holds are **durable** (D1), so a
+  demo booking survives a `npm run dev` restart. The room/rate/add-on catalog stays static seed
+  data — see TECH.md's Persistence section.
 - Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin` says so.
 
 See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for the design rules and

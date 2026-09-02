@@ -70,3 +70,7 @@ Two traps this codebase has already hit, worth knowing before you add UI:
   `e2e` measures `innerWidth` at 390px on every route to keep this from regressing.
 - A running `vinext dev` keeps Vite's dependency pre-bundle; after adding or removing a package
   it 500s on the stale entry until restarted.
+- `D1Database.exec()` splits its input on `\n`, not `;` — a multi-line `CREATE TABLE` breaks
+  into unparsable fragments. Use `batch()` with one prepared statement per line instead.
+- `env` bindings from `cloudflare:workers` are only reliable once a request is in flight; resolve
+  them inside the function that needs them, never cache the result at module scope.
