@@ -227,8 +227,8 @@ export function BookingFlow({
   const stayQuery = buildQuery({ criteria, addOnIds });
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
-      <div>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
+      <div className="min-w-0">
         <ol className="mb-8 flex flex-wrap gap-x-2 gap-y-2" aria-label="Booking steps">
           {steps.map((entry, index) => {
             const state = index === stepIndex ? 'current' : index < stepIndex ? 'done' : 'todo';

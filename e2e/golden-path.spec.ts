@@ -60,7 +60,12 @@ async function toggle(box: Locator, expected: 'true' | 'false') {
   const attribute = (await box.getAttribute('role')) === 'checkbox' ? 'aria-checked' : 'aria-pressed';
   await actUntil(
     async () => {
-      if ((await box.getAttribute(attribute)) !== expected) await box.click();
+      if ((await box.getAttribute(attribute)) !== expected) {
+        // Centre the control first: on phones a fixed booking bar rides the
+        // bottom edge and would otherwise intercept a click at the viewport edge.
+        await box.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+        await box.click();
+      }
     },
     () => expect(box).toHaveAttribute(attribute, expected, { timeout: 3_000 }),
   );
@@ -82,6 +87,16 @@ test('resetting demo state clears bookings and availability overrides', async ({
   await expect(
     page.getByRole('row').filter({ hasText: 'Coastal Twin' }).getByRole('combobox'),
   ).toHaveValue('auto');
+});
+
+test('no route overflows the phone viewport', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Only meaningful at the phone width');
+  for (const path of ['/', `/rooms?${stayQuery}`, `/rooms/deluxe-sea?${stayQuery}`, `/book/deluxe-sea?${stayQuery}`, '/admin']) {
+    await page.goto(path);
+    // Android Chrome widens the layout viewport to any overflow, which shows up here.
+    expect(await page.evaluate(() => window.innerWidth), path).toBe(390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBe(390);
+  }
 });
 
 test('the arrival screen presents the hotel area by area with hotspots', async ({ page }) => {

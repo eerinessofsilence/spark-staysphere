@@ -267,7 +267,7 @@ export function HotelScene({ areas, location, stayQuery, className }: HotelScene
       <div
         role="tablist"
         aria-label="Areas of the hotel"
-        className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:hidden"
+        className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size sm:hidden"
       >
         {areas.map((candidate, candidateIndex) => (
           <button

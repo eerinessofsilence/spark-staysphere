@@ -18,6 +18,7 @@ import {
 } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { AddOnPicker, QuoteLines } from '@/components/rooms/add-on-picker';
+import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
 import { RoomGallery } from '@/components/rooms/room-gallery';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { SectionLabel } from '@/components/site/section-label';
@@ -58,7 +59,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   return (
     <>
       <SiteHeader stayQuery={stayQuery} />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href={`/rooms?${stayQuery}`} className="inline-flex min-h-11 items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft weight="bold" className="size-4" aria-hidden="true" />
@@ -66,8 +67,8 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
           </Link>
         </nav>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
-          <div>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
+          <div className="min-w-0">
             <header className="mb-6">
               <div className="flex flex-wrap items-center gap-3">
                 <SectionLabel>
@@ -183,6 +184,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
           </aside>
         </div>
       </main>
+      <MobileBookBar quote={quote} bookHref={`/book/${room.slug}?${bookQuery}`} roomsHref={`/rooms?${stayQuery}`} />
       <SiteFooter />
     </>
   );

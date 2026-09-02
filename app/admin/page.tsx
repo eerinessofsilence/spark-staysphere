@@ -102,7 +102,7 @@ export default async function AdminPage() {
             immediately changes what guests see in the catalog.
           </p>
 
-          <div className="mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft">
+          <div className="relative mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
             <table className="w-full min-w-[46rem] border-collapse text-sm">
               <caption className="sr-only">
                 Room types with their current demo status and availability override
@@ -202,7 +202,7 @@ export default async function AdminPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft">
+            <div className="relative mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
               <table className="w-full min-w-[52rem] border-collapse text-sm">
                 <caption className="sr-only">Demo bookings created in this server process</caption>
                 <thead>

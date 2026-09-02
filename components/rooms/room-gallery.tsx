@@ -99,7 +99,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
         {photos.length} photographs of the {room.name}. Use the buttons below to switch.
       </figcaption>
 
-      <div role="tablist" aria-label="Room photographs" className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      <div role="tablist" aria-label="Room photographs" className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size">
         {photos.map((candidate, candidateIndex) => (
           <button
             key={candidate.url}

@@ -62,5 +62,11 @@ Two traps this codebase has already hit, worth knowing before you add UI:
   silently kills clicks on child buttons. Capture only once a drag threshold is crossed.
 - `<fieldset>`/`<legend>` renders the legend inside the border and broke the filter panel. Use
   `role="group"` with a heading instead.
+- On Android Chrome the layout viewport widens to the document's overflow, so a page that
+  overflows by 17px renders zoomed out. Two causes seen here: a horizontally scrolling row whose
+  min-content inflated an `auto` grid column (fix: `grid-cols-[minmax(0,1fr)]` + `min-w-0`, and
+  `contain-inline-size` on the scroll row), and `sr-only` labels inside a table escaping their
+  `overflow-x-auto` wrapper because it was not positioned (fix: make the wrapper `relative`).
+  `e2e` measures `innerWidth` at 390px on every route to keep this from regressing.
 - A running `vinext dev` keeps Vite's dependency pre-bundle; after adding or removing a package
   it 500s on the stale entry until restarted.

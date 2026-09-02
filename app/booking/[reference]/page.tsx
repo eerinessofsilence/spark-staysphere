@@ -59,7 +59,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
               <h1 className="text-display mt-4 text-5xl sm:text-6xl">You are booked in</h1>
               <p className="mt-4 max-w-lg text-[15px] text-muted-foreground">
                 {booking.guest.firstName}, your {room?.name ?? 'room'} at {hotel.name} is held under
-                the reference below. This is a demo booking — no payment was taken and no real
+                the reference shown here. This is a demo booking — no payment was taken and no real
                 reservation exists.
               </p>
             </div>
