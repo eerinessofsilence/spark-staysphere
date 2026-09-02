@@ -102,6 +102,11 @@ Three faces, self-hosted at build time through `next/font/google`. Do not add a 
 - **Header**: frosted pill bar — mark and wordmark, text links, ink "Book a room".
 - **Search bar**: one pill on desktop with hairline dividers between fields and an ink search
   button; stacked 28px card on mobile. It overlaps the bottom edge of the arrival scene.
+- **Dates**: never `input[type=date]` — the browser's own control looks different on every
+  platform and cannot show the range. Check-in and check-out are two triggers onto one
+  `StayDatesField` panel: two months on desktop, one in a bottom sheet on a phone, ink circles
+  at both ends of a stone band, a preview band under the cursor, sold-out days struck through,
+  and the nights read back as a sentence.
 - **Room card**: photograph on the left with a frosted status pill; name in display type;
   facts as filled-icon chips; inclusions with filled checks; price in display type; "Details"
   secondary pill and "Book now" ink pill.

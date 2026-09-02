@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarBlank, MagnifyingGlass, UsersThree } from '@phosphor-icons/react/dist/ssr';
+import { MagnifyingGlass, UsersThree } from '@phosphor-icons/react/dist/ssr';
+import { StayDatesField } from '@/components/search/stay-dates-field';
 import type { RoomFilters } from '@/lib/application/catalog-service';
 import { buildQuery } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
@@ -32,6 +33,7 @@ export function StaySearchBar({
   // The URL is the source of truth; re-sync when a navigation changes the stay.
   React.useEffect(() => setDraft(criteria), [criteria]);
 
+  // The picker cannot produce an inverted range; this guards a hand-edited URL.
   const invalid = draft.checkOut <= draft.checkIn;
 
   const onSubmit = (event: React.FormEvent) => {
@@ -39,15 +41,6 @@ export function StaySearchBar({
     if (invalid) return;
     const query = buildQuery({ criteria: draft, filters });
     startTransition(() => router.push(`/rooms?${query}`));
-  };
-
-  const onCheckInChange = (value: string) => {
-    setDraft((current) => ({
-      ...current,
-      checkIn: value,
-      // Keep the range valid: push check-out out by a night if it collapsed.
-      checkOut: current.checkOut <= value ? addOneDay(value) : current.checkOut,
-    }));
   };
 
   return (
@@ -58,35 +51,12 @@ export function StaySearchBar({
         className,
       )}
     >
-      <Field id="stay-check-in" label="Check-in" icon={CalendarBlank}>
-        <input
-          id="stay-check-in"
-          type="date"
-          value={draft.checkIn}
-          min={minDate}
-          required
-          onChange={(event) => onCheckInChange(event.target.value)}
-          className="h-6 w-full bg-transparent text-[15px] font-medium outline-none"
-        />
-      </Field>
-
-      <Field
-        id="stay-check-out"
-        label="Check-out"
-        icon={CalendarBlank}
-        error={invalid ? 'Check-out must be after check-in.' : undefined}
-      >
-        <input
-          id="stay-check-out"
-          type="date"
-          value={draft.checkOut}
-          min={addOneDay(draft.checkIn)}
-          required
-          aria-invalid={invalid}
-          onChange={(event) => setDraft((current) => ({ ...current, checkOut: event.target.value }))}
-          className="h-6 w-full bg-transparent text-[15px] font-medium outline-none"
-        />
-      </Field>
+      <StayDatesField
+        checkIn={draft.checkIn}
+        checkOut={draft.checkOut}
+        minDate={minDate}
+        onChange={(dates) => setDraft((current) => ({ ...current, ...dates }))}
+      />
 
       <Field id="stay-adults" label="Adults" icon={UsersThree}>
         <select
@@ -141,7 +111,7 @@ function Field({
 }: {
   id: string;
   label: string;
-  icon?: typeof CalendarBlank;
+  icon?: typeof UsersThree;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -164,11 +134,4 @@ function Field({
       ) : null}
     </div>
   );
-}
-
-function addOneDay(iso: string): string {
-  const date = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return iso;
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
 }

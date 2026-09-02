@@ -26,6 +26,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { AddOnRow } from '@/components/rooms/add-on-picker';
+import { StayDatesField } from '@/components/search/stay-dates-field';
 import { fieldClass, pill } from '@/lib/ui';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { cn } from '@/lib/utils';
@@ -318,30 +319,14 @@ export function BookingFlow({
 
           {step === 'stay' ? (
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <LabelledField id="book-check-in" label="Check-in" error={datesInvalid ? ' ' : undefined}>
-                <input
-                  id="book-check-in"
-                  type="date"
-                  value={criteria.checkIn}
-                  min={minDate}
-                  onChange={(event) => updateCriteria({ checkIn: event.target.value })}
-                  className={fieldClass}
-                />
-              </LabelledField>
-              <LabelledField
-                id="book-check-out"
-                label="Check-out"
+              <StayDatesField
+                variant="stacked"
+                checkIn={criteria.checkIn}
+                checkOut={criteria.checkOut}
+                minDate={minDate}
+                onChange={(dates) => updateCriteria(dates)}
                 error={datesInvalid ? 'Check-out must be after check-in.' : undefined}
-              >
-                <input
-                  id="book-check-out"
-                  type="date"
-                  value={criteria.checkOut}
-                  min={addOneDay(criteria.checkIn)}
-                  onChange={(event) => updateCriteria({ checkOut: event.target.value })}
-                  className={fieldClass}
-                />
-              </LabelledField>
+              />
               <LabelledField id="book-adults" label="Adults">
                 <select
                   id="book-adults"

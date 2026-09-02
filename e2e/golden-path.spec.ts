@@ -127,6 +127,40 @@ test('the arrival screen presents the hotel area by area with hotspots', async (
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
+test('the date picker sets the stay as one range', async ({ page }) => {
+  await page.goto(`/?${stayQuery}`);
+
+  const openCheckIn = page.getByRole('button', { name: /^Check-in/ });
+  const panel = page.getByRole('dialog', { name: 'Choose your dates' });
+  await actUntil(
+    () => openCheckIn.click(),
+    () => expect(panel).toBeVisible({ timeout: 3_000 }),
+  );
+
+  // Two months are shown on desktop and one on a phone, so both ends are taken
+  // from the month that is on screen either way.
+  const days = panel.locator('table').first().locator('td button:not([disabled])');
+  const count = await days.count();
+  const from = days.nth(count - 6);
+  const to = days.nth(count - 2);
+  const fromLabel = (await from.getAttribute('aria-label'))!;
+  const toLabel = (await to.getAttribute('aria-label'))!;
+
+  // The first click arms check-in; the panel then asks for the other end.
+  await from.click();
+  await expect(panel.getByText('Pick your check-out date.')).toBeVisible();
+
+  // A later day closes the range, which commits it and dismisses the panel.
+  await to.click();
+  await expect(panel).toBeHidden();
+  await expect(openCheckIn).toContainText(fromLabel);
+  await expect(page.getByRole('button', { name: /^Check-out/ })).toContainText(toLabel);
+
+  await page.getByRole('button', { name: 'Search rooms' }).click();
+  await expect(page).toHaveURL(/checkIn=\d{4}-\d{2}-\d{2}&checkOut=\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByText(`${fromLabel} → ${toLabel}`).first()).toBeVisible();
+});
+
 test('the catalog filters, sorts, and recovers from an empty result', async ({ page }) => {
   await page.goto(`/rooms?${stayQuery}`);
 
