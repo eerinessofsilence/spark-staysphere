@@ -14,6 +14,10 @@ Build a white-label interactive hotel discovery and direct-booking product. The 
 - Payment is demo-only until explicit provider credentials and production authorization exist. Never collect raw card data.
 - Recheck price and availability immediately before confirmation and use an idempotency key for booking creation.
 - Prefer accessible semantic controls, visible focus states, keyboard navigation, and mobile-first layouts.
+- Read `DESIGN_SYSTEM.md › Rules` before adding any UI. In short: no uppercase eyebrows, no grids
+  of labelled stat boxes, no icon-in-a-circle feature cards, no schematic illustration, Phosphor
+  filled icons only, ink pills for primary actions, clay as the only accent.
+- Photography is local (`public/images`) and credited in `public/images/CREDITS.md`. Never hotlink.
 
 ## Commit conventions
 
@@ -56,3 +60,7 @@ Two traps this codebase has already hit, worth knowing before you add UI:
   on the control's own value.
 - Calling `setPointerCapture` on pointerdown inside an interactive stage retargets pointerup and
   silently kills clicks on child buttons. Capture only once a drag threshold is crossed.
+- `<fieldset>`/`<legend>` renders the legend inside the border and broke the filter panel. Use
+  `role="group"` with a heading instead.
+- A running `vinext dev` keeps Vite's dependency pre-bundle; after adding or removing a package
+  it 500s on the stale entry until restarted.

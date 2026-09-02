@@ -1,15 +1,31 @@
 import Link from 'next/link';
-import { ArrowRight, Building2, ShieldCheck, Sparkles, Waves } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react/dist/ssr';
+import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseCriteria, toIsoDate } from '@/lib/application/search-params';
-import { formatMoney } from '@/lib/formatting';
+import { formatDateRange, formatMoney } from '@/lib/formatting';
+import { pill } from '@/lib/ui';
 import { HotelScene } from '@/components/hotel/hotel-scene';
 import { RoomCard } from '@/components/rooms/room-card';
 import { StaySearchBar } from '@/components/search/stay-search-bar';
-import { Eyebrow } from '@/components/site/eyebrow';
+import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
-import { defaultRoomFilters } from '@/lib/application/catalog-service';
+
+const steps = [
+  {
+    title: 'See the stay',
+    body: 'Walk the property area by area, then open the exact room type — its own photographs, floor, and outlook — before you commit to anything.',
+  },
+  {
+    title: 'Shape it',
+    body: 'Add a transfer, a spa ritual, or a late check-out. The booking engine reprices the stay the moment you change it.',
+  },
+  {
+    title: 'Book direct',
+    body: 'Confirm in a clearly labelled demo booking. Price and availability are rechecked on the server right before the reservation is created.',
+  },
+];
 
 export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const params = await searchParams;
@@ -28,91 +44,105 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
     <>
       <SiteHeader stayQuery={stayQuery} />
       <main id="main">
-        <section className="mx-auto max-w-[1400px] px-4 pt-10 pb-6 sm:px-6 lg:px-10 lg:pt-16">
-          <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        {/* Arrival */}
+        <section className="mx-auto max-w-[1400px] px-3 pt-8 sm:px-6 lg:pt-14">
+          <div className="grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
             <div>
-              <Eyebrow>
-                {hotel.location} · {totalRooms} room types
-              </Eyebrow>
-              <h1 className="text-display mt-4 text-[clamp(2.75rem,8vw,5.5rem)]">{hotel.name}</h1>
-              <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
-                A cliffside house of {totalRooms} room types above a working fishing cove. Look
-                around the property, open the exact room you want, and book it direct.
-              </p>
-              <p className="text-display mt-3 text-xl text-cyan-dark">{hotel.tagline}</p>
+              <SectionLabel>{hotel.location}</SectionLabel>
+              <h1 className="text-display mt-4 text-[clamp(3.25rem,10vw,8rem)]">{hotel.name}</h1>
             </div>
-            <dl className="grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-1 lg:gap-3">
-              <Stat label="Available now" value={`${availableRooms} of ${totalRooms}`} />
-              <Stat
-                label="From"
-                value={`${formatMoney(facets.priceRange.min, hotel.currency)}/night`}
-              />
-              <Stat label="Direct booking" value="Best rate" />
-            </dl>
+            <div className="lg:pb-3">
+              <p className="text-accent-italic text-2xl text-accent-strong sm:text-3xl">{hotel.tagline}</p>
+              <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+                A cliffside house above a working fishing cove on the Dalmatian coast. Explore the
+                property, open the exact room you want, and book it direct.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link href={`/rooms?${stayQuery}`} className={pill('primary')}>
+                  Explore rooms
+                  <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+                </Link>
+                <Link href="#how-it-works" className={pill('secondary')}>
+                  How it works
+                </Link>
+              </div>
+            </div>
           </div>
 
-          <HotelScene
-            stayQuery={stayQuery}
-            className="mt-8 aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2/1]"
-          />
+          <HotelScene areas={hotel.areas} location={hotel.location} stayQuery={stayQuery} className="mt-8" />
 
-          <div className="mt-6">
+          <div className="mt-5 sm:px-6 lg:px-12">
             <h2 className="sr-only">Search rooms</h2>
             <StaySearchBar criteria={criteria} minDate={today} />
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              {availableRooms} of {totalRooms} room types are available for{' '}
+              {formatDateRange(criteria.checkIn, criteria.checkOut)}, from{' '}
+              {formatMoney(facets.priceRange.min, hotel.currency)} a night.
+            </p>
           </div>
         </section>
 
-        <section className="mx-auto max-w-[1400px] px-4 py-12 sm:px-6 lg:px-10">
-          <div className="grid gap-6 sm:grid-cols-3">
-            {[
-              {
-                icon: Waves,
-                title: 'See the actual room',
-                body: 'Every room type has its own view, floor, and terrace drawn to scale — no stock photography standing in for a room you did not book.',
-              },
-              {
-                icon: ShieldCheck,
-                title: 'Book direct, pay less',
-                body: 'Direct rates include breakfast and the beach club, and are compared against a demo partner-site price on every card.',
-              },
-              {
-                icon: Building2,
-                title: 'One connected journey',
-                body: 'Search, inspect, add services, and confirm in one flow. Prices are rechecked server-side right before you confirm.',
-              },
-            ].map((item) => (
-              <div key={item.title} className="rounded-3xl border border-border bg-card p-6 shadow-soft">
-                <span className="grid size-10 place-items-center rounded-2xl bg-cyan/15 text-cyan-dark">
-                  <item.icon className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-              </div>
-            ))}
+        {/* How it works: three numbered steps over photography, not icon cards. */}
+        <section
+          id="how-it-works"
+          aria-labelledby="how-heading"
+          className="mx-auto mt-20 max-w-[1400px] scroll-mt-24 px-3 sm:px-6"
+        >
+          <div className="grid overflow-hidden rounded-[28px] bg-ink text-[#F7F5F0] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <div className="relative min-h-[22rem] lg:min-h-[36rem]">
+              <img
+                src="/images/hotel/cove.webp"
+                alt="A pool set into the cliff above a rocky Mediterranean cove"
+                width={2000}
+                height={3000}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 size-full object-cover"
+              />
+            </div>
+            <div className="p-7 sm:p-10 lg:p-14">
+              <SectionLabel tone="onDark">How it works</SectionLabel>
+              <h2 id="how-heading" className="text-display mt-4 text-4xl sm:text-5xl">
+                Nothing between you <span className="text-accent-italic text-accent-strong">and the room.</span>
+              </h2>
+              <ol className="mt-10 divide-y divide-white/10">
+                {steps.map((step, index) => (
+                  <li key={step.title} className="grid gap-4 py-6 sm:grid-cols-[4.5rem_1fr]">
+                    <span className="text-display text-3xl text-white/40 tabular-nums">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <div>
+                      <h3 className="text-display text-2xl">{step.title}</h3>
+                      <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">{step.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-[1400px] px-4 pb-4 sm:px-6 lg:px-10">
+        {/* Recommended rooms */}
+        <section aria-labelledby="rooms-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <Eyebrow>Recommended for your dates</Eyebrow>
-              <h2 className="text-display mt-2 text-3xl sm:text-4xl">Where to stay</h2>
+              <SectionLabel>Recommended for your dates</SectionLabel>
+              <h2 id="rooms-heading" className="text-display mt-3 text-4xl sm:text-5xl">
+                Where to stay
+              </h2>
             </div>
-            <Link
-              href={`/rooms?${stayQuery}`}
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-canvas"
-            >
+            <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
               All {totalRooms} room types
-              <ArrowRight className="size-4" aria-hidden="true" />
+              <ArrowUpRight weight="bold" className="size-4" aria-hidden="true" />
             </Link>
           </div>
 
           {highlights.length === 0 ? (
-            <p className="mt-8 rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">
+            <p className="mt-8 rounded-[28px] border border-dashed border-border p-10 text-center text-muted-foreground">
               Nothing is bookable for those dates. Try a different stay above.
             </p>
           ) : (
-            <div className="mt-8 grid gap-6">
+            <div className="mt-8 grid gap-5">
               {highlights.map((offer) => (
                 <RoomCard key={offer.room.id} offer={offer} stayQuery={stayQuery} />
               ))}
@@ -120,41 +150,36 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
           )}
         </section>
 
-        <section className="mx-auto max-w-[1400px] px-4 py-14 sm:px-6 lg:px-10">
-          <div className="flex flex-col items-start gap-6 rounded-3xl bg-ink p-8 text-[#F2F1EC] sm:flex-row sm:items-center sm:justify-between sm:p-10">
-            <div>
-              <p className="eyebrow flex items-center gap-2 text-cyan">
-                <Sparkles className="size-4" aria-hidden="true" />
-                Demo booking
+        {/* Closing band */}
+        <section className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+          <div className="relative overflow-hidden rounded-[28px]">
+            <img
+              src="/images/hotel/pool.webp"
+              alt=""
+              width={2000}
+              height={1334}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 size-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10" />
+            <div className="relative flex flex-col items-start gap-6 p-8 text-[#F7F5F0] sm:p-12 lg:min-h-[24rem] lg:justify-end">
+              <p className="text-display max-w-xl text-4xl sm:text-5xl">
+                Take the whole journey, <span className="text-accent-italic text-accent-strong">end to end.</span>
               </p>
-              <h2 className="text-display mt-3 max-w-lg text-3xl sm:text-4xl">
-                Take the whole journey, end to end.
-              </h2>
-              <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#A4ABAC]">
+              <p className="max-w-md text-sm leading-relaxed text-white/75">
                 Search, inspect a room, add services, and confirm. Payment is simulated and clearly
                 labelled — no card details are ever collected.
               </p>
+              <Link href={`/rooms?${stayQuery}`} className={pill('glass')}>
+                Start with the rooms
+                <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+              </Link>
             </div>
-            <Link
-              href={`/rooms?${stayQuery}`}
-              className="flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-cyan px-6 text-sm font-semibold text-ink hover:bg-cyan/85"
-            >
-              Explore rooms
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
           </div>
         </section>
       </main>
       <SiteFooter />
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card px-3 py-2.5 sm:px-4 sm:py-3">
-      <dt className="eyebrow text-[10px] text-muted-foreground sm:text-[11px]">{label}</dt>
-      <dd className="mt-1 text-base font-semibold sm:text-lg">{value}</dd>
-    </div>
   );
 }

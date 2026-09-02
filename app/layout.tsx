@@ -1,15 +1,29 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Bricolage_Grotesque, Instrument_Serif, Onest } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+/**
+ * Type system: a characterful grotesk for display, a quiet humanist sans for
+ * body, and an italic serif reserved for single emphasised phrases. All three
+ * are self-hosted at build time; see DESIGN_SYSTEM.md before adding a fourth.
+ */
+const display = Bricolage_Grotesque({
+  variable: '--font-display-family',
   subsets: ['latin'],
+  weight: ['400', '500', '600'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const body = Onest({
+  variable: '--font-body-family',
   subsets: ['latin'],
+  weight: ['400', '500', '600'],
+});
+
+const accent = Instrument_Serif({
+  variable: '--font-accent-family',
+  subsets: ['latin'],
+  weight: '400',
+  style: 'italic',
 });
 
 export const metadata: Metadata = {
@@ -24,9 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${display.variable} ${body.variable} ${accent.variable} antialiased`}>
         {children}
       </body>
     </html>

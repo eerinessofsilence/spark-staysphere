@@ -53,15 +53,16 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
 }
 
 /**
- * Filter and add-on checkboxes settle only after the server re-renders, so
- * Playwright's check()/uncheck() would click again before the state arrives.
+ * Filter chips and add-on checkboxes settle only after the server re-renders,
+ * so a blind retry would toggle them straight back. Guard on the current state.
  */
 async function toggle(box: Locator, expected: 'true' | 'false') {
+  const attribute = (await box.getAttribute('role')) === 'checkbox' ? 'aria-checked' : 'aria-pressed';
   await actUntil(
     async () => {
-      if ((await box.getAttribute('aria-checked')) !== expected) await box.click();
+      if ((await box.getAttribute(attribute)) !== expected) await box.click();
     },
-    () => expect(box).toHaveAttribute('aria-checked', expected, { timeout: 3_000 }),
+    () => expect(box).toHaveAttribute(attribute, expected, { timeout: 3_000 }),
   );
 }
 
@@ -83,16 +84,25 @@ test('resetting demo state clears bookings and availability overrides', async ({
   ).toHaveValue('auto');
 });
 
-test('the arrival screen presents the hotel and its hotspots', async ({ page }) => {
+test('the arrival screen presents the hotel area by area with hotspots', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Asteria Cove' })).toBeVisible();
-  await expect(page.getByRole('group', { name: /Interactive view of Asteria Cove/ })).toBeVisible();
+  const scene = page.getByRole('group', { name: /Explore the hotel area by area/ });
+  await expect(scene).toBeVisible();
+
+  // Switch to the pool area, then open its hotspot. The tablist sits inside the
+  // stage on desktop and below it on mobile; only one is in the tree at a time.
+  const poolTab = page.getByRole('tab', { name: 'Pool' });
+  await actUntil(
+    () => poolTab.click(),
+    () => expect(poolTab).toHaveAttribute('aria-selected', 'true', { timeout: 3_000 }),
+  );
 
   const cta = page.getByRole('link', { name: 'See pool-access rooms' });
   await actUntil(
     async () => {
-      if (!(await cta.isVisible())) await page.getByRole('button', { name: 'Pool' }).click();
+      if (!(await cta.isVisible())) await page.getByRole('button', { name: 'Infinity edge' }).click();
     },
     () => expect(cta).toBeVisible({ timeout: 3_000 }),
   );
@@ -100,38 +110,6 @@ test('the arrival screen presents the hotel and its hotspots', async ({ page }) 
   await cta.click();
   await expect(page).toHaveURL(/\/rooms\?.*view=pool/);
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
-});
-
-test('the 3D scene loads only when asked for, and the poster survives it', async ({ page }) => {
-  const threeChunks: string[] = [];
-  page.on('request', (request) => {
-    if (/resort-canvas|three/.test(request.url())) threeChunks.push(request.url());
-  });
-
-  await page.goto('/');
-  await expect(page.getByText('Procedural preview')).toBeVisible();
-  expect(threeChunks, 'the 3D bundle must not load with the arrival screen').toHaveLength(0);
-
-  const toggle3d = page.getByRole('button', { name: 'Load the 3D scene' });
-  await actUntil(
-    () => toggle3d.click(),
-    () => expect(page.getByText('Procedural 3D')).toBeVisible({ timeout: 5_000 }),
-  );
-
-  expect(threeChunks.length, 'requesting 3D must fetch the deferred bundle').toBeGreaterThan(0);
-  await expect(page.locator('canvas')).toHaveCount(1);
-
-  // Hotspot behaviour inside the canvas needs a real GPU, so it is not asserted
-  // here; the poster hotspots are covered by the arrival test, and a WebGL
-  // failure is expected to drop back to the poster rather than blank the route.
-  const backToPoster = page.getByRole('button', { name: 'Switch back to the fast preview' });
-  await actUntil(
-    async () => {
-      if (await backToPoster.isVisible()) await backToPoster.click();
-    },
-    () => expect(page.getByText('Procedural preview')).toBeVisible({ timeout: 3_000 }),
-  );
-  await expect(page.getByRole('button', { name: 'Pool' })).toBeVisible();
 });
 
 test('the catalog filters, sorts, and recovers from an empty result', async ({ page }) => {
@@ -143,13 +121,13 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
   expect(initialCount).toBeGreaterThan(3);
 
   await withFilters(page, () =>
-    toggle(page.getByRole('checkbox', { name: 'Sea view' }), 'true'),
+    toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'true'),
   );
   await expect(page).toHaveURL(/view=sea/);
   await expect(cards).toHaveCount(4);
 
   await withFilters(page, () =>
-    toggle(page.getByRole('checkbox', { name: 'Sea view' }), 'false'),
+    toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'false'),
   );
   await expect(cards).toHaveCount(initialCount);
 
@@ -183,9 +161,10 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   const totalAfter = await summary.locator('.text-display').last().innerText();
   expect(totalAfter).not.toEqual(totalBefore);
 
-  // The zone switcher swaps the illustration without leaving the page.
+  // The gallery tabs swap the photograph without leaving the page.
   await page.getByRole('tab', { name: 'Bathroom' }).click();
   await expect(page.getByRole('tab', { name: 'Bathroom' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
 });
 
 test('a guest can complete a demo booking through to confirmation', async ({ page }) => {

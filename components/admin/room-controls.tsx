@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { CircleNotch } from '@phosphor-icons/react/dist/ssr';
+import { fieldClass, pill } from '@/lib/ui';
 import { resetDemoState, setAddOnEnabled, setRoomStatus } from '@/app/admin/actions';
 import type { RoomStatus } from '@/lib/domain/schemas';
 import { statusLabels } from '@/lib/formatting';
@@ -49,7 +50,7 @@ export function RoomStatusControl({
           router.refresh();
           setPending(false);
         }}
-        className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm disabled:opacity-60"
+        className={cn(fieldClass, "disabled:opacity-60")}
       >
         {overrideOptions.map((option) => (
           <option key={option.value} value={option.value}>
@@ -58,7 +59,7 @@ export function RoomStatusControl({
         ))}
       </select>
       {pending ? (
-        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+        <CircleNotch weight="bold" className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
       ) : null}
     </div>
   );
@@ -96,7 +97,7 @@ export function AddOnToggle({
         <span className="sr-only"> — {addOnName}</span>
       </span>
       {pending ? (
-        <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+        <CircleNotch weight="bold" className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
       ) : null}
     </label>
   );
@@ -116,9 +117,9 @@ export function ResetDemoButton() {
         router.refresh();
         setPending(false);
       }}
-      className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-canvas disabled:opacity-60"
+      className={pill('secondary')}
     >
-      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+      {pending ? <CircleNotch weight="bold" className="size-4 animate-spin" aria-hidden="true" /> : null}
       Reset demo state
     </button>
   );

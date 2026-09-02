@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CircleSlash, Plug, RefreshCw } from 'lucide-react';
+import { ArrowsClockwise, Plugs, Prohibit } from '@phosphor-icons/react/dist/ssr';
+import { pill } from '@/lib/ui';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import {
   bookingService,
@@ -21,7 +22,7 @@ import {
 } from '@/lib/formatting';
 import { AddOnToggle, ResetDemoButton, RoomStatusControl } from '@/components/admin/room-controls';
 import { StatusBadge } from '@/components/rooms/status-badge';
-import { Eyebrow } from '@/components/site/eyebrow';
+import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -73,12 +74,12 @@ export default async function AdminPage() {
   return (
     <>
       <SiteHeader />
-      <main id="main" className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Eyebrow>Hotel admin · demo</Eyebrow>
-            <h1 className="text-display mt-3 text-4xl sm:text-5xl">{hotel.name} operations</h1>
-            <p className="mt-3 max-w-2xl text-muted-foreground">
+            <SectionLabel>Hotel admin · demo</SectionLabel>
+            <h1 className="text-display mt-4 text-5xl sm:text-6xl">{hotel.name} operations</h1>
+            <p className="mt-4 max-w-2xl text-[15px] text-muted-foreground">
               Controls below write to the in-memory demo state only. A production admin writes
               through the PMS adapter, and inventory stays owned by the PMS or channel manager.
             </p>
@@ -86,14 +87,14 @@ export default async function AdminPage() {
           <ResetDemoButton />
         </header>
 
-        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-          <Metric label="Room types" value={String(rooms.length)} />
-          <Metric label="Bookings this session" value={String(bookings.length)} />
-          <Metric label="Demo revenue" value={formatMoney(revenue, hotel.currency)} />
+        <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-6">
+          <Metric label="room types" value={String(rooms.length)} />
+          <Metric label="bookings this session" value={String(bookings.length)} />
+          <Metric label="demo revenue" value={formatMoney(revenue, hotel.currency)} />
         </dl>
 
         <section aria-labelledby="rooms-heading" className="mt-12">
-          <h2 id="rooms-heading" className="text-display text-2xl">
+          <h2 id="rooms-heading" className="text-display text-3xl">
             Rooms and availability
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -101,7 +102,7 @@ export default async function AdminPage() {
             immediately changes what guests see in the catalog.
           </p>
 
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-border bg-card">
+          <div className="mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft">
             <table className="w-full min-w-[46rem] border-collapse text-sm">
               <caption className="sr-only">
                 Room types with their current demo status and availability override
@@ -119,7 +120,7 @@ export default async function AdminPage() {
                 {allOffers.map(({ room, offer }) => (
                   <tr key={room.id} className="border-b border-border last:border-b-0">
                     <Td>
-                      <Link href={`/rooms/${room.slug}`} className="font-medium hover:text-cyan-dark">
+                      <Link href={`/rooms/${room.slug}`} className="font-medium hover:text-accent-strong">
                         {room.name}
                       </Link>
                       <span className="block text-xs text-muted-foreground">{room.id}</span>
@@ -154,7 +155,7 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="addons-heading" className="mt-12">
-          <h2 id="addons-heading" className="text-display text-2xl">
+          <h2 id="addons-heading" className="text-display text-3xl">
             Add-ons
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -163,8 +164,8 @@ export default async function AdminPage() {
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {addOns.map((addOn) => (
-              <div key={addOn.id} className="rounded-3xl border border-border bg-card p-5">
-                <h3 className="font-semibold">{addOn.name}</h3>
+              <div key={addOn.id} className="rounded-[28px] bg-card shadow-soft p-5">
+                <h3 className="font-medium">{addOn.name}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{addOn.description}</p>
                 <p className="mt-3 text-sm font-medium">
                   {formatMoney(addOn.price, addOn.currency)}{' '}
@@ -181,30 +182,27 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="bookings-heading" className="mt-12">
-          <h2 id="bookings-heading" className="text-display text-2xl">
+          <h2 id="bookings-heading" className="text-display text-3xl">
             Bookings in this demo session
           </h2>
 
           {confirmations.length === 0 ? (
             <div className="mt-5 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
-              <span className="grid size-12 place-items-center rounded-2xl bg-canvas text-muted-foreground">
-                <CircleSlash className="size-6" aria-hidden="true" />
+              <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
+                <Prohibit weight="fill" className="size-5" aria-hidden="true" />
               </span>
               <div>
-                <h3 className="text-display text-xl">No bookings yet</h3>
+                <h3 className="text-display text-2xl">No bookings yet</h3>
                 <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                   Complete a demo booking and it will appear here until the server restarts.
                 </p>
               </div>
-              <Link
-                href="/rooms"
-                className="flex min-h-11 items-center rounded-xl bg-cyan px-5 text-sm font-semibold text-ink hover:bg-cyan/85"
-              >
+              <Link href="/rooms" className={pill('primary')}>
                 Make a demo booking
               </Link>
             </div>
           ) : (
-            <div className="mt-5 overflow-x-auto rounded-3xl border border-border bg-card">
+            <div className="mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft">
               <table className="w-full min-w-[52rem] border-collapse text-sm">
                 <caption className="sr-only">Demo bookings created in this server process</caption>
                 <thead>
@@ -224,7 +222,7 @@ export default async function AdminPage() {
                       <Td>
                         <Link
                           href={`/booking/${booking.reference}`}
-                          className="font-mono font-medium hover:text-cyan-dark"
+                          className="text-display text-base hover:text-accent-strong"
                         >
                           {booking.reference}
                         </Link>
@@ -275,7 +273,7 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="integrations-heading" className="mt-12 mb-4">
-          <h2 id="integrations-heading" className="text-display text-2xl">
+          <h2 id="integrations-heading" className="text-display text-3xl">
             Integrations
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -286,12 +284,12 @@ export default async function AdminPage() {
             {integrations.map((integration) => (
               <li
                 key={integration.adapter}
-                className="rounded-3xl border border-border bg-card p-5"
+                className="rounded-[28px] bg-card shadow-soft p-5"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="font-semibold">{adapterLabels[integration.adapter]}</h3>
-                  <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-canvas text-muted-foreground">
-                    <Plug className="size-4" aria-hidden="true" />
+                  <h3 className="font-medium">{adapterLabels[integration.adapter]}</h3>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-stone text-muted-foreground">
+                    <Plugs weight="fill" className="size-4" aria-hidden="true" />
                   </span>
                 </div>
                 <dl className="mt-4 grid gap-2 text-sm">
@@ -312,7 +310,7 @@ export default async function AdminPage() {
                   <div className="flex justify-between gap-3">
                     <dt className="text-muted-foreground">Last sync</dt>
                     <dd className="flex items-center gap-1.5 font-medium">
-                      <RefreshCw className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      <ArrowsClockwise weight="bold" className="size-3.5 text-muted-foreground" aria-hidden="true" />
                       {integration.lastSyncAt ? formatDate(integration.lastSyncAt.slice(0, 10)) : 'Never'}
                     </dd>
                   </div>
@@ -329,16 +327,16 @@ export default async function AdminPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
-      <dt className="eyebrow text-muted-foreground">{label}</dt>
-      <dd className="text-display mt-2 text-3xl">{value}</dd>
+    <div className="flex items-baseline gap-2">
+      <dd className="text-display order-1 text-4xl">{value}</dd>
+      <dt className="order-2 text-sm text-muted-foreground">{label}</dt>
     </div>
   );
 }
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th scope="col" className="px-4 py-3 text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+    <th scope="col" className="px-4 py-3 text-sm font-normal text-muted-foreground">
       {children}
     </th>
   );

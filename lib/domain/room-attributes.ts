@@ -17,6 +17,7 @@ export function roomCategory(room: Pick<RoomType, 'name'>): RoomCategory {
   return 'room';
 }
 
-export function hasMedia(room: Pick<RoomType, 'media'>, type: RoomType['media'][number]['type']): boolean {
-  return room.media.some((item) => item.type === type);
+/** The first image is the room's cover everywhere it is shown. */
+export function coverPhoto(room: Pick<RoomType, 'media'>): RoomType['media'][number] | undefined {
+  return room.media.find((item) => item.type === 'image');
 }

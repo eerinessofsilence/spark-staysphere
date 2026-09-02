@@ -1,156 +1,131 @@
 import Link from 'next/link';
-import { BedDouble, Building2, Check, Eye, Maximize, Users } from 'lucide-react';
-import { roomCategory } from '@/lib/domain/room-attributes';
+import { ArrowUpRight, Bed, Buildings, Check, Eye, Ruler, UsersThree } from '@phosphor-icons/react/dist/ssr';
+import { coverPhoto, roomCategory } from '@/lib/domain/room-attributes';
 import type { RoomOffer } from '@/lib/domain/schemas';
-import {
-  bedLabels,
-  categoryLabels,
-  formatFloor,
-  formatMoney,
-  formatNights,
-  viewLabels,
-} from '@/lib/formatting';
+import { bedLabels, categoryLabels, formatFloor, formatMoney, formatNights, viewLabels } from '@/lib/formatting';
+import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { MediaBadges } from './media-badges';
-import { RoomVisual } from './room-visual';
 import { StatusBadge } from './status-badge';
 
 interface RoomCardProps {
   offer: RoomOffer;
   /** Canonical stay query so the card's links keep dates, guests, and filters. */
   stayQuery: string;
-  layout?: 'row' | 'grid';
 }
 
-export function RoomCard({ offer, stayQuery, layout = 'row' }: RoomCardProps) {
+export function RoomCard({ offer, stayQuery }: RoomCardProps) {
   const { room, ratePlan, price, status, remaining } = offer;
   const soldOut = status === 'sold_out';
   const detailHref = `/rooms/${room.slug}?${stayQuery}`;
   const bookHref = `/book/${room.slug}?${stayQuery}`;
-  const specs = [
-    { icon: Maximize, label: `${room.areaM2} m²` },
-    { icon: Building2, label: formatFloor(room.floor) },
-    { icon: Users, label: `Up to ${room.capacity}` },
-    { icon: BedDouble, label: bedLabels[room.bedType] },
+  const cover = coverPhoto(room);
+  const facts = [
+    { icon: Ruler, label: `${room.areaM2} m²` },
+    { icon: Bed, label: bedLabels[room.bedType] },
+    { icon: UsersThree, label: `Sleeps ${room.capacity}` },
+    { icon: Buildings, label: formatFloor(room.floor) },
     { icon: Eye, label: viewLabels[room.view] },
   ];
 
   return (
     <article
       className={cn(
-        'group grid overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-shadow focus-within:shadow-soft-lg hover:shadow-soft-lg',
-        layout === 'row' ? 'sm:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]' : 'grid-rows-[auto_1fr]',
-        soldOut && 'opacity-95',
+        'group grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]',
+        soldOut && 'opacity-90',
       )}
     >
-      <div className={cn('relative bg-ink', layout === 'row' ? 'aspect-[4/3] sm:aspect-auto' : 'aspect-[4/3]')}>
-        <RoomVisual room={room} className={cn(soldOut && 'saturate-[0.35]')} />
-        <MediaBadges room={room} className="absolute top-3 left-3" />
-        <StatusBadge
-          status={status}
-          remaining={remaining}
-          className="absolute top-3 right-3 bg-card/95 backdrop-blur-sm"
-        />
-      </div>
+      <Link
+        href={detailHref}
+        aria-label={`View ${room.name}`}
+        className="relative block aspect-[4/3] overflow-hidden bg-stone md:aspect-auto md:min-h-[19rem]"
+      >
+        {cover ? (
+          <img
+            src={cover.url}
+            alt={cover.label ? `${room.name} — ${cover.label}` : room.name}
+            width={cover.width}
+            height={cover.height}
+            loading="lazy"
+            decoding="async"
+            className={cn(
+              'size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]',
+              soldOut && 'saturate-50',
+            )}
+          />
+        ) : null}
+        <StatusBadge status={status} remaining={remaining} onPhoto className="absolute top-3 left-3" />
+      </Link>
 
-      <div className="flex flex-col gap-4 p-5 sm:p-6">
-        <header>
-          <p className="eyebrow text-muted-foreground">
-            {categoryLabels[roomCategory(room)]} · {viewLabels[room.view]}
-          </p>
-          <h3 className="text-display mt-1.5 text-2xl">
-            <Link href={detailHref} className="rounded-sm hover:text-cyan-dark">
-              {room.name}
-            </Link>
-          </h3>
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            {room.description}
-          </p>
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{categoryLabels[roomCategory(room)]}</p>
+            <h3 className="text-display mt-1 text-[1.75rem]">
+              <Link href={detailHref} className="hover:text-accent-strong">
+                {room.name}
+              </Link>
+            </h3>
+          </div>
+          <Link
+            href={detailHref}
+            aria-label={`Open ${room.name}`}
+            className="hidden size-11 shrink-0 place-items-center rounded-full border border-border transition-colors hover:bg-stone sm:grid"
+          >
+            <ArrowUpRight weight="bold" className="size-4" aria-hidden="true" />
+          </Link>
         </header>
 
-        <ul className="flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
-          {specs.map((spec) => (
-            <li key={spec.label} className="flex items-center gap-1.5">
-              <spec.icon className="size-3.5 shrink-0" aria-hidden="true" />
-              {spec.label}
+        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{room.description}</p>
+
+        <ul className="flex flex-wrap gap-1.5">
+          {facts.map((fact) => (
+            <li key={fact.label} className={tag()}>
+              <fact.icon weight="fill" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              {fact.label}
             </li>
           ))}
         </ul>
 
-        <div className="flex flex-wrap gap-1.5">
-          {room.amenities.slice(0, 4).map((amenity) => (
-            <span
-              key={amenity}
-              className="rounded-full border border-border bg-canvas px-2.5 py-1 text-xs text-muted-foreground"
-            >
-              {amenity}
-            </span>
+        <ul className="grid gap-1.5 text-sm sm:grid-cols-2">
+          {ratePlan.includedServices.slice(0, 2).map((service) => (
+            <li key={service} className="flex items-center gap-2">
+              <Check weight="bold" className="size-4 shrink-0 text-success" aria-hidden="true" />
+              {service}
+            </li>
           ))}
-          {room.amenities.length > 4 ? (
-            <span className="rounded-full border border-border bg-canvas px-2.5 py-1 text-xs text-muted-foreground">
-              +{room.amenities.length - 4} more
-            </span>
-          ) : null}
-        </div>
-
-        <div className="rounded-2xl bg-canvas p-3.5 text-[13px]">
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {ratePlan.includedServices.slice(0, 4).map((service) => (
-              <li key={service} className="flex items-start gap-1.5">
-                <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
-                <span>{service}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2.5 border-t border-border pt-2.5 text-muted-foreground">
+          <li className="flex items-center gap-2 text-muted-foreground sm:col-span-2">
+            <Check weight="bold" className="size-4 shrink-0 text-success" aria-hidden="true" />
             {ratePlan.cancellationPolicy}
-          </p>
-        </div>
+          </li>
+        </ul>
 
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-border pt-4">
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-border pt-5">
           <div>
             <p className="flex items-baseline gap-1.5">
-              <span className="text-display text-3xl">
-                {formatMoney(price.nightlyPrice, price.currency)}
-              </span>
-              <span className="text-sm text-muted-foreground">per night</span>
+              <span className="text-display text-3xl">{formatMoney(price.nightlyPrice, price.currency)}</span>
+              <span className="text-sm text-muted-foreground">a night</span>
             </p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              {formatMoney(price.total, price.currency)} total for{' '}
-              {formatNights(price.nights)}, taxes included
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatMoney(price.total, price.currency)} for {formatNights(price.nights)}, taxes in
+              {price.otaComparisonTotal && price.directSaving > 0 ? (
+                <>
+                  {' '}
+                  · <span className="text-accent-strong">save {formatMoney(price.directSaving, price.currency)} direct</span>
+                </>
+              ) : null}
             </p>
-            {price.otaComparisonTotal && price.directSaving > 0 ? (
-              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px]">
-                <span className="text-muted-foreground line-through">
-                  {formatMoney(price.otaComparisonTotal, price.currency)}
-                </span>
-                <span className="rounded-full bg-cyan/15 px-2 py-0.5 text-xs font-semibold text-cyan-dark">
-                  Save {formatMoney(price.directSaving, price.currency)} direct
-                </span>
-                <span className="text-xs text-muted-foreground">(demo comparison)</span>
-              </p>
-            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={detailHref}
-              className="flex min-h-11 items-center rounded-xl border border-border bg-card px-4 text-sm font-semibold transition-colors hover:bg-canvas"
-            >
-              View details
+            <Link href={detailHref} className={pill('secondary')}>
+              Details
             </Link>
             {soldOut ? (
-              <span
-                aria-disabled="true"
-                className="flex min-h-11 cursor-not-allowed items-center rounded-xl border border-border bg-canvas px-4 text-sm font-semibold text-muted-foreground"
-              >
+              <span aria-disabled="true" className={pill('secondary', 'cursor-not-allowed text-muted-foreground')}>
                 Sold out
               </span>
             ) : (
-              <Link
-                href={bookHref}
-                className="flex min-h-11 items-center rounded-xl bg-cyan px-4 text-sm font-semibold text-ink transition-colors hover:bg-cyan/85"
-              >
+              <Link href={bookHref} className={pill('primary')}>
                 Book now
               </Link>
             )}

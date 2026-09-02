@@ -13,13 +13,7 @@ const options: { value: SortOrder; label: string }[] = [
   { value: 'area_desc', label: 'Largest first' },
 ];
 
-export function SortSelect({
-  criteria,
-  filters,
-}: {
-  criteria: StayCriteria;
-  filters: RoomFilters;
-}) {
+export function SortSelect({ criteria, filters }: { criteria: StayCriteria; filters: RoomFilters }) {
   const router = useRouter();
   const [, startTransition] = React.useTransition();
 
@@ -38,7 +32,7 @@ export function SortSelect({
           });
           startTransition(() => router.replace(`/rooms?${query}`, { scroll: false }));
         }}
-        className="min-h-11 rounded-xl border border-border bg-card px-3 text-sm font-medium"
+        className="min-h-11 rounded-full border border-border bg-card pr-8 pl-4 text-sm font-medium"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

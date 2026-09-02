@@ -4,15 +4,15 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
+  CircleNotch,
   CreditCard,
-  Loader2,
   Lock,
   Wallet,
-} from 'lucide-react';
+  Warning,
+} from '@phosphor-icons/react/dist/ssr';
 import { confirmBooking, quoteStay } from '@/app/book/[slug]/actions';
 import { buildQuery } from '@/lib/application/search-params';
 import type { AddOn, Guest, Hotel, Quote, RatePlan, RoomType, StayCriteria } from '@/lib/domain/schemas';
@@ -21,11 +21,12 @@ import {
   formatGuests,
   formatMoney,
   formatNights,
-  formatPricingUnit,
   viewLabels,
 } from '@/lib/formatting';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RoomVisual } from '@/components/rooms/room-visual';
+import { coverPhoto } from '@/lib/domain/room-attributes';
+import { AddOnRow } from '@/components/rooms/add-on-picker';
+import { fieldClass, pill } from '@/lib/ui';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { cn } from '@/lib/utils';
 
@@ -239,9 +240,9 @@ export function BookingFlow({
                   disabled={index > stepIndex}
                   onClick={() => setStepIndex(index)}
                   className={cn(
-                    'flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors',
-                    state === 'current' && 'border-ink bg-ink text-[#F2F1EC]',
-                    state === 'done' && 'border-border bg-card hover:bg-canvas',
+                    'flex min-h-11 items-center gap-2 rounded-full border px-3 pr-4 text-sm font-medium transition-colors',
+                    state === 'current' && 'border-ink bg-ink text-[#F7F5F0]',
+                    state === 'done' && 'border-border bg-card hover:bg-stone',
                     state === 'todo' && 'border-dashed border-border text-muted-foreground',
                   )}
                 >
@@ -249,12 +250,12 @@ export function BookingFlow({
                     aria-hidden="true"
                     className={cn(
                       'grid size-5 place-items-center rounded-full text-[11px] font-bold',
-                      state === 'current' && 'bg-cyan text-ink',
+                      state === 'current' && 'bg-accent text-white',
                       state === 'done' && 'bg-success/15 text-success',
-                      state === 'todo' && 'bg-canvas text-muted-foreground',
+                      state === 'todo' && 'bg-stone text-muted-foreground',
                     )}
                   >
-                    {state === 'done' ? <Check className="size-3" /> : index + 1}
+                    {state === 'done' ? <Check weight="bold" className="size-3" /> : index + 1}
                   </span>
                   {entry.label}
                 </button>
@@ -266,11 +267,11 @@ export function BookingFlow({
         {flowError ? (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4"
+            className="mb-6 flex items-start gap-3 rounded-3xl border border-warning/30 bg-warning/10 p-4"
           >
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
+            <Warning weight="fill" className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
             <div className="text-sm">
-              <p className="font-semibold">{flowError.message}</p>
+              <p className="font-medium">{flowError.message}</p>
               {flowError.currentTotal !== undefined ? (
                 <p className="mt-1 text-muted-foreground">
                   The current total is{' '}
@@ -281,7 +282,7 @@ export function BookingFlow({
               {flowError.code === 'unavailable' ? (
                 <Link
                   href={`/rooms?${stayQuery}`}
-                  className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-border bg-card px-4 font-semibold"
+                  className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 font-medium"
                 >
                   Find another room
                 </Link>
@@ -293,9 +294,9 @@ export function BookingFlow({
         {!quote.available && !flowError ? (
           <div
             role="alert"
-            className="mb-6 rounded-2xl border border-danger/25 bg-danger/10 p-4 text-sm"
+            className="mb-6 rounded-3xl border border-danger/25 bg-danger/10 p-4 text-sm"
           >
-            <p className="font-semibold text-danger">
+            <p className="font-medium text-danger">
               The {room.name} is sold out for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
             </p>
             <p className="mt-1 text-muted-foreground">
@@ -303,14 +304,14 @@ export function BookingFlow({
             </p>
             <Link
               href={`/rooms?${stayQuery}`}
-              className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-border bg-card px-4 font-semibold"
+              className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 font-medium"
             >
               See available rooms
             </Link>
           </div>
         ) : null}
 
-        <section aria-labelledby="step-heading" className="rounded-3xl border border-border bg-card p-5 sm:p-6">
+        <section aria-labelledby="step-heading" className="rounded-[28px] bg-card p-5 shadow-soft sm:p-7">
           <h2 id="step-heading" className="text-display text-2xl">
             {steps[stepIndex]!.label}
           </h2>
@@ -324,7 +325,7 @@ export function BookingFlow({
                   value={criteria.checkIn}
                   min={minDate}
                   onChange={(event) => updateCriteria({ checkIn: event.target.value })}
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <LabelledField
@@ -338,7 +339,7 @@ export function BookingFlow({
                   value={criteria.checkOut}
                   min={addOneDay(criteria.checkIn)}
                   onChange={(event) => updateCriteria({ checkOut: event.target.value })}
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <LabelledField id="book-adults" label="Adults">
@@ -346,7 +347,7 @@ export function BookingFlow({
                   id="book-adults"
                   value={criteria.adults}
                   onChange={(event) => updateCriteria({ adults: Number(event.target.value) })}
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
                     <option key={count} value={count}>
@@ -368,7 +369,7 @@ export function BookingFlow({
                   id="book-children"
                   value={criteria.children}
                   onChange={(event) => updateCriteria({ children: Number(event.target.value) })}
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 >
                   {[0, 1, 2, 3, 4, 5, 6].map((count) => (
                     <option key={count} value={count}>
@@ -383,8 +384,16 @@ export function BookingFlow({
           {step === 'room' ? (
             <div className="mt-5">
               <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-ink sm:w-56">
-                  <RoomVisual room={room} />
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-3xl bg-stone sm:w-64">
+                  {coverPhoto(room) ? (
+                    <img
+                      src={coverPhoto(room)!.url}
+                      alt={room.name}
+                      width={coverPhoto(room)!.width}
+                      height={coverPhoto(room)!.height}
+                      className="size-full object-cover"
+                    />
+                  ) : null}
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-3">
@@ -399,19 +408,19 @@ export function BookingFlow({
                   </p>
                   <Link
                     href={`/rooms?${stayQuery}`}
-                    className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold hover:bg-canvas"
+                    className={pill('secondary', 'mt-4')}
                   >
                     Change room
                   </Link>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl bg-canvas p-4">
-                <h4 className="text-sm font-semibold">{ratePlan.name}</h4>
+              <div className="mt-6 rounded-3xl bg-stone/60 p-5">
+                <h4 className="font-sans text-sm font-medium tracking-normal">{ratePlan.name}</h4>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                   {ratePlan.includedServices.map((service) => (
                     <li key={service} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+                      <Check weight="bold" className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
                       {service}
                     </li>
                   ))}
@@ -432,43 +441,15 @@ export function BookingFlow({
               ) : (
                 addOns
                   .filter((addOn) => addOn.enabled)
-                  .map((addOn) => {
-                    const id = `flow-addon-${addOn.id}`;
-                    const checked = addOnIds.includes(addOn.id);
-                    return (
-                      <label
-                        key={addOn.id}
-                        htmlFor={id}
-                        className={cn(
-                          'flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors',
-                          checked
-                            ? 'border-cyan-dark bg-cyan/5'
-                            : 'border-border hover:bg-canvas',
-                        )}
-                      >
-                        <Checkbox
-                          id={id}
-                          checked={checked}
-                          onCheckedChange={() => toggleAddOn(addOn.id)}
-                          className="mt-0.5"
-                        />
-                        <span className="flex-1">
-                          <span className="flex flex-wrap items-baseline justify-between gap-2">
-                            <span className="text-sm font-semibold">{addOn.name}</span>
-                            <span className="text-sm font-semibold">
-                              {formatMoney(addOn.price, addOn.currency)}{' '}
-                              <span className="font-normal text-muted-foreground">
-                                {formatPricingUnit(addOn.pricingUnit)}
-                              </span>
-                            </span>
-                          </span>
-                          <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-                            {addOn.description}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })
+                  .map((addOn) => (
+                    <AddOnRow
+                      key={addOn.id}
+                      idPrefix="flow-addon"
+                      addOn={addOn}
+                      checked={addOnIds.includes(addOn.id)}
+                      onToggle={() => toggleAddOn(addOn.id)}
+                    />
+                  ))
               )}
             </div>
           ) : null}
@@ -484,7 +465,7 @@ export function BookingFlow({
                   onChange={(event) =>
                     setGuest((current) => ({ ...current, firstName: event.target.value }))
                   }
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <LabelledField id="guest-last" label="Last name" error={fieldErrors.lastName?.[0]}>
@@ -496,7 +477,7 @@ export function BookingFlow({
                   onChange={(event) =>
                     setGuest((current) => ({ ...current, lastName: event.target.value }))
                   }
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <LabelledField id="guest-email" label="Email" error={fieldErrors.email?.[0]}>
@@ -509,7 +490,7 @@ export function BookingFlow({
                   onChange={(event) =>
                     setGuest((current) => ({ ...current, email: event.target.value }))
                   }
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <LabelledField id="guest-phone" label="Phone" error={fieldErrors.phone?.[0]}>
@@ -522,7 +503,7 @@ export function BookingFlow({
                   onChange={(event) =>
                     setGuest((current) => ({ ...current, phone: event.target.value }))
                   }
-                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                  className={fieldClass}
                 />
               </LabelledField>
               <p className="text-xs leading-relaxed text-muted-foreground sm:col-span-2">
@@ -534,23 +515,21 @@ export function BookingFlow({
 
           {step === 'payment' ? (
             <div className="mt-5">
-              <p className="rounded-2xl border border-cyan/30 bg-cyan/10 p-4 text-sm">
-                <span className="font-semibold">Demo payment.</span> No card fields are shown and no
+              <p className="rounded-3xl bg-accent-soft p-4 text-sm text-accent-strong">
+                <span className="font-medium">Demo payment.</span> No card fields are shown and no
                 card data is collected. A production build collects payment through the provider's
                 own hosted, tokenized fields.
               </p>
               <fieldset className="mt-5">
-                <legend className="text-sm font-semibold">Payment method</legend>
+                <legend className="text-sm font-medium">Payment method</legend>
                 <div className="mt-3 grid gap-3">
                   {paymentMethods.map((method) => (
                     <label
                       key={method.id}
                       htmlFor={`pay-${method.id}`}
                       className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors',
-                        paymentMethod === method.id
-                          ? 'border-cyan-dark bg-cyan/5'
-                          : 'border-border hover:bg-canvas',
+                        'flex cursor-pointer items-start gap-3 rounded-3xl border p-4 transition-colors',
+                        paymentMethod === method.id ? 'border-ink' : 'border-border hover:bg-stone/60',
                       )}
                     >
                       <input
@@ -560,11 +539,11 @@ export function BookingFlow({
                         value={method.id}
                         checked={paymentMethod === method.id}
                         onChange={() => setPaymentMethod(method.id)}
-                        className="mt-1 size-4 accent-[#087F83]"
+                        className="mt-1 size-4 accent-[#161616]"
                       />
                       <span className="flex-1">
-                        <span className="flex items-center gap-2 text-sm font-semibold">
-                          <method.icon className="size-4" aria-hidden="true" />
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <method.icon weight="fill" className="size-4" aria-hidden="true" />
                           {method.label}
                         </span>
                         <span className="mt-1 block text-sm text-muted-foreground">
@@ -584,7 +563,7 @@ export function BookingFlow({
                   id="accept-terms"
                   checked={acceptedTerms}
                   onCheckedChange={(checked) => setAcceptedTerms(checked)}
-                  className="mt-0.5"
+                  className="mt-0.5 size-5 rounded-full"
                 />
                 <span>
                   I understand this is a demo booking at a fictional property, that no payment is
@@ -624,7 +603,7 @@ export function BookingFlow({
                 {paymentMethods.find((method) => method.id === paymentMethod)?.label} (demo)
               </ReviewRow>
               <ReviewRow label="Total">
-                <span className="font-semibold">
+                <span className="font-medium">
                   {formatMoney(quote.price.total, quote.price.currency)}
                 </span>
               </ReviewRow>
@@ -641,9 +620,9 @@ export function BookingFlow({
               type="button"
               onClick={goBack}
               disabled={stepIndex === 0 || submitting}
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+              className={pill('secondary')}
             >
-              <ArrowLeft className="size-4" aria-hidden="true" />
+              <ArrowLeft weight="bold" className="size-4" aria-hidden="true" />
               Back
             </button>
 
@@ -652,17 +631,17 @@ export function BookingFlow({
                 type="button"
                 onClick={submit}
                 disabled={submitting || repricing || blocked}
-                className="flex min-h-12 items-center gap-2 rounded-2xl bg-cyan px-6 text-sm font-semibold text-ink hover:bg-cyan/85 disabled:cursor-not-allowed disabled:opacity-60"
+                className={pill('primary', 'min-h-12 px-6')}
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    <CircleNotch weight="bold" className="size-4 animate-spin" aria-hidden="true" />
                     Confirming…
                   </>
                 ) : (
                   <>
                     Confirm demo booking
-                    <ArrowRight className="size-4" aria-hidden="true" />
+                    <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
                   </>
                 )}
               </button>
@@ -671,10 +650,10 @@ export function BookingFlow({
                 type="button"
                 onClick={goNext}
                 disabled={repricing || (step !== 'guest' && step !== 'payment' && blocked)}
-                className="flex min-h-12 items-center gap-2 rounded-2xl bg-cyan px-6 text-sm font-semibold text-ink hover:bg-cyan/85 disabled:cursor-not-allowed disabled:opacity-60"
+                className={pill('primary', 'min-h-12 px-6')}
               >
                 Continue
-                <ArrowRight className="size-4" aria-hidden="true" />
+                <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -682,8 +661,8 @@ export function BookingFlow({
       </div>
 
       <aside aria-labelledby="booking-summary-heading" className="lg:sticky lg:top-24 lg:h-fit">
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-soft">
-          <h2 id="booking-summary-heading" className="text-display text-xl">
+        <div className="rounded-[28px] bg-card p-6 shadow-soft">
+          <h2 id="booking-summary-heading" className="text-display text-2xl">
             {room.name}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -717,20 +696,20 @@ export function BookingFlow({
             </dl>
 
             <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-border pt-4">
-              <span className="text-sm font-semibold">Total</span>
+              <span className="text-sm font-medium">Total</span>
               <span className="text-display text-3xl">
                 {formatMoney(quote.price.total, quote.price.currency)}
               </span>
             </div>
             {repricing ? (
               <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                <CircleNotch weight="bold" className="size-3.5 animate-spin" aria-hidden="true" />
                 Repricing your stay…
               </p>
             ) : null}
           </div>
 
-          <p className="mt-4 rounded-xl bg-canvas p-3 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-4 rounded-2xl bg-stone/60 p-3 text-xs leading-relaxed text-muted-foreground">
             Demo booking. Payment is simulated, no card data is collected, and the reservation is
             held in memory only.
           </p>
@@ -752,7 +731,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function ReviewRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-1 border-b border-border pb-3 last:border-b-0 sm:grid-cols-[8rem_1fr] sm:gap-4">
-      <dt className="eyebrow text-muted-foreground">{label}</dt>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="text-sm">{children}</dd>
     </div>
   );
@@ -771,7 +750,7 @@ function LabelledField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm text-muted-foreground">
         {label}
       </label>
       {children}

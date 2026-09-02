@@ -2,13 +2,13 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X } from '@phosphor-icons/react/dist/ssr';
 import type { CatalogFacets, RoomFilters as Filters } from '@/lib/application/catalog-service';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { activeFilterCount, buildQuery, filtersAreDefault } from '@/lib/application/search-params';
 import type { RoomType, StayCriteria } from '@/lib/domain/schemas';
 import { bedLabels, categoryLabels, formatMoney, viewLabels } from '@/lib/formatting';
-import { Checkbox } from '@/components/ui/checkbox';
+import { fieldClass, pill } from '@/lib/ui';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -32,41 +32,26 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger
             render={
-              <button
-                type="button"
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold shadow-soft"
-              >
-                <SlidersHorizontal className="size-4" aria-hidden="true" />
+              <button type="button" className={pill('secondary', 'w-full shadow-soft')}>
+                <SlidersHorizontal weight="fill" className="size-4" aria-hidden="true" />
                 Filters
                 {count > 0 ? (
-                  <span className="rounded-full bg-cyan px-2 py-0.5 text-xs font-bold text-ink">
+                  <span className="rounded-full bg-ink px-2 py-0.5 text-xs font-semibold text-[#F7F5F0]">
                     {count}
                   </span>
                 ) : null}
               </button>
             }
           />
-          <SheetContent
-            side="bottom"
-            className="max-h-[85vh] gap-0 rounded-t-3xl border-t border-border"
-          >
+          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[28px] border-t border-border">
             <SheetHeader className="border-b border-border">
-              <SheetTitle>Filter rooms</SheetTitle>
+              <SheetTitle className="text-display text-xl font-medium">Filter rooms</SheetTitle>
             </SheetHeader>
             <div className="overflow-y-auto px-4 pb-4">
-              <FilterControls
-                idPrefix="sheet"
-                criteria={criteria}
-                filters={filters}
-                facets={facets}
-              />
+              <FilterControls idPrefix="sheet" criteria={criteria} filters={filters} facets={facets} />
             </div>
             <div className="border-t border-border bg-card p-4">
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                className="flex min-h-11 w-full items-center justify-center rounded-2xl bg-cyan px-4 text-sm font-semibold text-ink"
-              >
+              <button type="button" onClick={() => setSheetOpen(false)} className={pill('primary', 'w-full')}>
                 Show {resultCount} {resultCount === 1 ? 'room' : 'rooms'}
               </button>
             </div>
@@ -76,7 +61,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
 
       <aside
         aria-label="Room filters"
-        className="hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:rounded-3xl lg:border lg:border-border lg:bg-card lg:p-5 lg:shadow-soft"
+        className="hidden lg:sticky lg:top-28 lg:block lg:h-fit lg:rounded-[28px] lg:bg-card lg:p-6 lg:shadow-soft"
       >
         <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} />
       </aside>
@@ -100,10 +85,7 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
   ]);
 
   React.useEffect(() => {
-    setPriceDraft([
-      filters.minPrice ?? facets.priceRange.min,
-      filters.maxPrice ?? facets.priceRange.max,
-    ]);
+    setPriceDraft([filters.minPrice ?? facets.priceRange.min, filters.maxPrice ?? facets.priceRange.max]);
   }, [filters.minPrice, filters.maxPrice, facets.priceRange.min, facets.priceRange.max]);
 
   const apply = React.useCallback(
@@ -120,23 +102,23 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
   const isDefault = filtersAreDefault(filters);
 
   return (
-    <div className="divide-y divide-border">
-      <div className="flex items-center justify-between pb-4">
-        <h2 className="text-sm font-semibold">Filters</h2>
+    <div className="flex flex-col gap-7">
+      <div className="flex items-center justify-between">
+        <h2 className="text-display text-xl font-medium">Filters</h2>
         <button
           type="button"
           disabled={isDefault}
           onClick={() => apply({ ...defaultRoomFilters, sort: filters.sort })}
-          className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-cyan-dark hover:bg-canvas disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:bg-transparent"
+          className={pill('ghost', 'h-10 px-3 text-accent-strong disabled:text-muted-foreground')}
         >
-          <X className="size-3.5" aria-hidden="true" />
+          <X weight="bold" className="size-3.5" aria-hidden="true" />
           Reset
         </button>
       </div>
 
-      <Section title="Nightly budget">
-        <p className="mb-3 text-sm text-muted-foreground">
-          {formatMoney(priceDraft[0], 'EUR')} – {formatMoney(priceDraft[1], 'EUR')} per night
+      <Group title="Nightly budget" id={`${idPrefix}-budget`}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {formatMoney(priceDraft[0], 'EUR')} – {formatMoney(priceDraft[1], 'EUR')} a night
         </p>
         <Slider
           value={priceDraft}
@@ -157,45 +139,33 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
             });
           }}
         />
-      </Section>
+      </Group>
 
-      <Section title="Room type">
-        <CheckList
-          idPrefix={`${idPrefix}-category`}
-          options={facets.categories.map((category) => ({
-            value: category,
-            label: categoryLabels[category],
-          }))}
+      <Group title="Room type" id={`${idPrefix}-type`}>
+        <Chips
+          options={facets.categories.map((category) => ({ value: category, label: categoryLabels[category] }))}
           selected={filters.categories}
-          onToggle={(value) =>
-            apply({ ...filters, categories: toggle(filters.categories, value) })
-          }
+          onToggle={(value) => apply({ ...filters, categories: toggle(filters.categories, value) })}
         />
-      </Section>
+      </Group>
 
-      <Section title="View">
-        <CheckList
-          idPrefix={`${idPrefix}-view`}
+      <Group title="View" id={`${idPrefix}-view`}>
+        <Chips
           options={facets.views.map((view) => ({ value: view, label: viewLabels[view] }))}
           selected={filters.views}
-          onToggle={(value) =>
-            apply({ ...filters, views: toggle(filters.views, value as RoomType['view']) })
-          }
+          onToggle={(value) => apply({ ...filters, views: toggle(filters.views, value as RoomType['view']) })}
         />
-      </Section>
+      </Group>
 
-      <Section title="Beds">
-        <CheckList
-          idPrefix={`${idPrefix}-bed`}
+      <Group title="Beds" id={`${idPrefix}-beds`}>
+        <Chips
           options={facets.bedTypes.map((bed) => ({ value: bed, label: bedLabels[bed] }))}
           selected={filters.bedTypes}
-          onToggle={(value) =>
-            apply({ ...filters, bedTypes: toggle(filters.bedTypes, value as RoomType['bedType']) })
-          }
+          onToggle={(value) => apply({ ...filters, bedTypes: toggle(filters.bedTypes, value as RoomType['bedType']) })}
         />
-      </Section>
+      </Group>
 
-      <Section title="Space and floor">
+      <Group title="Space and floor" id={`${idPrefix}-space`}>
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectField
             id={`${idPrefix}-min-area`}
@@ -213,9 +183,7 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
             id={`${idPrefix}-min-floor`}
             label="Floor"
             value={filters.minFloor === null ? '' : String(filters.minFloor)}
-            onChange={(value) =>
-              apply({ ...filters, minFloor: value === '' ? null : Number(value) })
-            }
+            onChange={(value) => apply({ ...filters, minFloor: value === '' ? null : Number(value) })}
             options={[
               { value: '', label: 'Any floor' },
               { value: '1', label: '1st floor and up' },
@@ -224,21 +192,17 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
             ]}
           />
         </div>
-      </Section>
+      </Group>
 
-      <Section title="Amenities">
-        <CheckList
-          idPrefix={`${idPrefix}-amenity`}
+      <Group title="Amenities" id={`${idPrefix}-amenities`}>
+        <Chips
           options={facets.amenities.map((amenity) => ({ value: amenity, label: amenity }))}
           selected={filters.amenities}
-          onToggle={(value) =>
-            apply({ ...filters, amenities: toggle(filters.amenities, value) })
-          }
-          columns={1}
+          onToggle={(value) => apply({ ...filters, amenities: toggle(filters.amenities, value) })}
         />
-      </Section>
+      </Group>
 
-      <Section title="Availability">
+      <Group title="Availability" id={`${idPrefix}-availability`}>
         <label
           htmlFor={`${idPrefix}-hide-sold-out`}
           className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm"
@@ -251,53 +215,50 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
             className="h-6 w-11 shrink-0"
           />
         </label>
-      </Section>
+      </Group>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
   return (
-    <fieldset className="py-4">
-      <legend className="eyebrow mb-3 text-muted-foreground">{title}</legend>
+    <div role="group" aria-labelledby={id}>
+      <h3 id={id} className="mb-3 font-sans text-sm font-medium tracking-normal">
+        {title}
+      </h3>
       {children}
-    </fieldset>
+    </div>
   );
 }
 
-function CheckList<T extends string>({
-  idPrefix,
+/** Toggle chips: pressed state is carried by aria-pressed and by the ink fill. */
+function Chips<T extends string>({
   options,
   selected,
   onToggle,
-  columns = 2,
 }: {
-  idPrefix: string;
   options: { value: T; label: string }[];
   selected: T[];
   onToggle: (value: T) => void;
-  columns?: 1 | 2;
 }) {
-  if (options.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nothing to filter by yet.</p>;
-  }
+  if (options.length === 0) return <p className="text-sm text-muted-foreground">Nothing to filter by yet.</p>;
   return (
-    <div className={cn('grid gap-x-3', columns === 2 ? 'sm:grid-cols-2' : '')}>
+    <div className="flex flex-wrap gap-2">
       {options.map((option) => {
-        const id = `${idPrefix}-${option.value.replace(/\W+/g, '-').toLowerCase()}`;
+        const pressed = selected.includes(option.value);
         return (
-          <label
+          <button
             key={option.value}
-            htmlFor={id}
-            className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm"
+            type="button"
+            aria-pressed={pressed}
+            onClick={() => onToggle(option.value)}
+            className={cn(
+              'inline-flex min-h-10 items-center rounded-full border px-3.5 text-sm transition-colors',
+              pressed ? 'border-ink bg-ink text-[#F7F5F0]' : 'border-border bg-card hover:bg-stone',
+            )}
           >
-            <Checkbox
-              id={id}
-              checked={selected.includes(option.value)}
-              onCheckedChange={() => onToggle(option.value)}
-            />
-            <span>{option.label}</span>
-          </label>
+            {option.label}
+          </button>
         );
       })}
     </div>
@@ -319,15 +280,10 @@ function SelectField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-muted-foreground">
+      <label htmlFor={id} className="mb-1.5 block text-xs text-muted-foreground">
         {label}
       </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-      >
+      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className={fieldClass}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

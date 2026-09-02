@@ -33,9 +33,9 @@ npm run test:e2e     # Playwright golden path, 1440px and 390px
 
 | Route | What it does |
 |---|---|
-| `/` | Arrival: procedural scene with orbit, 360° auto-rotate, fullscreen, and four hotspots; stay search |
+| `/` | Arrival: the property area by area with hotspots into the catalog; how it works; stay search |
 | `/rooms` | Catalog: URL-driven dates, guests, budget, room type, view, beds, area, floor, amenities, sort |
-| `/rooms/[slug]` | Room detail: zone switcher, 360° preview, specs, add-ons, sticky server-quoted summary |
+| `/rooms/[slug]` | Room detail: photo gallery with tabs and fullscreen, facts, add-ons, sticky server-quoted summary |
 | `/book/[slug]` | Six-step booking: stay, room and rate, services, guest details, demo payment, review |
 | `/booking/[reference]` | Confirmation: reference, dates, room, services, price breakdown |
 | `/admin` | Demo operations: availability overrides, add-on enablement, session bookings, integration status |
@@ -61,9 +61,9 @@ computes a price: every total on screen comes from a server quote.
 - Inventory, rates, availability, and partner-site comparison prices are **simulated demo data**
   held in memory. They reset when the server process restarts.
 - Payment is **demo only**. No card fields are rendered and no card data is collected.
-- The 3D scene and room artwork are **procedural**, generated locally from the room data. There is
-  no GLB, no photography, and no external image host.
+- Photography is **licensed stock** from Unsplash standing in for the property's own, stored
+  locally in `public/images` and credited in `public/images/CREDITS.md`. Nothing is hotlinked.
 - Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin` says so.
 
-See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for tokens, and `AGENTS.md`
-for contribution rules.
+See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for the design rules and
+tokens (read the Rules first), and `AGENTS.md` for contribution rules.

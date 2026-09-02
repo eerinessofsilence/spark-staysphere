@@ -3,6 +3,35 @@ import { z } from 'zod';
 export const currencySchema = z.enum(['EUR', 'USD', 'GBP']);
 export const roomStatusSchema = z.enum(['available', 'last_room', 'limited', 'sold_out']);
 
+/** A photograph the UI can place with confidence: dimensions are needed for hotspot maths. */
+export const photoSchema = z.object({
+  url: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  alt: z.string(),
+});
+
+export const hotspotSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string(),
+  /** Position as a fraction of the photo's width and height. */
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  /** Where the hotspot sends a guest; the stay query is appended at render time. */
+  href: z.string(),
+  cta: z.string(),
+});
+
+/** One explorable part of the property on the arrival screen. */
+export const hotelAreaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  photo: photoSchema,
+  hotspots: z.array(hotspotSchema),
+});
+
 export const hotelSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -11,6 +40,7 @@ export const hotelSchema = z.object({
   location: z.string(),
   currency: currencySchema,
   timezone: z.string(),
+  areas: z.array(hotelAreaSchema),
 });
 
 export const roomTypeSchema = z.object({
@@ -25,7 +55,16 @@ export const roomTypeSchema = z.object({
   bedType: z.enum(['king', 'twin', 'queen']),
   view: z.enum(['sea', 'garden', 'pool', 'city']),
   amenities: z.array(z.string()),
-  media: z.array(z.object({ type: z.enum(['image', '360', 'gltf']), url: z.string() })),
+  media: z.array(
+    z.object({
+      type: z.enum(['image', '360', 'gltf']),
+      url: z.string(),
+      /** Shown as the gallery tab, e.g. "Bedroom" or "Terrace". */
+      label: z.string().optional(),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+    }),
+  ),
 });
 
 export const ratePlanSchema = z.object({
@@ -176,6 +215,9 @@ export const bookingRequestSchema = z.object({
 });
 
 export type Hotel = z.infer<typeof hotelSchema>;
+export type HotelArea = z.infer<typeof hotelAreaSchema>;
+export type Hotspot = z.infer<typeof hotspotSchema>;
+export type Photo = z.infer<typeof photoSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type RatePlan = z.infer<typeof ratePlanSchema>;
 export type Availability = z.infer<typeof availabilitySchema>;

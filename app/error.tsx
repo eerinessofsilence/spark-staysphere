@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { AlertTriangle } from 'lucide-react';
+import { Warning } from '@phosphor-icons/react/dist/ssr';
+import { pill } from '@/lib/ui';
 
 export default function GlobalError({
   error,
@@ -20,25 +21,18 @@ export default function GlobalError({
       id="main"
       className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-4 py-20 text-center"
     >
-      <span className="grid size-12 place-items-center rounded-2xl bg-danger/10 text-danger">
-        <AlertTriangle className="size-6" aria-hidden="true" />
+      <span className="grid size-12 place-items-center rounded-full bg-danger/10 text-danger">
+        <Warning weight="fill" className="size-6" aria-hidden="true" />
       </span>
       <h1 className="text-display mt-6 text-4xl">Something went wrong</h1>
       <p role="alert" className="mt-4 text-muted-foreground">
         We could not load this part of the booking demo. Nothing was charged or reserved.
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="flex min-h-11 items-center rounded-xl bg-cyan px-5 text-sm font-semibold text-ink hover:bg-cyan/85"
-        >
+        <button type="button" onClick={reset} className={pill('primary')}>
           Try again
         </button>
-        <Link
-          href="/rooms"
-          className="flex min-h-11 items-center rounded-xl border border-border bg-card px-5 text-sm font-semibold hover:bg-canvas"
-        >
+        <Link href="/rooms" className={pill('secondary')}>
           Back to rooms
         </Link>
       </div>

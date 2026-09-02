@@ -13,11 +13,12 @@ The guest journey is built end to end: arrival (`/`), catalog (`/rooms`), room d
 and hotel operations (`/admin`). Quotes and bookings are exposed as server actions and as
 `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bookings/:reference`.
 
-The 3D scene is procedural React Three Fiber, lazy-loaded behind the SVG poster. Room artwork is
-procedural SVG. Playwright covers the golden path at 1440px and 390px.
+The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
+photography stored locally in `public/images`. Playwright covers the golden path at 1440px and
+390px.
 
-Still future work: a database, auth on `/admin`, real GLB/360 assets, and production PMS, channel
-manager, payment, and CRM integrations.
+Still future work: a database, auth on `/admin`, the property's own photography, and production
+PMS, channel manager, payment, and CRM integrations.
 
 ## Technical decisions
 
@@ -28,6 +29,9 @@ manager, payment, and CRM integrations.
 - All money flows through `buildPriceBreakdown` in `lib/domain/pricing.ts`; components never
   compute a total.
 - `lib/application/container.ts` is the only module that may import `lib/infrastructure`.
+- UI follows `DESIGN_SYSTEM.md › Rules` — they exist because the first pass looked generic. Ink
+  pills, clay accent, Phosphor filled icons, photography, no eyebrows, no stat tiles, no icon
+  cards. `lib/ui.ts` holds the shared shapes (`pill`, `tag`, `iconButton`, `fieldClass`).
 - PMS or channel manager is the production source of truth for inventory, rates, and reservations.
 - OTA integrations require official partner access; no scraping.
 - Live payment is out of scope. Production must use provider-hosted/tokenized collection.
@@ -41,9 +45,9 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 1. ~~Guest-facing room search/catalog and detail route.~~ Done.
 2. ~~Quote → hold → demo payment → booking confirmation.~~ Done.
 3. ~~`/admin` demo and mock adapter controls.~~ Done.
-4. ~~Procedural React Three Fiber scene, 360 viewer, tests.~~ Done.
+4. ~~Photography-led redesign with the design rules enshrined.~~ Done.
 5. Persist demo state (D1 or Redis) so bookings survive a restart and are shared across isolates.
-6. Replace the simulated 360° pan with real tiles, and `<ResortModel />` with a loaded GLB.
+6. Replace stock photography with the property's own, and add real 360 tiles if the property has them.
 7. Auth on `/admin`, then the first real PMS or channel-manager adapter behind the existing ports.
 8. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
 

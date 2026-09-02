@@ -13,14 +13,14 @@ export default function RoomDetailLoading() {
         <div>
           <Skeleton className="h-12 w-80 max-w-full" />
           <Skeleton className="mt-4 h-4 w-full max-w-2xl" />
-          <Skeleton className="mt-8 aspect-[16/10] w-full rounded-3xl" />
+          <Skeleton className="mt-8 aspect-[16/10] w-full rounded-[28px]" />
           <div className="mt-4 flex gap-2">
             {[0, 1, 2].map((index) => (
               <Skeleton key={index} className="h-14 w-36 rounded-2xl" />
             ))}
           </div>
         </div>
-        <Skeleton className="h-96 rounded-3xl" />
+        <Skeleton className="h-96 rounded-[28px]" />
       </div>
     </div>
   );

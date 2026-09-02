@@ -6,7 +6,10 @@
 - Tailwind CSS 4 plus shadcn UI primitives.
 - Zod for runtime validation and inferred domain types.
 - Cloudflare/Sites-compatible Vite build.
-- React Three Fiber + drei + three for the optional 3D scene, loaded on demand.
+- Phosphor Icons (`@phosphor-icons/react/dist/ssr`, filled weight) for every product icon;
+  `lucide-react` remains only as an internal dependency of the generated shadcn primitives and
+  is lint-banned elsewhere.
+- Bricolage Grotesque, Onest, and Instrument Serif self-hosted through `next/font/google`.
 - Playwright for golden-path end-to-end coverage at 1440px and 390px.
 - Not installed: TanStack Query and React Hook Form. Server components own data fetching and
   the booking form is small enough that controlled inputs are simpler than a form library.
@@ -69,17 +72,21 @@ PostgreSQL-ready entities: hotels, room types, rate plans, availability snapshot
 - Log integration correlation IDs, not secrets or sensitive payment fields.
 - Require server-side final quote and availability checks.
 
-## 3D and media
+## Photography and media
 
-`components/hotel/resort-massing.tsx` is an SVG poster that renders on the server and carries the
-arrival screen on its own. `components/hotel/resort-canvas.tsx` is the React Three Fiber scene; it
-is `React.lazy`-loaded only when a visitor presses **3D**, lands in its own ~876 KB chunk, and is
-wrapped in an error boundary that returns to the poster if WebGL is unavailable. Both use the same
-hotspot data, so replacing `<ResortModel />` with a loaded GLB does not touch the surrounding UI.
+The product is photography-led. `public/images` holds every photograph as local WebP (hero areas
+at 2000px, room galleries at 1600px, ~4 MB in total) and `public/images/CREDITS.md` records the
+source and photographer for each. Nothing loads from an external image host at runtime.
 
-Room artwork (`components/rooms/room-visual.tsx`) is procedural SVG derived from the room's slug,
-view, and zone. No external image host is involved, and the same call site accepts photography or
-a 360 tile set later.
+The arrival screen is driven by `Hotel.areas` — each area has a photo with recorded dimensions,
+a caption, and hotspots stored as fractions of the photo. `HotelScene` maps those fractions
+through the same `object-fit: cover` maths the browser applies, so markers stay pinned across
+viewports. Room galleries come from `RoomType.media`, where each image carries a `label` that
+becomes its tab.
+
+There is no 3D scene. The earlier procedural React Three Fiber massing and SVG interiors were
+removed as schematic; a real GLB or 360 tile set, if it ever exists, slots into the same
+`HotelArea`/`media` records without a UI rewrite.
 
 ## Current limitations
 
@@ -87,5 +94,5 @@ Demo state is process-local and resets with the worker isolate — bookings, ava
 and add-on enablement do not survive a restart, and are not shared between isolates. There is no
 database, no auth on `/admin`, no real payment, and no PMS, channel manager, or OTA connection.
 Downstream CRM/PMS delivery is best-effort and swallowed on failure; production needs a queue with
-retries. The 360° viewer is a simulated pan over the procedural artwork, not a photographic tile
-set, and is labelled as such in the UI.
+retries. The photographs are licensed stock standing in for the property's own and must be
+replaced before any real launch.

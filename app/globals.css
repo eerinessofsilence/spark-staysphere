@@ -7,14 +7,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --font-display: Georgia, 'Times New Roman', 'Noto Serif', serif;
+  --font-sans: var(--font-body-stack);
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-heading: var(--font-display-stack);
+  --font-display: var(--font-display-stack);
+  --font-accent: var(--font-accent-stack);
   --color-ink: var(--ink);
   --color-canvas: var(--canvas);
-  --color-cyan: var(--cyan);
-  --color-cyan-dark: var(--cyan-dark);
+  --color-stone: var(--stone);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
   --color-muted-text: var(--muted-text);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -57,43 +60,54 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * next/font sets the *-family variables on <body>, so the stacks must be
+ * declared on body too: a custom property is resolved where it is declared,
+ * and on :root those family variables do not exist yet.
+ */
 body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-display-stack: var(--font-display-family), 'Helvetica Neue', Arial, sans-serif;
+  --font-body-stack: var(--font-body-family), 'Helvetica Neue', Arial, sans-serif;
+  --font-accent-stack: var(--font-accent-family), Georgia, 'Times New Roman', serif;
+  font-family: var(--font-body-stack);
 }
 
 :root {
-  --ink: #0a0d0e;
-  --canvas: #f2f1ec;
-  --cyan: #05e6ec;
-  --cyan-dark: #087f83;
-  --muted-text: #626a6c;
-  --success: #137a5a;
-  --warning: #b96b16;
-  --danger: #d9493f;
+
+  /* Palette — see DESIGN_SYSTEM.md. Ink does the work; clay is the only accent. */
+  --ink: #161616;
+  --canvas: #f3f1ec;
+  --stone: #e9e5dd;
+  --accent: #b8603a;
+  --accent-strong: #9a4e2c;
+  --accent-soft: #f4e6dd;
+  --muted-text: #6b6b66;
+  --success: #2e7d5b;
+  --warning: #b4711c;
+  --danger: #c4473a;
   --background: var(--canvas);
   --foreground: var(--ink);
   --card: #ffffff;
   --card-foreground: var(--ink);
   --popover: #ffffff;
   --popover-foreground: var(--ink);
-  --primary: var(--cyan);
-  --primary-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: #f7f5f0;
   --secondary: #ffffff;
   --secondary-foreground: var(--ink);
-  --muted: #ffffff;
+  --muted: var(--stone);
   --muted-foreground: var(--muted-text);
-  --accent: var(--cyan);
-  --accent-foreground: var(--ink);
+  --accent-foreground: #ffffff;
   --destructive: var(--danger);
-  --border: #d8d8d2;
-  --input: #d8d8d2;
-  --ring: var(--cyan-dark);
+  --border: #ddd9d0;
+  --input: #ddd9d0;
+  --ring: var(--accent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -105,11 +119,13 @@ body {
 }
 
 .dark {
-  --ink: #0a0d0e;
-  --canvas: #0a0d0e;
-  --cyan: #05e6ec;
-  --cyan-dark: #6fe9ec;
-  --muted-text: #a4abac;
+  --ink: #161616;
+  --canvas: #161616;
+  --stone: #242320;
+  --accent: #d07a50;
+  --accent-strong: #e59b76;
+  --accent-soft: #33251d;
+  --muted-text: #a5a29b;
   --success: #2fd9a8;
   --warning: #e29a4d;
   --danger: #ef7b72;
@@ -119,18 +135,17 @@ body {
   --card-foreground: #f2f1ec;
   --popover: #14181a;
   --popover-foreground: #f2f1ec;
-  --primary: var(--cyan);
+  --primary: #f7f5f0;
   --primary-foreground: var(--ink);
   --secondary: #1c2124;
   --secondary-foreground: #f2f1ec;
   --muted: #1c2124;
   --muted-foreground: var(--muted-text);
-  --accent: var(--cyan);
-  --accent-foreground: var(--ink);
+  --accent-foreground: #ffffff;
   --destructive: var(--danger);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: var(--cyan-dark);
+  --ring: var(--accent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -153,40 +168,57 @@ body {
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
-  }
-  /* Design system: visible cyan focus ring with offset on every interactive element. */
+  /* Visible accent focus ring with offset on every interactive element. */
   :focus-visible {
-    outline: 2px solid var(--cyan-dark);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display-stack);
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
 }
 
 @layer utilities {
-  /* Editorial display type. Tight tracking, weight 400. */
+  /* Display type: the grotesk at medium weight, tight, with short leading. */
   .text-display {
-    font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1.04;
+    font-family: var(--font-display-stack);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.02;
   }
 
-  .eyebrow {
-    font-size: 11px;
-    line-height: 1.2;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+  /* One italic phrase per screen at most. Never for body copy or labels. */
+  .text-accent-italic {
+    font-family: var(--font-accent-stack);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Frosted panel over photography. */
+  .glass {
+    background: rgb(255 255 255 / 72%);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  .glass-dark {
+    background: rgb(22 22 22 / 62%);
+    backdrop-filter: blur(18px) saturate(120%);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
   }
 
   /* Soft, low-contrast elevation. Borders do the structural work. */
   .shadow-soft {
-    box-shadow: 0 1px 2px rgb(10 13 14 / 4%), 0 12px 32px -16px rgb(10 13 14 / 18%);
+    box-shadow: 0 1px 2px rgb(22 22 22 / 4%), 0 12px 32px -16px rgb(22 22 22 / 16%);
   }
 
   .shadow-soft-lg {
-    box-shadow: 0 2px 4px rgb(10 13 14 / 5%), 0 28px 60px -28px rgb(10 13 14 / 26%);
+    box-shadow: 0 2px 4px rgb(22 22 22 / 5%), 0 28px 60px -28px rgb(22 22 22 / 24%);
   }
 }
 

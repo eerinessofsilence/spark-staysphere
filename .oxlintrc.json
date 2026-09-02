@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "lucide-react",
+            "message": "Product UI uses Phosphor (import from '@phosphor-icons/react/dist/ssr', weight=\"fill\"). See DESIGN_SYSTEM.md › Icons."
+          },
+          {
+            "name": "@phosphor-icons/react",
+            "message": "Import from '@phosphor-icons/react/dist/ssr' so the same icon works in server and client components."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["components/ui/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
+}

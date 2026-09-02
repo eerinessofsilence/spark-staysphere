@@ -1,37 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { Maximize2, Minimize2, Move, RotateCcw } from 'lucide-react';
-import { hasMedia } from '@/lib/domain/room-attributes';
+import { ArrowsIn, ArrowsOut, CaretLeft, CaretRight } from '@phosphor-icons/react/dist/ssr';
 import type { RoomType } from '@/lib/domain/schemas';
+import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { MediaBadges } from './media-badges';
-import { RoomVisual, roomZones, zoneLabels, type RoomZone } from './room-visual';
 
-/** Pointer travel before a press becomes a pan rather than a click. */
-const PAN_THRESHOLD_PX = 6;
-
-/**
- * Zone switcher plus a simulated 360° pan. The pan is a horizontal camera on the
- * procedural artwork, not a photographic tile set — labelled as a preview so the
- * demo never overstates what is wired up.
- */
+/** Photographs of the room, one zone at a time. Keyboard: arrows page, tabs switch. */
 export function RoomGallery({ room }: { room: RoomType }) {
   const stageRef = React.useRef<HTMLDivElement>(null);
-  const [zone, setZone] = React.useState<RoomZone>('bedroom');
-  const [panning, setPanning] = React.useState(false);
-  const [offset, setOffset] = React.useState(0);
+  const photos = room.media.filter((item) => item.type === 'image');
+  const [index, setIndex] = React.useState(0);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const drag = React.useRef<{
-    pointerId: number;
-    startX: number;
-    startOffset: number;
-    captured: boolean;
-  } | null>(null);
-
-  // A studio has no separate living area; everything else does above 55 m².
-  const zones = roomZones.filter((candidate) => candidate !== 'living' || room.areaM2 >= 55);
-  const supports360 = hasMedia(room, '360');
+  const photo = photos[index] ?? photos[0];
 
   React.useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
@@ -39,41 +20,9 @@ export function RoomGallery({ room }: { room: RoomType }) {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!panning || event.button !== 0) return;
-    // The viewer controls sit inside the stage; a press on one is not a pan.
-    if ((event.target as HTMLElement).closest('button, a')) return;
-    drag.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startOffset: offset,
-      captured: false,
-    };
-  };
+  if (!photo) return null;
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const state = drag.current;
-    if (!state || state.pointerId !== event.pointerId) return;
-
-    // Capturing on pointerdown would retarget pointerup and suppress child clicks.
-    if (!state.captured) {
-      if (Math.abs(event.clientX - state.startX) < PAN_THRESHOLD_PX) return;
-      state.captured = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-
-    const width = event.currentTarget.clientWidth || 1;
-    const next = state.startOffset + ((event.clientX - state.startX) / width) * 100;
-    setOffset(Math.max(-18, Math.min(18, next)));
-  };
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (drag.current?.pointerId !== event.pointerId) return;
-    drag.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  };
+  const go = (next: number) => setIndex((next + photos.length) % photos.length);
 
   const toggleFullscreen = async () => {
     const element = stageRef.current;
@@ -90,98 +39,82 @@ export function RoomGallery({ room }: { room: RoomType }) {
     <figure className="m-0">
       <div
         ref={stageRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        className={cn(
-          'relative aspect-[4/3] overflow-hidden rounded-3xl bg-ink sm:aspect-[16/10]',
-          panning && 'cursor-grab touch-pan-y active:cursor-grabbing',
-        )}
+        tabIndex={0}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label={`${room.name} photographs`}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') go(index - 1);
+          if (event.key === 'ArrowRight') go(index + 1);
+        }}
+        className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-stone sm:aspect-[16/10]"
       >
-        <div
-          className="size-full transition-transform duration-200"
-          style={{
-            transform: panning ? `scale(1.25) translateX(${offset * 0.6}%)` : undefined,
-          }}
-        >
-          <RoomVisual room={room} zone={zone} />
-        </div>
-
-        <MediaBadges room={room} className="absolute top-3 left-3" />
-
-        <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-2xl border border-[#F2F1EC]/15 bg-ink/75 p-1 backdrop-blur-sm">
-          {supports360 ? (
-            <button
-              type="button"
-              aria-pressed={panning}
-              onClick={() => {
-                setPanning((value) => !value);
-                setOffset(0);
-              }}
-              className={cn(
-                'flex h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors',
-                panning ? 'bg-cyan text-ink' : 'text-[#F2F1EC] hover:bg-[#F2F1EC]/12',
-              )}
-            >
-              <Move className="size-4" aria-hidden="true" />
-              360° preview
-            </button>
-          ) : null}
-          {panning ? (
-            <button
-              type="button"
-              aria-label="Recentre the 360° preview"
-              onClick={() => setOffset(0)}
-              className="flex size-11 items-center justify-center rounded-xl text-[#F2F1EC] hover:bg-[#F2F1EC]/12"
-            >
-              <RotateCcw className="size-4" aria-hidden="true" />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            aria-label={isFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
-            onClick={toggleFullscreen}
-            className="flex size-11 items-center justify-center rounded-xl text-[#F2F1EC] hover:bg-[#F2F1EC]/12"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="size-4" aria-hidden="true" />
-            ) : (
-              <Maximize2 className="size-4" aria-hidden="true" />
+        {photos.map((candidate, candidateIndex) => (
+          <img
+            key={candidate.url}
+            src={candidate.url}
+            alt={candidateIndex === index ? `${room.name} — ${candidate.label ?? 'photo'}` : ''}
+            width={candidate.width}
+            height={candidate.height}
+            decoding="async"
+            aria-hidden={candidateIndex !== index}
+            className={cn(
+              'absolute inset-0 size-full object-cover transition-opacity duration-500',
+              candidateIndex === index ? 'opacity-100' : 'opacity-0',
             )}
-          </button>
-        </div>
+          />
+        ))}
 
-        {panning ? (
-          <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-ink/80 px-3 py-1.5 text-[11px] text-[#A4ABAC]">
-            Drag to pan. Simulated preview, not a photographic 360.
-          </p>
-        ) : null}
+        <button
+          type="button"
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
+          onClick={toggleFullscreen}
+          className={iconButton('glass', 'absolute top-4 right-4 z-10')}
+        >
+          {isFullscreen ? (
+            <ArrowsIn weight="fill" className="size-5" aria-hidden="true" />
+          ) : (
+            <ArrowsOut weight="fill" className="size-5" aria-hidden="true" />
+          )}
+        </button>
+
+        <div className="absolute inset-x-4 bottom-4 z-10 flex items-end justify-between gap-3">
+          <span className="glass rounded-full px-3.5 py-2 text-sm font-medium">{photo.label}</span>
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label="Previous photo" onClick={() => go(index - 1)} className={iconButton('glass')}>
+              <CaretLeft weight="bold" className="size-4" aria-hidden="true" />
+            </button>
+            <span className="text-display min-w-[4.5rem] text-center text-lg text-white tabular-nums drop-shadow">
+              {String(index + 1).padStart(2, '0')}
+              <span className="text-white/60"> / {String(photos.length).padStart(2, '0')}</span>
+            </span>
+            <button type="button" aria-label="Next photo" onClick={() => go(index + 1)} className={iconButton('glass')}>
+              <CaretRight weight="bold" className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <figcaption className="sr-only">
-        Illustrated zones of the {room.name}. Use the buttons below to switch zone.
+        {photos.length} photographs of the {room.name}. Use the buttons below to switch.
       </figcaption>
 
-      <div role="tablist" aria-label="Room zones" className="mt-3 flex flex-wrap gap-2">
-        {zones.map((candidate) => (
+      <div role="tablist" aria-label="Room photographs" className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {photos.map((candidate, candidateIndex) => (
           <button
-            key={candidate}
+            key={candidate.url}
             type="button"
             role="tab"
-            aria-selected={zone === candidate}
-            onClick={() => setZone(candidate)}
+            aria-selected={candidateIndex === index}
+            onClick={() => setIndex(candidateIndex)}
             className={cn(
-              'flex min-h-11 items-center gap-2 rounded-2xl border px-3.5 text-sm font-medium transition-colors',
-              zone === candidate
-                ? 'border-ink bg-ink text-[#F2F1EC]'
-                : 'border-border bg-card hover:bg-canvas',
+              pill(candidateIndex === index ? 'primary' : 'secondary', 'h-auto gap-2.5 py-1 pr-4 pl-1'),
             )}
           >
-            <span className="size-10 shrink-0 overflow-hidden rounded-xl bg-ink">
-              <RoomVisual room={room} zone={candidate} />
+            <span className="size-9 shrink-0 overflow-hidden rounded-full bg-stone">
+              <img src={candidate.url} alt="" width={72} height={72} loading="lazy" className="size-full object-cover" />
             </span>
-            {zoneLabels[candidate]}
+            {candidate.label}
           </button>
         ))}
       </div>
