@@ -7,6 +7,7 @@ import { formatDateRange, formatMoney } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 import { HotelScene } from '@/components/hotel/hotel-scene';
 import { RoomCard } from '@/components/rooms/room-card';
+import { RoomStrip } from '@/components/rooms/room-strip';
 import { StaySearchBar } from '@/components/search/stay-search-bar';
 import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
@@ -39,6 +40,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
     defaultRoomFilters,
   );
   const highlights = offers.slice(0, 3);
+  const rest = offers.slice(3);
 
   return (
     <>
@@ -178,6 +180,25 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
             </div>
           </div>
         </section>
+
+        {/* The rest of the house, on the way out */}
+        {rest.length > 0 ? (
+          <section aria-labelledby="rest-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <SectionLabel>Also at {hotel.name}</SectionLabel>
+                <h2 id="rest-heading" className="text-display mt-3 text-4xl sm:text-5xl">
+                  The other rooms
+                </h2>
+              </div>
+              <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
+                Compare all {totalRooms}
+                <ArrowUpRight weight="bold" className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <RoomStrip offers={rest} stayQuery={stayQuery} className="mt-8" />
+          </section>
+        ) : null}
       </main>
       <SiteFooter />
     </>

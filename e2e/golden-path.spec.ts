@@ -127,6 +127,24 @@ test('the arrival screen presents the hotel area by area with hotspots', async (
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
+test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
+  await page.goto(`/?${stayQuery}`);
+
+  const strip = page.getByRole('region', { name: 'The other rooms' });
+  await expect(strip).toBeVisible();
+
+  // The recommendation block above shows three; the strip carries the remainder.
+  const tiles = strip.getByRole('listitem');
+  expect(await tiles.count()).toBeGreaterThan(0);
+
+  const first = tiles.first().getByRole('link');
+  const name = (await first.getByRole('heading').innerText()).trim();
+  await first.click();
+
+  await expect(page).toHaveURL(new RegExp(`/rooms/[^?]+\\?.*checkIn=${checkIn}`));
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+});
+
 test('the date picker sets the stay as one range', async ({ page }) => {
   await page.goto(`/?${stayQuery}`);
 
