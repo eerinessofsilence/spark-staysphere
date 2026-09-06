@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { DayPicker, type DayButton, type Modifiers } from 'react-day-picker';
-import { CalendarBlank, CaretLeft, CaretRight } from '@phosphor-icons/react/dist/ssr';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { addDays, differenceInCalendarDays, format, isAfter, parseISO } from 'date-fns';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { fieldClass, iconButton, pill } from '@/lib/ui';
@@ -37,6 +38,8 @@ interface StayDatesFieldProps {
    * `stacked` is a pair of boxed fields for the booking flow.
    */
   variant?: 'bar' | 'stacked';
+  /** `compact` drops the label to one line so the bar fits the site header. */
+  size?: 'default' | 'compact';
   error?: string;
 }
 
@@ -52,8 +55,8 @@ function CalendarChevron({
   orientation?: 'left' | 'right' | 'up' | 'down';
   className?: string;
 }) {
-  const Icon = orientation === 'left' ? CaretLeft : CaretRight;
-  return <Icon weight="bold" className={cn('size-4', className)} aria-hidden="true" />;
+  const Icon = orientation === 'left' ? ChevronLeftIcon : ChevronRightIcon;
+  return <Icon className={cn('size-4', className)} aria-hidden="true" />;
 }
 
 function CalendarDayButton({
@@ -90,6 +93,7 @@ export function StayDatesField({
   minDate,
   onChange,
   variant = 'bar',
+  size = 'default',
   error,
 }: StayDatesFieldProps) {
   const [open, setOpen] = React.useState(false);
@@ -320,13 +324,13 @@ export function StayDatesField({
             aria-label={`${label}, ${display}. Choose your dates.`}
             className={cn(
               fieldClass,
-              'flex items-center justify-between gap-2 text-left',
+              'flex cursor-pointer items-center justify-between gap-2 text-left',
               active && 'border-accent',
               error && field === 'checkOut' && 'border-danger',
             )}
           >
             <span className="font-medium">{display}</span>
-            <CalendarBlank weight="fill" className="size-4 text-muted-foreground" aria-hidden="true" />
+            <CalendarIcon className="size-4 text-muted-foreground" aria-hidden="true" />
           </button>
           {error && field === 'checkOut' ? (
             <p role="alert" className="mt-1.5 text-xs font-medium text-danger">
@@ -334,6 +338,26 @@ export function StayDatesField({
             </p>
           ) : null}
         </div>
+      );
+    }
+
+    if (size === 'compact') {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          onClick={() => openFor(field)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={`${label}, ${display}. Choose your dates.`}
+          className={cn(
+            'flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-stone/60',
+            active && 'bg-stone/60',
+          )}
+        >
+          <CalendarIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          {display}
+        </button>
       );
     }
 
@@ -346,12 +370,12 @@ export function StayDatesField({
         aria-expanded={open}
         aria-label={`${label}, ${display}. Choose your dates.`}
         className={cn(
-          'flex min-h-14 flex-col justify-center rounded-3xl px-4 py-2 text-left transition-colors lg:rounded-none',
+          'flex min-h-14 cursor-pointer flex-col justify-center rounded-3xl px-4 py-2 text-left transition-colors lg:rounded-none',
           active && 'bg-stone/60',
         )}
       >
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CalendarBlank weight="fill" className="size-3.5" aria-hidden="true" />
+          <CalendarIcon className="size-3.5" aria-hidden="true" />
           {label}
         </span>
         <span className="mt-0.5 text-[15px] font-medium">{display}</span>
@@ -363,13 +387,18 @@ export function StayDatesField({
     <>
       {trigger('checkIn', 'Check-in', checkIn)}
       {trigger('checkOut', 'Check-out', checkOut)}
-      {open ? (
-        <>
-          {/* Dims the page behind the mobile sheet only. */}
-          <div className="fixed inset-0 z-40 bg-ink/20 sm:hidden" aria-hidden="true" />
-          {panel}
-        </>
-      ) : null}
+      {open
+        ? // On the body, not in place: the header's frosted pill has a backdrop
+          // filter, which would make it the containing block for these.
+          createPortal(
+            <>
+              {/* Dims the page behind the mobile sheet only. */}
+              <div className="fixed inset-0 z-40 bg-ink/20 sm:hidden" aria-hidden="true" />
+              {panel}
+            </>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

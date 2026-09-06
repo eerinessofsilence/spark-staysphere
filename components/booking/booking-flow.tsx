@@ -3,20 +3,13 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CircleNotch,
-  CreditCard,
-  Lock,
-  Wallet,
-  Warning,
-} from '@phosphor-icons/react/dist/ssr';
+import { CreditCard, Lock, Wallet, Warning } from '@phosphor-icons/react/dist/ssr';
+import { ArrowLeftIcon, ArrowPathIcon, ArrowRightIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { confirmBooking, quoteStay } from '@/app/book/[slug]/actions';
 import { buildQuery } from '@/lib/application/search-params';
 import type { AddOn, Guest, Hotel, Quote, RatePlan, RoomType, StayCriteria } from '@/lib/domain/schemas';
 import {
+  addOnCategoryLabels,
   formatDateRange,
   formatGuests,
   formatMoney,
@@ -25,7 +18,10 @@ import {
 } from '@/lib/formatting';
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
-import { AddOnRow } from '@/components/rooms/add-on-picker';
+import { AddOnCatalog } from '@/components/rooms/add-on-catalog';
+import { featureIcon } from '@/components/rooms/feature-icon';
+import { BillRow } from '@/components/rooms/add-on-picker';
+import { GuestsField } from '@/components/search/guests-field';
 import { StayDatesField } from '@/components/search/stay-dates-field';
 import { fieldClass, pill } from '@/lib/ui';
 import { StatusBadge } from '@/components/rooms/status-badge';
@@ -34,7 +30,9 @@ import { cn } from '@/lib/utils';
 const steps = [
   { id: 'stay', label: 'Your stay' },
   { id: 'room', label: 'Room & rate' },
-  { id: 'services', label: 'Services' },
+  // "Extras" rather than "Services": the step now holds the kitchen's list too,
+  // and the panel heading is this label, so it would otherwise repeat the group.
+  { id: 'services', label: 'Extras' },
   { id: 'guest', label: 'Guest details' },
   { id: 'payment', label: 'Payment' },
   { id: 'review', label: 'Review' },
@@ -147,12 +145,17 @@ export function BookingFlow({
     void reprice(next, addOnIds);
   };
 
-  const toggleAddOn = (id: string) => {
-    const next = addOnIds.includes(id)
-      ? addOnIds.filter((entry) => entry !== id)
-      : [...addOnIds, id];
+  const changeAddOns = (next: string[]) => {
     setAddOnIds(next);
     void reprice(criteria, next);
+  };
+
+  /** Dropped from the summary: the line, and anything sold only inside it. */
+  const removeAddOn = (addOnId: string) => {
+    const alsoGoing = new Set(
+      quote.price.addOnLines.filter((line) => line.parentId === addOnId).map((line) => line.addOnId),
+    );
+    changeAddOns(addOnIds.filter((id) => id !== addOnId && !alsoGoing.has(id)));
   };
 
   const validateGuest = (): boolean => {
@@ -227,6 +230,13 @@ export function BookingFlow({
 
   const stayQuery = buildQuery({ criteria, addOnIds });
 
+  // Services and the kitchen are shown apart: booking a transfer and ordering
+  // dinner are different decisions, even though one total pays for both.
+  const onSale = addOns.filter((addOn) => addOn.enabled);
+  const addOnGroups = (['service', 'dining'] as const)
+    .map((category) => [category, onSale.filter((addOn) => addOn.category === category)] as const)
+    .filter(([, items]) => items.some((addOn) => !addOn.parentId));
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
       <div className="min-w-0">
@@ -256,7 +266,7 @@ export function BookingFlow({
                       state === 'todo' && 'bg-stone text-muted-foreground',
                     )}
                   >
-                    {state === 'done' ? <Check weight="bold" className="size-3" /> : index + 1}
+                    {state === 'done' ? <CheckIcon className="size-3" /> : index + 1}
                   </span>
                   {entry.label}
                 </button>
@@ -327,42 +337,20 @@ export function BookingFlow({
                 onChange={(dates) => updateCriteria(dates)}
                 error={datesInvalid ? 'Check-out must be after check-in.' : undefined}
               />
-              <LabelledField id="book-adults" label="Adults">
-                <select
-                  id="book-adults"
-                  value={criteria.adults}
-                  onChange={(event) => updateCriteria({ adults: Number(event.target.value) })}
-                  className={fieldClass}
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-              </LabelledField>
-              <LabelledField
-                id="book-children"
-                label="Children"
-                error={
-                  overCapacity
-                    ? `The ${room.name} sleeps up to ${room.capacity} guests.`
-                    : undefined
-                }
-              >
-                <select
-                  id="book-children"
-                  value={criteria.children}
-                  onChange={(event) => updateCriteria({ children: Number(event.target.value) })}
-                  className={fieldClass}
-                >
-                  {[0, 1, 2, 3, 4, 5, 6].map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-              </LabelledField>
+              <div className="sm:col-span-2">
+                <GuestsField
+                  id="book-guests"
+                  adults={criteria.adults}
+                  children={criteria.children}
+                  onChange={(guests) => updateCriteria(guests)}
+                  variant="stacked"
+                  error={
+                    overCapacity
+                      ? `The ${room.name} sleeps up to ${room.capacity} guests.`
+                      : undefined
+                  }
+                />
+              </div>
             </div>
           ) : null}
 
@@ -403,12 +391,19 @@ export function BookingFlow({
               <div className="mt-6 rounded-3xl bg-stone/60 p-5">
                 <h4 className="font-sans text-sm font-medium tracking-normal">{ratePlan.name}</h4>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {ratePlan.includedServices.map((service) => (
-                    <li key={service} className="flex items-start gap-2 text-sm">
-                      <Check weight="bold" className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-                      {service}
-                    </li>
-                  ))}
+                  {ratePlan.includedServices.map((service) => {
+                    const Icon = featureIcon(service);
+                    return (
+                      <li key={service} className="flex items-start gap-2.5 text-sm">
+                        <Icon
+                          weight="fill"
+                          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        {service}
+                      </li>
+                    );
+                  })}
                 </ul>
                 <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
                   {ratePlan.cancellationPolicy}
@@ -418,23 +413,30 @@ export function BookingFlow({
           ) : null}
 
           {step === 'services' ? (
-            <div className="mt-5 grid gap-3" aria-busy={repricing}>
-              {addOns.filter((addOn) => addOn.enabled).length === 0 ? (
+            <div className="mt-5 grid gap-8" aria-busy={repricing}>
+              {onSale.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                   No extra services are on sale for this stay.
                 </p>
               ) : (
-                addOns
-                  .filter((addOn) => addOn.enabled)
-                  .map((addOn) => (
-                    <AddOnRow
-                      key={addOn.id}
-                      idPrefix="flow-addon"
-                      addOn={addOn}
-                      checked={addOnIds.includes(addOn.id)}
-                      onToggle={() => toggleAddOn(addOn.id)}
-                    />
-                  ))
+                addOnGroups.map(([category, items]) => (
+                  <div key={category} role="group" aria-labelledby={`flow-addons-${category}`}>
+                    <h3
+                      id={`flow-addons-${category}`}
+                      className="font-sans text-sm font-medium tracking-normal"
+                    >
+                      {addOnCategoryLabels[category]}
+                    </h3>
+                    <div className="mt-3">
+                      <AddOnCatalog
+                        idPrefix="flow-addon"
+                        addOns={items}
+                        selected={addOnIds}
+                        onChange={changeAddOns}
+                      />
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           ) : null}
@@ -607,7 +609,7 @@ export function BookingFlow({
               disabled={stepIndex === 0 || submitting}
               className={pill('secondary')}
             >
-              <ArrowLeft weight="bold" className="size-4" aria-hidden="true" />
+              <ArrowLeftIcon className="size-4" aria-hidden="true" />
               Back
             </button>
 
@@ -620,13 +622,13 @@ export function BookingFlow({
               >
                 {submitting ? (
                   <>
-                    <CircleNotch weight="bold" className="size-4 animate-spin" aria-hidden="true" />
+                    <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
                     Confirming…
                   </>
                 ) : (
                   <>
                     Confirm demo booking
-                    <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+                    <ArrowRightIcon className="size-4" aria-hidden="true" />
                   </>
                 )}
               </button>
@@ -638,7 +640,7 @@ export function BookingFlow({
                 className={pill('primary', 'min-h-12 px-6')}
               >
                 Continue
-                <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+                <ArrowRightIcon className="size-4" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -663,18 +665,21 @@ export function BookingFlow({
             className={cn('mt-4 border-t border-border pt-4', repricing && 'opacity-60')}
           >
             <dl className="grid gap-2 text-sm">
-              <SummaryRow
+              <BillRow
                 label={`${formatMoney(quote.price.nightlyPrice, quote.price.currency)} × ${formatNights(quote.price.nights)}`}
                 value={formatMoney(quote.price.roomTotal, quote.price.currency)}
               />
               {quote.price.addOnLines.map((line) => (
-                <SummaryRow
+                <BillRow
                   key={line.addOnId}
+                  indented={Boolean(line.parentId)}
+                  onRemove={() => removeAddOn(line.addOnId)}
+                  removeLabel={`Remove ${line.name}`}
                   label={`${line.name}${line.quantity > 1 ? ` × ${line.quantity}` : ''}`}
                   value={formatMoney(line.total, quote.price.currency)}
                 />
               ))}
-              <SummaryRow
+              <BillRow
                 label="Taxes and city fees"
                 value={formatMoney(quote.price.taxesAndFees, quote.price.currency)}
               />
@@ -688,7 +693,7 @@ export function BookingFlow({
             </div>
             {repricing ? (
               <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <CircleNotch weight="bold" className="size-3.5 animate-spin" aria-hidden="true" />
+                <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
                 Repricing your stay…
               </p>
             ) : null}
@@ -704,14 +709,6 @@ export function BookingFlow({
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
-    </div>
-  );
-}
 
 function ReviewRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (

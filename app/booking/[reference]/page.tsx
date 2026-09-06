@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CalendarBlank, Check, CheckCircle, Envelope, MapPin, Phone, UsersThree } from '@phosphor-icons/react/dist/ssr';
+import { CheckCircle, Envelope, Phone } from '@phosphor-icons/react/dist/ssr';
+import { CalendarIcon, CheckIcon, MapPinIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { pill } from '@/lib/ui';
 import { BookingError } from '@/lib/application/booking-service';
@@ -87,14 +88,14 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
               </div>
             ) : null}
             <dl className="grid gap-4 sm:grid-cols-2">
-              <Detail icon={CalendarBlank} label="Dates">
+              <Detail icon={CalendarIcon} label="Dates">
                 {formatDateRange(booking.checkIn, booking.checkOut)}
                 <span className="block text-muted-foreground">{formatNights(nights)}</span>
               </Detail>
-              <Detail icon={UsersThree} label="Guests">
+              <Detail icon={UsersIcon} label="Guests">
                 {formatGuests(booking.adults, booking.children)}
               </Detail>
-              <Detail icon={MapPin} label="Room">
+              <Detail icon={MapPinIcon} label="Room">
                 {room?.name ?? booking.roomTypeId}
                 {room ? (
                   <span className="block text-muted-foreground">
@@ -128,7 +129,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                     className="flex flex-wrap items-baseline justify-between gap-2 rounded-3xl border border-border p-4 text-sm"
                   >
                     <span className="flex items-center gap-2 font-medium">
-                      <Check weight="bold" className="size-4 text-success" aria-hidden="true" />
+                      <CheckIcon className="size-4 text-success" aria-hidden="true" />
                       {addOn.name}
                     </span>
                     <span className="text-muted-foreground">
@@ -203,14 +204,14 @@ function Detail({
   label,
   children,
 }: {
-  icon: typeof Check;
+  icon: typeof CheckIcon;
   label: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Icon weight="fill" className="size-3.5" aria-hidden="true" />
+        <Icon className="size-3.5" aria-hidden="true" />
         {label}
       </dt>
       <dd className="mt-1.5 text-sm font-medium">{children}</dd>

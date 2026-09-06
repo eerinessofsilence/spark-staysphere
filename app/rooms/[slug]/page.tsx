@@ -1,7 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Bed, Buildings, Check, Eye, Ruler, UsersThree } from '@phosphor-icons/react/dist/ssr';
+import {
+  Bed,
+  Buildings,
+  CalendarCheck,
+  Eye,
+  Ruler,
+  UsersThree,
+} from '@phosphor-icons/react/dist/ssr';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseAddOnIds, parseCriteria } from '@/lib/application/search-params';
@@ -19,16 +27,30 @@ import {
 import { pill, tag } from '@/lib/ui';
 import { AddOnPicker, QuoteLines } from '@/components/rooms/add-on-picker';
 import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
+import { amenityTone, featureIcon, type AmenityTone } from '@/components/rooms/feature-icon';
 import { RoomGallery } from '@/components/rooms/room-gallery';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
+import { cn } from '@/lib/utils';
 
 export async function generateMetadata({ params }: PageProps<'/rooms/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
   return { title: `${slug.replace(/-/g, ' ')} — Asteria Cove | SPARK StaySphere 360` };
 }
+
+/**
+ * Tailwind needs the class names whole, so the tones are spelled out rather
+ * than built from the tone key at runtime.
+ */
+const amenityToneClass: Record<AmenityTone, string> = {
+  clay: 'bg-tint-clay text-tint-clay-ink',
+  sand: 'bg-tint-sand text-tint-sand-ink',
+  sage: 'bg-tint-sage text-tint-sage-ink',
+  rose: 'bg-tint-rose text-tint-rose-ink',
+  stone: 'bg-tint-stone text-tint-stone-ink',
+};
 
 export default async function RoomDetailPage({ params, searchParams }: PageProps<'/rooms/[slug]'>) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
@@ -47,6 +69,8 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   const soldOut = offer.status === 'sold_out';
   const stayQuery = buildQuery({ criteria });
   const bookQuery = buildQuery({ criteria, addOnIds: quote.addOnIds });
+  const services = addOns.filter((addOn) => addOn.category === 'service');
+  const dining = addOns.filter((addOn) => addOn.category === 'dining');
 
   const facts = [
     { icon: Ruler, label: `${room.areaM2} m²` },
@@ -62,22 +86,32 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href={`/rooms?${stayQuery}`} className="inline-flex min-h-11 items-center gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft weight="bold" className="size-4" aria-hidden="true" />
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
             All rooms
           </Link>
         </nav>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
           <div className="min-w-0">
-            <header className="mb-6">
+            <header className="mb-5">
+              <h1 className="text-display text-5xl sm:text-6xl">{room.name}</h1>
+            </header>
+
+            <RoomGallery room={room} />
+
+            {/* Only the name stands above the photograph. What kind of room it
+                is, whether it is running out, what it holds — all of it reads
+                better once the room has been seen. */}
+            <div className="mt-6">
               <div className="flex flex-wrap items-center gap-3">
                 <SectionLabel>
                   {categoryLabels[roomCategory(room)]} · {hotel.name}
                 </SectionLabel>
                 <StatusBadge status={offer.status} remaining={offer.remaining} />
               </div>
-              <h1 className="text-display mt-4 text-5xl sm:text-6xl">{room.name}</h1>
-              <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{room.description}</p>
+              <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+                {room.description}
+              </p>
               <ul className="mt-5 flex flex-wrap gap-1.5">
                 {facts.map((fact) => (
                   <li key={fact.label} className={tag()}>
@@ -86,21 +120,36 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   </li>
                 ))}
               </ul>
-            </header>
-
-            <RoomGallery room={room} />
+            </div>
 
             <section aria-labelledby="amenities-heading" className="mt-12">
               <h2 id="amenities-heading" className="text-display text-3xl">
                 In the room
               </h2>
-              <ul className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {room.amenities.map((amenity) => (
-                  <li key={amenity} className="flex items-center gap-2 text-sm">
-                    <Check weight="bold" className="size-4 shrink-0 text-success" aria-hidden="true" />
-                    {amenity}
-                  </li>
-                ))}
+              {/* A card each, but deliberately not the tile grid the rules
+                  warn about: a mark and the thing's name, nothing more. No
+                  heading over two lines of copy, no icon in a tinted circle —
+                  those are what made that pattern read as stock. Flat: the
+                  tint carries the card, so there is no shadow under it. */}
+              <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {room.amenities.map((amenity) => {
+                  const Icon = featureIcon(amenity);
+                  const tone = amenityTone(amenity);
+                  return (
+                    <li
+                      key={amenity}
+                      className={cn(
+                        'flex min-h-32 flex-col items-center justify-center gap-3 rounded-[28px] p-5 text-center sm:min-h-40 sm:gap-4 sm:p-6',
+                        amenityToneClass[tone],
+                      )}
+                    >
+                      <Icon weight="fill" className="size-8 shrink-0 sm:size-9" aria-hidden="true" />
+                      <span className="text-[15px] leading-snug font-medium text-foreground">
+                        {amenity}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
 
@@ -109,15 +158,28 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                 {ratePlan.name}
               </h2>
               <div className="mt-5 rounded-[28px] bg-card p-6 shadow-soft">
-                <ul className="grid gap-2.5 sm:grid-cols-2">
-                  {ratePlan.includedServices.map((service) => (
-                    <li key={service} className="flex items-start gap-2 text-sm">
-                      <Check weight="bold" className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-                      {service}
-                    </li>
-                  ))}
+                {/* The mark says what is included, not merely that something
+                    is. A column of identical checks was the same shrug the
+                    amenities used to make. */}
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {ratePlan.includedServices.map((service) => {
+                    const Icon = featureIcon(service);
+                    return (
+                      <li key={service} className="flex items-start gap-2.5 text-sm">
+                        <Icon
+                          weight="fill"
+                          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        {service}
+                      </li>
+                    );
+                  })}
                 </ul>
-                <p className="mt-5 border-t border-border pt-4 text-sm text-muted-foreground">{ratePlan.cancellationPolicy}</p>
+                <p className="mt-5 flex items-start gap-2.5 border-t border-border pt-4 text-sm text-muted-foreground">
+                  <CalendarCheck weight="fill" className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  {ratePlan.cancellationPolicy}
+                </p>
               </div>
             </section>
 
@@ -128,8 +190,22 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               <p className="mt-2 mb-5 text-sm text-muted-foreground">
                 Priced by the booking engine and added to your total immediately.
               </p>
-              <AddOnPicker addOns={addOns} criteria={criteria} selected={quote.addOnIds} />
+              <AddOnPicker addOns={services} criteria={criteria} selected={quote.addOnIds} />
             </section>
+
+            {/* The kitchen sells through the same engine, but it is a different decision. */}
+            {dining.some((addOn) => addOn.enabled && !addOn.parentId) ? (
+              <section aria-labelledby="dining-heading" className="mt-12">
+                <h2 id="dining-heading" className="text-display text-3xl">
+                  Order from the kitchen
+                </h2>
+                <p className="mt-2 mb-5 text-sm text-muted-foreground">
+                  Food and drink arranged before you arrive and charged with the stay, so nothing is
+                  settled at the table.
+                </p>
+                <AddOnPicker addOns={dining} criteria={criteria} selected={quote.addOnIds} />
+              </section>
+            ) : null}
           </div>
 
           {/* Sticky booking summary */}
@@ -144,7 +220,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </p>
 
               <div className="mt-5 border-t border-border pt-5">
-                <QuoteLines quote={quote} />
+                <QuoteLines quote={quote} criteria={criteria} selected={quote.addOnIds} />
               </div>
 
               <div className="mt-5 flex items-baseline justify-between gap-4 border-t border-border pt-5">
@@ -185,7 +261,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
         </div>
       </main>
       <MobileBookBar quote={quote} bookHref={`/book/${room.slug}?${bookQuery}`} roomsHref={`/rooms?${stayQuery}`} />
-      <SiteFooter />
+      <SiteFooter stayQuery={stayQuery} clearsFloatingBar />
     </>
   );
 }

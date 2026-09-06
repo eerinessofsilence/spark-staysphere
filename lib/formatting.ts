@@ -50,6 +50,11 @@ export const bedLabels: Record<RoomType['bedType'], string> = {
   twin: 'Twin beds',
 };
 
+export const addOnCategoryLabels: Record<AddOn['category'], string> = {
+  service: 'Services',
+  dining: 'Food and drink',
+};
+
 export const categoryLabels: Record<RoomCategory, string> = {
   room: 'Room',
   studio: 'Studio',

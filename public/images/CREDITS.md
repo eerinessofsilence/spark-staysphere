@@ -41,3 +41,57 @@ used as demo stand-ins and must be replaced with the real property's photography
 | `/images/rooms/asteria-penthouse/terrace.webp` | Maverick Frame | https://unsplash.com/photos/Tx0dfF6D41M |
 | `/images/rooms/asteria-penthouse/living.webp` | Point3D Commercial Imaging Ltd | https://unsplash.com/photos/bKngjZkGZ1o |
 | `/images/rooms/asteria-penthouse/bathroom.webp` | Jared Rice | https://unsplash.com/photos/PibraWHb4h8 |
+| `/images/dining/breakfast.webp` | Alev Takil | https://unsplash.com/photos/breakfast-tray-with-pastries-and-juice-lw3Lqe2K7xc |
+| `/images/dining/terrace-dinner.webp` | Aleksandar Rusev | https://unsplash.com/photos/grilled-fish-and-octopus-with-vegetables-and-salad-Kp69hyN0D7Y |
+| `/images/dining/cheese-board.webp` | Ana Maltez | https://unsplash.com/photos/sliced-meat-with-vegetable-and-bread-on-brown-wooden-chopping-board-FHNJO45Qx_k |
+| `/images/dining/arrival-wine.webp` | Peter Muniz | https://unsplash.com/photos/two-glasses-of-wine-and-a-bottle-of-wine-on-a-table-5e5sFrQ_7Pg |
+| `/images/dining/oysters.webp` | Anima Visual | https://unsplash.com/photos/a-plate-of-oysters-on-ice-with-lemon-wedges-XaLh3Nakkz4 |
+| `/images/dining/figs.webp` | Dmitriy Tretyakov | https://unsplash.com/photos/a-white-plate-topped-with-figs-on-top-of-a-wooden-table-rJ8OQxJhtcA |
+| `/images/dining/breakfast-2.webp` | Alena Torgonskaya | https://unsplash.com/photos/a-tray-of-food-on-a-bed-with-silverware-3PjP-h3BEsc |
+| `/images/dining/breakfast-3.webp` | Alena Torgonskaya | https://unsplash.com/photos/a-tray-of-food-on-a-bed-with-a-cup-of-coffee-wZ8XrVLnPBE |
+| `/images/dining/terrace-dinner-2.webp` | Nikita Tikhomirov | https://unsplash.com/photos/octopus-dish-with-potato-lQ1nICyM4cA |
+| `/images/dining/terrace-dinner-3.webp` | Tomi Saputra | https://unsplash.com/photos/grilled-octopus-tentacles-with-fresh-green-herbs-FrWT5qiCkWE |
+| `/images/dining/oysters-2.webp` | Mitili Mitili | https://unsplash.com/photos/a-plate-of-oysters-with-lemon-wedges-and-ice-h3wBwuECWg4 |
+| `/images/dining/oysters-3.webp` | Oskar Kadaksoo | https://unsplash.com/photos/a-plate-of-oysters-and-lemons-hItzuDWSlGM |
+| `/images/dining/cheese-board-2.webp` | Daniel | https://unsplash.com/photos/a-wooden-cutting-board-topped-with-lots-of-food-Tw2cU6VvTZo |
+| `/images/dining/cheese-board-3.webp` | Marc Babin | https://unsplash.com/photos/white-ceramic-container-on-black-wooden-table-5LmQFGhZb_o |
+| `/images/dining/figs-2.webp` | Anita Austvika | https://unsplash.com/photos/a-white-plate-topped-with-sliced-figs-on-top-of-a-table-8KzIQNbMxQA |
+| `/images/dining/figs-3.webp` | Oscar Nord | https://unsplash.com/photos/round-white-ceramic-plate-and-fig-fruit-on-top-Oiw_tgU4k-g |
+| `/images/dining/arrival-wine-2.webp` | Nikita Pishchugin | https://unsplash.com/photos/an-outdoor-cafe-table-with-a-champagne-bucket-and-bottles-QmBn_hrXzg0 |
+| `/images/dining/arrival-wine-3.webp` | Andrii Solok | https://unsplash.com/photos/white-wine-champagne-and-glasses-on-a-sunlit-wooden-table-qOBk1zlSVrM |
+
+`/images/dining/*` illustrate the kitchen's list (`demoAddOns` in
+`lib/infrastructure/mock-data.ts`); they are dishes cooked elsewhere, standing in until the
+property photographs its own. None shows a legible commercial label, so no real producer is
+presented as the hotel's own.
+
+## 360° panoramas
+
+`/images/panoramas/*` are equirectangular (2:1) panoramas of real places, none of them Asteria
+Cove — the property has not been captured in 360 yet. They are offered beside the flat
+photography in two places, both behind a "360° view" button on the picture itself:
+
+- **Arrival screen** — each `HotelArea` carries a `panorama` (see `hotelAreas` in
+  `lib/infrastructure/mock-data.ts`); `HotelScene` swaps the area photo for the sphere.
+- **Room pages** — each room carries one as a `media` entry of `type: '360'` (see
+  `panoramaByRoom`); `RoomGallery` shows it as one more tab beside the photographs.
+
+Areas and rooms of a kind share a file until real captures replace them one by one. All are
+downscaled to 4096×2048 WebP. Every file but one is
+[CC0](https://creativecommons.org/publicdomain/zero/1.0/) (public domain, no attribution
+required — credited here and in the gallery anyway); the aerial over the arrival screen is
+CC BY-SA, which is why the sphere carries a visible credit and the file keeps that licence.
+
+| File | Used for | Credit | Source |
+|---|---|---|---|
+| `/images/panoramas/hotel.webp` | Arrival: The hotel — **aerial**, the one exception to CC0 below | Alexis Markwick, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) — credited visibly on the sphere; this resized copy stays BY-SA | https://commons.wikimedia.org/wiki/File:East_Parade,_Bexhill_(360_aerial_panorama).jpg |
+| `/images/panoramas/pool.webp` | Arrival: Pool · Pool Terrace Room | Greg Zaal / Poly Haven | https://polyhaven.com/a/pool |
+| `/images/panoramas/spa.webp` | Arrival: Spa | Oliksiy Yakovlyev / Poly Haven | https://polyhaven.com/a/indoor_pool |
+| `/images/panoramas/lobby.webp` | Arrival: Lobby | Sergej Majboroda / Poly Haven | https://polyhaven.com/a/cinema_lobby |
+| `/images/panoramas/room.webp` | Deluxe Sea View, Coastal Twin, Skyline Loft | Greg Zaal / Poly Haven | https://polyhaven.com/a/hotel_room |
+| `/images/panoramas/suite.webp` | Panorama Suite, Family Residence, Asteria Penthouse | Dario Barresi, Jenelle van Heerden / Poly Haven | https://polyhaven.com/a/relax_inn_seaview_suite |
+| `/images/panoramas/terrace.webp` | Garden Studio | Greg Zaal / Poly Haven | https://polyhaven.com/a/balcony |
+
+`public/vendor/pannellum` vendors [Pannellum](https://pannellum.org) 2.5.7 (MIT-licensed viewer
+library) as static assets so the panorama renders without a runtime CDN dependency — see the
+`LICENSE` file alongside it.

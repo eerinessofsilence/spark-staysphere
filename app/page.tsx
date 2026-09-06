@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRightIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseCriteria, toIsoDate } from '@/lib/application/search-params';
@@ -12,21 +12,6 @@ import { StaySearchBar } from '@/components/search/stay-search-bar';
 import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
-
-const steps = [
-  {
-    title: 'See the stay',
-    body: 'Walk the property area by area, then open the exact room type — its own photographs, floor, and outlook — before you commit to anything.',
-  },
-  {
-    title: 'Shape it',
-    body: 'Add a transfer, a spa ritual, or a late check-out. The booking engine reprices the stay the moment you change it.',
-  },
-  {
-    title: 'Book direct',
-    body: 'Confirm in a clearly labelled demo booking. Price and availability are rechecked on the server right before the reservation is created.',
-  },
-];
 
 export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const params = await searchParams;
@@ -42,85 +27,47 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const highlights = offers.slice(0, 3);
   const rest = offers.slice(3);
 
+  // What the arrival markers may say about a room: the floor from the catalog,
+  // the price from the same breakdown every other screen shows.
+  const roomFacts = Object.fromEntries(
+    offers.map((offer) => [
+      offer.room.slug,
+      {
+        name: offer.room.name,
+        areaM2: offer.room.areaM2,
+        floor: offer.room.floor,
+        capacity: offer.room.capacity,
+        bedType: offer.room.bedType,
+        nightlyPrice: offer.price.nightlyPrice,
+        currency: offer.price.currency,
+      },
+    ]),
+  );
+
   return (
     <>
-      <SiteHeader stayQuery={stayQuery} />
+      <SiteHeader
+        stayQuery={stayQuery}
+        search={<StaySearchBar criteria={criteria} minDate={today} size="compact" />}
+      />
       <main id="main">
         {/* Arrival */}
         <section className="mx-auto max-w-[1400px] px-3 pt-8 sm:px-6 lg:pt-14">
-          <div className="grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-            <div>
-              <SectionLabel>{hotel.location}</SectionLabel>
-              <h1 className="text-display mt-4 text-[clamp(3.25rem,10vw,8rem)]">{hotel.name}</h1>
-            </div>
-            <div className="lg:pb-3">
-              <p className="text-accent-italic text-2xl text-accent-strong sm:text-3xl">{hotel.tagline}</p>
-              <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-                A cliffside house above a working fishing cove on the Dalmatian coast. Explore the
-                property, open the exact room you want, and book it direct.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link href={`/rooms?${stayQuery}`} className={pill('primary')}>
-                  Explore rooms
-                  <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
-                </Link>
-                <Link href="#how-it-works" className={pill('secondary')}>
-                  How it works
-                </Link>
-              </div>
-            </div>
-          </div>
+          <h1 className="sr-only">{hotel.name}</h1>
 
-          <HotelScene areas={hotel.areas} location={hotel.location} stayQuery={stayQuery} className="mt-8" />
+          <HotelScene areas={hotel.areas} location={hotel.location} stayQuery={stayQuery} rooms={roomFacts} />
 
           <div className="mt-5 sm:px-6 lg:px-12">
             <h2 className="sr-only">Search rooms</h2>
-            <StaySearchBar criteria={criteria} minDate={today} />
+            {/* From `lg` the same search rides in the header instead. */}
+            <div className="lg:hidden">
+              <StaySearchBar criteria={criteria} minDate={today} />
+            </div>
             <p className="mt-4 text-center text-sm text-muted-foreground">
               {availableRooms} of {totalRooms} room types are available for{' '}
               {formatDateRange(criteria.checkIn, criteria.checkOut)}, from{' '}
               {formatMoney(facets.priceRange.min, hotel.currency)} a night.
             </p>
-          </div>
-        </section>
-
-        {/* How it works: three numbered steps over photography, not icon cards. */}
-        <section
-          id="how-it-works"
-          aria-labelledby="how-heading"
-          className="mx-auto mt-20 max-w-[1400px] scroll-mt-24 px-3 sm:px-6"
-        >
-          <div className="grid overflow-hidden rounded-[28px] bg-ink text-[#F7F5F0] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-            <div className="relative min-h-[22rem] lg:min-h-[36rem]">
-              <img
-                src="/images/hotel/cove.webp"
-                alt="A pool set into the cliff above a rocky Mediterranean cove"
-                width={2000}
-                height={3000}
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 size-full object-cover"
-              />
-            </div>
-            <div className="p-7 sm:p-10 lg:p-14">
-              <SectionLabel tone="onDark">How it works</SectionLabel>
-              <h2 id="how-heading" className="text-display mt-4 text-4xl sm:text-5xl">
-                Nothing between you <span className="text-accent-italic text-accent-strong">and the room.</span>
-              </h2>
-              <ol className="mt-10 divide-y divide-white/10">
-                {steps.map((step, index) => (
-                  <li key={step.title} className="grid gap-4 py-6 sm:grid-cols-[4.5rem_1fr]">
-                    <span className="text-display text-3xl text-white/40 tabular-nums">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <div>
-                      <h3 className="text-display text-2xl">{step.title}</h3>
-                      <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">{step.body}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
           </div>
         </section>
 
@@ -135,7 +82,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
             </div>
             <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
               All {totalRooms} room types
-              <ArrowUpRight weight="bold" className="size-4" aria-hidden="true" />
+              <ArrowUpRightIcon className="size-4" aria-hidden="true" />
             </Link>
           </div>
 
@@ -144,7 +91,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               Nothing is bookable for those dates. Try a different stay above.
             </p>
           ) : (
-            <div className="mt-8 grid gap-5">
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {highlights.map((offer) => (
                 <RoomCard key={offer.room.id} offer={offer} stayQuery={stayQuery} />
               ))}
@@ -175,7 +122,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               </p>
               <Link href={`/rooms?${stayQuery}`} className={pill('glass')}>
                 Start with the rooms
-                <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+                <ArrowRightIcon className="size-4" aria-hidden="true" />
               </Link>
             </div>
           </div>
@@ -193,14 +140,14 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               </div>
               <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
                 Compare all {totalRooms}
-                <ArrowUpRight weight="bold" className="size-4" aria-hidden="true" />
+                <ArrowUpRightIcon className="size-4" aria-hidden="true" />
               </Link>
             </div>
             <RoomStrip offers={rest} stayQuery={stayQuery} className="mt-8" />
           </section>
         ) : null}
       </main>
-      <SiteFooter />
+      <SiteFooter stayQuery={stayQuery} />
     </>
   );
 }

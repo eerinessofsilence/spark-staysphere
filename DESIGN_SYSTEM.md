@@ -18,9 +18,12 @@ These are enforced in review and, where possible, by lint.
 
 1. **No uppercase, letter-spaced microcopy.** No "eyebrows". A lead-in above a heading is
    `SectionLabel` — sentence case, muted, with an accent dot — or nothing.
-2. **No grids of small labelled boxes for facts.** "Available now / 7 of 8" tiles are banned.
-   Facts read as a sentence (`7 of 8 room types are available for 16–19 Oct, from €244 a night`)
-   or as one large figure with a plain descriptor beside it, separated by hairlines.
+2. **No grids of small labelled boxes for numbers.** "Available now / 7 of 8" tiles are banned.
+   Counts and figures read as a sentence (`7 of 8 room types are available for 16–19 Oct, from
+   €244 a night`) or as one large figure with a plain descriptor beside it, separated by
+   hairlines. A grid of cards is allowed where each card is one *thing the room has* rather than
+   a statistic about it — the amenities on a room page are a mark and a name, nothing else. The
+   moment a card grows a heading over two lines of copy it has become the banned pattern.
 3. **No icon-in-a-tinted-circle feature cards.** Value propositions are photographs with a
    numbered list over or beside them (`01 / 02 / 03`), or plain rows. Never three cards with an
    icon, a heading, and two lines of copy.
@@ -28,10 +31,15 @@ These are enforced in review and, where possible, by lint.
    photography only. Stock stands in for the property's own until launch; every file is local
    (`public/images`) and credited in `public/images/CREDITS.md`. Nothing loads from an external
    image host at runtime.
-5. **Icons are Phosphor, filled.** Import from `@phosphor-icons/react/dist/ssr` (works in server
-   and client components) and pass `weight="fill"`. Arrows, carets, checks, and crosses may use
-   `weight="bold"` because their fill variants are illegible at 16px. `lucide-react` is
-   lint-banned outside `components/ui/` (the generated shadcn primitives), see `.oxlintrc.json`.
+5. **Two icon sets, split by job.** *Interface* marks — calendar, guests, search, chevrons,
+   close, check, plus/minus, fullscreen, spinner — are **Heroicons outline**
+   (`@heroicons/react/24/outline`), stroked and legible down to 14px, where a filled glyph
+   collapses into a blob. *Subject* marks — a bathtub, a towel, a lotus, a bed, a ruler, a wine
+   glass, the hotspots on a photograph — are **Phosphor filled**
+   (`@phosphor-icons/react/dist/ssr`, `weight="fill"`), because Heroicons is a UI set and simply
+   has no glyph for them. The line is what the mark denotes, not where it sits: never reach for
+   Phosphor to draw a chevron, or Heroicons to draw a bathtub. `lucide-react` is lint-banned
+   outside `components/ui/` (the generated shadcn primitives), see `.oxlintrc.json`.
 6. **The accent is clay, and it is not the primary action.** Primary actions are ink pills with
    warm-white text. The accent marks the section-label dot, focus rings, savings, active states,
    and one italic phrase per screen. Never neon, never blue, never purple.
@@ -64,15 +72,37 @@ CSS variables live in `app/globals.css`; components consume tokens, never near-d
 | Danger | `#C4473A` | `text-danger` | Sold out, failed payment |
 | Warm white on ink | `#F7F5F0` | — | Text on ink pills and bands |
 
+### Flat tints
+
+Five muted surfaces for the amenity cards on a room page, each paired with a darker ink of the
+same hue for the mark on it. Warm throughout, with one sage — no blue, no purple, no neon, so
+rule 6 still holds. They are **surfaces only**: never text colour, never a button, never the
+accent's job. The tone is chosen from what the amenity is (`amenityTone`), so a wall of cards
+groups itself; anything unclassified stays stone, the page's own neutral.
+
+| Tone | Surface | Mark | Used for |
+|---|---|---|---|
+| Clay | `#F4E6DD` | `#9A4E2C` | The kitchen: dining, coffee, minibar |
+| Stone | `#E9E5DD` | `#5F5E58` | Water, and anything unclassified |
+| Sage | `#E2E9DE` | `#4C6A4E` | Outdoors: terraces, balconies, the view |
+| Sand | `#EFE7D3` | `#7F6A35` | Comfort and kit: Wi-Fi, climate, blinds, desk |
+| Rose | `#F1E2E0` | `#93565A` | Sleeping and lounging |
+
 ## Typography
 
-Three faces, self-hosted at build time through `next/font/google`. Do not add a fourth.
+One interface face for everything, plus an italic serif for a single emphasised phrase.
+Titles and body differ by size and weight, not by typeface — the way the platform does it.
 
-- **Display — Bricolage Grotesque**, weights 400–600. Every `h1`–`h3`, prices, counters, and
-  large figures. The `.text-display` utility sets weight 500, `-0.025em` tracking, 1.02 leading.
-  Hero names run to `clamp(3.25rem, 10vw, 8rem)`.
-- **Body — Onest**, weights 400–600. Everything else, 14–15px, 1.5+ leading. Medium (500) for
-  emphasis; there is no bold in the UI.
+- **Interface — San Francisco, with Inter behind it.** The stack is
+  `-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, …`. SF is never shipped:
+  Apple's licence covers designing for their platforms, not serving the file, so the first two
+  entries hand back the device's own face on macOS and iOS. Inter (self-hosted through
+  `next/font/google`, weights 400–700) catches Windows and Android so they keep the same
+  character instead of dropping to Segoe or Roboto.
+- **Titles** use `.text-display` — the same face at weight 700, `-0.028em` tracking, 1.05
+  leading. Every `h1`–`h3`, prices, counters, and large figures. Hero names run to
+  `clamp(3.25rem, 10vw, 8rem)`.
+- **Body** is 14–15px at 1.5+ leading, weight 400, medium (500) for emphasis.
 - **Accent — Instrument Serif italic** through `.text-accent-italic`, for the one emphasised
   phrase a screen is allowed.
 
