@@ -163,21 +163,38 @@ export default async function AdminPage() {
             drops it from any quote that still references it.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {addOns.map((addOn) => (
-              <div key={addOn.id} className="rounded-[28px] bg-card shadow-soft p-5">
-                <h3 className="font-medium">{addOn.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{addOn.description}</p>
-                <p className="mt-3 text-sm font-medium">
-                  {formatMoney(addOn.price, addOn.currency)}{' '}
-                  <span className="font-normal text-muted-foreground">
-                    {formatPricingUnit(addOn.pricingUnit)}
-                  </span>
-                </p>
-                <div className="mt-3 border-t border-border pt-3">
-                  <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
-                </div>
-              </div>
-            ))}
+            {addOns
+              .filter((addOn) => !addOn.parentId)
+              .map((addOn) => {
+                // Extras are sold inside their parent, so they are listed here
+                // rather than given a card and a switch of their own.
+                const extras = addOns.filter((entry) => entry.parentId === addOn.id);
+                return (
+                  <div key={addOn.id} className="rounded-[28px] bg-card shadow-soft p-5">
+                    <h3 className="font-medium">{addOn.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{addOn.description}</p>
+                    <p className="mt-3 text-sm font-medium">
+                      {formatMoney(addOn.price, addOn.currency)}{' '}
+                      <span className="font-normal text-muted-foreground">
+                        {formatPricingUnit(addOn.pricingUnit)}
+                      </span>
+                    </p>
+                    {extras.length > 0 ? (
+                      <ul className="mt-3 grid gap-1 text-sm text-muted-foreground">
+                        {extras.map((extra) => (
+                          <li key={extra.id}>
+                            + {extra.name} · {formatMoney(extra.price, extra.currency)}{' '}
+                            {formatPricingUnit(extra.pricingUnit)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <div className="mt-3 border-t border-border pt-3">
+                      <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </section>
 

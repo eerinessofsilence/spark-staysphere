@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { CircleNotch } from '@phosphor-icons/react/dist/ssr';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { fieldClass, pill } from '@/lib/ui';
 import { resetDemoState, setAddOnEnabled, setRoomStatus } from '@/app/admin/actions';
 import type { RoomStatus } from '@/lib/domain/schemas';
@@ -59,7 +59,7 @@ export function RoomStatusControl({
         ))}
       </select>
       {pending ? (
-        <CircleNotch weight="bold" className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+        <ArrowPathIcon className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
       ) : null}
     </div>
   );
@@ -97,7 +97,7 @@ export function AddOnToggle({
         <span className="sr-only"> — {addOnName}</span>
       </span>
       {pending ? (
-        <CircleNotch weight="bold" className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+        <ArrowPathIcon className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
       ) : null}
     </label>
   );
@@ -119,7 +119,7 @@ export function ResetDemoButton() {
       }}
       className={pill('secondary')}
     >
-      {pending ? <CircleNotch weight="bold" className="size-4 animate-spin" aria-hidden="true" /> : null}
+      {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
       Reset demo state
     </button>
   );

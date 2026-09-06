@@ -5,7 +5,7 @@ import { cn } from './utils';
  * and a button on the booking flow are the same object. See DESIGN_SYSTEM.md.
  */
 const pillBase =
-  'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 export const pillVariants = {
   /** Ink fill. The one primary action on a screen. */
@@ -37,7 +37,7 @@ export function tag(className?: string): string {
 /** Round icon button, 44px hit area. */
 export function iconButton(variant: 'light' | 'dark' | 'glass' = 'light', className?: string): string {
   return cn(
-    'inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+    'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40',
     variant === 'light' && 'border border-border bg-card hover:bg-stone',
     variant === 'dark' && 'bg-ink text-[#F7F5F0] hover:bg-[#2b2b2b]',
     variant === 'glass' && 'glass text-foreground hover:bg-white/90',

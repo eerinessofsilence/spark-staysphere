@@ -1,22 +1,18 @@
 import type { Metadata } from 'next';
-import { Bricolage_Grotesque, Instrument_Serif, Onest } from 'next/font/google';
+import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
 /**
- * Type system: a characterful grotesk for display, a quiet humanist sans for
- * body, and an italic serif reserved for single emphasised phrases. All three
- * are self-hosted at build time; see DESIGN_SYSTEM.md before adding a fourth.
+ * Type system: the platform's own interface face — San Francisco on Apple
+ * devices, reached through `-apple-system` in the stack rather than shipped,
+ * because Apple's licence does not allow serving the file. Inter is the
+ * fallback that carries the same character to Windows and Android, and an
+ * italic serif is kept for single emphasised phrases.
  */
-const display = Bricolage_Grotesque({
-  variable: '--font-display-family',
+const body = Inter({
+  variable: '--font-ui-family',
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-});
-
-const body = Onest({
-  variable: '--font-body-family',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['400', '500', '600', '700'],
 });
 
 const accent = Instrument_Serif({
@@ -38,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable} ${accent.variable} antialiased`}>
+      <body className={`${body.variable} ${accent.variable} antialiased`}>
         {children}
       </body>
     </html>

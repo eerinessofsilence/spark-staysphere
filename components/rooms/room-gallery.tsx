@@ -1,18 +1,25 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowsIn, ArrowsOut, CaretLeft, CaretRight } from '@phosphor-icons/react/dist/ssr';
+import { ArrowsPointingInIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { PanoramaViewer } from '@/components/hotel/panorama-viewer';
 import type { RoomType } from '@/lib/domain/schemas';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
-/** Photographs of the room, one zone at a time. Keyboard: arrows page, tabs switch. */
+/**
+ * The room, one zone at a time. A 360° capture is just another zone: it earns
+ * a tab beside the photographs rather than a separate feature of its own.
+ * Keyboard: arrows page, tabs switch.
+ */
 export function RoomGallery({ room }: { room: RoomType }) {
   const stageRef = React.useRef<HTMLDivElement>(null);
-  const photos = room.media.filter((item) => item.type === 'image');
+  const views = room.media.filter((item) => item.type === 'image' || item.type === '360');
+  const photos = views.filter((item) => item.type === 'image');
+  const panoramaIndex = views.findIndex((item) => item.type === '360');
   const [index, setIndex] = React.useState(0);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const photo = photos[index] ?? photos[0];
+  const photo = views[index] ?? views[0];
 
   React.useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
@@ -22,7 +29,14 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
   if (!photo) return null;
 
-  const go = (next: number) => setIndex((next + photos.length) % photos.length);
+  const photoPosition = photo.type === 'image' ? photos.indexOf(photo) : -1;
+
+  /** Paging is about the photographs; the sphere is a mode, not a page. */
+  const goPhoto = (delta: number) => {
+    const from = photoPosition >= 0 ? photoPosition : 0;
+    const next = photos[(from + delta + photos.length) % photos.length];
+    if (next) setIndex(views.indexOf(next));
+  };
 
   const toggleFullscreen = async () => {
     const element = stageRef.current;
@@ -44,26 +58,59 @@ export function RoomGallery({ room }: { room: RoomType }) {
         aria-roledescription="carousel"
         aria-label={`${room.name} photographs`}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft') go(index - 1);
-          if (event.key === 'ArrowRight') go(index + 1);
+          if (event.key === 'ArrowLeft') goPhoto(-1);
+          if (event.key === 'ArrowRight') goPhoto(1);
         }}
         className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-stone sm:aspect-[16/10]"
       >
-        {photos.map((candidate, candidateIndex) => (
+        {photos.map((candidate) => (
           <img
             key={candidate.url}
             src={candidate.url}
-            alt={candidateIndex === index ? `${room.name} — ${candidate.label ?? 'photo'}` : ''}
+            alt={candidate.url === photo.url ? `${room.name} — ${candidate.label ?? 'photo'}` : ''}
             width={candidate.width}
             height={candidate.height}
             decoding="async"
-            aria-hidden={candidateIndex !== index}
+            aria-hidden={candidate.url !== photo.url}
             className={cn(
               'absolute inset-0 size-full object-cover transition-opacity duration-500',
-              candidateIndex === index ? 'opacity-100' : 'opacity-0',
+              candidate.url === photo.url ? 'opacity-100' : 'opacity-0',
             )}
           />
         ))}
+
+        {/* Mounted only while its tab is open: a sphere holds a WebGL context
+            and pulls its own image, neither worth spending on a hidden tab. */}
+        {photo.type === '360' ? (
+          <PanoramaViewer
+            src={photo.url}
+            title={`${room.name}, 360°`}
+            className="absolute inset-0 size-full"
+          />
+        ) : null}
+
+        {/* The 360 is a tab like any other, but a tab under the frame is easy
+            to miss and disappears in fullscreen — so it gets a way in from the
+            picture itself, the way the large travel sites surface a tour. */}
+        {panoramaIndex >= 0 ? (
+          <button
+            type="button"
+            onClick={() => setIndex(photo.type === '360' ? 0 : panoramaIndex)}
+            className={pill('glass', 'absolute top-4 left-4 z-10 h-10 px-4 shadow-soft')}
+          >
+            {photo.type === '360' ? (
+              <>
+                <PhotoIcon className="size-4" aria-hidden="true" />
+                Photos
+              </>
+            ) : (
+              <>
+                <GlobeAltIcon className="size-4" aria-hidden="true" />
+                360° view
+              </>
+            )}
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -72,35 +119,37 @@ export function RoomGallery({ room }: { room: RoomType }) {
           className={iconButton('glass', 'absolute top-4 right-4 z-10')}
         >
           {isFullscreen ? (
-            <ArrowsIn weight="fill" className="size-5" aria-hidden="true" />
+            <ArrowsPointingInIcon className="size-5" aria-hidden="true" />
           ) : (
-            <ArrowsOut weight="fill" className="size-5" aria-hidden="true" />
+            <ArrowsPointingOutIcon className="size-5" aria-hidden="true" />
           )}
         </button>
 
-        <div className="absolute inset-x-4 bottom-4 z-10 flex items-end justify-between gap-3">
-          <span className="glass rounded-full px-3.5 py-2 text-sm font-medium">{photo.label}</span>
-          <div className="flex items-center gap-1">
-            <button type="button" aria-label="Previous photo" onClick={() => go(index - 1)} className={iconButton('glass')}>
-              <CaretLeft weight="bold" className="size-4" aria-hidden="true" />
-            </button>
-            <span className="text-display min-w-[4.5rem] text-center text-lg text-white tabular-nums drop-shadow">
-              {String(index + 1).padStart(2, '0')}
-              <span className="text-white/60"> / {String(photos.length).padStart(2, '0')}</span>
-            </span>
-            <button type="button" aria-label="Next photo" onClick={() => go(index + 1)} className={iconButton('glass')}>
-              <CaretRight weight="bold" className="size-4" aria-hidden="true" />
-            </button>
+        {/* Hidden over the sphere: paging means nothing there, and controls
+            sitting on top of it would swallow the drag. */}
+        {photo.type === 'image' ? (
+          <div className="absolute inset-x-4 bottom-4 z-10 flex items-end justify-between gap-3">
+            <span className="glass rounded-full px-3.5 py-2 text-sm font-medium">{photo.label}</span>
+            {/* No counter: the tabs under the photograph already name every
+                view and mark the one showing. */}
+            <div className="flex items-center gap-1">
+              <button type="button" aria-label="Previous photo" onClick={() => goPhoto(-1)} className={iconButton('glass')}>
+                <ChevronLeftIcon className="size-4" aria-hidden="true" />
+              </button>
+              <button type="button" aria-label="Next photo" onClick={() => goPhoto(1)} className={iconButton('glass')}>
+                <ChevronRightIcon className="size-4" aria-hidden="true" />
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       <figcaption className="sr-only">
-        {photos.length} photographs of the {room.name}. Use the buttons below to switch.
+        {views.length} views of the {room.name}. Use the buttons below to switch.
       </figcaption>
 
-      <div role="tablist" aria-label="Room photographs" className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size">
-        {photos.map((candidate, candidateIndex) => (
+      <div role="tablist" aria-label="Room views" className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size">
+        {views.map((candidate, candidateIndex) => (
           <button
             key={candidate.url}
             type="button"
@@ -111,13 +160,37 @@ export function RoomGallery({ room }: { room: RoomType }) {
               pill(candidateIndex === index ? 'primary' : 'secondary', 'h-auto gap-2.5 py-1 pr-4 pl-1'),
             )}
           >
-            <span className="size-9 shrink-0 overflow-hidden rounded-full bg-stone">
-              <img src={candidate.url} alt="" width={72} height={72} loading="lazy" className="size-full object-cover" />
+            <span
+              className={cn(
+                'size-9 shrink-0 overflow-hidden rounded-full bg-stone',
+                candidate.type === '360' && 'grid place-items-center text-foreground',
+              )}
+            >
+              {candidate.type === '360' ? (
+                <GlobeAltIcon className="size-4" aria-hidden="true" />
+              ) : (
+                <img src={candidate.url} alt="" width={72} height={72} loading="lazy" className="size-full object-cover" />
+              )}
             </span>
             {candidate.label}
           </button>
         ))}
       </div>
+
+      {photo.type === '360' ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Drag to look around. A stand-in panorama from{' '}
+          <a
+            href="https://polyhaven.com"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Poly Haven
+          </a>{' '}
+          (CC0) until this room is captured in 360.
+        </p>
+      ) : null}
     </figure>
   );
 }

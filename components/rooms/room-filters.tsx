@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { SlidersHorizontal, X } from '@phosphor-icons/react/dist/ssr';
+import { AdjustmentsHorizontalIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CatalogFacets, RoomFilters as Filters } from '@/lib/application/catalog-service';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { activeFilterCount, buildQuery, filtersAreDefault } from '@/lib/application/search-params';
@@ -33,7 +33,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
           <SheetTrigger
             render={
               <button type="button" className={pill('secondary', 'w-full shadow-soft')}>
-                <SlidersHorizontal weight="fill" className="size-4" aria-hidden="true" />
+                <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
                 Filters
                 {count > 0 ? (
                   <span className="rounded-full bg-ink px-2 py-0.5 text-xs font-semibold text-[#F7F5F0]">
@@ -48,7 +48,13 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
               <SheetTitle className="text-display text-xl font-medium">Filter rooms</SheetTitle>
             </SheetHeader>
             <div className="overflow-y-auto px-4 pb-4">
-              <FilterControls idPrefix="sheet" criteria={criteria} filters={filters} facets={facets} />
+              <FilterControls
+                idPrefix="sheet"
+                criteria={criteria}
+                filters={filters}
+                facets={facets}
+                showTitle={false}
+              />
             </div>
             <div className="border-t border-border bg-card p-4">
               <button type="button" onClick={() => setSheetOpen(false)} className={pill('primary', 'w-full')}>
@@ -76,7 +82,15 @@ interface FilterControlsProps {
   facets: CatalogFacets;
 }
 
-function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsProps) {
+function FilterControls({
+  idPrefix,
+  criteria,
+  filters,
+  facets,
+  // The bottom sheet puts its own title in its header; a second "Filters"
+  // right under "Filter rooms" is the sheet saying the same thing twice.
+  showTitle = true,
+}: FilterControlsProps & { showTitle?: boolean }) {
   const router = useRouter();
   const [, startTransition] = React.useTransition();
   const [priceDraft, setPriceDraft] = React.useState<[number, number]>([
@@ -103,15 +117,15 @@ function FilterControls({ idPrefix, criteria, filters, facets }: FilterControlsP
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="flex items-center justify-between">
-        <h2 className="text-display text-xl font-medium">Filters</h2>
+      <div className={cn('flex items-center', showTitle ? 'justify-between' : 'justify-end')}>
+        {showTitle ? <h2 className="text-display text-xl font-medium">Filters</h2> : null}
         <button
           type="button"
           disabled={isDefault}
           onClick={() => apply({ ...defaultRoomFilters, sort: filters.sort })}
           className={pill('ghost', 'h-10 px-3 text-accent-strong disabled:text-muted-foreground')}
         >
-          <X weight="bold" className="size-3.5" aria-hidden="true" />
+          <XMarkIcon className="size-3.5" aria-hidden="true" />
           Reset
         </button>
       </div>
@@ -253,7 +267,7 @@ function Chips<T extends string>({
             aria-pressed={pressed}
             onClick={() => onToggle(option.value)}
             className={cn(
-              'inline-flex min-h-10 items-center rounded-full border px-3.5 text-sm transition-colors',
+              'inline-flex min-h-10 cursor-pointer items-center rounded-full border px-3.5 text-sm transition-colors',
               pressed ? 'border-ink bg-ink text-[#F7F5F0]' : 'border-border bg-card hover:bg-stone',
             )}
           >

@@ -18,6 +18,16 @@
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
+  --color-tint-clay: var(--tint-clay);
+  --color-tint-clay-ink: var(--tint-clay-ink);
+  --color-tint-sand: var(--tint-sand);
+  --color-tint-sand-ink: var(--tint-sand-ink);
+  --color-tint-sage: var(--tint-sage);
+  --color-tint-sage-ink: var(--tint-sage-ink);
+  --color-tint-rose: var(--tint-rose);
+  --color-tint-rose-ink: var(--tint-rose-ink);
+  --color-tint-stone: var(--tint-stone);
+  --color-tint-stone-ink: var(--tint-stone-ink);
   --color-muted-text: var(--muted-text);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -66,8 +76,19 @@
  * and on :root those family variables do not exist yet.
  */
 body {
-  --font-display-stack: var(--font-display-family), 'Helvetica Neue', Arial, sans-serif;
-  --font-body-stack: var(--font-body-family), 'Helvetica Neue', Arial, sans-serif;
+  /*
+   * San Francisco is not shipped: `-apple-system` hands back the device's own
+   * interface face on macOS and iOS, which is what Apple's licence allows.
+   * Inter follows for everything else so Windows and Android keep the same
+   * character instead of dropping to Segoe or Roboto. Display and body are one
+   * family here, the way the platform itself does it — the difference between
+   * a title and a paragraph is size and weight, not a second typeface.
+   */
+  --font-ui-stack:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', var(--font-ui-family), system-ui,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display-stack: var(--font-ui-stack);
+  --font-body-stack: var(--font-ui-stack);
   --font-accent-stack: var(--font-accent-family), Georgia, 'Times New Roman', serif;
   font-family: var(--font-body-stack);
 }
@@ -78,6 +99,22 @@ body {
   --ink: #161616;
   --canvas: #f3f1ec;
   --stone: #e9e5dd;
+
+  /*
+   * Flat tints for the amenity cards. Warm throughout, with one muted sage —
+   * no blue, no purple, no neon, per the accent rule. They are surfaces only:
+   * the accent still belongs to the section-label dot, focus, and savings.
+   */
+  --tint-clay: #f4e6dd;
+  --tint-clay-ink: #9a4e2c;
+  --tint-sand: #efe7d3;
+  --tint-sand-ink: #7f6a35;
+  --tint-sage: #e2e9de;
+  --tint-sage-ink: #4c6a4e;
+  --tint-rose: #f1e2e0;
+  --tint-rose-ink: #93565a;
+  --tint-stone: #e9e5dd;
+  --tint-stone-ink: #5f5e58;
   --accent: #b8603a;
   --accent-strong: #9a4e2c;
   --accent-soft: #f4e6dd;
@@ -122,6 +159,16 @@ body {
   --ink: #161616;
   --canvas: #161616;
   --stone: #242320;
+  --tint-clay: #33251d;
+  --tint-clay-ink: #e59b76;
+  --tint-sand: #2c2921;
+  --tint-sand-ink: #d3bb7f;
+  --tint-sage: #21281f;
+  --tint-sage-ink: #9dc09c;
+  --tint-rose: #2f2422;
+  --tint-rose-ink: #e0a3a4;
+  --tint-stone: #242320;
+  --tint-stone-ink: #a5a29b;
   --accent: #d07a50;
   --accent-strong: #e59b76;
   --accent-soft: #33251d;
@@ -177,18 +224,22 @@ body {
   h2,
   h3 {
     font-family: var(--font-display-stack);
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.022em;
   }
 }
 
 @layer utilities {
-  /* Display type: the grotesk at medium weight, tight, with short leading. */
+  /*
+   * Display type: the interface face at bold, tracked in. Apple's own titles
+   * tighten as they grow, so the negative tracking does the work a second
+   * typeface used to do.
+   */
   .text-display {
     font-family: var(--font-display-stack);
-    font-weight: 500;
-    letter-spacing: -0.025em;
-    line-height: 1.02;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.05;
   }
 
   /* One italic phrase per screen at most. Never for body copy or labels. */
@@ -220,6 +271,29 @@ body {
   .shadow-soft-lg {
     box-shadow: 0 2px 4px rgb(22 22 22 / 5%), 0 28px 60px -28px rgb(22 22 22 / 24%);
   }
+}
+
+/*
+ * Pannellum (public/vendor/pannellum) ships its own chrome. The sphere sits
+ * over a photograph of the same place until it has loaded, so its grey grid
+ * and loading box must not paint over that; markers are our own pills.
+ */
+.pnlm-container {
+  /* Its stylesheet is injected after this one, so order alone would lose. */
+  background: transparent !important;
+}
+.pnlm-load-box,
+.pnlm-about-msg {
+  display: none !important;
+}
+.pnlm-hotspot-base.pnlm-marker {
+  cursor: pointer;
+}
+/* Invisible corner points: Pannellum projects them, we read them back to draw outlines. */
+.pnlm-hotspot-base.pnlm-vertex {
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

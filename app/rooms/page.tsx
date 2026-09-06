@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { MagnifyingGlass } from '@phosphor-icons/react/dist/ssr';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { activeFilterCount, buildQuery, parseCriteria, parseFilters, toIsoDate } from '@/lib/application/search-params';
@@ -34,7 +34,18 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
 
   return (
     <>
-      <SiteHeader stayQuery={stayQuery} />
+      <SiteHeader
+        stayQuery={stayQuery}
+        search={
+          <StaySearchBar
+            criteria={criteria}
+            filters={filters}
+            minDate={today}
+            submitLabel="Update stay"
+            size="compact"
+          />
+        }
+      />
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm text-muted-foreground">
           <Link href={`/?${buildQuery({ criteria })}`} className="hover:text-foreground">
@@ -54,7 +65,8 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           <h1 className="text-display mt-4 text-5xl sm:text-6xl">Choose your room</h1>
         </header>
 
-        <div className="mt-8">
+        {/* From `lg` the same search rides in the header instead. */}
+        <div className="mt-8 lg:hidden">
           <h2 className="sr-only">Change your stay</h2>
           <StaySearchBar criteria={criteria} filters={filters} minDate={today} submitLabel="Update stay" />
         </div>
@@ -78,7 +90,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
             {offers.length === 0 ? (
               <EmptyResults criteria={criteria} />
             ) : (
-              <div className="grid gap-5">
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {offers.map((offer) => (
                   <RoomCard key={offer.room.id} offer={offer} stayQuery={stayQuery} />
                 ))}
@@ -92,7 +104,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           </section>
         </div>
       </main>
-      <SiteFooter />
+      <SiteFooter stayQuery={stayQuery} />
     </>
   );
 }
@@ -101,7 +113,7 @@ function EmptyResults({ criteria }: { criteria: ReturnType<typeof parseCriteria>
   return (
     <div className="flex flex-col items-center gap-5 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
       <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
-        <MagnifyingGlass weight="fill" className="size-5" aria-hidden="true" />
+        <MagnifyingGlassIcon className="size-5" aria-hidden="true" />
       </span>
       <div>
         <h2 className="text-display text-3xl">No rooms match those filters</h2>

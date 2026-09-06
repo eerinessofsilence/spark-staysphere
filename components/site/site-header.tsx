@@ -1,20 +1,22 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { pill } from '@/lib/ui';
+import { AuthActions } from '@/components/site/auth-actions';
+import { LanguagePicker } from '@/components/site/language-picker';
 import { cn } from '@/lib/utils';
 
 interface SiteHeaderProps {
   /** Query string carrying the current stay so navigation never loses the dates. */
   stayQuery?: string;
+  /**
+   * The compact stay search. It takes the place the nav links used to hold —
+   * on a booking site the search is the navigation. Shown from `lg` up, where
+   * there is room for it; narrower screens keep the full bar on the page.
+   */
+  search?: ReactNode;
   className?: string;
 }
 
-const navigation = [
-  { href: '/', label: 'The hotel' },
-  { href: '/rooms', label: 'Rooms' },
-  { href: '/admin', label: 'Admin' },
-];
-
-export function SiteHeader({ stayQuery, className }: SiteHeaderProps) {
+export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
   const suffix = stayQuery ? `?${stayQuery}` : '';
 
   return (
@@ -32,26 +34,14 @@ export function SiteHeader({ stayQuery, className }: SiteHeaderProps) {
           </span>
         </Link>
 
-        <nav aria-label="Primary" className="ml-auto flex items-center">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href === '/admin' ? item.href : `${item.href}${suffix}`}
-              className={cn(
-                'flex min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-4',
-                item.href === '/' && 'hidden md:flex',
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="flex flex-1 justify-center">
+          {search ? <div className="hidden lg:block">{search}</div> : null}
+        </div>
 
-        <Link href={`/rooms${suffix}`} className={pill('primary', 'h-10 px-4 sm:h-11 sm:px-5')}>
-          <span>
-            Book<span className="hidden sm:inline"> a room</span>
-          </span>
-        </Link>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <LanguagePicker />
+          <AuthActions />
+        </div>
       </div>
     </header>
   );

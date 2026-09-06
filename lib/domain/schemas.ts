@@ -18,6 +18,18 @@ export const hotspotSchema = z.object({
   /** Position as a fraction of the photo's width and height. */
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),
+  /**
+   * Where the same marker sits inside the area's 360° capture, in degrees.
+   * Omitted, it is derived from `x`/`y`; a real capture sets them exactly.
+   */
+  yaw: z.number().min(-180).max(180).optional(),
+  pitch: z.number().min(-90).max(90).optional(),
+  /** The room type this marker sells, so it can carry the floor and tonight's price. */
+  roomSlug: z.string().optional(),
+  /** The part of the photo the marker stands for, as fractions; outlined on hover. */
+  outline: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).optional(),
+  /** The same footprint inside the 360° capture, as corners in degrees; it turns with the view. */
+  sphereOutline: z.array(z.object({ yaw: z.number(), pitch: z.number() })).optional(),
   /** Where the hotspot sends a guest; the stay query is appended at render time. */
   href: z.string(),
   cta: z.string(),
@@ -29,6 +41,24 @@ export const hotelAreaSchema = z.object({
   name: z.string(),
   description: z.string(),
   photo: photoSchema,
+  /** Equirectangular (2:1) capture of the same area, offered beside the photo. */
+  panorama: z.string().optional(),
+  /** Where the sphere opens, in degrees; an aerial looks down, a room looks level. */
+  panoramaView: z.object({ yaw: z.number(), pitch: z.number(), hfov: z.number().optional() }).optional(),
+  /** Shown on the sphere when its licence asks for a visible credit. */
+  panoramaCredit: z.object({ text: z.string(), href: z.string() }).optional(),
+  /**
+   * Where each room type sits on the photo — a floor, a wing — as fractions.
+   * Hovering one names the room, its floor and its price; clicking opens it.
+   */
+  roomZones: z
+    .array(
+      z.object({
+        roomSlug: z.string(),
+        outline: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })),
+      }),
+    )
+    .optional(),
   hotspots: z.array(hotspotSchema),
 });
 
@@ -90,6 +120,35 @@ export const addOnSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
+  /**
+   * Which counter the extra is sold from. Both are quoted and paid with the
+   * stay; the split is what the guest is shown, since ordering dinner and
+   * booking a transfer are different decisions made at different moments.
+   */
+  category: z.enum(['service', 'dining']),
+  /**
+   * An extra that belongs to another extra: the wine pairing on a dinner, the
+   * return leg on a transfer. Modelling it as an add-on with a parent rather
+   * than a new kind of record means the selection, the quote, the booking, and
+   * every stored total keep working unchanged — it is priced, withdrawn, and
+   * paid for exactly like the thing it hangs off. It is only ever offered
+   * inside its parent, and is dropped from a quote if the parent is not taken.
+   */
+  parentId: z.string().optional(),
+  /**
+   * A dish is chosen by sight, so anything from the kitchen carries its own
+   * photographs: the first is the card, the rest are the panel's slider.
+   * Services have none and are shown by name and description.
+   */
+  photos: z
+    .array(
+      z.object({
+        url: z.string(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    )
+    .optional(),
   price: z.number().nonnegative(),
   currency: currencySchema,
   pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),
@@ -153,6 +212,8 @@ export const stayCriteriaSchema = z
 
 export const addOnLineSchema = z.object({
   addOnId: z.string(),
+  /** Set when the line is an extra on another line, so a summary can indent it. */
+  parentId: z.string().optional(),
   name: z.string(),
   pricingUnit: addOnSchema.shape.pricingUnit,
   unitPrice: z.number().nonnegative(),

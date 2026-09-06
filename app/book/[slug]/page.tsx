@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from '@phosphor-icons/react/dist/ssr';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseAddOnIds, parseCriteria, toIsoDate } from '@/lib/application/search-params';
@@ -38,7 +38,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
             href={`/rooms/${detail.offer.room.slug}?${stayQuery}`}
             className="inline-flex min-h-11 items-center gap-2 text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft weight="bold" className="size-4" aria-hidden="true" />
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
             Back to {detail.offer.room.name}
           </Link>
         </nav>
@@ -63,7 +63,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
           minDate={toIsoDate(new Date())}
         />
       </main>
-      <SiteFooter />
+      <SiteFooter stayQuery={stayQuery} />
     </>
   );
 }

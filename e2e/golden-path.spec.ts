@@ -72,6 +72,29 @@ async function toggle(box: Locator, expected: 'true' | 'false') {
 }
 
 /**
+ * Extras are bought through their own panel now: the card opens it, the extras
+ * are ticked inside, and one button commits the lot. `extras` names the ones to
+ * add along with the thing itself.
+ */
+async function addExtra(page: Page, name: RegExp, extras: RegExp[] = []) {
+  await actUntil(
+    async () => {
+      const card = page.getByRole('button', { name: new RegExp(`Open .*${name.source}`, 'i') }).first();
+      await card.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+      await card.click();
+    },
+    () => expect(page.getByRole('dialog')).toBeVisible({ timeout: 3_000 }),
+  );
+
+  const panel = page.getByRole('dialog');
+  for (const extra of extras) {
+    await toggle(panel.getByRole('checkbox', { name: extra }), 'true');
+  }
+  await panel.getByRole('button', { name: /Add to your stay|Save changes/ }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+}
+
+/**
  * Runs first on purpose. Demo state is process-local and accumulates across runs
  * — bookings hold inventory and overrides persist — so the suite starts by
  * clearing it, which also covers the admin reset control itself.
@@ -106,12 +129,13 @@ test('the arrival screen presents the hotel area by area with hotspots', async (
   const scene = page.getByRole('group', { name: /Explore the hotel area by area/ });
   await expect(scene).toBeVisible();
 
-  // Switch to the pool area, then open its hotspot. The tablist sits inside the
-  // stage on desktop and below it on mobile; only one is in the tree at a time.
-  const poolTab = page.getByRole('tab', { name: 'Pool' });
+  // Switch to the pool area, then open its hotspot. Areas page with the
+  // arrows on the stage's bottom rail — "The hotel" is first, "Pool" second.
+  const areaLabel = scene.getByText('The hotel', { exact: true });
+  await expect(areaLabel).toBeVisible();
   await actUntil(
-    () => poolTab.click(),
-    () => expect(poolTab).toHaveAttribute('aria-selected', 'true', { timeout: 3_000 }),
+    () => page.getByRole('button', { name: 'Next area' }).click(),
+    () => expect(scene.getByText('Pool', { exact: true })).toBeVisible({ timeout: 3_000 }),
   );
 
   const cta = page.getByRole('link', { name: 'See pool-access rooms' });
@@ -221,9 +245,12 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   const summary = page.getByRole('complementary', { name: 'Your stay' });
   const totalBefore = await summary.locator('.text-display').last().innerText();
 
-  await toggle(page.getByRole('checkbox', { name: /Spa ritual/ }).first(), 'true');
+  // The ritual, and the longer version of it picked inside its own panel.
+  await addExtra(page, /Spa ritual/, [/Extend to 90 minutes/]);
   await expect(page).toHaveURL(/addOn=addon_spa/);
+  await expect(page).toHaveURL(/addOn=addon_spa_longer/);
   await expect(summary.getByText('Spa ritual')).toBeVisible();
+  await expect(summary.getByText('Extend to 90 minutes')).toBeVisible();
 
   const totalAfter = await summary.locator('.text-display').last().innerText();
   expect(totalAfter).not.toEqual(totalBefore);
@@ -239,7 +266,18 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
 
   const firstCard = page.getByRole('region', { name: 'Search results' }).locator('article').first();
   const roomName = (await firstCard.getByRole('heading').innerText()).trim();
-  await firstCard.getByRole('link', { name: 'Book now' }).click();
+
+  // The catalog only ever opens the room's own page — booking starts there,
+  // once the guest has actually seen the room, never as a shortcut from the
+  // search results.
+  await firstCard.getByRole('link', { name: 'See details' }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  await expect(page.getByRole('heading', { level: 1, name: roomName })).toBeVisible();
+
+  await page
+    .getByRole('complementary', { name: 'Your stay' })
+    .getByRole('link', { name: 'Book this room' })
+    .click();
 
   await expect(page).toHaveURL(/\/book\//);
   await expect(page.getByRole('heading', { level: 1, name: 'Complete your stay' })).toBeVisible();
@@ -255,8 +293,9 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
 
   // 3. Services — adding one must change the running total.
   const totalBefore = await summary.locator('.text-display').last().innerText();
-  await toggle(page.getByRole('checkbox', { name: /Airport transfer/ }), 'true');
+  await addExtra(page, /Airport transfer/, [/Return leg on departure/]);
   await expect(summary.getByText('Airport transfer')).toBeVisible();
+  await expect(summary.getByText('Return leg on departure')).toBeVisible();
   const totalAfter = await summary.locator('.text-display').last().innerText();
   expect(totalAfter).not.toEqual(totalBefore);
   await page.getByRole('button', { name: 'Continue' }).click();
