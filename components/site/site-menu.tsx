@@ -2,28 +2,33 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import {
   Bars3Icon,
   BuildingOffice2Icon,
   Cog6ToothIcon,
+  BriefcaseIcon,
   Squares2X2Icon,
   ArrowRightEndOnRectangleIcon,
   UserIcon,
   UserPlusIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AuthDialog, type AuthMode } from '@/components/site/auth-dialog';
-import { Modal } from '@/components/site/modal';
+import { ThemeToggle } from '@/components/site/theme-toggle';
+import { useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 /**
  * The header's one menu, in the shape the large travel sites settled on: a
  * pill holding a burger and an avatar, opening account first and the site's
- * own pages under it. One control at every width — a phone gets the same
- * menu as a desk instead of a header with nowhere to put the navigation.
+ * own pages under it.
  *
- * It opens the project's `Modal`, not a bespoke dropdown: the design system
- * allows the product exactly one kind of overlay, a sheet on a phone and a
- * centred card above it.
+ * A phone gets the sheet every other overlay in the product rises as. A
+ * desk gets a proper anchored dropdown instead — the shape a menu takes
+ * there, not a centred dialog with the whole page dimmed behind it for five
+ * rows of links. Same content, same component; only where it lands differs.
  */
 
 interface SiteMenuProps {
@@ -31,21 +36,158 @@ interface SiteMenuProps {
   stayQuery?: string;
 }
 
+const PANEL_WIDTH = 320;
+const VIEWPORT_MARGIN = 12;
+
 export function SiteMenu({ stayQuery }: SiteMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<AuthMode | null>(null);
+  const { rendered, visible } = useOverlayTransition(open);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = React.useState<DOMRect | null>(null);
+  const [mounted, setMounted] = React.useState(false);
   const suffix = stayQuery ? `?${stayQuery}` : '';
+
+  React.useEffect(() => setMounted(true), []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const track = () => setAnchor(triggerRef.current?.getBoundingClientRect() ?? null);
+    track();
+    window.addEventListener('resize', track);
+    window.addEventListener('scroll', track, true);
+    return () => {
+      window.removeEventListener('resize', track);
+      window.removeEventListener('scroll', track, true);
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!rendered) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open, rendered]);
 
   const startAuth = (mode: AuthMode) => {
     setOpen(false);
     setAuthMode(mode);
   };
 
+  const navigate = () => setOpen(false);
+
+  const panel = (
+    <div className="text-foreground">
+      {/* Dims the page behind the sheet only — the anchored desk panel sits
+          on the page the way any other dropdown does, nothing behind it
+          pushed back. */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'fixed inset-0 z-40 bg-ink/20 transition-opacity duration-200 sm:hidden',
+          visible ? 'opacity-100' : 'opacity-0',
+        )}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-label="Menu"
+        className={cn(
+          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[28px] border border-border bg-card shadow-soft-lg',
+          'sm:inset-auto sm:top-(--panel-top) sm:right-(--panel-right) sm:w-(--panel-width) sm:max-w-[calc(100vw-2rem)] sm:overflow-visible sm:rounded-3xl',
+          'transition-[opacity,translate] duration-200 ease-out',
+          visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-8 opacity-0 sm:translate-y-0',
+        )}
+        style={
+          anchor
+            ? ({
+                '--panel-top': `${anchor.bottom + 8}px`,
+                '--panel-right': `${Math.min(
+                  Math.max(VIEWPORT_MARGIN, window.innerWidth - anchor.right),
+                  Math.max(VIEWPORT_MARGIN, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
+                )}px`,
+                '--panel-width': `${PANEL_WIDTH}px`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:hidden">
+          <span className="text-sm font-medium">Menu</span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+            className={iconButton('light', 'size-10')}
+          >
+            <XMarkIcon className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="p-3 sm:p-3">
+          <div className="grid gap-1">
+            <MenuButton icon={UserPlusIcon} onClick={() => startAuth('signup')} strong>
+              Sign up
+            </MenuButton>
+            <MenuButton icon={ArrowRightEndOnRectangleIcon} onClick={() => startAuth('signin')} strong>
+              Log in
+            </MenuButton>
+          </div>
+
+          <div className="my-3 border-t border-border" />
+
+          <nav aria-label="Site" className="grid gap-1">
+            <MenuLink icon={BuildingOffice2Icon} href={`/${suffix}`} onNavigate={navigate}>
+              The hotel
+            </MenuLink>
+            <MenuLink icon={Squares2X2Icon} href={`/rooms${suffix}`} onNavigate={navigate}>
+              All rooms
+            </MenuLink>
+            <MenuLink icon={BriefcaseIcon} href={`/trips${suffix}`} onNavigate={navigate}>
+              My trips
+            </MenuLink>
+            {/* The stay is a guest's, not the desk's: admin opens without it. */}
+            <MenuLink icon={Cog6ToothIcon} href="/admin" onNavigate={navigate}>
+              Hotel admin
+            </MenuLink>
+          </nav>
+
+          <div className="my-3 border-t border-border" />
+
+          <ThemeToggle />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((current) => !current)}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Menu and account"
@@ -57,31 +199,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         </span>
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Menu">
-        <div className="grid gap-1">
-          <MenuButton icon={UserPlusIcon} onClick={() => startAuth('signup')} strong>
-            Sign up
-          </MenuButton>
-          <MenuButton icon={ArrowRightEndOnRectangleIcon} onClick={() => startAuth('signin')} strong>
-            Log in
-          </MenuButton>
-        </div>
-
-        <div className="my-3 border-t border-border" />
-
-        <nav aria-label="Site" className="grid gap-1">
-          <MenuLink icon={BuildingOffice2Icon} href={`/${suffix}`} onNavigate={() => setOpen(false)}>
-            The hotel
-          </MenuLink>
-          <MenuLink icon={Squares2X2Icon} href={`/rooms${suffix}`} onNavigate={() => setOpen(false)}>
-            All rooms
-          </MenuLink>
-          {/* The stay is a guest's, not the desk's: admin opens without it. */}
-          <MenuLink icon={Cog6ToothIcon} href="/admin" onNavigate={() => setOpen(false)}>
-            Hotel admin
-          </MenuLink>
-        </nav>
-      </Modal>
+      {mounted && rendered ? createPortal(panel, document.body) : null}
 
       <AuthDialog mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
     </>

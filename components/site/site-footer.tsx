@@ -37,10 +37,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
       <div className="mx-auto max-w-[1400px] rounded-[28px] bg-ink px-6 py-10 text-[#F7F5F0] sm:px-10 sm:py-12 dark:border dark:border-border dark:bg-card">
         <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-8">
           <div>
-            <p className="flex items-center gap-2">
-              <img src="/brand/spark-logo.svg" alt="Spark" className="h-7 w-auto" />
-              <span className="text-display text-2xl text-white/50">/ StaySphere</span>
-            </p>
+            <img src="/brand/spark-logo-footer.svg" alt="Spark" className="h-7 w-auto" />
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/60">
               A white-label direct-booking front end for independent hotels.
             </p>
