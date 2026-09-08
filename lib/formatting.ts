@@ -85,6 +85,14 @@ export function statusText(status: RoomStatus, remaining: number): string {
   }
 }
 
+/** The one line a marker gets to say about the room it sells — floor and tonight's rate. */
+export function formatRoomLine(
+  facts: { floor: number; nightlyPrice: number; currency: Currency } | null | undefined,
+): string | null {
+  if (!facts) return null;
+  return `${formatFloor(facts.floor)} · from ${formatMoney(facts.nightlyPrice, facts.currency)}`;
+}
+
 export function formatFloor(floor: number): string {
   if (floor === 0) return 'Ground floor';
   const suffix = floor === 1 ? 'st' : floor === 2 ? 'nd' : floor === 3 ? 'rd' : 'th';

@@ -27,6 +27,16 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const highlights = offers.slice(0, 3);
   const rest = offers.slice(3);
 
+  // Deep link into the building spinner: `?frame=N` turns it directly;
+  // `?unit=<roomSlug or hotspot id>` turns it to wherever that hotspot is visible.
+  const frameParam = typeof params.frame === 'string' ? Number.parseInt(params.frame, 10) : NaN;
+  const spinnerInitialFrame = Number.isFinite(frameParam) ? frameParam : undefined;
+  const unitParam = typeof params.unit === 'string' ? params.unit : undefined;
+  const spinnerFocusHotspotId = unitParam
+    ? (hotel.spinner?.hotspots.find((hotspot) => hotspot.roomSlug === unitParam || hotspot.id === unitParam)
+        ?.id ?? null)
+    : null;
+
   // What the arrival markers may say about a room: the floor from the catalog,
   // the price from the same breakdown every other screen shows.
   const roomFacts = Object.fromEntries(
@@ -38,6 +48,9 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         floor: offer.room.floor,
         capacity: offer.room.capacity,
         bedType: offer.room.bedType,
+        status: offer.status,
+        remaining: offer.remaining,
+        photo: offer.room.media.find((item) => item.type === 'image')?.url,
         nightlyPrice: offer.price.nightlyPrice,
         currency: offer.price.currency,
       },
@@ -55,7 +68,15 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         <section className="mx-auto max-w-[1400px] px-3 pt-8 sm:px-6 lg:pt-14">
           <h1 className="sr-only">{hotel.name}</h1>
 
-          <HotelScene areas={hotel.areas} location={hotel.location} stayQuery={stayQuery} rooms={roomFacts} />
+          <HotelScene
+            areas={hotel.areas}
+            location={hotel.location}
+            stayQuery={stayQuery}
+            rooms={roomFacts}
+            spinner={hotel.spinner}
+            spinnerInitialFrame={spinnerInitialFrame}
+            spinnerFocusHotspotId={spinnerFocusHotspotId}
+          />
 
           <div className="mt-5 sm:px-6 lg:px-12">
             <h2 className="sr-only">Search rooms</h2>

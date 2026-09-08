@@ -62,6 +62,56 @@ export const hotelAreaSchema = z.object({
   hotspots: z.array(hotspotSchema),
 });
 
+/** One still in the orbit sequence; `frames[0]` is the 0° stop. */
+export const spinnerFrameSchema = z.object({
+  index: z.number().int().nonnegative(),
+  imageUrl: z.string(),
+});
+
+/**
+ * Where a spinner hotspot sits at one frame it's actually visible in. A
+ * hotspot only appears across the sub-range its keyframes span — the frames
+ * where it faces the camera — with its position interpolated between them.
+ */
+export const spinnerHotspotKeyframeSchema = z.object({
+  frameIndex: z.number().int().nonnegative(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  /**
+   * The part of the building this marker stands for, traced on this frame as
+   * fractions. Every keyframe of one hotspot must trace the same corners in the
+   * same order, so the shape can be interpolated between frames as it turns.
+   */
+  outline: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).optional(),
+});
+
+export const spinnerHotspotSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string(),
+  /** The room type this marker sells, so it can carry the floor and tonight's price. */
+  roomSlug: z.string().nullable(),
+  href: z.string(),
+  cta: z.string(),
+  keyframes: z.array(spinnerHotspotKeyframeSchema).min(2),
+});
+
+/** A draggable orbit around the building exterior — replaces one `HotelArea`'s flat photo. */
+export const buildingSpinnerSchema = z.object({
+  frameCount: z.number().int().positive(),
+  /** Every frame shares one framing, so hotspot fractions project through one size. */
+  frameWidth: z.number().int().positive(),
+  frameHeight: z.number().int().positive(),
+  /**
+   * The frames the arrows stop on. Stepping 160 frames one at a time is
+   * unusable, so prev/next jump to the next of these and animate the frames
+   * in between.
+   */
+  keyAngles: z.array(z.number().int().nonnegative()).min(2),
+  frames: z.array(spinnerFrameSchema),
+  hotspots: z.array(spinnerHotspotSchema),
+});
+
 export const hotelSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -71,6 +121,12 @@ export const hotelSchema = z.object({
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),
+  /**
+   * Optional so this ships without touching every existing `Hotel` fixture.
+   * When present, it replaces the flat photo of whichever `HotelArea` carries
+   * the same hotspot ids (see `SPINNER_AREA_ID` in `hotel-scene.tsx`).
+   */
+  spinner: buildingSpinnerSchema.optional(),
 });
 
 export const roomTypeSchema = z.object({
@@ -278,6 +334,9 @@ export const bookingRequestSchema = z.object({
 export type Hotel = z.infer<typeof hotelSchema>;
 export type HotelArea = z.infer<typeof hotelAreaSchema>;
 export type Hotspot = z.infer<typeof hotspotSchema>;
+export type BuildingSpinnerData = z.infer<typeof buildingSpinnerSchema>;
+export type SpinnerHotspot = z.infer<typeof spinnerHotspotSchema>;
+export type SpinnerFrame = z.infer<typeof spinnerFrameSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type RatePlan = z.infer<typeof ratePlanSchema>;

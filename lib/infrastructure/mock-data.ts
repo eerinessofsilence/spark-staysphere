@@ -1,4 +1,5 @@
 import type { AddOn, Hotel, HotelArea, RatePlan, RoomType } from '../domain/schemas';
+import { trackedOutlines } from './spinner-outlines';
 
 /**
  * Photography lives in public/images and is credited in public/images/CREDITS.md.
@@ -10,7 +11,7 @@ const hotelAreas: HotelArea[] = [
     id: 'hotel',
     name: 'The hotel',
     description:
-      'Eight floors of white balconies stepping down the cliff, every one of them facing the open Adriatic.',
+      'Eight floors of white balconies curving above the town, the upper ones looking clear over the rooftops to the Mediterranean.',
     photo: { url: '/images/hotel/facade.webp', width: 2000, height: 1334, alt: 'Terraced white hotel balconies above a deep blue sea' },
     // An aerial: the sphere opens looking down at the seafront, and the
     // markers carry real angles onto the buildings and the water below.
@@ -30,9 +31,9 @@ const hotelAreas: HotelArea[] = [
     ],
     hotspots: [
       // Outlines trace the facade photo: the balcony floors, and the roof deck above them.
-      { id: 'sea-view', label: 'Sea-view rooms', description: 'Floors three and up face the open cove. Every sea-view room has a full-width balcony and a west-facing sunset.', x: 0.44, y: 0.58, yaw: -36, pitch: -26, roomSlug: 'deluxe-sea', sphereOutline: [{ yaw: -58, pitch: -17 }, { yaw: -21, pitch: -16 }, { yaw: -17, pitch: -39 }, { yaw: -60, pitch: -41 }], href: '/rooms?view=sea', cta: 'See sea-view rooms' },
+      { id: 'sea-view', label: 'Sea-view rooms', description: 'Floors three and up look over the rooftops to the sea. Every sea-view room has a full-width balcony and a west-facing sunset.', x: 0.44, y: 0.58, yaw: -36, pitch: -26, roomSlug: 'deluxe-sea', sphereOutline: [{ yaw: -58, pitch: -17 }, { yaw: -21, pitch: -16 }, { yaw: -17, pitch: -39 }, { yaw: -60, pitch: -41 }], href: '/rooms?view=sea', cta: 'See sea-view rooms' },
       { id: 'roof', label: 'Roof terrace', description: 'The top floor is the Asteria Penthouse: a private roof terrace with a plunge pool and an outdoor kitchen.', x: 0.3, y: 0.4, yaw: 24, pitch: -31, roomSlug: 'asteria-penthouse', sphereOutline: [{ yaw: 9, pitch: -21 }, { yaw: 41, pitch: -23 }, { yaw: 43, pitch: -43 }, { yaw: 7, pitch: -42 }], href: '/rooms/asteria-penthouse', cta: 'Open the penthouse' },
-      { id: 'cove', label: 'The cove', description: 'A working fishing cove below the hotel, with the beach club and the boat to the islands.', x: 0.78, y: 0.62, yaw: 118, pitch: -16, href: '/rooms', cta: 'Browse every room' },
+      { id: 'cove', label: 'The seafront', description: 'The bay is ten minutes downhill: the marina, the beach clubs and the boat to the islands.', x: 0.78, y: 0.62, yaw: 118, pitch: -16, href: '/rooms', cta: 'Browse every room' },
     ],
   },
   {
@@ -54,7 +55,7 @@ const hotelAreas: HotelArea[] = [
     panorama: '/images/panoramas/spa.webp',
     hotspots: [
       { id: 'hydro', label: 'Hydro pool', description: 'Sea-water pool kept at 34°, with loungers along the stone wall.', x: 0.5, y: 0.66, href: '/rooms?addOn=addon_spa', cta: 'Add a spa ritual' },
-      { id: 'treatment', label: 'Treatment rooms', description: 'Two rooms, both with a window onto the cove. Sixty-minute rituals, booked per guest.', x: 0.8, y: 0.34, href: '/rooms?addOn=addon_spa', cta: 'Add a spa ritual' },
+      { id: 'treatment', label: 'Treatment rooms', description: 'Two rooms, both with a window onto the garden. Sixty-minute rituals, booked per guest.', x: 0.8, y: 0.34, href: '/rooms?addOn=addon_spa', cta: 'Add a spa ritual' },
     ],
   },
   {
@@ -65,20 +66,83 @@ const hotelAreas: HotelArea[] = [
     panorama: '/images/panoramas/lobby.webp',
     hotspots: [
       { id: 'reception', label: 'Reception', description: 'Check-in from 15:00, check-out by 11:00 — or 18:00 with the late check-out.', x: 0.5, y: 0.6, href: '/rooms?addOn=addon_late', cta: 'Add a late check-out' },
-      { id: 'transfer', label: 'Arrivals', description: 'Private transfers from Split airport arrive at the lobby door, about fifty minutes on a good day.', x: 0.14, y: 0.52, href: '/rooms?addOn=addon_transfer', cta: 'Add an airport transfer' },
+      { id: 'transfer', label: 'Arrivals', description: 'Private transfers from Larnaca airport arrive at the lobby door, about fifty minutes on a good day.', x: 0.14, y: 0.52, href: '/rooms?addOn=addon_transfer', cta: 'Add an airport transfer' },
     ],
   },
 ];
+
+const SPIN_FRAME_COUNT = 160;
+
+/**
+ * A drone orbit of the property, 2.25° a frame, so a drag reads as continuous
+ * motion rather than a slideshow. Credited in `public/images/CREDITS.md`.
+ * `BuildingSpinner` fetches a window around the current frame, not all 160.
+ *
+ * The hotspots are the `sea-view` and `cove` markers `hotelAreas`
+ * already carries on that facade photo — same copy, same destinations, same
+ * `roomSlug` (so pricing still flows through `formatRoomLine`/`rooms`) — just
+ * with a keyframe arc instead of one fixed `{x, y}`, since a marker only exists
+ * across the frames where the thing it names actually faces the camera.
+ *
+ * The traced zone outlines come from `scripts/track-outlines.py`: a few frames are
+ * traced by hand and a planar tracker carries the shape across the rest of the arc.
+ */
+const buildingSpinner: NonNullable<Hotel['spinner']> = {
+  frameCount: SPIN_FRAME_COUNT,
+  // Native capture resolution: the stage draws ~3000 device px wide on a retina
+  // screen, so anything downscaled here is upscaled straight back on display.
+  frameWidth: 1920,
+  frameHeight: 1080,
+  /** Eight stops, 45° apart, so one arrow press turns the building an eighth of a turn. */
+  keyAngles: Array.from({ length: 8 }, (_, step) => step * (SPIN_FRAME_COUNT / 8)),
+  frames: Array.from({ length: SPIN_FRAME_COUNT }, (_, index) => ({
+    index,
+    imageUrl: `/images/hotel/spin/frame-${String(index).padStart(3, '0')}.webp`,
+  })),
+  hotspots: [
+    {
+      id: 'sea-view',
+      label: 'Sea-view rooms',
+      description:
+        'Floors three and up look over the rooftops to the sea. Every sea-view room has a full-width balcony and a west-facing sunset.',
+      roomSlug: 'deluxe-sea',
+      href: '/rooms?view=sea',
+      cta: 'See sea-view rooms',
+      // Outlines are off for now: the tracked shapes stay in `spinner-outlines.ts`,
+      // and dropping `outline` here is all it takes to switch the zone overlay back on.
+      keyframes: trackedOutlines['sea-view']!.map((keyframe) => ({
+        frameIndex: keyframe.frameIndex,
+        x: keyframe.x,
+        y: keyframe.y,
+      })),
+    },
+    {
+      id: 'cove',
+      label: 'The seafront',
+      description: 'The bay is ten minutes downhill: the marina, the beach clubs and the boat to the islands.',
+      roomSlug: null,
+      href: '/rooms',
+      cta: 'Browse every room',
+      // Kept clear of the area-name pill in the stage's top-left corner.
+      keyframes: [
+        { frameIndex: 0, x: 0.30, y: 0.13 },
+        { frameIndex: 30, x: 0.52, y: 0.11 },
+        { frameIndex: 60, x: 0.72, y: 0.12 },
+      ],
+    },
+  ],
+};
 
 export const demoHotel: Hotel = {
   id: 'hotel_asteria',
   slug: 'asteria-cove',
   name: 'Asteria Cove',
   tagline: 'See the stay. Book the room.',
-  location: 'Dalmatian Coast, Croatia',
+  location: 'Limassol, Cyprus',
   currency: 'EUR',
-  timezone: 'Europe/Zagreb',
+  timezone: 'Asia/Nicosia',
   areas: hotelAreas,
+  spinner: buildingSpinner,
 };
 
 interface RoomSeed {
@@ -124,7 +188,7 @@ const roomSeed: RoomSeed[] = [
     view: 'sea',
     nightlyPrice: 348,
     description:
-      'A corner room on the fourth floor with a full-width balcony over the cove. Lime-washed walls, oak joinery, and a deep soaking tub set against the water.',
+      'A corner room on the fourth floor with a full-width balcony facing the sea. Lime-washed walls, oak joinery, and a deep soaking tub set against the window.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Private balcony', 'Rain shower', 'Nespresso bar', 'Blackout blinds'],
     photos: [
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
@@ -312,7 +376,7 @@ export const demoAddOns: AddOn[] = [
   {
     id: 'addon_transfer',
     name: 'Airport transfer',
-    description: 'Private one-way transfer from Split airport in an electric car, met at arrivals.',
+    description: 'Private one-way transfer from Larnaca airport in an electric car, met at arrivals.',
     category: 'service',
     price: 75,
     currency: 'EUR',
@@ -323,7 +387,7 @@ export const demoAddOns: AddOn[] = [
     id: 'addon_transfer_return',
     parentId: 'addon_transfer',
     name: 'Return leg on departure',
-    description: 'The same car back to Split at the hour your flight needs.',
+    description: 'The same car back to Larnaca at the hour your flight needs.',
     category: 'service',
     price: 75,
     currency: 'EUR',
