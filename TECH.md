@@ -114,9 +114,24 @@ through the same `object-fit: cover` maths the browser applies, so markers stay 
 viewports. Room galleries come from `RoomType.media`, where each image carries a `label` that
 becomes its tab.
 
-There is no 3D scene. The earlier procedural React Three Fiber massing and SVG interiors were
-removed as schematic; a real GLB or 360 tile set, if it ever exists, slots into the same
-`HotelArea`/`media` records without a UI rewrite.
+The building itself is a model a guest can turn: `Hotel.model` describes the property as a
+handful of `blocks` (a tower, a terraced front, a wing — each a footprint, a floor range, which
+faces carry balconies, which floors are glazed) plus the grounds, and
+`components/hotel/hotel-model-scene.ts` builds it with three.js: floor plates and piers, sliding
+doors in dark frames, glass balustrades on a handrail, a glazed arcade at the base, on a headland
+that falls to the sea with maquis and cypresses behind. It is lit by a real sky — an HDRI, one
+per scheme — and surfaced with scanned plaster, concrete and ground, all Poly Haven CC0 assets at
+1K stored locally (`public/hdri`, `public/textures`, ~12 MB, credited in
+`public/images/CREDITS.md`) and loaded only when the model is; the night sky lights most of the
+rooms and the pool. A property that owns a GLB sets `model.url` instead and the massing
+is skipped; a mesh named `floor-3` in it is picked as the third floor. Either way the floors are
+the way into the catalog — a tap on one, or on the rail beside the stage, lists the room types on
+that floor at the catalog's own price. three.js (~150 KB gzipped) is a lazy import behind an
+`IntersectionObserver`, so it only ships once the stage is near the viewport; the scene renders
+on demand (only while on screen, only when something moved), one finger turns it and two pinch,
+and `prefers-reduced-motion` disables the idle turn. The React side, `components/hotel/hotel-model.tsx`,
+owns all the UI and follows the `.dark` class on `<html>` through a `MutationObserver`, reading
+the scene's colours off the page's own tokens.
 
 ## Current limitations
 
