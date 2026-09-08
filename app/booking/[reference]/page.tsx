@@ -77,7 +77,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
 
           <div className="mt-8 grid gap-6 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
             {room && coverPhoto(room) ? (
-              <div className="aspect-[4/3] overflow-hidden rounded-3xl bg-stone">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-stone">
                 <img
                   src={coverPhoto(room)!.url}
                   alt={room.name}
@@ -85,6 +85,12 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                   height={coverPhoto(room)!.height}
                   className="size-full object-cover"
                 />
+                {/* The photograph was the only thing on this page that said
+                    nothing. Named on the glass, it reads as the room that was
+                    booked rather than as decoration beside the details. */}
+                <span className="glass absolute right-3 bottom-3 left-3 rounded-full px-3.5 py-2 text-sm font-medium">
+                  {room.name}
+                </span>
               </div>
             ) : null}
             <dl className="grid gap-4 sm:grid-cols-2">

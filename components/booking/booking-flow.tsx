@@ -19,8 +19,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { AddOnCatalog } from '@/components/rooms/add-on-catalog';
-import { featureIcon } from '@/components/rooms/feature-icon';
+import { featureIcon, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import { BillRow } from '@/components/rooms/add-on-picker';
+import { StepRail } from '@/components/booking/step-rail';
+import { StayDatesSummary } from '@/components/search/stay-dates-summary';
 import { GuestsField } from '@/components/search/guests-field';
 import { StayDatesField } from '@/components/search/stay-dates-field';
 import { fieldClass, pill } from '@/lib/ui';
@@ -44,18 +46,21 @@ const paymentMethods = [
     label: 'Demo card',
     hint: 'Simulated authorization. No card fields, no card data.',
     icon: CreditCard,
+    tone: 'clay',
   },
   {
     id: 'demo_wallet',
     label: 'Demo wallet',
     hint: 'Stands in for Apple Pay or Google Pay in production.',
     icon: Wallet,
+    tone: 'sage',
   },
   {
     id: 'pay_at_hotel',
     label: 'Pay at the hotel',
     hint: 'Guarantee the room now, settle the balance on arrival.',
     icon: Lock,
+    tone: 'sand',
   },
 ] as const;
 
@@ -229,6 +234,9 @@ export function BookingFlow({
   };
 
   const stayQuery = buildQuery({ criteria, addOnIds });
+  // The arrival area is the hotel's own exterior; fall back to whatever area
+  // the property leads with if that one is ever renamed.
+  const hotelPhoto = (hotel.areas.find((area) => area.id === 'hotel') ?? hotel.areas[0])?.photo;
 
   // Services and the kitchen are shown apart: booking a transfer and ordering
   // dinner are different decisions, even though one total pays for both.
@@ -240,40 +248,7 @@ export function BookingFlow({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
       <div className="min-w-0">
-        <ol className="mb-8 flex flex-wrap gap-x-2 gap-y-2" aria-label="Booking steps">
-          {steps.map((entry, index) => {
-            const state = index === stepIndex ? 'current' : index < stepIndex ? 'done' : 'todo';
-            return (
-              <li key={entry.id}>
-                <button
-                  type="button"
-                  aria-current={state === 'current' ? 'step' : undefined}
-                  disabled={index > stepIndex}
-                  onClick={() => setStepIndex(index)}
-                  className={cn(
-                    'flex min-h-11 items-center gap-2 rounded-full border px-3 pr-4 text-sm font-medium transition-colors',
-                    state === 'current' && 'border-ink bg-ink text-[#F7F5F0]',
-                    state === 'done' && 'border-border bg-card hover:bg-stone',
-                    state === 'todo' && 'border-dashed border-border text-muted-foreground',
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'grid size-5 place-items-center rounded-full text-[11px] font-bold',
-                      state === 'current' && 'bg-accent text-white',
-                      state === 'done' && 'bg-success/15 text-success',
-                      state === 'todo' && 'bg-stone text-muted-foreground',
-                    )}
-                  >
-                    {state === 'done' ? <CheckIcon className="size-3" /> : index + 1}
-                  </span>
-                  {entry.label}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+        <StepRail steps={steps} current={stepIndex} onSelect={setStepIndex} className="mb-8" />
 
         {flowError ? (
           <div
@@ -308,7 +283,7 @@ export function BookingFlow({
             className="mb-6 rounded-3xl border border-danger/25 bg-danger/10 p-4 text-sm"
           >
             <p className="font-medium text-danger">
-              The {room.name} is sold out for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
+              The {room.name} is fully booked for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
             </p>
             <p className="mt-1 text-muted-foreground">
               Change your dates below, or pick another room.
@@ -447,6 +422,7 @@ export function BookingFlow({
                 <input
                   id="guest-first"
                   autoComplete="given-name"
+                  placeholder="Ada"
                   value={guest.firstName}
                   aria-invalid={Boolean(fieldErrors.firstName)}
                   onChange={(event) =>
@@ -459,6 +435,7 @@ export function BookingFlow({
                 <input
                   id="guest-last"
                   autoComplete="family-name"
+                  placeholder="Lovelace"
                   value={guest.lastName}
                   aria-invalid={Boolean(fieldErrors.lastName)}
                   onChange={(event) =>
@@ -472,6 +449,7 @@ export function BookingFlow({
                   id="guest-email"
                   type="email"
                   autoComplete="email"
+                  placeholder="ada@example.com"
                   value={guest.email}
                   aria-invalid={Boolean(fieldErrors.email)}
                   onChange={(event) =>
@@ -485,6 +463,7 @@ export function BookingFlow({
                   id="guest-phone"
                   type="tel"
                   autoComplete="tel"
+                  placeholder="+385 91 000 0000"
                   value={guest.phone}
                   aria-invalid={Boolean(fieldErrors.phone)}
                   onChange={(event) =>
@@ -509,36 +488,55 @@ export function BookingFlow({
               </p>
               <fieldset className="mt-5">
                 <legend className="text-sm font-medium">Payment method</legend>
-                <div className="mt-3 grid gap-3">
-                  {paymentMethods.map((method) => (
-                    <label
-                      key={method.id}
-                      htmlFor={`pay-${method.id}`}
-                      className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-3xl border p-4 transition-colors',
-                        paymentMethod === method.id ? 'border-ink' : 'border-border hover:bg-stone/60',
-                      )}
-                    >
-                      <input
-                        id={`pay-${method.id}`}
-                        type="radio"
-                        name="payment-method"
-                        value={method.id}
-                        checked={paymentMethod === method.id}
-                        onChange={() => setPaymentMethod(method.id)}
-                        className="mt-1 size-4 accent-[#161616]"
-                      />
-                      <span className="flex-1">
-                        <span className="flex items-center gap-2 text-sm font-medium">
-                          <method.icon weight="fill" className="size-4" aria-hidden="true" />
-                          {method.label}
+                {/* The same tile the extras step sells services from: a seated
+                    glyph, the name, one line of hint. Three across so the
+                    choice reads at a glance; the radio itself is off-screen
+                    and the lime edge plus tick carry the selection. */}
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {paymentMethods.map((method) => {
+                    const selected = paymentMethod === method.id;
+                    return (
+                      <label
+                        key={method.id}
+                        htmlFor={`pay-${method.id}`}
+                        className={cn(
+                          'relative flex cursor-pointer items-start gap-3 rounded-[20px] border bg-card p-4 pr-12 transition-colors',
+                          selected ? 'border-primary' : 'border-border hover:bg-stone/60',
+                        )}
+                      >
+                        <input
+                          id={`pay-${method.id}`}
+                          type="radio"
+                          name="payment-method"
+                          value={method.id}
+                          checked={selected}
+                          onChange={() => setPaymentMethod(method.id)}
+                          className="sr-only"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'grid size-11 shrink-0 place-items-center rounded-2xl',
+                            tintSurface[method.tone],
+                          )}
+                        >
+                          <method.icon weight="fill" className={cn('size-5', tintInk[method.tone])} />
                         </span>
-                        <span className="mt-1 block text-sm text-muted-foreground">
-                          {method.hint}
+                        <span className="flex min-w-0 flex-col gap-1">
+                          <span className="text-display text-[15px] leading-tight">{method.label}</span>
+                          <span className="text-sm leading-snug text-muted-foreground">{method.hint}</span>
                         </span>
-                      </span>
-                    </label>
-                  ))}
+                        {selected ? (
+                          <span
+                            aria-hidden="true"
+                            className="absolute top-3 right-3 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground"
+                          >
+                            <CheckIcon className="size-3.5 stroke-[2.5]" />
+                          </span>
+                        ) : null}
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
 
@@ -648,15 +646,32 @@ export function BookingFlow({
       </div>
 
       <aside aria-labelledby="booking-summary-heading" className="lg:sticky lg:top-24 lg:h-fit">
-        <div className="rounded-[28px] bg-card p-6 shadow-soft">
+        <div className="overflow-hidden rounded-[28px] bg-card shadow-soft">
+          {/* The property itself, above its own name: the same facade the
+              arrival page opens on, so the card is recognisably Asteria Cove
+              and not a white receipt. The room's own photograph belongs to
+              the "Room & rate" step, where the choice is still open. */}
+          {hotelPhoto ? (
+            <img
+              src={hotelPhoto.url}
+              alt={hotelPhoto.alt}
+              width={hotelPhoto.width}
+              height={hotelPhoto.height}
+              loading="lazy"
+              decoding="async"
+              className="aspect-[16/9] w-full object-cover"
+            />
+          ) : null}
+
+          <div className="p-6">
           <h2 id="booking-summary-heading" className="text-display text-2xl">
             {room.name}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {hotel.name} · {formatDateRange(criteria.checkIn, criteria.checkOut)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {formatGuests(criteria.adults, criteria.children)}
+          <p className="text-sm text-muted-foreground">{hotel.name}</p>
+
+          <StayDatesSummary checkIn={criteria.checkIn} checkOut={criteria.checkOut} className="mt-4" />
+          <p className="mt-2 text-sm text-muted-foreground">
+            {formatNights(quote.price.nights)} · {formatGuests(criteria.adults, criteria.children)}
           </p>
 
           <div
@@ -703,6 +718,7 @@ export function BookingFlow({
             Demo booking. Payment is simulated, no card data is collected, and the reservation is
             held in memory only.
           </p>
+          </div>
         </div>
       </aside>
     </div>
