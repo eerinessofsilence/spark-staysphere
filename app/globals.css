@@ -28,6 +28,9 @@
   --color-tint-rose-ink: var(--tint-rose-ink);
   --color-tint-stone: var(--tint-stone);
   --color-tint-stone-ink: var(--tint-stone-ink);
+  --color-glass-tint: var(--glass-tint);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-raised-foreground: var(--surface-raised-foreground);
   --color-muted-text: var(--muted-text);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -56,6 +59,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -101,9 +105,10 @@ body {
   --stone: #e9e5dd;
 
   /*
-   * Flat tints for the amenity cards. Warm throughout, with one muted sage —
-   * no blue, no purple, no neon, per the accent rule. They are surfaces only:
-   * the accent still belongs to the section-label dot, focus, and savings.
+   * Flat tints: the surface paints fact and inclusion chips, the ink colours
+   * the mark on an amenity card. Warm throughout, with one muted sage — no
+   * blue, no purple, no neon, per the accent rule. The accent still belongs
+   * to the section-label dot, focus, and savings.
    */
   --tint-clay: #f4e6dd;
   --tint-clay-ink: #9a4e2c;
@@ -118,6 +123,15 @@ body {
   --accent: #b8603a;
   --accent-strong: #9a4e2c;
   --accent-soft: #f4e6dd;
+
+  /*
+   * Frosting. The tint is the warm white the ink pills print on, not plain
+   * white: a pure-white frost is the one cold surface in a warm scheme, and
+   * over a blue sea it reads as grey. The edge is what makes a translucent
+   * patch read as glass rather than as a hole in the photograph.
+   */
+  --glass-tint: #f7f5f0;
+  --glass-edge: rgb(255 255 255 / 70%);
   --muted-text: #6b6b66;
   --success: #2e7d5b;
   --warning: #b4711c;
@@ -130,6 +144,20 @@ body {
   --popover-foreground: var(--ink);
   --primary: var(--ink);
   --primary-foreground: #f7f5f0;
+  /*
+   * The primary pill's hover, its own token because the pill is not always
+   * ink: by night it is lime, and a fixed "slightly lighter ink" would be
+   * wrong there. Every primary control reads this rather than a literal.
+   */
+  --primary-hover: #2b2b2b;
+  /*
+   * The one surface allowed to stay light on a dark page: the stay search
+   * on a phone. By day it is the same white as any card; by night it is a
+   * warm-white panel on the near-black canvas, the way the reference lifts
+   * its search out of the rest of the screen. See `.surface-raised` below.
+   */
+  --surface-raised: #ffffff;
+  --surface-raised-foreground: var(--ink);
   --secondary: #ffffff;
   --secondary-foreground: var(--ink);
   --muted: var(--stone);
@@ -156,9 +184,17 @@ body {
 }
 
 .dark {
+  /*
+   * The night scheme. Not the cold shadcn greys this block shipped with: a
+   * near-black canvas, dark grey cards with warm-white text, and one electric
+   * lime where the day scheme has clay. Same token names, so a component
+   * written for the day reads correctly here without knowing which it is on.
+   * Scoped by a `.dark` wrapper rather than a theme switch — today only the
+   * arrival page opts in.
+   */
   --ink: #161616;
-  --canvas: #161616;
-  --stone: #242320;
+  --canvas: #141414;
+  --stone: #262626;
   --tint-clay: #33251d;
   --tint-clay-ink: #e59b76;
   --tint-sand: #2c2921;
@@ -167,32 +203,39 @@ body {
   --tint-sage-ink: #9dc09c;
   --tint-rose: #2f2422;
   --tint-rose-ink: #e0a3a4;
-  --tint-stone: #242320;
-  --tint-stone-ink: #a5a29b;
-  --accent: #d07a50;
-  --accent-strong: #e59b76;
-  --accent-soft: #33251d;
-  --muted-text: #a5a29b;
-  --success: #2fd9a8;
-  --warning: #e29a4d;
-  --danger: #ef7b72;
+  --tint-stone: #262626;
+  --tint-stone-ink: #b5b3ac;
+  --accent: #d4ff3a;
+  --accent-strong: #c9f52e;
+  --accent-soft: #2b3311;
+  --glass-tint: #1a1a1a;
+  --glass-edge: rgb(255 255 255 / 14%);
+  --muted-text: #a8a69f;
+  /* Softer than the day's greens read against black; a neon success would fight the lime. */
+  --success: #7fd6a0;
+  --warning: #f0b85a;
+  --danger: #ff8a80;
   --background: var(--canvas);
-  --foreground: #f2f1ec;
-  --card: #14181a;
-  --card-foreground: #f2f1ec;
-  --popover: #14181a;
-  --popover-foreground: #f2f1ec;
-  --primary: #f7f5f0;
-  --primary-foreground: var(--ink);
-  --secondary: #1c2124;
-  --secondary-foreground: #f2f1ec;
-  --muted: #1c2124;
+  --foreground: #f4f2ec;
+  --card: #1e1e1e;
+  --card-foreground: #f4f2ec;
+  --popover: #1e1e1e;
+  --popover-foreground: #f4f2ec;
+  /* By night the primary action is the lime pill, with the canvas as its text. */
+  --primary: #d4ff3a;
+  --primary-foreground: #141414;
+  --primary-hover: #c2ec2e;
+  --surface-raised: #f4f2ec;
+  --surface-raised-foreground: #141414;
+  --secondary: #262626;
+  --secondary-foreground: #f4f2ec;
+  --muted: #262626;
   --muted-foreground: var(--muted-text);
-  --accent-foreground: #ffffff;
+  --accent-foreground: #141414;
   --destructive: var(--danger);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: var(--accent);
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #d4ff3a;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -212,8 +255,25 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+  /*
+   * `body` alone leaves `html` transparent. iOS Safari's elastic overscroll —
+   * an edge swipe, a drag that runs past the end of a scrollable area — can
+   * momentarily reveal whatever sits behind the document, which through a
+   * transparent `html` is the WebView's own black canvas. The arrival scene
+   * is full of edge-adjacent touch interaction (dragging the photo, paging
+   * hotspots), exactly where that swipe fires. Filling `html` with the same
+   * canvas token removes the flash even if the bounce still happens, and
+   * `overscroll-behavior-x` on both stops the horizontal bounce outright —
+   * the document never legitimately scrolls sideways, so there is nothing
+   * lost by refusing to rubber-band on that axis.
+   */
+  html {
+    @apply bg-background;
+    overscroll-behavior-x: none;
+  }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior-x: none;
   }
   /* Visible accent focus ring with offset on every interactive element. */
   :focus-visible {
@@ -250,17 +310,55 @@ body {
     letter-spacing: -0.01em;
   }
 
-  /* Frosted panel over photography. */
+  /*
+   * Frosted panel over photography — the one place the product blurs.
+   *
+   * The lit edge belongs to the class, not to the call site: a frosted
+   * surface only reads as glass once it has one, and every frosted surface
+   * here wants the same one. It is a border rather than an inset shadow so
+   * that `shadow-soft` can still be added on top without one overwriting
+   * the other.
+   *
+   * The dark counterpart is this same class under `.dark`, not a second one
+   * to remember to swap in — a panel that is frosted white on a dark page is
+   * the bug that a separate class invites.
+   */
   .glass {
-    background: rgb(255 255 255 / 72%);
+    background: color-mix(in srgb, var(--glass-tint) 74%, transparent);
+    border: 1px solid var(--glass-edge);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
   }
 
-  .glass-dark {
-    background: rgb(22 22 22 / 62%);
+  .dark .glass {
+    background: color-mix(in srgb, var(--glass-tint) 62%, transparent);
     backdrop-filter: blur(18px) saturate(120%);
     -webkit-backdrop-filter: blur(18px) saturate(120%);
+  }
+
+  /*
+   * The raised surface: the stay search on a phone. By day it is a white
+   * card like any other. By night it stays light — a warm-white panel is how
+   * the reference lifts its search off the near-black canvas — so the
+   * controls on it have to read as if they were on the day scheme: a white
+   * hairline is invisible on white, a dark hover fill is a hole in it, and
+   * the night's muted grey does not pass contrast on it. The tokens those
+   * controls consume are re-pointed here rather than in the components,
+   * which go on reading `border-border` and `text-muted-foreground` without
+   * knowing which surface they landed on.
+   */
+  .surface-raised {
+    background: var(--surface-raised);
+    color: var(--surface-raised-foreground);
+  }
+
+  .dark .surface-raised {
+    --foreground: var(--surface-raised-foreground);
+    --muted-text: #6b6b66;
+    --muted-foreground: var(--muted-text);
+    --border: #ddd9d0;
+    --stone: #e9e5dd;
+    --accent: #b8603a;
   }
 
   /* Soft, low-contrast elevation. Borders do the structural work. */
@@ -270,6 +368,21 @@ body {
 
   .shadow-soft-lg {
     box-shadow: 0 2px 4px rgb(22 22 22 / 5%), 0 28px 60px -28px rgb(22 22 22 / 24%);
+  }
+
+  /*
+   * For a rail that already tells you it scrolls — snap points, a peek of
+   * the next card, round arrow buttons — the browser's own scrollbar track
+   * under it is a second, uglier affordance for the same fact. Touch and
+   * keyboard scrolling still work; only the drawn track goes.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 

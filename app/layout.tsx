@@ -33,8 +33,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${body.variable} ${accent.variable} antialiased`}>
+    // Night is the site's own scheme now, not one page's: `.dark` re-scopes
+    // every token from the document root down, so a sheet portalled to
+    // `document.body` from any route picks it up the same way its opener
+    // did, with nothing extra to carry the scheme across.
+    <html lang="en" className="dark">
+      <body className={`${body.variable} ${accent.variable} bg-background text-foreground antialiased`}>
         {children}
       </body>
     </html>
