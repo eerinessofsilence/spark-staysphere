@@ -6,12 +6,11 @@ import type { AddOn, Currency, RoomStatus, RoomType } from './domain/schemas';
 const MONEY_LOCALE = 'en-GB';
 
 export function formatMoney(amount: number, currency: Currency): string {
-  const fractionDigits = Number.isInteger(amount) ? 0 : 2;
   return new Intl.NumberFormat(MONEY_LOCALE, {
     style: 'currency',
     currency,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -68,14 +67,16 @@ export const statusLabels: Record<RoomStatus, string> = {
   available: 'Available',
   limited: 'Limited',
   last_room: 'Last room',
-  sold_out: 'Sold out',
+  sold_out: 'Fully booked',
 };
 
 /** Status text always spells out the number so the badge never relies on colour alone. */
 export function statusText(status: RoomStatus, remaining: number): string {
   switch (status) {
     case 'sold_out':
-      return 'Sold out';
+      // A room type with nothing left on these dates is "fully booked" — the
+      // word a hotel uses. "Sold out" is a concert.
+      return 'Fully booked';
     case 'last_room':
       return 'Last room';
     case 'limited':

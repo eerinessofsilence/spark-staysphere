@@ -62,6 +62,67 @@ export const hotelAreaSchema = z.object({
   hotspots: z.array(hotspotSchema),
 });
 
+/**
+ * One stack of floors in the property's massing. A hotel is a handful of
+ * these — a tower, a terraced front, a low wing — and the 3D model builds
+ * itself from them, so any property can be described without a modeller.
+ * Metres on the ground plane: x runs east, z runs south, toward the camera's
+ * opening view. Floor 1 is the ground floor.
+ */
+export const buildingBlockSchema = z.object({
+  id: z.string(),
+  x: z.number(),
+  z: z.number(),
+  width: z.number().positive(),
+  depth: z.number().positive(),
+  fromFloor: z.number().int().min(1),
+  toFloor: z.number().int().min(1),
+  /** Faces that carry a balcony on every floor; the south face by default. */
+  balconies: z.array(z.enum(['front', 'back', 'left', 'right'])).optional(),
+  /** Floors drawn fully glazed — a lobby at the base, a restaurant on top. */
+  glazedFloors: z.array(z.number().int().min(1)).optional(),
+  /** The roof is a terrace: a parapet instead of a plain slab. */
+  roofTerrace: z.boolean().optional(),
+});
+
+/**
+ * The property as a turnable model. Either a real GLB the property owns
+ * (`url`), or the massing above, built on the fly. In a GLB, a mesh named
+ * `floor-3` is picked as the third floor; nothing else is required of it.
+ */
+export const hotelModelSchema = z.object({
+  url: z.string().optional(),
+  /** Floor-to-floor height in metres. 3.4 when omitted. */
+  floorHeight: z.number().positive().optional(),
+  blocks: z.array(buildingBlockSchema),
+  /** The ground the blocks stand on: a plinth, a pool, the sea to the south. */
+  grounds: z
+    .object({
+      width: z.number().positive(),
+      depth: z.number().positive(),
+      /** How far the plinth stands above the sea; a cliff when it is tall. */
+      height: z.number().positive().optional(),
+      pool: z
+        .object({
+          x: z.number(),
+          z: z.number(),
+          width: z.number().positive(),
+          depth: z.number().positive(),
+        })
+        .optional(),
+      sea: z.boolean().optional(),
+    })
+    .optional(),
+  /** The opening camera, in degrees around and above the building. */
+  view: z
+    .object({
+      azimuth: z.number(),
+      elevation: z.number(),
+      distance: z.number().positive().optional(),
+    })
+    .optional(),
+});
+
 export const hotelSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -71,6 +132,8 @@ export const hotelSchema = z.object({
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),
+  /** The building as a model a guest can turn; absent until the property describes it. */
+  model: hotelModelSchema.optional(),
 });
 
 export const roomTypeSchema = z.object({
@@ -277,6 +340,8 @@ export const bookingRequestSchema = z.object({
 
 export type Hotel = z.infer<typeof hotelSchema>;
 export type HotelArea = z.infer<typeof hotelAreaSchema>;
+export type HotelModel = z.infer<typeof hotelModelSchema>;
+export type BuildingBlock = z.infer<typeof buildingBlockSchema>;
 export type Hotspot = z.infer<typeof hotspotSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
