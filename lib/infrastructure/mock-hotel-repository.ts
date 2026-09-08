@@ -78,6 +78,23 @@ export const mockHotelRepository: HotelRepository = {
   async getBookingByReference(reference) {
     return bookingsByReference.get(reference) ?? null;
   },
+  async cancelBooking(reference) {
+    const booking = bookingsByReference.get(reference);
+    if (!booking) return null;
+    if (booking.status === 'cancelled') return booking;
+
+    const cancelled: Booking = { ...booking, status: 'cancelled' };
+    bookingsByReference.set(reference, cancelled);
+    bookingsByIdempotencyKey.set(cancelled.idempotencyKey, cancelled);
+    // Only a confirmed booking ever took a night out of inventory.
+    if (booking.status === 'confirmed') {
+      for (const date of nightsInRange(booking.checkIn, booking.checkOut)) {
+        const key = `${booking.roomTypeId}|${date}`;
+        demoHolds.set(key, Math.max(0, (demoHolds.get(key) ?? 0) - 1));
+      }
+    }
+    return cancelled;
+  },
   async listBookings() {
     return [...bookingsByReference.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
