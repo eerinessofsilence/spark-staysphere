@@ -108,7 +108,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </ul>
             </div>
 
-            <section aria-labelledby="amenities-heading" className="mt-12">
+            <section aria-labelledby="amenities-heading" className="mt-20">
               <div className="flex flex-wrap items-end gap-4">
                 <h2 id="amenities-heading" className="text-display text-3xl">
                   In the room
@@ -151,7 +151,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </ul>
             </section>
 
-            <section aria-labelledby="rate-heading" className="mt-12">
+            <section aria-labelledby="rate-heading" className="mt-20">
               <h2 id="rate-heading" className="text-display text-3xl">
                 {ratePlan.name}
               </h2>
@@ -180,7 +180,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </ul>
             </section>
 
-            <section aria-labelledby="policies-heading" className="mt-12">
+            <section aria-labelledby="policies-heading" className="mt-20">
               <h2 id="policies-heading" className="text-display text-3xl">
                 Check-in &amp; check-out
               </h2>
@@ -236,7 +236,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </div>
             </section>
 
-            <section aria-labelledby="addons-heading" className="mt-12">
+            <section aria-labelledby="addons-heading" className="mt-20">
               <h2 id="addons-heading" className="text-display text-3xl">
                 Add services
               </h2>
@@ -248,7 +248,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
 
             {/* The kitchen sells through the same engine, but it is a different decision. */}
             {dining.some((addOn) => addOn.enabled && !addOn.parentId) ? (
-              <section aria-labelledby="dining-heading" className="mt-12">
+              <section aria-labelledby="dining-heading" className="mt-20">
                 <h2 id="dining-heading" className="text-display text-3xl">
                   Order from the kitchen
                 </h2>
