@@ -20,7 +20,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const stayQuery = buildQuery({ criteria });
   const today = toIsoDate(new Date());
 
-  const { hotel, offers, totalRooms } = await catalogService.search(
+  const { hotel, offers } = await catalogService.search(
     DEMO_HOTEL_SLUG,
     criteria,
     defaultRoomFilters,
@@ -89,14 +89,14 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 its own line, where `justify-between` on the row itself would
                 align a lone item to the start instead of the end. Within the
                 pair, though, a full-width `justify-between` once it has that
-                line to itself — arrows left, the pill right — rather than
+                line to itself — the pill left, arrows right — rather than
                 both huddled at one edge with the rest of the line empty. */}
             <div className="ml-auto flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
-              <ScrollArrows targetId="highlights-rail" />
               <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
-                All {totalRooms} room types
+                View all
                 <ArrowUpRightIcon className="size-4" aria-hidden="true" />
               </Link>
+              <ScrollArrows targetId="highlights-rail" />
             </div>
           </div>
 
@@ -112,7 +112,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                   matches "The other rooms" rail below. */}
               <ul
                 id="highlights-rail"
-                className="no-scrollbar -mx-3 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6"
+                className="no-scrollbar -mx-3 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6 lg:gap-[42px]"
               >
                 {/* Sized from the rail, not in px: exactly four across from
                     `lg`, three from `sm`, two on a phone — the width is the
@@ -120,7 +120,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 {highlights.map((offer) => (
                   <li
                     key={offer.room.id}
-                    className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3)] lg:w-[calc((100%-2.25rem)/4)]"
+                    className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3)] lg:w-[calc((100%-126px)/4)]"
                   >
                     <RoomCard offer={offer} stayQuery={stayQuery} />
                   </li>
@@ -132,7 +132,10 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
 
         {/* Closing band */}
         <section className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
-          <div className="relative overflow-hidden rounded-[28px]">
+          {/* Ink under the photograph, not just behind it: the copy on
+              this band is white, and the photo is lazy-loaded, so by day
+              an unloaded frame would leave white text on a pale page. */}
+          <div className="relative overflow-hidden rounded-[28px] bg-ink">
             <ParallaxImage src="/images/hotel/pool.webp" alt="" width={2000} height={1334} />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10" />
             <div className="relative flex flex-col items-start gap-6 p-8 text-[#F7F5F0] sm:p-12 lg:min-h-[24rem] lg:justify-end">
