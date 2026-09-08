@@ -82,6 +82,9 @@ Implemented as route handlers in this app; there is no separate API service.
 - `POST /api/quotes` — price and availability for a stay, including selected add-ons.
 - `POST /api/bookings` — creates a booking; requires an `Idempotency-Key` header of at least eight
   characters. Returns 409 for `unavailable` or `price_changed`, 402 for `payment_declined`.
+  `paymentMethod` (`card` | `apple_pay` | `google_pay` | `bank_transfer` | `pay_at_hotel`) is
+  optional and defaults to `card`; the two that settle later record a `demo_pending` payment
+  attempt instead of an authorization.
 - `GET /api/bookings/:reference` — reads a booking from the current process.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather

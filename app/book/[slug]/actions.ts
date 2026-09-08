@@ -7,7 +7,7 @@ import {
   quoteForSlug,
   quoteRequestBodySchema,
 } from '@/lib/application/booking-intake';
-import type { Quote } from '@/lib/domain/schemas';
+import type { PaymentMethod, Quote } from '@/lib/domain/schemas';
 
 /**
  * The booking UI's only entry point to quotes and confirmation. Both actions go
@@ -25,6 +25,7 @@ export interface ConfirmBookingInput {
   guest: { firstName: string; lastName: string; email: string; phone: string };
   /** Total the guest saw on the review step. */
   expectedTotal: number;
+  paymentMethod: PaymentMethod;
   /** Generated once per booking attempt in the browser; replays are no-ops. */
   idempotencyKey: string;
 }

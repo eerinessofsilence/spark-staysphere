@@ -1,6 +1,6 @@
 import { BookingError } from './booking-service';
 import { bookingService, catalogService, DEMO_HOTEL_SLUG } from './container';
-import { stayCriteriaSchema } from '../domain/schemas';
+import { paymentMethodSchema, stayCriteriaSchema } from '../domain/schemas';
 import type { Booking, Quote, StayCriteria } from '../domain/schemas';
 import { z } from 'zod';
 
@@ -27,6 +27,8 @@ export const bookingRequestBodySchema = quoteRequestBodySchema.extend({
     phone: z.string().min(7),
   }),
   expectedTotal: z.number().nonnegative(),
+  /** Defaulted, not required: `POST /api/bookings` shipped before this field. */
+  paymentMethod: paymentMethodSchema.default('card'),
 });
 
 export type QuoteRequestBody = z.infer<typeof quoteRequestBodySchema>;
@@ -80,5 +82,6 @@ export async function confirmForSlug(
     guest: body.guest,
     addOnIds: detail.quote.addOnIds,
     expectedTotal: body.expectedTotal,
+    paymentMethod: body.paymentMethod,
   });
 }

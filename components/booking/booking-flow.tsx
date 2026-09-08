@@ -3,11 +3,20 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Lock, Wallet, Warning } from '@phosphor-icons/react/dist/ssr';
+import { AppleLogo, Bank, CreditCard, GoogleLogo, Lock, Warning } from '@phosphor-icons/react/dist/ssr';
 import { ArrowLeftIcon, ArrowPathIcon, ArrowRightIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { confirmBooking, quoteStay } from '@/app/book/[slug]/actions';
 import { buildQuery } from '@/lib/application/search-params';
-import type { AddOn, Guest, Hotel, Quote, RatePlan, RoomType, StayCriteria } from '@/lib/domain/schemas';
+import type {
+  AddOn,
+  Guest,
+  Hotel,
+  PaymentMethod,
+  Quote,
+  RatePlan,
+  RoomType,
+  StayCriteria,
+} from '@/lib/domain/schemas';
 import {
   addOnCategoryLabels,
   formatDateRange,
@@ -19,9 +28,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { AddOnCatalog } from '@/components/rooms/add-on-catalog';
-import { featureIcon, tintInk, tintSurface } from '@/components/rooms/feature-icon';
+import { featureIcon, tintInk, tintSurface, type AmenityTone } from '@/components/rooms/feature-icon';
 import { BillRow } from '@/components/rooms/add-on-picker';
 import { StepRail } from '@/components/booking/step-rail';
+import { countryByIso, DEFAULT_COUNTRY_ISO, PhoneField } from '@/components/booking/phone-field';
 import { StayDatesSummary } from '@/components/search/stay-dates-summary';
 import { GuestsField } from '@/components/search/guests-field';
 import { StayDatesField } from '@/components/search/stay-dates-field';
@@ -40,31 +50,56 @@ const steps = [
   { id: 'review', label: 'Review' },
 ] as const;
 
-const paymentMethods = [
+/**
+ * The methods a European property's booking engine actually offers, named as
+ * the guest knows them rather than as one vague "wallet". Every one of them
+ * is simulated here — the banner above says so — but the choice is real: it
+ * reaches the server, and the two that take nothing at booking time record a
+ * pending payment instead of a fake authorization.
+ */
+const paymentMethods: {
+  id: PaymentMethod;
+  label: string;
+  hint: string;
+  icon: typeof CreditCard;
+  tone: AmenityTone;
+}[] = [
   {
-    id: 'demo_card',
-    label: 'Demo card',
-    hint: 'Simulated authorization. No card fields, no card data.',
+    id: 'card',
+    label: 'Card',
+    hint: 'Visa, Mastercard, Amex. Charged when the booking is made.',
     icon: CreditCard,
     tone: 'clay',
   },
   {
-    id: 'demo_wallet',
-    label: 'Demo wallet',
-    hint: 'Stands in for Apple Pay or Google Pay in production.',
-    icon: Wallet,
+    id: 'apple_pay',
+    label: 'Apple Pay',
+    hint: 'Confirm with Face ID or Touch ID.',
+    icon: AppleLogo,
+    tone: 'stone',
+  },
+  {
+    id: 'google_pay',
+    label: 'Google Pay',
+    hint: 'Pay with a card saved to your Google account.',
+    icon: GoogleLogo,
     tone: 'sage',
+  },
+  {
+    id: 'bank_transfer',
+    label: 'Bank transfer',
+    hint: 'SEPA transfer. The room is held; the balance is due before arrival.',
+    icon: Bank,
+    tone: 'sand',
   },
   {
     id: 'pay_at_hotel',
     label: 'Pay at the hotel',
-    hint: 'Guarantee the room now, settle the balance on arrival.',
+    hint: 'Guarantee the room now, settle the whole stay on arrival.',
     icon: Lock,
-    tone: 'sand',
+    tone: 'rose',
   },
-] as const;
-
-type PaymentMethodId = (typeof paymentMethods)[number]['id'];
+];
 
 interface BookingFlowProps {
   hotel: Hotel;
@@ -105,7 +140,13 @@ export function BookingFlow({
     email: '',
     phone: '',
   });
-  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethodId>('demo_card');
+  // The dial code and the digits the guest actually typed are tracked apart
+  // from `guest.phone` (the one field the server and the review step read):
+  // composing them on every change keeps that single field always correct
+  // instead of teaching every reader of `guest` about a country/number split.
+  const [phoneCountry, setPhoneCountry] = React.useState(DEFAULT_COUNTRY_ISO);
+  const [phoneNational, setPhoneNational] = React.useState('');
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('card');
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string[]>>({});
   const [flowError, setFlowError] = React.useState<FlowError | null>(null);
@@ -170,7 +211,11 @@ export function BookingFlow({
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email)) {
       errors.email = ['Enter an email we can send the confirmation to.'];
     }
-    if (guest.phone.replace(/\D/g, '').length < 7) {
+    // Digits typed after the country code, not the composed `guest.phone` —
+    // otherwise a longer dial code (+971) buys the guest a shorter real
+    // number and a shorter one (+1) demands a longer one, for no reason
+    // tied to whether the number itself is real.
+    if (phoneNational.replace(/\D/g, '').length < 7) {
       errors.phone = ['Enter a phone number with at least 7 digits.'];
     }
     setFieldErrors(errors);
@@ -208,6 +253,7 @@ export function BookingFlow({
       addOnIds,
       guest,
       expectedTotal: quote.price.total,
+      paymentMethod,
       idempotencyKey: idempotencyKey.current,
     });
 
@@ -303,7 +349,7 @@ export function BookingFlow({
           </h2>
 
           {step === 'stay' ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
               <StayDatesField
                 variant="stacked"
                 checkIn={criteria.checkIn}
@@ -312,20 +358,16 @@ export function BookingFlow({
                 onChange={(dates) => updateCriteria(dates)}
                 error={datesInvalid ? 'Check-out must be after check-in.' : undefined}
               />
-              <div className="sm:col-span-2">
-                <GuestsField
-                  id="book-guests"
-                  adults={criteria.adults}
-                  children={criteria.children}
-                  onChange={(guests) => updateCriteria(guests)}
-                  variant="stacked"
-                  error={
-                    overCapacity
-                      ? `The ${room.name} sleeps up to ${room.capacity} guests.`
-                      : undefined
-                  }
-                />
-              </div>
+              <GuestsField
+                id="book-guests"
+                adults={criteria.adults}
+                children={criteria.children}
+                onChange={(guests) => updateCriteria(guests)}
+                variant="stacked"
+                error={
+                  overCapacity ? `The ${room.name} sleeps up to ${room.capacity} guests.` : undefined
+                }
+              />
             </div>
           ) : null}
 
@@ -422,7 +464,7 @@ export function BookingFlow({
                 <input
                   id="guest-first"
                   autoComplete="given-name"
-                  placeholder="Ada"
+                  placeholder="Enter your first name"
                   value={guest.firstName}
                   aria-invalid={Boolean(fieldErrors.firstName)}
                   onChange={(event) =>
@@ -435,7 +477,7 @@ export function BookingFlow({
                 <input
                   id="guest-last"
                   autoComplete="family-name"
-                  placeholder="Lovelace"
+                  placeholder="Enter your last name"
                   value={guest.lastName}
                   aria-invalid={Boolean(fieldErrors.lastName)}
                   onChange={(event) =>
@@ -449,7 +491,7 @@ export function BookingFlow({
                   id="guest-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="ada@example.com"
+                  placeholder="Enter your email"
                   value={guest.email}
                   aria-invalid={Boolean(fieldErrors.email)}
                   onChange={(event) =>
@@ -459,17 +501,25 @@ export function BookingFlow({
                 />
               </LabelledField>
               <LabelledField id="guest-phone" label="Phone" error={fieldErrors.phone?.[0]}>
-                <input
+                <PhoneField
                   id="guest-phone"
-                  type="tel"
-                  autoComplete="tel"
-                  placeholder="+385 91 000 0000"
-                  value={guest.phone}
-                  aria-invalid={Boolean(fieldErrors.phone)}
-                  onChange={(event) =>
-                    setGuest((current) => ({ ...current, phone: event.target.value }))
-                  }
-                  className={fieldClass}
+                  countryIso={phoneCountry}
+                  nationalNumber={phoneNational}
+                  invalid={Boolean(fieldErrors.phone)}
+                  onCountryChange={(iso) => {
+                    setPhoneCountry(iso);
+                    setGuest((current) => ({
+                      ...current,
+                      phone: `${countryByIso(iso).dial} ${phoneNational}`.trim(),
+                    }));
+                  }}
+                  onNationalNumberChange={(value) => {
+                    setPhoneNational(value);
+                    setGuest((current) => ({
+                      ...current,
+                      phone: `${countryByIso(phoneCountry).dial} ${value}`.trim(),
+                    }));
+                  }}
                 />
               </LabelledField>
               <p className="text-xs leading-relaxed text-muted-foreground sm:col-span-2">
@@ -489,10 +539,12 @@ export function BookingFlow({
               <fieldset className="mt-5">
                 <legend className="text-sm font-medium">Payment method</legend>
                 {/* The same tile the extras step sells services from: a seated
-                    glyph, the name, one line of hint. Three across so the
-                    choice reads at a glance; the radio itself is off-screen
-                    and the lime edge plus tick carry the selection. */}
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    glyph, the name, one line of hint. Two across from `sm` and
+                    three from `lg` — five methods in a single row of three
+                    left two orphans and squeezed every hint to three lines.
+                    The radio itself is off-screen; the edge and tick carry
+                    the selection. */}
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {paymentMethods.map((method) => {
                     const selected = paymentMethod === method.id;
                     return (

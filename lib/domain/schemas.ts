@@ -77,6 +77,13 @@ export const buildingBlockSchema = z.object({
   depth: z.number().positive(),
   fromFloor: z.number().int().min(1),
   toFloor: z.number().int().min(1),
+  /**
+   * Bends the block along an arc, as how far its middle bows forward of its
+   * ends in metres. `width` stays the length measured along the bend, so a
+   * bowed block is described the way a straight one is. The model builds the
+   * bend as a run of straight bays, which is how such a facade is built.
+   */
+  bow: z.number().positive().optional(),
   /** Faces that carry a balcony on every floor; the south face by default. */
   balconies: z.array(z.enum(['front', 'back', 'left', 'right'])).optional(),
   /** Floors drawn fully glazed — a lobby at the base, a restaurant on top. */
@@ -323,6 +330,21 @@ export const roomOfferSchema = z.object({
 });
 
 /** Everything a caller must supply to create a booking. Server owns id/reference/total. */
+/**
+ * What the guest chose to pay with. Cards and the two wallets authorize at
+ * booking time; a transfer and paying at the desk do not, which is why the
+ * service treats them apart rather than pretending every method behaves the
+ * same. Live collection is out of scope either way (see CLAUDE.md) — these
+ * name the real flows a production build would hand to its provider.
+ */
+export const paymentMethodSchema = z.enum([
+  'card',
+  'apple_pay',
+  'google_pay',
+  'bank_transfer',
+  'pay_at_hotel',
+]);
+
 export const bookingRequestSchema = z.object({
   idempotencyKey: z.string().min(8),
   hotelId: z.string(),
@@ -336,6 +358,7 @@ export const bookingRequestSchema = z.object({
   addOnIds: z.array(z.string()),
   /** Total shown to the guest at review time; confirmation fails if it drifted. */
   expectedTotal: z.number().nonnegative(),
+  paymentMethod: paymentMethodSchema,
 });
 
 export type Hotel = z.infer<typeof hotelSchema>;
@@ -354,6 +377,7 @@ export type Booking = z.infer<typeof bookingSchema>;
 export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
 export type RoomStatus = z.infer<typeof roomStatusSchema>;
 export type Currency = z.infer<typeof currencySchema>;
+export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export type StayCriteria = z.infer<typeof stayCriteriaSchema>;
 export type AddOnLine = z.infer<typeof addOnLineSchema>;
 export type PriceBreakdown = z.infer<typeof priceBreakdownSchema>;

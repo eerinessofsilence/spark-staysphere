@@ -15,8 +15,10 @@ import {
   formatMoney,
   formatNights,
   formatPricingUnit,
+  paymentMethodLabels,
   viewLabels,
 } from '@/lib/formatting';
+import { RememberTrip } from '@/components/trips/remember-trip';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -45,9 +47,17 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
       })
     : null;
   const authorized = payments.some((payment) => payment.status === 'authorized');
+  // The provider column holds the method the guest chose.
+  const method = payments.at(-1)?.provider;
+  const methodLabel =
+    method && method in paymentMethodLabels
+      ? paymentMethodLabels[method as keyof typeof paymentMethodLabels]
+      : null;
 
   return (
     <>
+      {/* The stay joins this browser's "My trips" list the moment it exists. */}
+      <RememberTrip reference={booking.reference} />
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[1000px] px-3 py-10 sm:px-6">
         <div className="rounded-[28px] bg-card p-6 shadow-soft sm:p-10">
@@ -177,10 +187,16 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                 {formatMoney(booking.total, booking.currency)}
               </span>
             </div>
+            {methodLabel ? (
+              <p className="mt-3 flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Paid with</span>
+                <span className="font-semibold">{methodLabel}</span>
+              </p>
+            ) : null}
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
               {authorized
                 ? 'Demo payment authorized by the mock provider. No card details were collected and no money moved.'
-                : 'No payment attempt was recorded for this demo booking.'}
+                : 'Nothing is taken at booking with this method — in production the balance would be settled before or on arrival. This is a demo either way: no money moves.'}
               {ratePlan ? ` ${ratePlan.cancellationPolicy}` : ''}
             </p>
           </section>
@@ -229,7 +245,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dd className="font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }

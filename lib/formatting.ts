@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import type { RoomCategory } from './domain/room-attributes';
-import type { AddOn, Currency, RoomStatus, RoomType } from './domain/schemas';
+import type { AddOn, Currency, PaymentMethod, RoomStatus, RoomType } from './domain/schemas';
 
 /** Fixed locale on purpose: server and client must format identically or React rehydrates wrong. */
 const MONEY_LOCALE = 'en-GB';
@@ -47,6 +47,15 @@ export const bedLabels: Record<RoomType['bedType'], string> = {
   king: 'King bed',
   queen: 'Queen bed',
   twin: 'Twin beds',
+};
+
+/** How a payment method is named wherever a booking is read back. */
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  card: 'Card',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
+  bank_transfer: 'Bank transfer',
+  pay_at_hotel: 'Pay at the hotel',
 };
 
 export const addOnCategoryLabels: Record<AddOn['category'], string> = {
