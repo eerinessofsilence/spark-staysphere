@@ -130,12 +130,14 @@ test('the arrival screen presents the hotel area by area with hotspots', async (
   await expect(scene).toBeVisible();
 
   // Switch to the pool area, then open its hotspot. Areas page with the
-  // arrows on the stage's bottom rail — "The hotel" is first, "Pool" second.
-  const areaLabel = scene.getByText('The hotel', { exact: true });
-  await expect(areaLabel).toBeVisible();
+  // arrows on the stage's bottom rail — the hotel's own hotspots are up
+  // first, the pool's replace them once "Next area" has paged forward.
+  const seaViewHotspot = scene.getByRole('button', { name: /Sea-view rooms/ });
+  await expect(seaViewHotspot).toBeVisible();
   await actUntil(
     () => page.getByRole('button', { name: 'Next area' }).click(),
-    () => expect(scene.getByText('Pool', { exact: true })).toBeVisible({ timeout: 3_000 }),
+    () =>
+      expect(scene.getByRole('button', { name: 'Infinity edge' })).toBeVisible({ timeout: 3_000 }),
   );
 
   const cta = page.getByRole('link', { name: 'See pool-access rooms' });
@@ -215,7 +217,10 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'true'),
   );
   await expect(page).toHaveURL(/view=sea/);
-  await expect(cards).toHaveCount(4);
+  // Fewer cards, and every one of them a sea view — not a fixed number, so
+  // the catalog can grow without this test needing to know how many.
+  await expect.poll(() => cards.count()).toBeLessThan(initialCount);
+  for (const text of await cards.allInnerTexts()) expect(text).toContain('Sea view');
 
   await withFilters(page, () =>
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'false'),
@@ -269,8 +274,8 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
 
   // The catalog only ever opens the room's own page — booking starts there,
   // once the guest has actually seen the room, never as a shortcut from the
-  // search results.
-  await firstCard.getByRole('link', { name: 'See details' }).click();
+  // search results. The card carries no button: the whole tile is that link.
+  await firstCard.getByRole('link', { name: roomName }).click();
   await expect(page).toHaveURL(/\/rooms\//);
   await expect(page.getByRole('heading', { level: 1, name: roomName })).toBeVisible();
 
@@ -347,11 +352,11 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   // selectOption changes the DOM without ever reaching the server action.
   await actUntil(
     async () => void (await row.getByRole('combobox').selectOption('sold_out')),
-    () => expect(row.locator('td').nth(3)).toContainText('Sold out', { timeout: 3_000 }),
+    () => expect(row.locator('td').nth(3)).toContainText('Fully booked', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
-  await expect(page.getByText(/is sold out for/)).toBeVisible();
+  await expect(page.getByText(/is fully booked for/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Book this room' })).toHaveCount(0);
 
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
@@ -364,7 +369,8 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   const restored = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
   await actUntil(
     async () => void (await restored.getByRole('combobox').selectOption('auto')),
-    () => expect(restored.locator('td').nth(3)).not.toContainText('Sold out', { timeout: 3_000 }),
+    () =>
+      expect(restored.locator('td').nth(3)).not.toContainText('Fully booked', { timeout: 3_000 }),
   );
 });
 
