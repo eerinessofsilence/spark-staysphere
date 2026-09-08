@@ -95,3 +95,30 @@ CC BY-SA, which is why the sphere carries a visible credit and the file keeps th
 `public/vendor/pannellum` vendors [Pannellum](https://pannellum.org) 2.5.7 (MIT-licensed viewer
 library) as static assets so the panorama renders without a runtime CDN dependency — see the
 `LICENSE` file alongside it.
+
+## The building model's skies and surfaces
+
+The turnable model (`HotelModel`) is lit by real skies and surfaced with scanned materials, all
+from [Poly Haven](https://polyhaven.com) under [CC0](https://polyhaven.com/license) — no
+attribution required, credited here anyway. Stored locally at 1K so nothing loads from an
+external host at runtime.
+
+| File | Asset | Source |
+|---|---|---|
+| `/hdri/kloofendal_48d_partly_cloudy_puresky_1k.hdr` | Kloofendal 48d Partly Cloudy (Pure Sky), by Greg Zaal | https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky |
+| `/hdri/moonless_golf_1k.hdr` | Moonless Golf, by Greg Zaal | https://polyhaven.com/a/moonless_golf |
+| `/textures/white_plaster_02/*` | White Plaster 02 | https://polyhaven.com/a/white_plaster_02 |
+| `/textures/concrete_floor_01/*` | Concrete Floor 01 | https://polyhaven.com/a/concrete_floor_01 |
+| `/textures/aerial_grass_rock/*` | Aerial Grass Rock | https://polyhaven.com/a/aerial_grass_rock |
+| `/textures/rock_ground_02/*` | Rock Ground 02 | https://polyhaven.com/a/rock_ground_02 |
+
+The rocks and furniture on the site are Poly Haven photoscans (CC0), simplified with glTF
+Transform to a fraction of their source triangles and re-encoded with Meshopt and 512px WebP
+textures, about 1 MB together in `public/models`. (A scanned tree was tried and dropped: its
+leaves do not survive that kind of simplification.)
+
+| File | Asset | Source |
+|---|---|---|
+| `/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr` | the day sky again, at 2K for the backdrop | https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky |
+| `/models/boulder_01.glb` | Boulder 01 | https://polyhaven.com/a/boulder_01 |
+| `/models/outdoor_table_chair_set_01.glb` | Outdoor Table Chair Set 01 | https://polyhaven.com/a/outdoor_table_chair_set_01 |

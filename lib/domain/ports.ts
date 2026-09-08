@@ -21,6 +21,12 @@ export interface HotelRepository {
   findBookingByIdempotencyKey(key: string): Promise<Booking | null>;
   saveBooking(booking: Booking): Promise<Booking>;
   getBookingByReference(reference: string): Promise<Booking | null>;
+  /**
+   * Marks a booking cancelled and gives back the nights it was holding, so
+   * the room returns to sale. Idempotent: a booking already cancelled is
+   * returned unchanged and its inventory is not credited twice.
+   */
+  cancelBooking(reference: string): Promise<Booking | null>;
   listBookings(): Promise<Booking[]>;
   savePaymentAttempt(attempt: PaymentAttempt): Promise<PaymentAttempt>;
   listPaymentAttempts(bookingId: string): Promise<PaymentAttempt[]>;

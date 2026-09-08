@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { AdjustmentsHorizontalIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CatalogFacets, RoomFilters as Filters } from '@/lib/application/catalog-service';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
-import { activeFilterCount, buildQuery, filtersAreDefault } from '@/lib/application/search-params';
+import {
+  activeFilterCount,
+  buildQuery,
+  filtersAreDefault,
+  type CatalogLayout,
+} from '@/lib/application/search-params';
 import type { RoomType, StayCriteria } from '@/lib/domain/schemas';
 import { bedLabels, categoryLabels, formatMoney, viewLabels } from '@/lib/formatting';
 import { fieldClass, pill } from '@/lib/ui';
@@ -19,9 +24,11 @@ interface RoomFiltersProps {
   filters: Filters;
   facets: CatalogFacets;
   resultCount: number;
+  /** Carried through so filtering does not throw the guest back to the grid. */
+  layout?: CatalogLayout;
 }
 
-export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: RoomFiltersProps) {
+export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layout }: RoomFiltersProps) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const count = activeFilterCount(filters);
 
@@ -36,7 +43,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
                 <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
                 Filters
                 {count > 0 ? (
-                  <span className="rounded-full bg-ink px-2 py-0.5 text-xs font-semibold text-[#F7F5F0]">
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
                     {count}
                   </span>
                 ) : null}
@@ -53,6 +60,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
                 criteria={criteria}
                 filters={filters}
                 facets={facets}
+                layout={layout}
                 showTitle={false}
               />
             </div>
@@ -69,7 +77,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount }: Roo
         aria-label="Room filters"
         className="hidden lg:sticky lg:top-28 lg:block lg:h-fit lg:rounded-[28px] lg:bg-card lg:p-6 lg:shadow-soft"
       >
-        <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} />
+        <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} layout={layout} />
       </aside>
     </>
   );
@@ -80,6 +88,7 @@ interface FilterControlsProps {
   criteria: StayCriteria;
   filters: Filters;
   facets: CatalogFacets;
+  layout?: CatalogLayout;
 }
 
 function FilterControls({
@@ -87,6 +96,7 @@ function FilterControls({
   criteria,
   filters,
   facets,
+  layout,
   // The bottom sheet puts its own title in its header; a second "Filters"
   // right under "Filter rooms" is the sheet saying the same thing twice.
   showTitle = true,
@@ -104,10 +114,10 @@ function FilterControls({
 
   const apply = React.useCallback(
     (next: Filters) => {
-      const query = buildQuery({ criteria, filters: next });
+      const query = buildQuery({ criteria, filters: next, layout });
       startTransition(() => router.replace(`/rooms?${query}`, { scroll: false }));
     },
-    [criteria, router],
+    [criteria, layout, router],
   );
 
   const toggle = <T,>(list: T[], value: T): T[] =>
@@ -221,7 +231,7 @@ function FilterControls({
           htmlFor={`${idPrefix}-hide-sold-out`}
           className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm"
         >
-          Hide sold-out rooms
+          Hide fully booked rooms
           <Switch
             id={`${idPrefix}-hide-sold-out`}
             checked={!filters.includeSoldOut}
@@ -268,7 +278,7 @@ function Chips<T extends string>({
             onClick={() => onToggle(option.value)}
             className={cn(
               'inline-flex min-h-10 cursor-pointer items-center rounded-full border px-3.5 text-sm transition-colors',
-              pressed ? 'border-ink bg-ink text-[#F7F5F0]' : 'border-border bg-card hover:bg-stone',
+              pressed ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-stone',
             )}
           >
             {option.label}

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { addOnIcon } from './add-on-icon';
+import { amenityTone, tintInk, tintSurface } from './feature-icon';
 
 interface AddOnCatalogProps {
   /** One category's extras: the things on sale and the extras hanging off them. */
@@ -41,19 +42,37 @@ export function AddOnCatalog({
   const extrasOf = (id: string) => enabled.filter((addOn) => addOn.parentId === id);
   const open = openId ? (offered.find((addOn) => addOn.id === openId) ?? null) : null;
 
-  // A category is one kind of thing throughout: the kitchen sells by sight, the
-  // desk sells by description.
-  const isMenu = offered.some((addOn) => (addOn.photos?.length ?? 0) > 0);
+  // The two shapes want different rows. A dish stacks — photograph, name,
+  // price — and two of those sit side by side on a phone. A service has no
+  // photograph, so on a phone it is a row: icon, name and price, the button
+  // at the end, the whole width to itself. Two to a row there left the name
+  // wrapping onto three lines beside the button.
+  const pictured = offered.some((addOn) => (addOn.photos?.length ?? 0) > 0);
 
   return (
     <>
-      <ul className={cn('grid gap-4', isMenu ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2')}>
+      <ul
+        className={cn(
+          'grid gap-3',
+          pictured ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+        )}
+      >
         {offered.map((addOn) => (
           <li key={addOn.id}>
             <AddOnTile
               addOn={addOn}
               added={selected.includes(addOn.id)}
               onOpen={() => setOpenId(addOn.id)}
+              onAdd={() => onChange([...selected, addOn.id])}
+              // Taking a thing out takes its extras out with it: a wine
+              // pairing with no dinner under it is not a line on any bill.
+              onRemove={() =>
+                onChange(
+                  selected.filter(
+                    (id) => id !== addOn.id && !extrasOf(addOn.id).some((extra) => extra.id === id),
+                  ),
+                )
+              }
             />
           </li>
         ))}
@@ -92,99 +111,100 @@ interface AddOnTileProps {
   addOn: AddOn;
   added: boolean;
   onOpen: () => void;
+  onAdd: () => void;
+  onRemove: () => void;
 }
 
 /**
  * A dish photographs; a service does not. Both open the same panel, and both
  * say only what is needed to choose between them — the extras live inside,
  * where they can be read and ticked, not counted from the outside.
+ *
+ * Two controls, not one. The body opens the panel; the round button in the
+ * corner adds the thing to the stay on the spot and, once it is in, takes it
+ * out again. A guest who already knows they want the transfer should not
+ * have to open a panel to say so. They are siblings rather than nested,
+ * because a button inside a button is not a thing a browser will honour.
  */
-function AddOnTile({ addOn, added, onOpen }: AddOnTileProps) {
+function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
   const Icon = addOnIcon(addOn.name);
   const cover = addOn.photos?.[0];
-  /* Money in the display face, the unit small beside it — the same voice the
-     panel and the bill give a price. Set at body size it read as one more
-     grey line and the card merged into a single block. */
-  const price = (
-    <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-      <span className="text-display text-base">{formatMoney(addOn.price, addOn.currency)}</span>
-      <span className="text-xs text-muted-foreground">
-        {formatPricingUnit(addOn.pricingUnit)}
-      </span>
-    </span>
-  );
+  // The same tone table the fact chips and amenity cards read from, so a
+  // boat is sage here for the same reason a terrace is sage there.
+  const tone = amenityTone(addOn.name);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Open ${addOn.name}`}
+    <div
       className={cn(
-        'group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-[28px] border bg-card text-left transition-colors',
-        added ? 'border-ink' : 'border-border hover:bg-stone/50',
+        'group relative flex h-full flex-col overflow-hidden rounded-[20px] border bg-card transition-colors',
+        added ? 'border-primary' : 'border-border',
       )}
     >
-      {cover ? (
-        <span className="relative block aspect-[3/2] overflow-hidden bg-stone">
-          <img
-            src={cover.url}
-            alt={addOn.name}
-            width={cover.width}
-            height={cover.height}
-            loading="lazy"
-            decoding="async"
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          />
-          {added ? <AddedBadge className="absolute top-3 left-3" /> : null}
-        </span>
-      ) : null}
-
-      {/* Two groups, not four evenly spaced lines: what it is and what it
-          costs belong together, the description sits apart from them. */}
-      <span className="flex flex-1 flex-col gap-3 p-4">
-        <span
-          className={cn(
-            'flex gap-x-3',
-            cover ? 'flex-col gap-y-1' : 'flex-wrap items-baseline justify-between gap-y-1',
-          )}
-        >
-          {/* text-display, like the room card's name — same "photograph,
-              name, price" pattern, so the name carries the same weight here. */}
-          <span className="text-display flex items-center gap-2 text-lg">
-            {cover ? null : (
-              <Icon
-                weight="fill"
-                className={cn(
-                  'size-5 shrink-0',
-                  added ? 'text-accent-strong' : 'text-muted-foreground',
-                )}
-                aria-hidden="true"
-              />
-            )}
-            {addOn.name}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${addOn.name}`}
+        className="flex h-full w-full cursor-pointer flex-col text-left transition-colors hover:bg-stone/50"
+      >
+        {cover ? (
+          <span className="relative block aspect-[3/2] w-full overflow-hidden bg-stone">
+            <img
+              src={cover.url}
+              alt={addOn.name}
+              width={cover.width}
+              height={cover.height}
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
           </span>
-          {price}
-        </span>
-        <span className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {addOn.description}
-        </span>
-        {added && !cover ? <AddedBadge className="mt-1 self-start" /> : null}
-      </span>
-    </button>
-  );
-}
+        ) : null}
 
-function AddedBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        'glass flex items-center gap-1.5 rounded-full py-1.5 pr-3 pl-2 text-xs font-medium',
-        className,
-      )}
-    >
-      <CheckIcon className="size-3.5 text-success" aria-hidden="true" />
-      In your stay
-    </span>
+        {/* Name over price, the way the room card reads; the right edge is
+            kept clear for the button that sits there. A service has no
+            photograph, so its mark gets a seat instead: a rounded square in
+            the subject's tint with the glyph in that tint's ink — the same
+            pair the fact chips wear. Inline and grey, the glyph was a bullet;
+            seated and coloured, it is the thing the row is about. */}
+        <span className={cn('flex flex-1 p-3.5 pr-14', cover ? 'flex-col gap-1' : 'items-center gap-3')}>
+          {cover ? null : (
+            <span
+              aria-hidden="true"
+              className={cn('grid size-11 shrink-0 place-items-center rounded-2xl', tintSurface[tone])}
+            >
+              <Icon weight="fill" className={cn('size-5', tintInk[tone])} />
+            </span>
+          )}
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="text-display text-[15px] leading-tight">{addOn.name}</span>
+            {/* Money in the display face, the unit small beside it — the same
+                voice the panel and the bill give a price. */}
+            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-display text-base">{formatMoney(addOn.price, addOn.currency)}</span>
+              <span className="text-xs text-muted-foreground">{formatPricingUnit(addOn.pricingUnit)}</span>
+            </span>
+          </span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={added ? onRemove : onAdd}
+        aria-pressed={added}
+        aria-label={added ? `Remove ${addOn.name} from your stay` : `Add ${addOn.name} to your stay`}
+        // Level with the seat on a row; in the corner under a photograph.
+        className={iconButton(
+          added ? 'dark' : 'light',
+          cn('absolute right-3 size-10', cover ? 'bottom-3' : 'top-1/2 -translate-y-1/2'),
+        )}
+      >
+        {added ? (
+          <CheckIcon className="size-4" aria-hidden="true" />
+        ) : (
+          <PlusIcon className="size-4" aria-hidden="true" />
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -351,7 +371,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
                       id={id}
                       checked={picked}
                       onCheckedChange={() => toggle(extra.id)}
-                      className="mt-0.5 size-5 shrink-0 rounded-full border-ink/25 bg-card"
+                      className="mt-0.5 size-5 shrink-0 rounded-full border-foreground/25 bg-card"
                     />
                     <span className="flex flex-1 items-start justify-between gap-4">
                       <span className="min-w-0">

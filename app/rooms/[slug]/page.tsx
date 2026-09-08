@@ -9,14 +9,16 @@ import {
   Ruler,
   UsersThree,
 } from '@phosphor-icons/react/dist/ssr';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ArrowLeftStartOnRectangleIcon,
+  ArrowRightEndOnRectangleIcon,
+} from '@heroicons/react/24/outline';
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseAddOnIds, parseCriteria } from '@/lib/application/search-params';
-import { roomCategory } from '@/lib/domain/room-attributes';
 import {
   bedLabels,
-  categoryLabels,
   formatDateRange,
   formatFloor,
   formatGuests,
@@ -26,11 +28,11 @@ import {
 } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { AddOnPicker, QuoteLines } from '@/components/rooms/add-on-picker';
+import { StayDatesSummary } from '@/components/search/stay-dates-summary';
 import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
-import { amenityTone, featureIcon, type AmenityTone } from '@/components/rooms/feature-icon';
+import { amenityTone, factTone, featureIcon, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import { RoomGallery } from '@/components/rooms/room-gallery';
-import { StatusBadge } from '@/components/rooms/status-badge';
-import { SectionLabel } from '@/components/site/section-label';
+import { ScrollArrows } from '@/components/rooms/room-strip-controls';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 import { cn } from '@/lib/utils';
@@ -39,18 +41,6 @@ export async function generateMetadata({ params }: PageProps<'/rooms/[slug]'>): 
   const { slug } = await params;
   return { title: `${slug.replace(/-/g, ' ')} — Asteria Cove | SPARK StaySphere 360` };
 }
-
-/**
- * Tailwind needs the class names whole, so the tones are spelled out rather
- * than built from the tone key at runtime.
- */
-const amenityToneClass: Record<AmenityTone, string> = {
-  clay: 'bg-tint-clay text-tint-clay-ink',
-  sand: 'bg-tint-sand text-tint-sand-ink',
-  sage: 'bg-tint-sage text-tint-sage-ink',
-  rose: 'bg-tint-rose text-tint-rose-ink',
-  stone: 'bg-tint-stone text-tint-stone-ink',
-};
 
 export default async function RoomDetailPage({ params, searchParams }: PageProps<'/rooms/[slug]'>) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
@@ -64,20 +54,21 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
       throw error;
     });
 
-  const { hotel, offer, addOns, quote } = detail;
+  const { offer, addOns, quote } = detail;
   const { room, ratePlan } = offer;
   const soldOut = offer.status === 'sold_out';
   const stayQuery = buildQuery({ criteria });
   const bookQuery = buildQuery({ criteria, addOnIds: quote.addOnIds });
   const services = addOns.filter((addOn) => addOn.category === 'service');
   const dining = addOns.filter((addOn) => addOn.category === 'dining');
+  const lateCheckOut = services.find((addOn) => addOn.id === 'addon_late' && addOn.enabled);
 
   const facts = [
-    { icon: Ruler, label: `${room.areaM2} m²` },
-    { icon: Buildings, label: formatFloor(room.floor) },
-    { icon: UsersThree, label: `Sleeps up to ${room.capacity}` },
-    { icon: Bed, label: bedLabels[room.bedType] },
-    { icon: Eye, label: viewLabels[room.view] },
+    { icon: Ruler, label: `${room.areaM2} m²`, tone: factTone.area },
+    { icon: Buildings, label: formatFloor(room.floor), tone: factTone.floor },
+    { icon: UsersThree, label: `Sleeps up to ${room.capacity}`, tone: factTone.capacity },
+    { icon: Bed, label: bedLabels[room.bedType], tone: factTone.bed },
+    { icon: Eye, label: viewLabels[room.view], tone: factTone.view },
   ];
 
   return (
@@ -85,7 +76,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
       <SiteHeader stayQuery={stayQuery} />
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-          <Link href={`/rooms?${stayQuery}`} className="inline-flex min-h-11 items-center gap-2 text-muted-foreground hover:text-foreground">
+          <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
             All rooms
           </Link>
@@ -99,51 +90,58 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
 
             <RoomGallery room={room} />
 
-            {/* Only the name stands above the photograph. What kind of room it
-                is, whether it is running out, what it holds — all of it reads
-                better once the room has been seen. */}
+            {/* Only the name stands above the photograph. The category and
+                the hotel were a caption of the obvious; availability is
+                stated in full, and more usefully, in the stay summary once
+                the guest is deciding — not as a small badge up here. */}
             <div className="mt-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <SectionLabel>
-                  {categoryLabels[roomCategory(room)]} · {hotel.name}
-                </SectionLabel>
-                <StatusBadge status={offer.status} remaining={offer.remaining} />
-              </div>
-              <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+              <p className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
                 {room.description}
               </p>
               <ul className="mt-5 flex flex-wrap gap-1.5">
                 {facts.map((fact) => (
-                  <li key={fact.label} className={tag()}>
-                    <fact.icon weight="fill" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <li key={fact.label} className={tag(tintSurface[fact.tone])}>
+                    <fact.icon weight="fill" className={cn('size-3.5', tintInk[fact.tone])} aria-hidden="true" />
                     {fact.label}
                   </li>
                 ))}
               </ul>
             </div>
 
-            <section aria-labelledby="amenities-heading" className="mt-12">
-              <h2 id="amenities-heading" className="text-display text-3xl">
-                In the room
-              </h2>
+            <section aria-labelledby="amenities-heading" className="mt-20">
+              <div className="flex flex-wrap items-end gap-4">
+                <h2 id="amenities-heading" className="text-display text-3xl">
+                  In the room
+                </h2>
+                <ScrollArrows targetId="amenities-rail" className="ml-auto" />
+              </div>
               {/* A card each, but deliberately not the tile grid the rules
                   warn about: a mark and the thing's name, nothing more. No
                   heading over two lines of copy, no icon in a tinted circle —
-                  those are what made that pattern read as stock. Flat: the
-                  tint carries the card, so there is no shadow under it. */}
-              <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  those are what made that pattern read as stock. White on the
+                  same soft, tight shadow the room cards sit on; the tone is
+                  carried by the mark alone, so the colour still says what
+                  kind of thing it is without painting the whole card.
+                  The same rail as the home page's rooms: four across from
+                  `lg`, three from `sm`, two on a phone, sized from the rail
+                  itself, and paged by the arrows beside the heading. */}
+              <ul
+                id="amenities-rail"
+                className="no-scrollbar -mx-3 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6"
+              >
                 {room.amenities.map((amenity) => {
                   const Icon = featureIcon(amenity);
                   const tone = amenityTone(amenity);
                   return (
                     <li
                       key={amenity}
-                      className={cn(
-                        'flex min-h-32 flex-col items-center justify-center gap-3 rounded-[28px] p-5 text-center sm:min-h-40 sm:gap-4 sm:p-6',
-                        amenityToneClass[tone],
-                      )}
+                      className="flex min-h-32 w-[calc((100%-0.75rem)/2)] shrink-0 snap-start flex-col items-center justify-center gap-3 rounded-[28px] bg-card p-5 text-center shadow-soft sm:min-h-40 sm:w-[calc((100%-1.5rem)/3)] sm:gap-4 sm:p-6 lg:w-[calc((100%-2.25rem)/4)]"
                     >
-                      <Icon weight="fill" className="size-8 shrink-0 sm:size-9" aria-hidden="true" />
+                      <Icon
+                        weight="fill"
+                        className={cn('size-8 shrink-0 sm:size-9', tintInk[tone])}
+                        aria-hidden="true"
+                      />
                       <span className="text-[15px] leading-snug font-medium text-foreground">
                         {amenity}
                       </span>
@@ -153,37 +151,92 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               </ul>
             </section>
 
-            <section aria-labelledby="rate-heading" className="mt-12">
+            <section aria-labelledby="rate-heading" className="mt-20">
               <h2 id="rate-heading" className="text-display text-3xl">
                 {ratePlan.name}
               </h2>
-              <div className="mt-5 rounded-[28px] bg-card p-6 shadow-soft">
-                {/* The mark says what is included, not merely that something
-                    is. A column of identical checks was the same shrug the
-                    amenities used to make. */}
-                <ul className="grid gap-3 sm:grid-cols-2">
-                  {ratePlan.includedServices.map((service) => {
-                    const Icon = featureIcon(service);
-                    return (
-                      <li key={service} className="flex items-start gap-2.5 text-sm">
-                        <Icon
-                          weight="fill"
-                          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        {service}
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="mt-5 flex items-start gap-2.5 border-t border-border pt-4 text-sm text-muted-foreground">
-                  <CalendarCheck weight="fill" className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  {ratePlan.cancellationPolicy}
+              <p className="mt-2 text-sm text-muted-foreground">Included at no extra cost.</p>
+
+              {/* Chips, not a column of rows in a card. Four short phrases in
+                  a full-width panel left it two-thirds empty and read as a
+                  list of nothing in particular; at chip size they take one
+                  line each and the marks carry the tone their subject already
+                  wears on the amenity cards above. */}
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {ratePlan.includedServices.map((service) => {
+                  const Icon = featureIcon(service);
+                  const tone = amenityTone(service);
+                  return (
+                    <li key={service} className={tag(cn(tintSurface[tone], 'px-3.5 py-2 text-sm'))}>
+                      <Icon
+                        weight="fill"
+                        className={cn('size-4 shrink-0', tintInk[tone])}
+                        aria-hidden="true"
+                      />
+                      {service}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section aria-labelledby="policies-heading" className="mt-20">
+              <h2 id="policies-heading" className="text-display text-3xl">
+                Check-in &amp; check-out
+              </h2>
+              {/* The hours a guest actually plans a flight or a taxi around,
+                  stated as two facts rather than folded into the rate plan's
+                  own copy — the same "arrow in, arrow out" pair the stay
+                  summary uses, so arrival and departure read as the same
+                  idea everywhere they appear. */}
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-md">
+                <div className={cn('rounded-[20px] p-4', tintSurface.stone)}>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <ArrowRightEndOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
+                    Check-in
+                  </p>
+                  <p className="text-display mt-1 text-xl">From 3:00 PM</p>
+                </div>
+                <div className={cn('rounded-[20px] p-4', tintSurface.stone)}>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <ArrowLeftStartOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
+                    Check-out
+                  </p>
+                  <p className="text-display mt-1 text-xl">By 11:00 AM</p>
+                </div>
+              </div>
+              {/* Only a promise the booking engine can keep: withdrawing the
+                  add-on in admin should not leave a line on the page still
+                  offering it. */}
+              {lateCheckOut ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Leaving later? Add a late check-out below to hold the room until 6:00 PM.
+                </p>
+              ) : null}
+
+              {/* Cancellation is the other half of what the rate is worth, so
+                  it gets the same treatment the demo-payment notice does: a
+                  soft tint it can't be scrolled past without noticing, in the
+                  success green this icon already carries elsewhere on the
+                  page — not the accent, which rule 6 keeps for savings and
+                  the primary action. A second sentence spells out what the
+                  policy actually buys the guest, since "free cancellation"
+                  alone reads as marketing until it says free of what. */}
+              <div className="mt-5 flex items-start gap-3 rounded-3xl bg-success/10 p-4 text-[15px]">
+                <CalendarCheck
+                  weight="fill"
+                  className="mt-0.5 size-5 shrink-0 text-success"
+                  aria-hidden="true"
+                />
+                <p>
+                  <span className="font-medium">{ratePlan.cancellationPolicy}</span> Cancel or
+                  change your dates any time before then and nothing is charged — no fee, no form
+                  to fill in beyond this page.
                 </p>
               </div>
             </section>
 
-            <section aria-labelledby="addons-heading" className="mt-12">
+            <section aria-labelledby="addons-heading" className="mt-20">
               <h2 id="addons-heading" className="text-display text-3xl">
                 Add services
               </h2>
@@ -195,7 +248,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
 
             {/* The kitchen sells through the same engine, but it is a different decision. */}
             {dining.some((addOn) => addOn.enabled && !addOn.parentId) ? (
-              <section aria-labelledby="dining-heading" className="mt-12">
+              <section aria-labelledby="dining-heading" className="mt-20">
                 <h2 id="dining-heading" className="text-display text-3xl">
                   Order from the kitchen
                 </h2>
@@ -211,11 +264,13 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
           {/* Sticky booking summary */}
           <aside aria-labelledby="summary-heading" className="lg:sticky lg:top-28 lg:h-fit">
             <div className="rounded-[28px] bg-card p-6 shadow-soft">
-              <h2 id="summary-heading" className="text-display text-2xl">
+              <h2 id="summary-heading" className="text-sm font-medium text-muted-foreground">
                 Your stay
               </h2>
-              <p className="mt-2 text-sm text-muted-foreground">{formatDateRange(criteria.checkIn, criteria.checkOut)}</p>
-              <p className="text-sm text-muted-foreground">
+              {/* The dates are what is actually being booked — the same voice
+                  the price gets below, not a footnote under a card title. */}
+              <StayDatesSummary checkIn={criteria.checkIn} checkOut={criteria.checkOut} className="mt-3" />
+              <p className="mt-2 text-sm text-muted-foreground">
                 {formatNights(quote.price.nights)} · {formatGuests(criteria.adults, criteria.children)}
               </p>
 
@@ -241,7 +296,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               {soldOut ? (
                 <div className="mt-6">
                   <p role="status" className="rounded-2xl bg-danger/10 p-3 text-sm text-danger">
-                    This room is sold out for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
+                    This room is fully booked for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
                   </p>
                   <Link href={`/rooms?${stayQuery}`} className={pill('secondary', 'mt-3 w-full')}>
                     See available rooms

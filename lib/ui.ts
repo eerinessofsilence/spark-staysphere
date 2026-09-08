@@ -5,19 +5,19 @@ import { cn } from './utils';
  * and a button on the booking flow are the same object. See DESIGN_SYSTEM.md.
  */
 const pillBase =
-  'inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 export const pillVariants = {
-  /** Ink fill. The one primary action on a screen. */
-  primary: 'bg-ink text-[#F7F5F0] hover:bg-[#2b2b2b]',
+  /** The primary fill — ink by day, lime by night. The one primary action on a screen. */
+  primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
   /** White with a hairline. Secondary actions and links that look like buttons. */
   secondary: 'border border-border bg-card text-foreground hover:bg-stone',
   /** No chrome until hovered. Tertiary actions inside dense UI. */
   ghost: 'text-foreground hover:bg-stone',
   /** For use over photography or on the ink band. */
   onDark: 'border border-white/20 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20',
-  /** Frosted white over photography. */
-  glass: 'glass text-foreground hover:bg-white/90',
+  /** Frosted over photography. Hovers to the same warm white, not to plain. */
+  glass: 'glass text-foreground hover:bg-glass-tint/90',
 } as const;
 
 export type PillVariant = keyof typeof pillVariants;
@@ -39,8 +39,8 @@ export function iconButton(variant: 'light' | 'dark' | 'glass' = 'light', classN
   return cn(
     'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40',
     variant === 'light' && 'border border-border bg-card hover:bg-stone',
-    variant === 'dark' && 'bg-ink text-[#F7F5F0] hover:bg-[#2b2b2b]',
-    variant === 'glass' && 'glass text-foreground hover:bg-white/90',
+    variant === 'dark' && 'bg-primary text-primary-foreground hover:bg-primary-hover',
+    variant === 'glass' && 'glass text-foreground hover:bg-glass-tint/90',
     className,
   );
 }

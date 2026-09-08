@@ -18,6 +18,18 @@ const baseUnits: Record<string, number> = {
   'room_skyline-loft': 5,
   'room_coastal-twin': 8,
   'room_asteria-penthouse': 2,
+  'room_sea-view-room': 10,
+  'room_cove-studio': 6,
+  'room_garden-terrace-room': 7,
+  'room_city-view-room': 9,
+  'room_poolside-suite': 3,
+  'room_terrace-suite': 3,
+  'room_corner-suite': 2,
+  'room_family-loft': 4,
+  'room_garden-residence': 2,
+  'room_two-bedroom-residence': 3,
+  'room_signature-suite': 2,
+  'room_sky-terrace-suite': 1,
 };
 
 export function unitsFor(roomTypeId: string): number {

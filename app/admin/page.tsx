@@ -18,6 +18,7 @@ import {
   formatGuests,
   formatMoney,
   formatPricingUnit,
+  paymentMethodLabels,
   viewLabels,
 } from '@/lib/formatting';
 import { AddOnToggle, ResetDemoButton, RoomStatusControl } from '@/components/admin/room-controls';
@@ -269,6 +270,9 @@ export default async function AdminPage() {
                         {formatMoney(booking.total, booking.currency)}
                       </Td>
                       <Td>
+                        {/* The method and what became of it: a transfer or a
+                            desk payment is genuinely still pending, which is
+                            not the same as no attempt having been made. */}
                         <span
                           className={
                             payments.some((payment) => payment.status === 'authorized')
@@ -277,9 +281,18 @@ export default async function AdminPage() {
                           }
                         >
                           {payments.some((payment) => payment.status === 'authorized')
-                            ? 'Demo authorized'
-                            : 'No attempt'}
+                            ? 'Authorized'
+                            : payments.length > 0
+                              ? 'Awaiting payment'
+                              : 'No attempt'}
                         </span>
+                        {payments.at(-1)?.provider ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {paymentMethodLabels[
+                              payments.at(-1)!.provider as keyof typeof paymentMethodLabels
+                            ] ?? payments.at(-1)!.provider}
+                          </span>
+                        ) : null}
                       </Td>
                     </tr>
                   ))}

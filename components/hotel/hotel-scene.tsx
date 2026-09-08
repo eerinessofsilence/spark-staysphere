@@ -11,7 +11,6 @@ import {
   MapPin,
   Ruler,
   Sparkle,
-  Sun,
   SwimmingPool,
   Waves,
   Wine,
@@ -25,9 +24,11 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useAnchoredCard, type CardAnchor } from '@/components/hotel/use-anchored-card';
+import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
+import { Modal } from '@/components/site/modal';
 import type { HotelArea, Hotspot, RoomOffer } from '@/lib/domain/schemas';
 import { bedLabels, formatFloor, formatMoney } from '@/lib/formatting';
-import { iconButton, pill } from '@/lib/ui';
+import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 /**
@@ -41,7 +42,6 @@ import { cn } from '@/lib/utils';
 
 const hotspotIcons: Record<string, typeof MapPin> = {
   'sea-view': Waves,
-  roof: Sun,
   cove: Anchor,
   infinity: SwimmingPool,
   pavilion: Wine,
@@ -60,6 +60,8 @@ export interface RoomFacts {
   bedType: RoomOffer['room']['bedType'];
   nightlyPrice: number;
   currency: RoomOffer['price']['currency'];
+  /** The room's cover, so a phone's sheet can show what the marker points at. */
+  photo?: { url: string; width?: number; height?: number };
 }
 
 interface HotelSceneProps {
@@ -93,6 +95,10 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
   const [dims, setDims] = React.useState({ width: 0, height: 0 });
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [hoveredZone, setHoveredZone] = React.useState<string | null>(null);
+  // Below `sm` a marker opens the product's sheet instead of a card floating
+  // on a 275px-tall photograph. Read after mount, which is always before a
+  // marker can have been pressed.
+  const [isPhone, setIsPhone] = React.useState(false);
   const [pinnedZone, setPinnedZone] = React.useState<string | null>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
   const [activeAnchor, setActiveAnchor] = React.useState<CardAnchor | null>(null);
@@ -133,8 +139,21 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
+  React.useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const apply = () => setIsPhone(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+
   const area = areas[index] ?? areas[0];
-  const namedZone = pinnedZone ?? hoveredZone;
+  // A marker sits inside the floor band it belongs to, so hovering it also
+  // hovers the band underneath — without this, its pill and the band's own
+  // price card land in the same spot and read as one broken tangle. The
+  // marker wins: it is the more specific target, and the band's card returns
+  // the moment the pointer clears it.
+  const namedZone = hoveredHotspot || activeHotspot ? null : (pinnedZone ?? hoveredZone);
 
   // The floor band's card hangs off the middle of the band. It used to be
   // centred there with a transform and nothing else, so on a phone — where the
@@ -219,7 +238,8 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
         role="group"
         aria-roledescription="carousel"
         aria-label={`Explore the hotel area by area. ${areas.length} areas.`}
-        className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-stone sm:aspect-[16/10]"
+        // Square to the screen edges on a phone; the 28px card from `sm`.
+        className="relative aspect-[4/3] overflow-hidden bg-stone sm:aspect-[16/10] sm:rounded-[28px]"
       >
         {/* All areas are stacked so switching is instant; only one is visible. */}
         {areas.map((candidate, candidateIndex) => (
@@ -243,13 +263,6 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent"
         />
-
-        {/* Which area this is: a name, not a row of buttons for areas you are
-            not looking at. Paging between them is the arrows on the bottom
-            rail, the same control on a phone and on a desk. */}
-        <span className="glass absolute top-4 left-4 z-20 rounded-full px-3.5 py-2 text-sm font-medium">
-          {area.name}
-        </span>
 
         <button
           type="button"
@@ -371,7 +384,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
                         </span>
                       </span>
                     </span>
-                    <span className="grid size-8 place-items-center rounded-full bg-ink text-[#F7F5F0]">
+                    <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
                       <ArrowRightIcon className="size-4" aria-hidden="true" />
                     </span>
                   </Link>
@@ -397,16 +410,24 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
               onMouseEnter={() => setHoveredHotspot(hotspot.id)}
               onMouseLeave={() => setHoveredHotspot(null)}
               style={positionFor(hotspot)}
+              // A marker's fixed spot on the facade and a floor band's card
+              // are placed by two systems that know nothing of each other —
+              // a card anchored to its own band's centre can still land right
+              // on a marker sitting nearby. Rather than teach either system
+              // about the other's box, the marker steps aside, the same way
+              // the caption already does while a band is named.
+              tabIndex={namedZone ? -1 : undefined}
               className={cn(
-                'absolute z-10 flex min-h-11 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2.5 rounded-full p-1 pr-1 text-sm font-medium transition-colors sm:pr-4',
-                isActive ? 'bg-ink text-[#F7F5F0]' : 'glass text-foreground hover:bg-white/90',
+                'absolute z-10 flex min-h-11 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2.5 rounded-full p-1 pr-1 text-sm font-medium transition-[opacity,colors] sm:pr-4',
+                namedZone ? 'pointer-events-none opacity-0' : 'opacity-100',
+                isActive ? 'bg-primary text-primary-foreground' : 'glass text-foreground hover:bg-glass-tint/90',
               )}
             >
               <span
                 aria-hidden="true"
                 className={cn(
                   'grid size-9 place-items-center rounded-full',
-                  isActive ? 'bg-white/15 text-white' : 'bg-ink text-[#F7F5F0]',
+                  isActive ? 'bg-primary-foreground/15 text-primary-foreground' : 'bg-primary text-primary-foreground',
                 )}
               >
                 <Icon weight="fill" className="size-4" />
@@ -414,7 +435,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
               <span className="hidden sm:inline">
                 {hotspot.label}
                 {line ? (
-                  <span className={cn('font-normal', isActive ? 'text-white/70' : 'text-muted-foreground')}>
+                  <span className={cn('font-normal', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                     {' '}· {line}
                   </span>
                 ) : null}
@@ -423,9 +444,11 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
           );
         })}
 
-        {/* The card opens right beside the marker that was pressed, tracked by
-            `useAnchoredCard` — never a fixed corner the guest has to hunt for. */}
-        {active ? (
+        {/* On a desk the card opens right beside the marker that was pressed,
+            tracked by `useAnchoredCard` — never a fixed corner to hunt for.
+            A phone gets the sheet below instead: there is no room beside a
+            marker when the stage is barely taller than the card. */}
+        {active && !isPhone ? (
           <div
             ref={activeCardRef}
             aria-live="polite"
@@ -438,10 +461,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
                 {rooms?.[active.roomSlug!]?.name} · {roomLine(active)}
               </p>
             ) : null}
-            {/* Dropped on a phone: the stage is only as tall as the card, and
-                the name, the floor, and the price already sell the marker. The
-                prose survives one tap away, on the page the button opens. */}
-            <p className="mt-1 hidden text-sm leading-relaxed text-muted-foreground sm:block">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {active.description}
             </p>
             <Link href={hotspotHref(active)} className={pill('primary', 'mt-3 h-10 px-4')}>
@@ -490,6 +510,74 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
         </div>
       </div>
 
+      {/* The phone's version of the marker card: the product's own sheet, with
+          room for the prose the floating card had to drop. */}
+      <Modal
+        open={Boolean(active) && isPhone}
+        onClose={() => setActiveHotspot(null)}
+        title={active?.label ?? ''}
+      >
+        {active ? (
+          <div className="flex flex-col">
+            {(() => {
+              const facts = active.roomSlug ? rooms?.[active.roomSlug] : undefined;
+              // A marker that points at a room shows the room; one that points
+              // at a place shows the place the guest was just looking at.
+              const image = facts?.photo
+                ? { url: facts.photo.url, alt: facts.name, width: facts.photo.width, height: facts.photo.height }
+                : { url: area.photo.url, alt: area.photo.alt, width: area.photo.width, height: area.photo.height };
+              return (
+                <>
+                  <img
+                    src={image.url}
+                    alt={image.alt}
+                    width={image.width}
+                    height={image.height}
+                    className="aspect-[3/2] w-full rounded-[20px] object-cover"
+                  />
+
+                  <h3 className="text-display mt-5 text-2xl">{active.label}</h3>
+                  {facts ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {facts.name} · {roomLine(active)}
+                    </p>
+                  ) : null}
+                  <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+                    {active.description}
+                  </p>
+
+                  {facts ? (
+                    <ul className="mt-4 flex flex-wrap gap-1.5">
+                      <li className={tag(tintSurface[factTone.area])}>
+                        <Ruler weight="fill" className={cn('size-3.5', tintInk[factTone.area])} aria-hidden="true" />
+                        {facts.areaM2} m²
+                      </li>
+                      <li className={tag(tintSurface[factTone.bed])}>
+                        <Bed weight="fill" className={cn('size-3.5', tintInk[factTone.bed])} aria-hidden="true" />
+                        {bedLabels[facts.bedType]}
+                      </li>
+                      <li className={tag(tintSurface[factTone.capacity])}>
+                        <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
+                        Sleeps {facts.capacity}
+                      </li>
+                    </ul>
+                  ) : null}
+
+                  <Link
+                    href={hotspotHref(active)}
+                    // Straight after what it acts on. Pinned to the floor of
+                    // a full screen it sat a long empty gap below the facts.
+                    className={pill('primary', 'mt-6 min-h-12 w-full justify-center')}
+                  >
+                    {active.cta}
+                    <ArrowRightIcon className="size-4" aria-hidden="true" />
+                  </Link>
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

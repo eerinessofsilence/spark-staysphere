@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
+import { THEME_BOOTSTRAP } from '@/lib/theme';
 import './globals.css';
 
 /**
@@ -33,8 +34,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${body.variable} ${accent.variable} antialiased`}>
+    // `.dark` re-scopes every token from the document root down, so a sheet
+    // portalled to `document.body` from any route picks up the scheme the
+    // same way its opener did, with nothing extra to carry it across. Day
+    // is what the server renders — the site's default — and the script
+    // below adds the class before the first paint if this visitor chose
+    // night instead, so `suppressHydrationWarning` covers exactly that one
+    // attribute.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
+      <body className={`${body.variable} ${accent.variable} bg-background text-foreground antialiased`}>
         {children}
       </body>
     </html>
