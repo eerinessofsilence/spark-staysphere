@@ -129,7 +129,7 @@ export function BillRow({
         {indented ? <span aria-hidden="true">+ </span> : null}
         {label}
       </dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dd className="font-semibold tabular-nums">{value}</dd>
       {onRemove ? (
         <RemoveButton label={removeLabel ?? `Remove ${label}`} onClick={onRemove} />
       ) : (

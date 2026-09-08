@@ -72,6 +72,50 @@ async function toggle(box: Locator, expected: 'true' | 'false') {
 }
 
 /**
+ * The shortest path to a real reference, for tests about what happens *after*
+ * a booking. The golden-path test above walks the flow properly and asserts on
+ * each step; this only needs the booking to exist. The first card of a
+ * sold-out-hidden catalog is used because demo inventory is finite — a
+ * hard-coded room runs out as the suite is re-run against one server.
+ */
+async function bookAStay(page: Page): Promise<string> {
+  await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
+  const card = page.getByRole('region', { name: 'Search results' }).locator('article').first();
+  const roomName = (await card.getByRole('heading').innerText()).trim();
+  await card.getByRole('link', { name: roomName }).click();
+  await page
+    .getByRole('complementary', { name: 'Your stay' })
+    .getByRole('link', { name: 'Book this room' })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Complete your stay' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await page.getByLabel('First name').fill('Ada');
+  await page.getByLabel('Last name').fill('Lindqvist');
+  await page.getByLabel('Email').fill('ada@example.com');
+  await page.getByLabel('Phone').fill('91 555 0117');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await toggle(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }), 'true');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Confirm demo booking' }).click();
+  await expect(page).toHaveURL(/\/booking\/AC-/, { timeout: 20_000 });
+
+  return (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
+}
+
+/** The header menu is a hydrated island: a click before React attaches is lost. */
+async function openMenu(page: Page) {
+  await actUntil(
+    () => page.getByRole('button', { name: 'Menu and account' }).click(),
+    () => expect(page.getByRole('radio', { name: 'Light' })).toBeVisible({ timeout: 3_000 }),
+  );
+}
+
+/**
  * Extras are bought through their own panel now: the card opens it, the extras
  * are ticked inside, and one button commits the lot. `extras` names the ones to
  * add along with the thing itself.
@@ -130,12 +174,14 @@ test('the arrival screen presents the hotel area by area with hotspots', async (
   await expect(scene).toBeVisible();
 
   // Switch to the pool area, then open its hotspot. Areas page with the
-  // arrows on the stage's bottom rail — "The hotel" is first, "Pool" second.
-  const areaLabel = scene.getByText('The hotel', { exact: true });
-  await expect(areaLabel).toBeVisible();
+  // arrows on the stage's bottom rail — the hotel's own hotspots are up
+  // first, the pool's replace them once "Next area" has paged forward.
+  const seaViewHotspot = scene.getByRole('button', { name: /Sea-view rooms/ });
+  await expect(seaViewHotspot).toBeVisible();
   await actUntil(
     () => page.getByRole('button', { name: 'Next area' }).click(),
-    () => expect(scene.getByText('Pool', { exact: true })).toBeVisible({ timeout: 3_000 }),
+    () =>
+      expect(scene.getByRole('button', { name: 'Infinity edge' })).toBeVisible({ timeout: 3_000 }),
   );
 
   const cta = page.getByRole('link', { name: 'See pool-access rooms' });
@@ -215,7 +261,10 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'true'),
   );
   await expect(page).toHaveURL(/view=sea/);
-  await expect(cards).toHaveCount(4);
+  // Fewer cards, and every one of them a sea view — not a fixed number, so
+  // the catalog can grow without this test needing to know how many.
+  await expect.poll(() => cards.count()).toBeLessThan(initialCount);
+  for (const text of await cards.allInnerTexts()) expect(text).toContain('Sea view');
 
   await withFilters(page, () =>
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'false'),
@@ -269,8 +318,8 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
 
   // The catalog only ever opens the room's own page — booking starts there,
   // once the guest has actually seen the room, never as a shortcut from the
-  // search results.
-  await firstCard.getByRole('link', { name: 'See details' }).click();
+  // search results. The card carries no button: the whole tile is that link.
+  await firstCard.getByRole('link', { name: roomName }).click();
   await expect(page).toHaveURL(/\/rooms\//);
   await expect(page.getByRole('heading', { level: 1, name: roomName })).toBeVisible();
 
@@ -307,7 +356,7 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   await page.getByLabel('First name').fill('Ada');
   await page.getByLabel('Last name').fill('Lindqvist');
   await page.getByLabel('Email').fill('ada@example.com');
-  await page.getByLabel('Phone').fill('+385 91 555 0117');
+  await page.getByLabel('Phone').fill('91 555 0117');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Payment — the terms box gates the step and no card fields exist.
@@ -333,10 +382,40 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   const reference = (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
   expect(reference).toMatch(/^AC-[A-Z0-9]{6}$/);
 
+  // The stay is now one of this browser's trips, without an account.
+  await page.goto('/trips');
+  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
+  await expect(page.getByText(reference)).toBeVisible();
+
   // The booking reaches the operations view.
   await page.goto('/admin');
   await expect(page.getByRole('link', { name: reference })).toBeVisible();
   await expect(page.getByText('ada@example.com').first()).toBeVisible();
+});
+
+test('a trip is claimed by reference and the email it was booked with', async ({ page }) => {
+  const reference = await bookAStay(page);
+
+  await page.goto('/trips');
+  // A fresh browser: the reference alone must not be a lookup key.
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'No trips yet' })).toBeVisible();
+
+  await page.getByLabel('Reference').fill(reference);
+  await page.getByLabel('Email').fill('someone.else@example.com');
+  await page.getByRole('button', { name: 'Find booking' }).click();
+  await expect(page.getByText(/No booking matches that reference and email/)).toBeVisible();
+  // Nothing was added: a right reference with the wrong email lists no stay.
+  await expect(page.getByRole('heading', { name: 'No trips yet' })).toBeVisible();
+
+  await page.getByLabel('Email').fill('ada@example.com');
+  await page.getByRole('button', { name: 'Find booking' }).click();
+  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
+
+  // And it is remembered, so the trip survives a reload.
+  await page.reload();
+  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
 });
 
 test('an admin sell-out immediately blocks that room for guests', async ({ page }) => {
@@ -347,11 +426,11 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   // selectOption changes the DOM without ever reaching the server action.
   await actUntil(
     async () => void (await row.getByRole('combobox').selectOption('sold_out')),
-    () => expect(row.locator('td').nth(3)).toContainText('Sold out', { timeout: 3_000 }),
+    () => expect(row.locator('td').nth(3)).toContainText('Fully booked', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
-  await expect(page.getByText(/is sold out for/)).toBeVisible();
+  await expect(page.getByText(/is fully booked for/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Book this room' })).toHaveCount(0);
 
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
@@ -364,7 +443,8 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   const restored = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
   await actUntil(
     async () => void (await restored.getByRole('combobox').selectOption('auto')),
-    () => expect(restored.locator('td').nth(3)).not.toContainText('Sold out', { timeout: 3_000 }),
+    () =>
+      expect(restored.locator('td').nth(3)).not.toContainText('Fully booked', { timeout: 3_000 }),
   );
 });
 
@@ -394,4 +474,53 @@ test('withdrawing an add-on removes it from the guest flow', async ({ page }) =>
     },
     () => expect(restore.getByText('On sale')).toBeVisible({ timeout: 3_000 }),
   );
+});
+
+test('the appearance choice survives a reload, with no flash of the other theme', async ({ page }) => {
+  await page.goto('/');
+  const html = page.locator('html');
+  // Day is what the server renders and what a first-time visitor gets.
+  await expect(html).not.toHaveClass(/dark/);
+
+  await openMenu(page);
+  await page.getByRole('radio', { name: 'Dark' }).click();
+  await expect(html).toHaveClass(/dark/);
+
+  // The class is set by a script in <head>, so the reloaded document is
+  // already dark before React runs — not corrected afterwards.
+  await page.reload();
+  await expect(html).toHaveClass(/dark/);
+  expect(await page.evaluate(() => document.documentElement.className)).toContain('dark');
+
+  await openMenu(page);
+  await page.getByRole('radio', { name: 'Light' }).click();
+  await expect(html).not.toHaveClass(/dark/);
+});
+
+test('a guest cancels a stay, and the room goes back on sale', async ({ page }) => {
+  const reference = await bookAStay(page);
+
+  await page.goto('/trips');
+  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
+  await expect(page.getByText(reference)).toBeVisible();
+
+  // The reference this browser holds is not on its own permission to cancel.
+  await page.getByRole('button', { name: 'Cancel booking' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Cancel booking' });
+  await dialog.getByLabel('Email the booking was made with').fill('someone.else@example.com');
+  await dialog.getByRole('button', { name: 'Cancel booking' }).click();
+  await expect(dialog.getByText(/do not match a booking/)).toBeVisible();
+
+  await dialog.getByLabel('Email the booking was made with').fill('ada@example.com');
+  await dialog.getByRole('button', { name: 'Cancel booking' }).click();
+
+  // It moves out of Upcoming and into Cancelled, where it can no longer be cancelled again.
+  await expect(page.getByRole('tab', { name: /Cancelled/, selected: true })).toBeVisible();
+  await expect(page.getByText('Cancelled').last()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Upcoming 0' })).toBeVisible();
+
+  // The desk sees the same thing.
+  await page.goto('/admin');
+  await expect(page.getByRole('link', { name: reference })).toBeVisible();
 });

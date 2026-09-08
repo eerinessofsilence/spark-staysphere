@@ -11,12 +11,15 @@ import type {
   AddOn,
   Booking,
   BookingRequest,
+  Currency,
   PaymentAttempt,
+  PaymentMethod,
   Quote,
   RatePlan,
   RoomType,
 } from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
+import { nightsBetween } from '../domain/pricing';
 
 export type BookingErrorCode =
   | 'invalid_request'
@@ -43,6 +46,54 @@ export interface BookingConfirmation {
   ratePlan: RatePlan | null;
   addOns: AddOn[];
   payments: PaymentAttempt[];
+}
+
+/**
+ * One stay as "My trips" lists it: enough to recognise the booking and open
+ * it, and deliberately not the whole `Booking` — the guest's own details and
+ * the payment attempts stay on the confirmation page, behind the reference.
+ */
+export interface TripSummary {
+  reference: string;
+  roomName: string;
+  roomSlug: string | null;
+  photo: { url: string; width?: number; height?: number } | null;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  adults: number;
+  children: number;
+  addOnCount: number;
+  total: number;
+  currency: Currency;
+  status: Booking['status'];
+  /** False once the stay has started, and for a booking already cancelled. */
+  canCancel: boolean;
+  createdAt: string;
+}
+
+export type CancelOutcome = 'cancelled' | 'already_cancelled' | 'stay_started' | 'not_found';
+
+/** The methods that take the money at booking time rather than later. */
+const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google_pay']);
+
+/** A browser can remember a long history; a page does not need to load all of it. */
+const MAX_TRIPS = 40;
+
+/**
+ * Whether the stay is still ahead. Compared as calendar dates, in the
+ * server's own day: a guest arriving today is checking in, not booking, and
+ * either way this is a demo whose property sits in one timezone.
+ */
+function isBeforeCheckIn(checkIn: string): boolean {
+  const today = new Date();
+  const offset = today.getTimezoneOffset();
+  return checkIn > new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+/** References are shown and typed in upper case, whatever the keyboard did. */
+function normalizeReference(reference: string): string {
+  return reference.trim().toUpperCase();
 }
 
 const REFERENCE_ALPHABET = 'ACDEFGHJKLMNPQRTUVWXY3456789';
@@ -88,6 +139,110 @@ export class BookingService {
       ratePlan: ratePlans.find((plan) => plan.id === booking.ratePlanId) ?? null,
       addOns: allAddOns.filter((addOn) => booking.addOnIds.includes(addOn.id)),
       payments: await this.repository.listPaymentAttempts(booking.id),
+    };
+  }
+
+  /**
+   * The stays behind a list of references, newest arrival last and unknown
+   * references simply dropped: a browser that remembers a booking the server
+   * has since forgotten (this demo holds them per process) should show the
+   * trips it still has, not an error.
+   */
+  async listTrips(references: string[]): Promise<TripSummary[]> {
+    const unique = [...new Set(references.map(normalizeReference).filter(Boolean))].slice(
+      0,
+      MAX_TRIPS,
+    );
+    const found = await Promise.all(
+      unique.map((reference) => this.repository.getBookingByReference(reference)),
+    );
+    const bookings = found.filter((booking): booking is Booking => booking !== null);
+
+    // One room read per hotel rather than per booking: every trip in this demo
+    // is at the same property, and a guest's list is mostly one hotel anyway.
+    const roomsByHotel = new Map<string, RoomType[]>();
+    for (const hotelId of new Set(bookings.map((booking) => booking.hotelId))) {
+      roomsByHotel.set(hotelId, await this.repository.listRooms(hotelId));
+    }
+
+    return bookings
+      .map((booking) =>
+        this.summarize(
+          booking,
+          roomsByHotel.get(booking.hotelId)?.find((room) => room.id === booking.roomTypeId) ?? null,
+        ),
+      )
+      .sort((first, second) => first.checkIn.localeCompare(second.checkIn));
+  }
+
+  /**
+   * A trip claimed on a device that never made it. The reference alone is not
+   * the key — the email it was booked with has to match too, so the form
+   * cannot be walked through the reference space to read a stranger's stay.
+   * A wrong email and a reference that was never issued fail identically, or
+   * the failure itself would say which references exist.
+   */
+  async findTrip(reference: string, email: string): Promise<TripSummary | null> {
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
+    if (!booking) return null;
+    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) return null;
+
+    const rooms = await this.repository.listRooms(booking.hotelId);
+    return this.summarize(booking, rooms.find((room) => room.id === booking.roomTypeId) ?? null);
+  }
+
+  /**
+   * Cancels a stay for the guest who booked it.
+   *
+   * Same key as `findTrip`: the reference alone opens nothing, and a wrong
+   * email is indistinguishable from a reference that was never issued. A
+   * stay that has already begun is not a cancellation — the desk handles an
+   * early departure, not this form — so it is refused rather than quietly
+   * releasing a room somebody is currently in.
+   */
+  async cancelTrip(
+    reference: string,
+    email: string,
+  ): Promise<{ outcome: CancelOutcome; trip?: TripSummary }> {
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
+    if (!booking) return { outcome: 'not_found' };
+    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return { outcome: 'not_found' };
+    }
+
+    const rooms = await this.repository.listRooms(booking.hotelId);
+    const room = rooms.find((candidate) => candidate.id === booking.roomTypeId) ?? null;
+
+    if (booking.status === 'cancelled') {
+      return { outcome: 'already_cancelled', trip: this.summarize(booking, room) };
+    }
+    if (!isBeforeCheckIn(booking.checkIn)) {
+      return { outcome: 'stay_started', trip: this.summarize(booking, room) };
+    }
+
+    const cancelled = await this.repository.cancelBooking(booking.reference);
+    if (!cancelled) return { outcome: 'not_found' };
+    return { outcome: 'cancelled', trip: this.summarize(cancelled, room) };
+  }
+
+  private summarize(booking: Booking, room: RoomType | null): TripSummary {
+    const photo = room?.media.find((item) => item.type === 'image') ?? null;
+    return {
+      reference: booking.reference,
+      roomName: room?.name ?? 'Your room',
+      roomSlug: room?.slug ?? null,
+      photo: photo ? { url: photo.url, width: photo.width, height: photo.height } : null,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      nights: nightsBetween(booking.checkIn, booking.checkOut),
+      adults: booking.adults,
+      children: booking.children,
+      addOnCount: booking.addOnIds.length,
+      total: booking.total,
+      currency: booking.currency,
+      status: booking.status,
+      canCancel: booking.status !== 'cancelled' && isBeforeCheckIn(booking.checkIn),
+      createdAt: booking.createdAt,
     };
   }
 
@@ -139,23 +294,31 @@ export class BookingService {
     });
 
     const bookingId = `bkg_${crypto.randomUUID()}`;
-    const payment = await this.paymentProvider.authorizeDemo({
-      bookingId,
-      amount: quote.price.total,
-      currency: quote.price.currency,
-    });
+
+    // A transfer and paying at the desk take nothing now — the stay is
+    // guaranteed and the money arrives later — so they record an attempt that
+    // is still pending rather than claiming an authorization that never
+    // happened. Only the card and the wallets go to the provider.
+    const authorizesNow = AUTHORIZING_METHODS.has(input.paymentMethod);
+    const payment = authorizesNow
+      ? await this.paymentProvider.authorizeDemo({
+          bookingId,
+          amount: quote.price.total,
+          currency: quote.price.currency,
+        })
+      : null;
 
     const attempt: PaymentAttempt = {
-      id: payment.paymentAttemptId,
+      id: payment?.paymentAttemptId ?? `pay_${crypto.randomUUID()}`,
       bookingId,
-      provider: 'demo',
-      status: payment.authorized ? 'authorized' : 'failed',
+      provider: input.paymentMethod,
+      status: payment ? (payment.authorized ? 'authorized' : 'failed') : 'demo_pending',
       amount: quote.price.total,
       currency: quote.price.currency,
     };
     await this.repository.savePaymentAttempt(attempt);
 
-    if (!payment.authorized) {
+    if (payment && !payment.authorized) {
       throw new BookingError(
         'payment_declined',
         payment.declineReason ?? 'The demo payment was not authorized.',

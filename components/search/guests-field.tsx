@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { MinusIcon, PlusIcon, UsersIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { fieldClass, iconButton, pill } from '@/lib/ui';
+import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,13 +13,22 @@ import { cn } from '@/lib/utils';
  * Counts commit immediately on each +/- press; there is no draft state to
  * confirm, so "Done" is just a close affordance.
  *
- * Below `sm` the panel is a full-screen take-over — a small anchored popover
- * has no good spot on a narrow screen and gets clipped or crowded. This
- * mirrors how Airbnb's own mobile guest picker behaves: opaque, full height,
- * a close button top-left, the action pinned to the bottom.
+ * Below `sm` the panel is a bottom sheet: an anchored popover has no good
+ * spot on a narrow screen and gets clipped or crowded, but two stepper rows
+ * do not earn a whole viewport either. It is the same sheet the dates panel
+ * and the header menu use, so a phone only ever has one kind of overlay.
+ *
+ * The panel portals to the body like the dates panel does, and for the same
+ * two reasons: the header's frosted pill has a backdrop filter, which would
+ * make it the containing block for a `fixed` sheet; and on the arrival page
+ * the field sits on the raised search surface, whose re-pointed tokens would
+ * otherwise leak into a panel that is meant to be the night's own sheet.
  */
 
 const MIN_ADULTS = 1;
+/** Panel width from `sm`. Kept here because the fixed position maths needs it. */
+const PANEL_WIDTH = 288;
+const VIEWPORT_MARGIN = 12;
 const MAX_ADULTS = 8;
 const MIN_CHILDREN = 0;
 const MAX_CHILDREN = 6;
@@ -44,8 +55,24 @@ export function GuestsField({
   error,
 }: GuestsFieldProps) {
   const [open, setOpen] = React.useState(false);
+  const { rendered, visible } = useOverlayTransition(open);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = React.useState<DOMRect | null>(null);
+
+  // Fixed under the field from `sm`, re-measured on every scroll and resize
+  // the way the dates panel is, since a portal has no parent to anchor to.
+  React.useEffect(() => {
+    if (!open) return;
+    const track = () => setAnchor(triggerRef.current?.getBoundingClientRect() ?? null);
+    track();
+    window.addEventListener('resize', track);
+    window.addEventListener('scroll', track, true);
+    return () => {
+      window.removeEventListener('resize', track);
+      window.removeEventListener('scroll', track, true);
+    };
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -67,9 +94,10 @@ export function GuestsField({
     };
   }, [open]);
 
-  // The mobile panel is a full-screen sheet; stop the page behind it scrolling.
+  // Hold the scroll lock through the close, so the page behind cannot jump
+  // while the sheet is still on its way out.
   React.useEffect(() => {
-    if (!open) return;
+    if (!rendered) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -82,15 +110,41 @@ export function GuestsField({
   }`;
 
   const panel = (
-    <div
-      ref={panelRef}
-      role="dialog"
-      aria-label="Guests"
-      className={cn(
-        'fixed inset-0 z-50 flex flex-col bg-card',
-        'sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:z-50 sm:mt-2 sm:w-72 sm:max-w-[calc(100vw-2rem)] sm:rounded-3xl sm:border sm:border-border sm:shadow-soft-lg',
-      )}
-    >
+    <div className="text-foreground">
+      {/* Dims the page behind the mobile sheet only. */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'fixed inset-0 z-40 bg-ink/20 transition-opacity duration-200 sm:hidden',
+          visible ? 'opacity-100' : 'opacity-0',
+        )}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-label="Guests"
+        className={cn(
+          // A sheet pinned to the bottom on a phone, hugging its two rows.
+          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[28px] border border-border bg-card shadow-soft-lg',
+          // Desktop: anchored under the field it was opened from.
+          'sm:inset-auto sm:top-(--panel-top) sm:left-(--panel-left) sm:w-72 sm:max-w-[calc(100vw-2rem)] sm:overflow-visible sm:rounded-3xl',
+          // `translate`, not `transform` — that is the property Tailwind sets.
+          'transition-[opacity,translate] duration-200 ease-out',
+          visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-8 opacity-0 sm:translate-y-0',
+        )}
+        style={
+          anchor
+            ? {
+                // Overridden below `sm` by the inset classes above.
+                '--panel-top': `${anchor.bottom + 8}px`,
+                '--panel-left': `${Math.min(
+                  Math.max(VIEWPORT_MARGIN, anchor.left),
+                  Math.max(VIEWPORT_MARGIN, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
+                )}px`,
+              } as React.CSSProperties
+            : undefined
+        }
+      >
       <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:hidden">
         <button
           type="button"
@@ -104,7 +158,7 @@ export function GuestsField({
         <span className="size-10" aria-hidden="true" />
       </div>
 
-      <div className="flex-1 divide-y divide-border overflow-y-auto px-4 pt-2 sm:flex-none sm:p-4">
+      <div className="divide-y divide-border px-4 pt-2 sm:p-4">
         <Stepper
           label="Adults"
           hint="Ages 13+"
@@ -132,8 +186,11 @@ export function GuestsField({
           Done
         </button>
       </div>
+      </div>
     </div>
   );
+
+  const overlay = rendered ? createPortal(panel, document.body) : null;
 
   if (variant === 'stacked') {
     return (
@@ -161,7 +218,7 @@ export function GuestsField({
             {error}
           </p>
         ) : null}
-        {open ? panel : null}
+        {overlay}
       </div>
     );
   }
@@ -185,13 +242,13 @@ export function GuestsField({
           <UsersIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
           {summary}
         </button>
-        {open ? panel : null}
+        {overlay}
       </div>
     );
   }
 
   return (
-    <div className="relative flex min-h-14 flex-col justify-center rounded-3xl px-4 py-2 lg:rounded-none">
+    <div className="relative col-span-2 flex min-h-14 flex-col justify-center border-t border-border px-4 py-2 lg:col-span-1 lg:border-t-0">
       <button
         ref={triggerRef}
         id={id}
@@ -207,7 +264,7 @@ export function GuestsField({
         </span>
         <span className="mt-0.5 block text-[15px] font-medium">{summary}</span>
       </button>
-      {open ? panel : null}
+      {overlay}
     </div>
   );
 }

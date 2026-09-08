@@ -43,7 +43,7 @@ export interface SpinnerRoomFacts {
   currency: Currency;
   status?: RoomStatus;
   remaining?: number;
-  photo?: string;
+  photo?: { url: string; width?: number; height?: number };
 }
 
 interface BuildingSpinnerProps {
@@ -562,7 +562,7 @@ export function BuildingSpinner({
     >
       {cardFacts?.photo ? (
         <img
-          src={cardFacts.photo}
+          src={cardFacts.photo.url}
           alt=""
           width={640}
           height={360}

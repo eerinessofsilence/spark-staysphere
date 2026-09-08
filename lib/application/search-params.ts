@@ -21,11 +21,23 @@ export const searchParamKeys = {
   hideSoldOut: 'hideSoldOut',
   sort: 'sort',
   addOn: 'addOn',
+  layout: 'layout',
 } as const;
 
 const views: RoomType['view'][] = ['sea', 'garden', 'pool', 'city'];
 const bedTypes: RoomType['bedType'][] = ['king', 'queen', 'twin'];
 const sortOrders: SortOrder[] = ['recommended', 'price_asc', 'price_desc', 'area_desc'];
+
+/**
+ * How the catalog draws its results. Not a filter — it changes nothing about
+ * which rooms come back — but it lives in the URL with them so the choice
+ * survives a filter change and travels with a shared link.
+ */
+export type CatalogLayout = 'grid' | 'list';
+
+export function parseLayout(params: SearchParamsInput): CatalogLayout {
+  return first(params[searchParamKeys.layout]) === 'grid' ? 'grid' : 'list';
+}
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -136,10 +148,12 @@ interface QueryInput {
   criteria: StayCriteria;
   filters?: RoomFilters;
   addOnIds?: string[];
+  /** Carried through so changing a filter does not throw the guest back to the grid. */
+  layout?: CatalogLayout;
 }
 
 /** Builds the canonical query string so every link in the app carries the stay. */
-export function buildQuery({ criteria, filters, addOnIds }: QueryInput): string {
+export function buildQuery({ criteria, filters, addOnIds, layout }: QueryInput): string {
   const params = new URLSearchParams();
   params.set(searchParamKeys.checkIn, criteria.checkIn);
   params.set(searchParamKeys.checkOut, criteria.checkOut);
@@ -160,6 +174,7 @@ export function buildQuery({ criteria, filters, addOnIds }: QueryInput): string 
   }
 
   addOnIds?.forEach((id) => params.append(searchParamKeys.addOn, id));
+  if (layout && layout !== 'list') params.set(searchParamKeys.layout, layout);
 
   return params.toString();
 }

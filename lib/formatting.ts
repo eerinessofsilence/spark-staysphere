@@ -1,17 +1,16 @@
 import { format, parseISO } from 'date-fns';
 import type { RoomCategory } from './domain/room-attributes';
-import type { AddOn, Currency, RoomStatus, RoomType } from './domain/schemas';
+import type { AddOn, Currency, PaymentMethod, RoomStatus, RoomType } from './domain/schemas';
 
 /** Fixed locale on purpose: server and client must format identically or React rehydrates wrong. */
 const MONEY_LOCALE = 'en-GB';
 
 export function formatMoney(amount: number, currency: Currency): string {
-  const fractionDigits = Number.isInteger(amount) ? 0 : 2;
   return new Intl.NumberFormat(MONEY_LOCALE, {
     style: 'currency',
     currency,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -50,6 +49,15 @@ export const bedLabels: Record<RoomType['bedType'], string> = {
   twin: 'Twin beds',
 };
 
+/** How a payment method is named wherever a booking is read back. */
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  card: 'Card',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
+  bank_transfer: 'Bank transfer',
+  pay_at_hotel: 'Pay at the hotel',
+};
+
 export const addOnCategoryLabels: Record<AddOn['category'], string> = {
   service: 'Services',
   dining: 'Food and drink',
@@ -68,14 +76,16 @@ export const statusLabels: Record<RoomStatus, string> = {
   available: 'Available',
   limited: 'Limited',
   last_room: 'Last room',
-  sold_out: 'Sold out',
+  sold_out: 'Fully booked',
 };
 
 /** Status text always spells out the number so the badge never relies on colour alone. */
 export function statusText(status: RoomStatus, remaining: number): string {
   switch (status) {
     case 'sold_out':
-      return 'Sold out';
+      // A room type with nothing left on these dates is "fully booked" — the
+      // word a hotel uses. "Sold out" is a concert.
+      return 'Fully booked';
     case 'last_room':
       return 'Last room';
     case 'limited':

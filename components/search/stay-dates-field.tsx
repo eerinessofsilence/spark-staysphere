@@ -7,6 +7,7 @@ import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/reac
 import { addDays, differenceInCalendarDays, format, isAfter, parseISO } from 'date-fns';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { fieldClass, iconButton, pill } from '@/lib/ui';
+import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { cn } from '@/lib/utils';
 
 /**
@@ -76,7 +77,7 @@ function CalendarDayButton({
         modifiers.today &&
           !edge &&
           'font-medium after:absolute after:bottom-1.5 after:size-1 after:rounded-full after:bg-accent',
-        edge && 'bg-ink font-medium text-[#F7F5F0] hover:bg-ink',
+        edge && 'bg-primary font-medium text-primary-foreground hover:bg-primary',
         modifiers.disabled && 'text-muted-foreground/45 line-through hover:bg-transparent',
         className,
       )}
@@ -97,7 +98,11 @@ export function StayDatesField({
   error,
 }: StayDatesFieldProps) {
   const [open, setOpen] = React.useState(false);
+  // This panel cannot be a `Modal` — it is anchored under the field it belongs
+  // to rather than centred — but it is still an overlay and arrives like one.
+  const { rendered, visible } = useOverlayTransition(open);
   const [editing, setEditing] = React.useState<DateField>('checkIn');
+  const checkInRef = React.useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = React.useState<{ from?: Date; to?: Date }>(() => ({
     from: parseISO(checkIn),
     to: parseISO(checkOut),
@@ -106,7 +111,6 @@ export function StayDatesField({
   const [months, setMonths] = React.useState(1);
   const [anchor, setAnchor] = React.useState<DOMRect | null>(null);
 
-  const checkInRef = React.useRef<HTMLButtonElement>(null);
   const checkOutRef = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
 
@@ -215,14 +219,11 @@ export function StayDatesField({
   const previewEnd = previewing && hovered ? hovered : [];
 
   const nights = draft.from && draft.to ? differenceInCalendarDays(draft.to, draft.from) : 0;
-  const summary =
+  const rangeSummary =
     draft.from && draft.to
-      ? `${formatNights(nights)} · ${formatDateShort(format(draft.from, ISO_FORMAT))} → ${formatDateShort(
-          format(draft.to, ISO_FORMAT),
-        )}`
-      : draft.from
-        ? 'Pick your check-out date.'
-        : 'Pick your check-in date.';
+      ? `${formatDateShort(format(draft.from, ISO_FORMAT))} → ${formatDateShort(format(draft.to, ISO_FORMAT))}`
+      : null;
+  const prompt = draft.from ? 'Pick your check-out date.' : 'Pick your check-in date.';
 
   const panel = (
     <div
@@ -235,6 +236,15 @@ export function StayDatesField({
         'fixed inset-x-3 bottom-3 max-h-[85dvh] overflow-y-auto',
         // Desktop: anchored under the field it was opened from.
         'sm:inset-x-auto sm:bottom-auto sm:w-[660px] sm:overflow-visible sm:top-(--panel-top) sm:left-(--panel-left)',
+        // Named properties only: `transition-all` here would also animate the
+        // fixed offsets, and the panel re-anchors on every scroll frame.
+        // `translate`, not `transform` — that is the property Tailwind sets.
+        'transition-[opacity,translate] duration-200 ease-out',
+        visible
+          ? 'translate-y-0 opacity-100'
+          : // Up from the bottom edge it is pinned to on a phone; a short drop
+            // out of the field it belongs to on a desk.
+            'pointer-events-none translate-y-8 opacity-0 sm:-translate-y-1',
       )}
       style={
         anchor
@@ -280,7 +290,8 @@ export function StayDatesField({
           weekdays: 'flex',
           weekday: 'flex-1 pb-2 text-[11px] font-normal text-muted-foreground',
           week: 'flex w-full',
-          day: 'relative flex-1 p-0 text-center',
+          // The circles already fade; without this the band behind them snaps.
+          day: 'relative flex-1 p-0 text-center transition-colors',
           range_start: 'rounded-l-full bg-stone',
           range_end: 'rounded-r-full bg-stone',
           range_middle: 'bg-stone',
@@ -290,11 +301,22 @@ export function StayDatesField({
         components={CALENDAR_COMPONENTS}
       />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <p role="status" className="text-sm text-muted-foreground">
-          {summary}
-        </p>
-        <div className="flex gap-2">
+      <div className="mt-4 border-t border-border pt-4">
+        {/* The dates are what this whole panel is for — the same emphasis
+            the stay summary gets everywhere else it appears, not a caption
+            sharing a row with the buttons. */}
+        <div role="status" className="text-center">
+          {rangeSummary ? (
+            <>
+              <p className="text-display text-xl sm:text-2xl">{rangeSummary}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{formatNights(nights)}</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{prompt}</p>
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-center gap-2">
           <button type="button" onClick={clear} className={pill('ghost', 'min-h-10 px-4')}>
             Clear dates
           </button>
@@ -370,7 +392,15 @@ export function StayDatesField({
         aria-expanded={open}
         aria-label={`${label}, ${display}. Choose your dates.`}
         className={cn(
-          'flex min-h-14 cursor-pointer flex-col justify-center rounded-3xl px-4 py-2 text-left transition-colors lg:rounded-none',
+          'flex min-h-14 cursor-pointer flex-col justify-center px-4 py-2 text-left transition-colors',
+          // Square, always. A rounded field meeting a hairline draws the line
+          // curving up at both ends, which is what made the stacked fields
+          // look like half-drawn boxes.
+          'rounded-none',
+          // Both ends of one range, side by side with a rule between them
+          // rather than stacked as if they were unrelated fields. From `lg`
+          // the form's own `divide-x` draws every rule instead.
+          field === 'checkOut' && 'border-l border-border lg:border-l-0',
           active && 'bg-stone/60',
         )}
       >
@@ -387,15 +417,21 @@ export function StayDatesField({
     <>
       {trigger('checkIn', 'Check-in', checkIn)}
       {trigger('checkOut', 'Check-out', checkOut)}
-      {open
+      {rendered
         ? // On the body, not in place: the header's frosted pill has a backdrop
           // filter, which would make it the containing block for these.
           createPortal(
-            <>
+            <div className="text-foreground">
               {/* Dims the page behind the mobile sheet only. */}
-              <div className="fixed inset-0 z-40 bg-ink/20 sm:hidden" aria-hidden="true" />
+              <div
+                aria-hidden="true"
+                className={cn(
+                  'fixed inset-0 z-40 bg-ink/20 transition-opacity duration-200 sm:hidden',
+                  visible ? 'opacity-100' : 'opacity-0',
+                )}
+              />
               {panel}
-            </>,
+            </div>,
             document.body,
           )
         : null}

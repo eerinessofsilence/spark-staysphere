@@ -94,6 +94,48 @@ export async function getBookingByReference(
   return row ? rowToBooking(row) : null;
 }
 
+/**
+ * Cancels a booking and credits back the nights it was holding.
+ *
+ * The `status <> 'cancelled'` guard on the UPDATE is what makes the credit
+ * safe: two callers racing the same cancellation both read a confirmed row,
+ * but only one of them changes it, and only that one touches inventory.
+ * `MAX(held - 1, 0)` is the second belt — a hold row can never go negative
+ * and start inventing rooms the property does not have.
+ */
+export async function cancelBooking(
+  db: D1Database,
+  reference: string,
+): Promise<Booking | null> {
+  await ensureSchema(db);
+  const existing = await getBookingByReference(db, reference);
+  if (!existing) return null;
+  if (existing.status === 'cancelled') return existing;
+
+  const result = await db
+    .prepare("UPDATE bookings SET status = 'cancelled' WHERE reference = ? AND status <> 'cancelled'")
+    .bind(reference)
+    .run();
+
+  const changed = (result.meta.changes ?? 0) > 0;
+  if (changed && existing.status === 'confirmed') {
+    const nights = nightsInRange(existing.checkIn, existing.checkOut);
+    if (nights.length > 0) {
+      await db.batch(
+        nights.map((date) =>
+          db
+            .prepare(
+              'UPDATE inventory_holds SET held = MAX(held - 1, 0) WHERE room_type_id = ? AND date = ?',
+            )
+            .bind(existing.roomTypeId, date),
+        ),
+      );
+    }
+  }
+
+  return { ...existing, status: 'cancelled' };
+}
+
 export async function listBookings(db: D1Database): Promise<Booking[]> {
   await ensureSchema(db);
   const { results } = await db

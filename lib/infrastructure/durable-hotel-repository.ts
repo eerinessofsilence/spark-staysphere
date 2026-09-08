@@ -41,6 +41,10 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.getBookingByReference(db, reference) : mockHotelRepository.getBookingByReference(reference);
   },
+  cancelBooking(reference) {
+    const db = getDemoDatabase();
+    return db ? d1.cancelBooking(db, reference) : mockHotelRepository.cancelBooking(reference);
+  },
   listBookings() {
     const db = getDemoDatabase();
     return db ? d1.listBookings(db) : mockHotelRepository.listBookings();

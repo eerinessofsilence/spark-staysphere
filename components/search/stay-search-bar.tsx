@@ -76,7 +76,7 @@ export function StaySearchBar({
           type="submit"
           disabled={invalid || isPending}
           aria-label={submitLabel}
-          className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-ink text-[#F7F5F0] transition-colors hover:bg-[#2b2b2b] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? (
             <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
@@ -92,11 +92,16 @@ export function StaySearchBar({
     <form
       onSubmit={onSubmit}
       className={cn(
-        // Below `sm` the fields have nothing to tell them apart but a gap of
-        // blank card — a hairline between rows reads as one form instead of
-        // three loose labels. From `sm` the grid gives fields their own cell,
-        // and from `lg` the divider turns sideways for the one-row pill.
-        'grid divide-y divide-border rounded-[28px] border border-border bg-card p-2 shadow-soft-lg sm:grid-cols-2 sm:gap-2 sm:divide-y-0 lg:grid-cols-[1.2fr_1.2fr_1fr_auto] lg:rounded-full lg:gap-0 lg:divide-x lg:divide-border',
+        // On a phone the two dates share a row with a rule between them, and
+        // guests take the row under it — one form, the shape of the stay,
+        // rather than three stacked fields each as tall as a button. The
+        // hairlines are owned by the fields themselves: `divide-y` here would
+        // put a line between the two dates that sit side by side.
+        // From `sm` the grid gives each field a cell, and from `lg` the rules
+        // turn sideways for the one-row pill.
+        // `surface-raised`, not `bg-card`: this is the one panel that stays
+        // light on the night scheme, the way the reference's search does.
+        'surface-raised grid grid-cols-2 rounded-[28px] border border-border p-2 shadow-soft-lg lg:grid-cols-[1.2fr_1.2fr_1fr_auto] lg:rounded-full lg:divide-x lg:divide-border',
         className,
       )}
     >
@@ -114,11 +119,11 @@ export function StaySearchBar({
         onChange={(guests) => setDraft((current) => ({ ...current, ...guests }))}
       />
 
-      <div className="flex items-center p-1 pt-3 sm:col-span-2 sm:pt-1 lg:col-span-1 lg:pt-1 lg:pl-3">
+      <div className="col-span-2 flex items-center p-1 pt-3 lg:col-span-1 lg:pt-1 lg:pl-3">
         <button
           type="submit"
           disabled={invalid || isPending}
-          className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-ink px-6 text-sm font-medium text-[#F7F5F0] transition-colors hover:bg-[#2b2b2b] disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+          className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
         >
           <MagnifyingGlassIcon className="size-4" aria-hidden="true" />
           {isPending ? 'Searching…' : submitLabel}

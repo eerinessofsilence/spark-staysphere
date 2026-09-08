@@ -14,8 +14,10 @@ and hotel operations (`/admin`). Quotes and bookings are exposed as server actio
 `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bookings/:reference`.
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
-photography stored locally in `public/images`. Playwright covers the golden path at 1440px and
-390px.
+photography stored locally in `public/images`. Below the arrival photograph the building is a
+turnable 3D model (`Hotel.model`, three.js, lazy-loaded) whose floors open the rooms on them;
+a property describes itself as a few blocks or supplies its own GLB. Playwright covers the
+golden path at 1440px and 390px.
 
 Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
 in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
@@ -52,7 +54,8 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 3. ~~`/admin` demo and mock adapter controls.~~ Done.
 4. ~~Photography-led redesign with the design rules enshrined.~~ Done.
 5. ~~Persist demo state (D1) so bookings survive a restart and are shared across isolates.~~ Done.
-6. Replace stock photography with the property's own, and add real 360 tiles if the property has them.
+6. Replace stock photography with the property's own, add real 360 tiles if the property has them,
+   and its own GLB in place of the block massing (`Hotel.model.url`).
 7. Auth on `/admin`, then the first real PMS or channel-manager adapter behind the existing ports.
 8. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
 

@@ -15,8 +15,10 @@ import {
   formatMoney,
   formatNights,
   formatPricingUnit,
+  paymentMethodLabels,
   viewLabels,
 } from '@/lib/formatting';
+import { RememberTrip } from '@/components/trips/remember-trip';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -45,9 +47,17 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
       })
     : null;
   const authorized = payments.some((payment) => payment.status === 'authorized');
+  // The provider column holds the method the guest chose.
+  const method = payments.at(-1)?.provider;
+  const methodLabel =
+    method && method in paymentMethodLabels
+      ? paymentMethodLabels[method as keyof typeof paymentMethodLabels]
+      : null;
 
   return (
     <>
+      {/* The stay joins this browser's "My trips" list the moment it exists. */}
+      <RememberTrip reference={booking.reference} />
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[1000px] px-3 py-10 sm:px-6">
         <div className="rounded-[28px] bg-card p-6 shadow-soft sm:p-10">
@@ -77,7 +87,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
 
           <div className="mt-8 grid gap-6 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
             {room && coverPhoto(room) ? (
-              <div className="aspect-[4/3] overflow-hidden rounded-3xl bg-stone">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-stone">
                 <img
                   src={coverPhoto(room)!.url}
                   alt={room.name}
@@ -85,6 +95,12 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                   height={coverPhoto(room)!.height}
                   className="size-full object-cover"
                 />
+                {/* The photograph was the only thing on this page that said
+                    nothing. Named on the glass, it reads as the room that was
+                    booked rather than as decoration beside the details. */}
+                <span className="glass absolute right-3 bottom-3 left-3 rounded-full px-3.5 py-2 text-sm font-medium">
+                  {room.name}
+                </span>
               </div>
             ) : null}
             <dl className="grid gap-4 sm:grid-cols-2">
@@ -171,10 +187,16 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                 {formatMoney(booking.total, booking.currency)}
               </span>
             </div>
+            {methodLabel ? (
+              <p className="mt-3 flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Paid with</span>
+                <span className="font-semibold">{methodLabel}</span>
+              </p>
+            ) : null}
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
               {authorized
                 ? 'Demo payment authorized by the mock provider. No card details were collected and no money moved.'
-                : 'No payment attempt was recorded for this demo booking.'}
+                : 'Nothing is taken at booking with this method — in production the balance would be settled before or on arrival. This is a demo either way: no money moves.'}
               {ratePlan ? ` ${ratePlan.cancellationPolicy}` : ''}
             </p>
           </section>
@@ -223,7 +245,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dd className="font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }

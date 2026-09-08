@@ -18,11 +18,11 @@ export function MobileBookBar({ quote, bookHref, roomsHref }: MobileBookBarProps
   const soldOut = !quote.available;
   return (
     <div className="fixed inset-x-3 bottom-3 z-30 lg:hidden">
-      <div className="glass flex items-center justify-between gap-3 rounded-full border border-white/60 py-2 pr-2 pl-5 shadow-soft-lg">
+      <div className="glass flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 shadow-soft-lg">
         <div className="min-w-0">
           <p className="text-display text-xl leading-none">{formatMoney(quote.price.total, quote.price.currency)}</p>
           <p className="mt-1 truncate text-xs text-muted-foreground">
-            {soldOut ? 'Sold out for these dates' : `${formatNights(quote.price.nights)}, taxes included`}
+            {soldOut ? 'Fully booked for these dates' : `${formatNights(quote.price.nights)}, taxes included`}
           </p>
         </div>
         {soldOut ? (

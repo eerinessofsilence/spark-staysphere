@@ -67,9 +67,12 @@ export function LanguagePicker() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Language and region: ${active.label}`}
-        className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors hover:bg-stone/60"
+        // A bare 16px glyph on a phone read as decoration, not a button. It
+        // gets the frame every other icon control in the product has, and a
+        // mark big enough to recognise.
+        className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-stone sm:px-3.5"
       >
-        <GlobeAltIcon className="size-4" aria-hidden="true" />
+        <GlobeAltIcon className="size-5" aria-hidden="true" />
         <span className="hidden sm:inline">{active.code.toUpperCase()}</span>
       </button>
 
@@ -85,7 +88,7 @@ export function LanguagePicker() {
                 aria-pressed={selected}
                 className={cn(
                   'cursor-pointer rounded-2xl border p-3 text-left transition-colors',
-                  selected ? 'border-ink bg-stone' : 'border-transparent hover:bg-stone',
+                  selected ? 'border-primary bg-stone' : 'border-transparent hover:bg-stone',
                 )}
               >
                 <span className="block text-sm font-medium">{language.label}</span>

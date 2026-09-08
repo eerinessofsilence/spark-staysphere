@@ -23,17 +23,71 @@ const hotelAreas: HotelArea[] = [
     },
     // The facade, floor by floor from the roof down. The building's right edge
     // leans in as it descends, so each band is a trapezoid, not a rectangle.
+    // The roof itself is left unzoned: what the photo shows there is the open
+    // terrace walkway, not a private balcony, so outlining it and naming the
+    // penthouse would point guests at the wrong thing.
     roomZones: [
-      { roomSlug: 'asteria-penthouse', outline: [{ x: 0, y: 0.4 }, { x: 0.56, y: 0.43 }, { x: 0.56, y: 0.5 }, { x: 0, y: 0.56 }] },
-      { roomSlug: 'panorama-suite', outline: [{ x: 0, y: 0.56 }, { x: 0.56, y: 0.5 }, { x: 0.55, y: 0.62 }, { x: 0, y: 0.68 }] },
-      { roomSlug: 'deluxe-sea', outline: [{ x: 0, y: 0.68 }, { x: 0.55, y: 0.62 }, { x: 0.53, y: 0.75 }, { x: 0, y: 0.81 }] },
-      { roomSlug: 'coastal-twin', outline: [{ x: 0, y: 0.81 }, { x: 0.53, y: 0.75 }, { x: 0.5, y: 0.99 }, { x: 0, y: 0.99 }] },
+      {
+        roomSlug: 'panorama-suite',
+        outline: [
+          { x: 0, y: 0.56 },
+          { x: 0.56, y: 0.5 },
+          { x: 0.55, y: 0.62 },
+          { x: 0, y: 0.68 },
+        ],
+      },
+      {
+        roomSlug: 'deluxe-sea',
+        outline: [
+          { x: 0, y: 0.68 },
+          { x: 0.55, y: 0.62 },
+          { x: 0.53, y: 0.75 },
+          { x: 0, y: 0.81 },
+        ],
+      },
+      {
+        roomSlug: 'coastal-twin',
+        outline: [
+          { x: 0, y: 0.81 },
+          { x: 0.53, y: 0.75 },
+          { x: 0.5, y: 0.99 },
+          { x: 0, y: 0.99 },
+        ],
+      },
     ],
     hotspots: [
       // Outlines trace the facade photo: the balcony floors, and the roof deck above them.
-      { id: 'sea-view', label: 'Sea-view rooms', description: 'Floors three and up look over the rooftops to the sea. Every sea-view room has a full-width balcony and a west-facing sunset.', x: 0.44, y: 0.58, yaw: -36, pitch: -26, roomSlug: 'deluxe-sea', sphereOutline: [{ yaw: -58, pitch: -17 }, { yaw: -21, pitch: -16 }, { yaw: -17, pitch: -39 }, { yaw: -60, pitch: -41 }], href: '/rooms?view=sea', cta: 'See sea-view rooms' },
-      { id: 'roof', label: 'Roof terrace', description: 'The top floor is the Asteria Penthouse: a private roof terrace with a plunge pool and an outdoor kitchen.', x: 0.3, y: 0.4, yaw: 24, pitch: -31, roomSlug: 'asteria-penthouse', sphereOutline: [{ yaw: 9, pitch: -21 }, { yaw: 41, pitch: -23 }, { yaw: 43, pitch: -43 }, { yaw: 7, pitch: -42 }], href: '/rooms/asteria-penthouse', cta: 'Open the penthouse' },
-      { id: 'cove', label: 'The seafront', description: 'The bay is ten minutes downhill: the marina, the beach clubs and the boat to the islands.', x: 0.78, y: 0.62, yaw: 118, pitch: -16, href: '/rooms', cta: 'Browse every room' },
+      {
+        id: 'sea-view',
+        label: 'Sea-view rooms',
+        description:
+          'Floors three and up look over the rooftops to the sea. Every sea-view room has a full-width balcony and a west-facing sunset.',
+        x: 0.44,
+        y: 0.58,
+        yaw: -36,
+        pitch: -26,
+        roomSlug: 'deluxe-sea',
+        sphereOutline: [
+          { yaw: -58, pitch: -17 },
+          { yaw: -21, pitch: -16 },
+          { yaw: -17, pitch: -39 },
+          { yaw: -60, pitch: -41 },
+        ],
+        href: '/rooms?view=sea',
+        cta: 'See these rooms',
+      },
+      {
+        id: 'cove',
+        label: 'The seafront',
+        description:
+          'The bay is ten minutes downhill: the marina, the beach clubs and the boat to the islands.',
+        x: 0.78,
+        y: 0.62,
+        yaw: 118,
+        pitch: -16,
+        href: '/rooms',
+        cta: 'Browse every room',
+      },
     ],
   },
   {
@@ -143,6 +197,80 @@ export const demoHotel: Hotel = {
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,
   spinner: buildingSpinner,
+  // The massing behind the facade photo: a tower at the back of the site
+  // carrying every floor, two terraced blocks stepping down toward the sea in
+  // front of it — each one's roof the terrace of the floor above — the low spa
+  // wing to the west, and the pool on the plinth's edge above the cove.
+  model: {
+    floorHeight: 3.4,
+    blocks: [
+      {
+        id: 'tower',
+        x: 0,
+        z: -14,
+        width: 30,
+        depth: 14,
+        fromFloor: 1,
+        toFloor: 7,
+        balconies: ['front'],
+        glazedFloors: [1],
+        roofTerrace: true,
+      },
+      {
+        id: 'penthouse',
+        x: 0,
+        z: -16,
+        width: 22,
+        depth: 10,
+        fromFloor: 8,
+        toFloor: 8,
+        balconies: ['front'],
+        roofTerrace: true,
+      },
+      {
+        id: 'terrace',
+        x: 2,
+        z: -2,
+        width: 34,
+        depth: 10,
+        fromFloor: 1,
+        toFloor: 5,
+        balconies: ['front'],
+        roofTerrace: true,
+      },
+      {
+        id: 'seafront',
+        x: 4,
+        z: 7,
+        width: 28,
+        depth: 8,
+        fromFloor: 1,
+        toFloor: 3,
+        balconies: ['front'],
+        roofTerrace: true,
+      },
+      {
+        id: 'spa',
+        x: -25,
+        z: -6,
+        width: 12,
+        depth: 18,
+        fromFloor: 1,
+        toFloor: 2,
+        balconies: ['left', 'front'],
+        glazedFloors: [1],
+        roofTerrace: true,
+      },
+    ],
+    grounds: {
+      width: 84,
+      depth: 62,
+      height: 7,
+      pool: { x: 8, z: 18, width: 25, depth: 7 },
+      sea: true,
+    },
+    view: { azimuth: 58, elevation: 19 },
+  },
 };
 
 interface RoomSeed {
@@ -156,8 +284,13 @@ interface RoomSeed {
   nightlyPrice: number;
   description: string;
   amenities: string[];
-  /** Gallery, in display order. The first photo is the room's cover. */
-  photos: { file: string; label: string; width: number; height: number }[];
+  /**
+   * Gallery, in display order. The first photo is the room's cover. `from`
+   * borrows a file from another room's folder: the stand-in library is
+   * finite, and until the property is shot, a new room type is dressed from
+   * it rather than left without a photograph. Each cover is still unique.
+   */
+  photos: { file: string; label: string; width: number; height: number; from?: string }[];
 }
 
 /**
@@ -175,6 +308,18 @@ const panoramaByRoom: Record<string, string> = {
   'asteria-penthouse': '/images/panoramas/suite.webp',
   'garden-studio': '/images/panoramas/terrace.webp',
   'pool-terrace': '/images/panoramas/pool.webp',
+  'sea-view-room': '/images/panoramas/room.webp',
+  'cove-studio': '/images/panoramas/room.webp',
+  'city-view-room': '/images/panoramas/room.webp',
+  'garden-terrace-room': '/images/panoramas/terrace.webp',
+  'garden-residence': '/images/panoramas/terrace.webp',
+  'poolside-suite': '/images/panoramas/pool.webp',
+  'terrace-suite': '/images/panoramas/suite.webp',
+  'corner-suite': '/images/panoramas/suite.webp',
+  'signature-suite': '/images/panoramas/suite.webp',
+  'sky-terrace-suite': '/images/panoramas/suite.webp',
+  'family-loft': '/images/panoramas/suite.webp',
+  'two-bedroom-residence': '/images/panoramas/suite.webp',
 };
 
 const roomSeed: RoomSeed[] = [
@@ -326,6 +471,313 @@ const roomSeed: RoomSeed[] = [
       { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067 },
     ],
   },
+
+  // The rest of the house. Every category the filters offer has more than one
+  // room in it, and prices climb in steps a guest can feel rather than jumps.
+  {
+    slug: 'sea-view-room',
+    name: 'Sea View Room',
+    areaM2: 36,
+    floor: 3,
+    capacity: 2,
+    bedType: 'queen',
+    view: 'sea',
+    nightlyPrice: 312,
+    description:
+      'The plainest way to wake up to the water: a queen bed, a chair by the glass, and the whole cove in the window.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Rain shower', 'Blackout blinds', 'Nespresso bar'],
+    photos: [
+      { file: 'balcony', label: 'The view', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'deluxe-sea' },
+    ],
+  },
+  {
+    slug: 'cove-studio',
+    name: 'Cove Studio',
+    areaM2: 32,
+    floor: 2,
+    capacity: 2,
+    bedType: 'queen',
+    view: 'sea',
+    nightlyPrice: 289,
+    description:
+      'A compact room over the fishing cove, with a slim balcony wide enough for two coffees and the morning boats.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Balcony', 'Rain shower', 'Work desk'],
+    photos: [
+      { file: 'balcony', label: 'Balcony', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'coastal-twin' },
+    ],
+  },
+  {
+    slug: 'garden-terrace-room',
+    name: 'Garden Terrace Room',
+    areaM2: 40,
+    floor: 1,
+    capacity: 2,
+    bedType: 'king',
+    view: 'garden',
+    nightlyPrice: 268,
+    description:
+      'Ground floor, opening onto its own stretch of the olive garden. Shaded by noon, quiet by design.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Garden terrace',
+      'Rain shower',
+      'Step-free access',
+      'Loungers',
+    ],
+    photos: [
+      {
+        file: 'terrace',
+        label: 'Garden terrace',
+        width: 1600,
+        height: 1067,
+        from: 'garden-studio',
+      },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'garden-studio' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'garden-studio' },
+    ],
+  },
+  {
+    slug: 'city-view-room',
+    name: 'City View Room',
+    areaM2: 33,
+    floor: 5,
+    capacity: 2,
+    bedType: 'queen',
+    view: 'city',
+    nightlyPrice: 256,
+    description:
+      'Faces the old town rather than the water: rooftops, bell towers, and the harbour lights after dark.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Work desk', 'Rain shower', 'Blackout blinds'],
+    photos: [
+      { file: 'window', label: 'The window', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+    ],
+  },
+  {
+    slug: 'poolside-suite',
+    name: 'Poolside Suite',
+    areaM2: 62,
+    floor: 1,
+    capacity: 3,
+    bedType: 'king',
+    view: 'pool',
+    nightlyPrice: 498,
+    description:
+      'A bedroom and a sitting room that both open to the pool deck, a few steps from the infinity edge.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Pool access',
+      'Outdoor shower',
+      'Loungers',
+      'Nespresso bar',
+    ],
+    photos: [
+      { file: 'terrace', label: 'Pool deck', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'pool-terrace' },
+    ],
+  },
+  {
+    slug: 'terrace-suite',
+    name: 'Terrace Suite',
+    areaM2: 74,
+    floor: 5,
+    capacity: 3,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 585,
+    description:
+      'The terrace is the room: deep enough for a dining table and two loungers, with the sea from every seat.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Wraparound terrace',
+      'Dining table for four',
+      'Rain shower',
+      'Freestanding tub',
+    ],
+    photos: [
+      { file: 'terrace', label: 'Terrace', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+    ],
+  },
+  {
+    slug: 'corner-suite',
+    name: 'Corner Suite',
+    areaM2: 70,
+    floor: 6,
+    capacity: 2,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 560,
+    description:
+      'Glass on two sides at the end of the sixth floor, so the sunset arrives in the living room and stays.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Private balcony',
+      'Espresso machine',
+      'Rain shower',
+      'Record player',
+    ],
+    photos: [
+      { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+    ],
+  },
+  {
+    slug: 'family-loft',
+    name: 'Family Loft',
+    areaM2: 76,
+    floor: 7,
+    capacity: 4,
+    bedType: 'twin',
+    view: 'city',
+    nightlyPrice: 512,
+    description:
+      'Two levels under the roof: beds for four upstairs, a long sofa and a table for homework or cards below.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Mezzanine study',
+      'Two bathrooms',
+      'Kitchenette',
+      'Cot on request',
+    ],
+    photos: [
+      { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+    ],
+  },
+  {
+    slug: 'garden-residence',
+    name: 'Garden Residence',
+    areaM2: 96,
+    floor: 2,
+    capacity: 6,
+    bedType: 'twin',
+    view: 'garden',
+    nightlyPrice: 640,
+    description:
+      'Three bedrooms around one living room, with a walled garden of its own. Made for a family that travels together.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Garden terrace',
+      'Two bathrooms',
+      'Kitchenette',
+      'Dining table for four',
+      'Cot on request',
+    ],
+    photos: [
+      { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+    ],
+  },
+  {
+    slug: 'two-bedroom-residence',
+    name: 'Two-Bedroom Sea Residence',
+    areaM2: 104,
+    floor: 4,
+    capacity: 5,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 715,
+    description:
+      'A king room and a twin room off a shared living space, both with the balcony running the full width of the sea side.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Private balcony',
+      'Two bathrooms',
+      'Kitchenette',
+      'Freestanding tub',
+    ],
+    photos: [
+      {
+        file: 'second-bedroom',
+        label: 'Second bedroom',
+        width: 1600,
+        height: 1067,
+        from: 'family-residence',
+      },
+      { file: 'bedroom', label: 'Main bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+    ],
+  },
+  {
+    slug: 'signature-suite',
+    name: 'Signature Suite',
+    areaM2: 92,
+    floor: 7,
+    capacity: 3,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 690,
+    description:
+      "The seventh floor's largest suite: a proper living room, a dressing room, and a bath set against the window.",
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Private balcony',
+      'Freestanding tub',
+      'Espresso machine',
+      'Private arrival',
+    ],
+    photos: [
+      {
+        file: 'living',
+        label: 'Living room',
+        width: 1600,
+        height: 1067,
+        from: 'asteria-penthouse',
+      },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1200, from: 'asteria-penthouse' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'asteria-penthouse' },
+    ],
+  },
+  {
+    slug: 'sky-terrace-suite',
+    name: 'Sky Terrace Suite',
+    areaM2: 88,
+    floor: 8,
+    capacity: 2,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 780,
+    description:
+      'Shares the roof with the penthouse: a private terrace with an outdoor tub, and nothing above but weather.',
+    amenities: [
+      'Wi-Fi',
+      'Air conditioning',
+      'Roof terrace',
+      'Freestanding tub',
+      'Outdoor shower',
+      'Private arrival',
+    ],
+    photos: [
+      {
+        file: 'terrace',
+        label: 'Roof terrace',
+        width: 1600,
+        height: 889,
+        from: 'asteria-penthouse',
+      },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'asteria-penthouse' },
+    ],
+  },
 ];
 
 export const demoRooms: RoomType[] = roomSeed.map((seed) => ({
@@ -343,7 +795,7 @@ export const demoRooms: RoomType[] = roomSeed.map((seed) => ({
   media: [
     ...seed.photos.map((photo) => ({
       type: 'image' as const,
-      url: `/images/rooms/${seed.slug}/${photo.file}.webp`,
+      url: `/images/rooms/${photo.from ?? seed.slug}/${photo.file}.webp`,
       label: photo.label,
       width: photo.width,
       height: photo.height,
