@@ -132,9 +132,12 @@ body {
    */
   --glass-tint: #f7f5f0;
   --glass-edge: rgb(255 255 255 / 70%);
-  --muted-text: #6b6b66;
+  /* Both nudged darker than they read by eye: the old pair missed 4.5:1
+     on the surfaces they actually print on — muted on a stone chip,
+     warning on a white admin row. */
+  --muted-text: #66665f;
   --success: #2e7d5b;
-  --warning: #b4711c;
+  --warning: #965d0d;
   --danger: #c4473a;
   --background: var(--canvas);
   --foreground: var(--ink);
