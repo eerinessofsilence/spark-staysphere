@@ -5,7 +5,7 @@ import { cn } from './utils';
  * and a button on the booking flow are the same object. See DESIGN_SYSTEM.md.
  */
 const pillBase =
-  'inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 export const pillVariants = {
   /** The primary fill — ink by day, lime by night. The one primary action on a screen. */
