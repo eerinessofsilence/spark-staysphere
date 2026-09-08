@@ -3,9 +3,18 @@ import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
-import { activeFilterCount, buildQuery, parseCriteria, parseFilters, toIsoDate } from '@/lib/application/search-params';
+import {
+  activeFilterCount,
+  buildQuery,
+  parseCriteria,
+  parseFilters,
+  parseLayout,
+  toIsoDate,
+  type CatalogLayout,
+} from '@/lib/application/search-params';
 import { formatDateRange, formatGuests, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
+import { LayoutToggle } from '@/components/rooms/layout-toggle';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomFiltersPanel } from '@/components/rooms/room-filters';
 import { SortSelect } from '@/components/rooms/sort-select';
@@ -23,12 +32,13 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
   const params = await searchParams;
   const criteria = parseCriteria(params);
   const filters = parseFilters(params);
+  const layout = parseLayout(params);
   const today = toIsoDate(new Date());
 
   const result = await catalogService.search(DEMO_HOTEL_SLUG, criteria, filters);
-  const { hotel, offers, totalRooms, facets } = result;
+  const { offers, totalRooms, facets } = result;
 
-  const stayQuery = buildQuery({ criteria, filters });
+  const stayQuery = buildQuery({ criteria, filters, layout });
   const filterCount = activeFilterCount(filters);
   const nights = offers[0]?.price.nights ?? 1;
 
@@ -47,16 +57,6 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
         }
       />
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
-        <nav aria-label="Breadcrumb" className="mb-6 text-sm text-muted-foreground">
-          <Link href={`/?${buildQuery({ criteria })}`} className="hover:text-foreground">
-            {hotel.name}
-          </Link>
-          <span aria-hidden="true"> / </span>
-          <span aria-current="page" className="text-foreground">
-            Rooms
-          </span>
-        </nav>
-
         <header className="max-w-2xl">
           <SectionLabel>
             {formatDateRange(criteria.checkIn, criteria.checkOut)} · {formatNights(nights)} ·{' '}
@@ -72,10 +72,19 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:gap-8">
-          <RoomFiltersPanel criteria={criteria} filters={filters} facets={facets} resultCount={offers.length} />
+          <RoomFiltersPanel
+            criteria={criteria}
+            filters={filters}
+            facets={facets}
+            resultCount={offers.length}
+            layout={layout}
+          />
 
           <section aria-label="Search results">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-5">
+            {/* The count and the two controls do not fit one line on a phone —
+                together they were wider than the column and pushed the results
+                past the page's own gutter. Below `sm` they stack. */}
+            <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <p role="status" className="text-sm">
                 <span className="font-medium">
                   {offers.length} of {totalRooms} room types
@@ -84,23 +93,32 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
                   {filterCount > 0 ? ` match ${filterCount} ${filterCount === 1 ? 'filter' : 'filters'}` : ' fit your stay'}
                 </span>
               </p>
-              <SortSelect criteria={criteria} filters={filters} />
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <LayoutToggle criteria={criteria} filters={filters} layout={layout} />
+                <SortSelect criteria={criteria} filters={filters} layout={layout} />
+              </div>
             </div>
 
             {offers.length === 0 ? (
-              <EmptyResults criteria={criteria} />
+              <EmptyResults criteria={criteria} layout={layout} />
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div
+                className={
+                  layout === 'list'
+                    ? 'grid gap-4'
+                    : 'grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4'
+                }
+              >
                 {offers.map((offer) => (
-                  <RoomCard key={offer.room.id} offer={offer} stayQuery={stayQuery} />
+                  <RoomCard
+                    key={offer.room.id}
+                    offer={offer}
+                    stayQuery={stayQuery}
+                    layout={layout === 'list' ? 'row' : 'tile'}
+                  />
                 ))}
               </div>
             )}
-
-            <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
-              Availability, rates, and partner-site comparison prices shown here are simulated demo
-              data held in memory. Nothing on this page reserves a room at a real property.
-            </p>
           </section>
         </div>
       </main>
@@ -109,7 +127,13 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
   );
 }
 
-function EmptyResults({ criteria }: { criteria: ReturnType<typeof parseCriteria> }) {
+function EmptyResults({
+  criteria,
+  layout,
+}: {
+  criteria: ReturnType<typeof parseCriteria>;
+  layout: CatalogLayout;
+}) {
   return (
     <div className="flex flex-col items-center gap-5 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
       <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
@@ -122,7 +146,7 @@ function EmptyResults({ criteria }: { criteria: ReturnType<typeof parseCriteria>
           type that sleeps {criteria.adults + criteria.children}.
         </p>
       </div>
-      <Link href={`/rooms?${buildQuery({ criteria, filters: defaultRoomFilters })}`} className={pill('primary')}>
+      <Link href={`/rooms?${buildQuery({ criteria, filters: defaultRoomFilters, layout })}`} className={pill('primary')}>
         Reset filters
       </Link>
     </div>

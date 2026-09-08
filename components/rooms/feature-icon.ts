@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   Armchair,
   CalendarCheck,
@@ -25,7 +26,17 @@ import {
   WifiHigh,
 } from '@phosphor-icons/react/dist/ssr';
 
-type IconComponent = typeof Eye;
+type IconComponent = React.ComponentType<React.ComponentProps<typeof Eye>>;
+
+/**
+ * Wi-Fi is its arcs and the air between them. Filled — the weight every other
+ * amenity mark is drawn at — Phosphor's collapses into one solid wedge that
+ * reads as a cone, a slice, anything but a signal. So this mark keeps its own
+ * weight whatever a caller asks for, which is why it is wrapped rather than
+ * listed straight in the table below.
+ */
+const WifiMark: IconComponent = (props) =>
+  React.createElement(WifiHigh, { ...props, weight: 'bold' });
 
 /**
  * A list where every line carries the same green check tells the guest only
@@ -43,7 +54,7 @@ type IconComponent = typeof Eye;
  * can hand it a cup.
  */
 const featureIcons: Array<[RegExp, IconComponent]> = [
-  [/wi-?fi|internet/i, WifiHigh],
+  [/wi-?fi|internet/i, WifiMark],
   [/air con|climate|heating/i, Snowflake],
   [/breakfast/i, ForkKnife],
   [/towel|beach/i, Towel],
@@ -85,15 +96,65 @@ export type AmenityTone = 'clay' | 'sand' | 'sage' | 'rose' | 'stone';
  * stone, which is the page's own neutral.
  */
 const amenityTones: Array<[RegExp, AmenityTone]> = [
+  // Not a room feature but a promise about the price, and the clay tint is
+  // the accent's own: rule 6 gives savings to the accent.
+  [/rate guarantee|best rate|best direct|price match/i, 'clay'],
   // Kitchen first, for the same reason the icons order it first: an outdoor
-  // kitchen belongs to the kitchen, not to the garden.
-  [/kitchen|dining|table for|espresso|nespresso|coffee|minibar/i, 'clay'],
-  [/pool|shower|tub|bath|toilet/i, 'stone'],
-  [/terrace|balcony|garden|outdoor|view|panorama/i, 'sage'],
-  [/wi-?fi|internet|air con|climate|heating|record|blackout|blind|desk|study|work/i, 'sand'],
-  [/bed|cot|crib|baby|lounger|armchair|sofa|living/i, 'rose'],
+  // kitchen belongs to the kitchen, not to the garden. Breakfast is the
+  // kitchen too — the icon table already draws it with a fork.
+  [/breakfast|kitchen|dining|table for|espresso|nespresso|coffee|minibar|dinner|lunch|oyster|cheese|prosecco|wine|magnum|figs|bottle|pastr/i, 'clay'],
+  // The spa is water too: its ritual sits with the pool and the tub.
+  [/pool|shower|tub|bath|toilet|spa|ritual|treatment/i, 'stone'],
+  // The boat and the bicycles are the outdoors as much as a terrace is.
+  [/terrace|balcony|garden|outdoor|view|panorama|boat|island|bicycle|e-bike|beach/i, 'sage'],
+  // The desk's kit, and the desk's errands — a transfer, the laundry, a later
+  // check-out — read as the same category of comfort.
+  [/wi-?fi|internet|air con|climate|heating|record|blackout|blind|desk|study|work|transfer|airport|child seat|laundry|pressing|check-out/i, 'sand'],
+  [/bed|cot|crib|baby|lounger|armchair|sofa|living|couples room/i, 'rose'],
 ];
 
 export function amenityTone(name: string): AmenityTone {
   return amenityTones.find(([pattern]) => pattern.test(name))?.[1] ?? 'stone';
 }
+
+/**
+ * Tailwind needs the class names whole, so every tone is spelled out here
+ * rather than built from the tone key at runtime.
+ *
+ * A tone's surface and its mark are kept apart rather than as one string: the
+ * label sitting on the tint stays `text-foreground`. The fill and the icon
+ * carry the colour; the words stay as readable as the rest of the page.
+ */
+export const tintSurface: Record<AmenityTone, string> = {
+  clay: 'bg-tint-clay',
+  sand: 'bg-tint-sand',
+  sage: 'bg-tint-sage',
+  rose: 'bg-tint-rose',
+  stone: 'bg-tint-stone',
+};
+
+export const tintInk: Record<AmenityTone, string> = {
+  clay: 'text-tint-clay-ink',
+  sand: 'text-tint-sand-ink',
+  sage: 'text-tint-sage-ink',
+  rose: 'text-tint-rose-ink',
+  stone: 'text-tint-stone-ink',
+};
+
+/**
+ * A room's headline facts are a fixed set, so each kind keeps one tone
+ * wherever it shows up — a catalog card, the room page, the arrival scene's
+ * marker card. The tone belongs to the kind of fact, not to its value: "Sea
+ * view" and "Garden view" are both the view chip and both sage, so the same
+ * fact is the same colour in every card of a grid.
+ *
+ * Where a fact and an amenity mean the same thing they agree with the table
+ * above — the bed is rose either way, anything about the outdoors is sage.
+ */
+export const factTone = {
+  area: 'stone',
+  bed: 'rose',
+  capacity: 'clay',
+  floor: 'sand',
+  view: 'sage',
+} as const satisfies Record<string, AmenityTone>;
