@@ -407,6 +407,12 @@ export async function createHotelModelScene(options: HotelModelSceneOptions): Pr
   const parts = new Map<string, THREE.BufferGeometry[]>();
   const partKey = (material: MaterialName, floor?: number) => `${material}:${floor ?? 'site'}`;
   const scratch = new THREE.Matrix4();
+  /**
+   * The bay a bowed block is currently drawing, turned about its own centre.
+   * Everything below goes on describing a block in its own square terms —
+   * front, back, left, right — and this turns what it places into the bend.
+   */
+  let bay: { yaw: number; x: number; z: number } | null = null;
   const place = (
     material: MaterialName,
     geometry: THREE.BufferGeometry,
@@ -416,6 +422,15 @@ export async function createHotelModelScene(options: HotelModelSceneOptions): Pr
     rotationY = 0,
     floor?: number,
   ) => {
+    if (bay) {
+      const dx = x - bay.x;
+      const dz = z - bay.z;
+      const cos = Math.cos(bay.yaw);
+      const sin = Math.sin(bay.yaw);
+      x = bay.x + dx * cos + dz * sin;
+      z = bay.z - dx * sin + dz * cos;
+      rotationY += bay.yaw;
+    }
     const copy = geometry.clone();
     scratch.makeRotationY(rotationY);
     scratch.setPosition(x, y, z);
@@ -603,6 +618,45 @@ export async function createHotelModelScene(options: HotelModelSceneOptions): Pr
     }
   };
 
+  /**
+   * A bowed block as a run of straight bays, the way such a facade is built:
+   * one bay to a room module, so the bend is as fine as the building's own
+   * structure and reads as a curve rather than a set of facets. The joints
+   * overlap a little so they do not open up on the outside of the bend.
+   */
+  const buildBowedBlock = (block: BuildingBlock) => {
+    const bow = block.bow ?? 0;
+    if (bow < 0.05) {
+      buildBlock(block);
+      return;
+    }
+    const half = block.width / 2;
+    const radius = (bow * bow + half * half) / (2 * bow);
+    const sweep = 2 * Math.asin(Math.min(1, half / radius));
+    // One bay to a room module, but a tight bend takes more of them, so no
+    // joint reads as a kink — and none so narrow that the balcony behind it
+    // has nothing left to stand on.
+    const arc = radius * sweep;
+    const bays = Math.max(
+      3,
+      Math.min(
+        Math.max(Math.round(arc / ROOM_MODULE), Math.ceil(sweep / 0.105)),
+        Math.floor(arc / (BALCONY_DEPTH + 0.3)),
+      ),
+    );
+    const bayWidth = 2 * radius * Math.sin(sweep / (2 * bays)) * 1.04;
+    for (let index = 0; index < bays; index += 1) {
+      const angle = -sweep / 2 + (sweep * (index + 0.5)) / bays;
+      bay = {
+        yaw: angle,
+        x: block.x + radius * Math.sin(angle),
+        z: block.z - radius + radius * Math.cos(angle),
+      };
+      buildBlock({ ...block, x: bay.x, z: bay.z, width: bayWidth });
+    }
+    bay = null;
+  };
+
   /** A GLB of the property: fitted to the ground, floors found by name. */
   const pickable: THREE.Mesh[] = [];
   const gltfLoader = new GLTFLoader();
@@ -631,7 +685,7 @@ export async function createHotelModelScene(options: HotelModelSceneOptions): Pr
   if (model.url) {
     await loadModel(model.url);
   } else {
-    model.blocks.forEach(buildBlock);
+    model.blocks.forEach(buildBowedBlock);
   }
 
   // The site. A pad the building stands on, level; beyond it the headland
