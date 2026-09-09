@@ -166,34 +166,34 @@ test('no route overflows the phone viewport', async ({ page }, testInfo) => {
   }
 });
 
-test('the arrival screen presents the hotel area by area with hotspots', async ({ page }) => {
-  await page.goto('/');
+test('the arrival screen turns the building and its hotspots lead into the catalog', async ({
+  page,
+}) => {
+  await page.goto(`/?${stayQuery}`);
 
   await expect(page.getByRole('heading', { level: 1, name: 'Asteria Cove' })).toBeVisible();
-  const scene = page.getByRole('group', { name: /Explore the hotel area by area/ });
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
   await expect(scene).toBeVisible();
 
-  // Switch to the pool area, then open its hotspot. Areas page with the
-  // arrows on the stage's bottom rail — the hotel's own hotspots are up
-  // first, the pool's replace them once "Next area" has paged forward.
+  // A hotspot only exists across the frames where the thing it names faces the
+  // camera, so the marker is the proof the orbit is on a frame that shows it.
   const seaViewHotspot = scene.getByRole('button', { name: /Sea-view rooms/ });
   await expect(seaViewHotspot).toBeVisible();
-  await actUntil(
-    () => page.getByRole('button', { name: 'Next area' }).click(),
-    () =>
-      expect(scene.getByRole('button', { name: 'Infinity edge' })).toBeVisible({ timeout: 3_000 }),
-  );
 
-  const cta = page.getByRole('link', { name: 'See pool-access rooms' });
+  // The whole card is the link — pressing the marker opens it, and its call to
+  // action is inside it.
+  const card = page.getByRole('link', { name: /See sea-view rooms/ });
   await actUntil(
     async () => {
-      if (!(await cta.isVisible())) await page.getByRole('button', { name: 'Infinity edge' }).click();
+      if (!(await card.isVisible())) await seaViewHotspot.click();
     },
-    () => expect(cta).toBeVisible({ timeout: 3_000 }),
+    () => expect(card).toBeVisible({ timeout: 3_000 }),
   );
 
-  await cta.click();
-  await expect(page).toHaveURL(/\/rooms\?.*view=pool/);
+  await card.click();
+  // The dates the guest arrived with come along, the same as every other link
+  // out of the arrival screen.
+  await expect(page).toHaveURL(new RegExp(`/rooms\\?.*view=sea.*checkIn=${checkIn}`));
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
@@ -422,11 +422,17 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin');
 
   const row = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
-  // Assert on the re-rendered status, not the select value: a pre-hydration
-  // selectOption changes the DOM without ever reaching the server action.
+  // Reload before asserting, and assert on the override the server sent back:
+  // a pre-hydration selectOption changes the DOM without ever reaching the
+  // server action, and a reload is what tells the two apart. The status column
+  // beside it cannot: it shows plain availability for the admin's own demo
+  // stay, which already reads "Fully booked" here whatever the override says.
   await actUntil(
-    async () => void (await row.getByRole('combobox').selectOption('sold_out')),
-    () => expect(row.locator('td').nth(3)).toContainText('Fully booked', { timeout: 3_000 }),
+    async () => {
+      await row.getByRole('combobox').selectOption('sold_out');
+      await page.reload();
+    },
+    () => expect(row.getByRole('combobox')).toHaveValue('sold_out', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
@@ -442,9 +448,11 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin');
   const restored = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
   await actUntil(
-    async () => void (await restored.getByRole('combobox').selectOption('auto')),
-    () =>
-      expect(restored.locator('td').nth(3)).not.toContainText('Fully booked', { timeout: 3_000 }),
+    async () => {
+      await restored.getByRole('combobox').selectOption('auto');
+      await page.reload();
+    },
+    () => expect(restored.getByRole('combobox')).toHaveValue('auto', { timeout: 3_000 }),
   );
 });
 
