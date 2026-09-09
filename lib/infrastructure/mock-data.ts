@@ -133,79 +133,46 @@ export const demoHotel: Hotel = {
   currency: 'EUR',
   timezone: 'Europe/Zagreb',
   areas: hotelAreas,
-  // The massing behind the facade photo: a tower at the back of the site
-  // carrying every floor, two terraced blocks stepping down toward the sea in
-  // front of it — each one's roof the terrace of the floor above — the low spa
-  // wing to the west, and the pool on the plinth's edge above the cove.
+  // The building on the hill above the coast road: one long slab bowed toward
+  // the road, eight floors of balconies over a recessed ground floor of
+  // parking and entrance, and a roof terrace above. The east end steps back
+  // where the site narrows into the corner.
   model: {
-    floorHeight: 3.4,
+    floorHeight: 3.2,
     blocks: [
       {
-        id: 'tower',
+        id: 'slab',
         x: 0,
-        z: -14,
-        width: 30,
-        depth: 14,
+        z: 0,
+        width: 62,
+        depth: 17,
+        bow: 6,
         fromFloor: 1,
-        toFloor: 7,
+        toFloor: 8,
         balconies: ['front'],
         glazedFloors: [1],
         roofTerrace: true,
       },
       {
-        id: 'penthouse',
-        x: 0,
-        z: -16,
-        width: 22,
-        depth: 10,
-        fromFloor: 8,
-        toFloor: 8,
-        balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'terrace',
-        x: 2,
-        z: -2,
-        width: 34,
-        depth: 10,
+        id: 'corner',
+        x: 34,
+        z: -7,
+        width: 16,
+        depth: 15,
+        bow: 1.5,
         fromFloor: 1,
-        toFloor: 5,
+        toFloor: 6,
         balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'seafront',
-        x: 4,
-        z: 7,
-        width: 28,
-        depth: 8,
-        fromFloor: 1,
-        toFloor: 3,
-        balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'spa',
-        x: -25,
-        z: -6,
-        width: 12,
-        depth: 18,
-        fromFloor: 1,
-        toFloor: 2,
-        balconies: ['left', 'front'],
         glazedFloors: [1],
         roofTerrace: true,
       },
     ],
     grounds: {
-      width: 84,
-      depth: 62,
-      height: 7,
-      pool: { x: 8, z: 18, width: 25, depth: 7 },
-      sea: true,
+      width: 108,
+      depth: 68,
+      height: 3,
     },
-    view: { azimuth: 58, elevation: 19 },
+    view: { azimuth: 24, elevation: 17 },
   },
 };
 
@@ -423,9 +390,9 @@ const roomSeed: RoomSeed[] = [
       'The plainest way to wake up to the water: a queen bed, a chair by the glass, and the whole cove in the window.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Rain shower', 'Blackout blinds', 'Nespresso bar'],
     photos: [
-      { file: 'balcony', label: 'The view', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'balcony', label: 'The view', width: 16000, height: 2134, from: 'deluxe-sea' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'coastal-twin' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'deluxe-sea' },
     ],
   },
   {
@@ -441,9 +408,9 @@ const roomSeed: RoomSeed[] = [
       'A compact room over the fishing cove, with a slim balcony wide enough for two coffees and the morning boats.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Balcony', 'Rain shower', 'Work desk'],
     photos: [
-      { file: 'balcony', label: 'Balcony', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'balcony', label: 'Balcony', width: 16000, height: 1387, from: 'coastal-twin' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'coastal-twin' },
     ],
   },
   {
@@ -469,12 +436,12 @@ const roomSeed: RoomSeed[] = [
       {
         file: 'terrace',
         label: 'Garden terrace',
-        width: 1600,
-        height: 1067,
+        width: 16000,
+        height: 2845,
         from: 'garden-studio',
       },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'garden-studio' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'garden-studio' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'garden-studio' },
     ],
   },
   {
@@ -490,9 +457,9 @@ const roomSeed: RoomSeed[] = [
       'Faces the old town rather than the water: rooftops, bell towers, and the harbour lights after dark.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Work desk', 'Rain shower', 'Blackout blinds'],
     photos: [
-      { file: 'window', label: 'The window', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'window', label: 'The window', width: 16000, height: 2400, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 16000, height: 1065, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'skyline-loft' },
     ],
   },
   {
@@ -515,9 +482,9 @@ const roomSeed: RoomSeed[] = [
       'Nespresso bar',
     ],
     photos: [
-      { file: 'terrace', label: 'Pool deck', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'terrace', label: 'Pool deck', width: 16000, height: 1064, from: 'pool-terrace' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'pool-terrace' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'pool-terrace' },
     ],
   },
   {
@@ -542,7 +509,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'terrace', label: 'Terrace', width: 1600, height: 1067, from: 'panorama-suite' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'panorama-suite' },
     ],
   },
   {
@@ -567,7 +534,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'panorama-suite' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'panorama-suite' },
     ],
   },
   {
@@ -591,8 +558,8 @@ const roomSeed: RoomSeed[] = [
     ],
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 16000, height: 1065, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'skyline-loft' },
     ],
   },
   {
@@ -618,7 +585,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'family-residence' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'family-residence' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'family-residence' },
     ],
   },
   {
@@ -644,12 +611,12 @@ const roomSeed: RoomSeed[] = [
       {
         file: 'second-bedroom',
         label: 'Second bedroom',
-        width: 1600,
-        height: 1067,
+        width: 16000,
+        height: 2400,
         from: 'family-residence',
       },
       { file: 'bedroom', label: 'Main bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'family-residence' },
     ],
   },
   {

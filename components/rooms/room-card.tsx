@@ -50,6 +50,13 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
       )}
     >
       {cover ? (
+        // Out of the flow, not merely filling its box. In the row layout the
+        // frame's height is `h-full` of a grid row the text defines, which is
+        // indefinite while the row is being measured — so an in-flow image
+        // falls back to its own natural height and a portrait cover makes the
+        // card taller than anything in it, stranding the price at the bottom
+        // of a column of white. Absolute, the photograph measures nothing and
+        // every card in the list is the height of its own words.
         <img
           src={cover.url}
           alt={cover.label ? `${room.name} — ${cover.label}` : room.name}
@@ -58,7 +65,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
           loading="lazy"
           decoding="async"
           className={cn(
-            'size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]',
+            'absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]',
             soldOut && 'saturate-50',
           )}
         />
