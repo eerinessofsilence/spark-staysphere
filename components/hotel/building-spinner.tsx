@@ -72,6 +72,12 @@ const KEYFRAME_MIN_DURATION_MS = 260;
 const KEYFRAME_MAX_DURATION_MS = 620;
 /** Frames beyond the target the swing can overshoot into before settling back. */
 const KEYFRAME_OVERSHOOT_FRAMES = 3;
+/** A release slower than this is a deliberate stop, not a flick — no momentum. */
+const FLICK_MIN_VELOCITY_PX_PER_MS = 0.35;
+/** How fast the flick's spin sheds speed; halves roughly every ~150ms. */
+const FLICK_DECAY_PER_MS = 0.0045;
+/** Below this the flick is a crawl — hand off to the spring snap onto a stop. */
+const FLICK_STOP_VELOCITY_FRAMES_PER_MS = 0.005;
 const PRELOAD_BATCH_DESKTOP = 12;
 const PRELOAD_BATCH_MOBILE = 8;
 const BACKGROUND_BATCH_DELAY_MS = 120;
@@ -384,9 +390,77 @@ export function BuildingSpinner({
     animationRef.current = requestAnimationFrame(tick);
   }, [frameCount, loadFrame]);
 
+  /** Where a flick hands off once it slows to a crawl — whichever stop is closest either way. */
+  const snapToNearestKeyAngle = React.useCallback(() => {
+    if (keyAngles.length === 0) return;
+    const from = frameIndexRef.current;
+    let best = keyAngles[0]!;
+    let bestDistance = Infinity;
+    for (const angle of keyAngles) {
+      const distance = Math.abs(ringDelta(from, angle, frameCount));
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = angle;
+      }
+    }
+    intendedRef.current = best;
+    queueRef.current = [best];
+    runQueue();
+  }, [keyAngles, frameCount, runQueue]);
+
+  const flickRef = React.useRef<number | null>(null);
+
+  const stopFlick = React.useCallback(() => {
+    if (flickRef.current !== null) {
+      cancelAnimationFrame(flickRef.current);
+      flickRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Continues the spin after a fast release, decaying exponentially like a
+   * flywheel losing spin, then settles onto the nearest stop with the same
+   * spring the arrows use — the flick and the arrow jump end the same way.
+   */
+  const startFlick = React.useCallback(
+    (releasePxPerMs: number) => {
+      stopAnimation();
+      stopFlick();
+      queueRef.current = [];
+      const framesPerPx = frameCount / DRAG_PX_PER_TURN;
+      let velocity = releasePxPerMs * framesPerPx; // frames per ms, signed
+      let position = frameIndexRef.current;
+      let lastTime = performance.now();
+      const deadline = lastTime + 2000; // safety net; decay always gets here first
+      setIsSpinning(true);
+      setActiveHotspot(null);
+      const tick = (now: number) => {
+        const dt = now - lastTime;
+        lastTime = now;
+        velocity *= Math.exp(-FLICK_DECAY_PER_MS * dt);
+        position += velocity * dt;
+        const next = wrap(Math.round(position), frameCount);
+        if (next !== frameIndexRef.current) {
+          frameIndexRef.current = next;
+          intendedRef.current = next;
+          setFrameIndex(next);
+        }
+        if (Math.abs(velocity) > FLICK_STOP_VELOCITY_FRAMES_PER_MS && now < deadline) {
+          flickRef.current = requestAnimationFrame(tick);
+        } else {
+          flickRef.current = null;
+          snapToNearestKeyAngle();
+        }
+      };
+      flickRef.current = requestAnimationFrame(tick);
+    },
+    [frameCount, stopAnimation, stopFlick, snapToNearestKeyAngle],
+  );
+
   const goToKeyAngle = React.useCallback(
     (direction: 1 | -1) => {
       if (keyAngles.length === 0) return;
+      stopFlick();
       if (queueRef.current.length >= KEYFRAME_QUEUE_MAX) return;
       const from = intendedRef.current;
       // The next stop the given way round, never the one we are already sitting on.
@@ -405,10 +479,13 @@ export function BuildingSpinner({
       queueRef.current.push(best);
       runQueue();
     },
-    [keyAngles, frameCount, runQueue],
+    [keyAngles, frameCount, runQueue, stopFlick],
   );
 
-  React.useEffect(() => () => stopAnimation(), [stopAnimation]);
+  React.useEffect(() => () => {
+    stopAnimation();
+    stopFlick();
+  }, [stopAnimation, stopFlick]);
 
   // ---- url ----------------------------------------------------------------
 
@@ -477,13 +554,24 @@ export function BuildingSpinner({
 
   // ---- drag ---------------------------------------------------------------
 
-  const dragRef = React.useRef<{ startX: number; startFrame: number; moved: boolean; pointerId: number; threshold: number } | null>(null);
+  const dragRef = React.useRef<{
+    startX: number;
+    startFrame: number;
+    moved: boolean;
+    pointerId: number;
+    threshold: number;
+    lastX: number;
+    lastT: number;
+    /** Smoothed px/ms, signed — read at release to decide whether it was a flick. */
+    velocity: number;
+  } | null>(null);
   /** Whether the press that just ended travelled — read by the markers' click handler. */
   const draggedRef = React.useRef(false);
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (!active || hasError) return;
     stopAnimation();
+    stopFlick();
     queueRef.current = [];
     intendedRef.current = frameIndexRef.current;
     // Capture is taken only once the drag moves: capturing on press retargets the
@@ -494,6 +582,9 @@ export function BuildingSpinner({
       moved: false,
       pointerId: event.pointerId,
       threshold: event.pointerType === 'mouse' ? DRAG_THRESHOLD_MOUSE_PX : DRAG_THRESHOLD_TOUCH_PX,
+      lastX: event.clientX,
+      lastT: performance.now(),
+      velocity: 0,
     };
     draggedRef.current = false;
   };
@@ -501,8 +592,13 @@ export function BuildingSpinner({
   const onPointerMove = (event: React.PointerEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
+    const now = performance.now();
     const deltaX = event.clientX - drag.startX;
-    if (!drag.moved && Math.abs(deltaX) < drag.threshold) return;
+    if (!drag.moved && Math.abs(deltaX) < drag.threshold) {
+      drag.lastX = event.clientX;
+      drag.lastT = now;
+      return;
+    }
     if (!drag.moved) {
       setIsSpinning(true);
       event.currentTarget.setPointerCapture(drag.pointerId);
@@ -515,11 +611,25 @@ export function BuildingSpinner({
     frameIndexRef.current = next;
     intendedRef.current = next;
     setFrameIndex(next);
+
+    // Smoothed instantaneous speed, so one jittery sample right before release
+    // doesn't decide whether the release counts as a flick.
+    const dt = now - drag.lastT;
+    if (dt > 0) {
+      const instant = (event.clientX - drag.lastX) / dt;
+      drag.velocity = drag.velocity * 0.7 + instant * 0.3;
+    }
+    drag.lastX = event.clientX;
+    drag.lastT = now;
   };
 
   const endDrag = () => {
+    const drag = dragRef.current;
     dragRef.current = null;
     setIsSpinning(false);
+    if (drag?.moved && Math.abs(drag.velocity) >= FLICK_MIN_VELOCITY_PX_PER_MS) {
+      startFlick(drag.velocity);
+    }
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
