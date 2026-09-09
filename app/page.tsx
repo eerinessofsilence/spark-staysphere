@@ -112,9 +112,9 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 About {hotel.name}
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Eight floors of white balconies stepping down a cliff above the Dalmatian coast,
-                with a working fishing cove, a saltwater infinity pool, and a stone spa cut into
-                the rock below. Every room faces the open Adriatic.
+                Eight floors of white balconies curving above the town, the upper ones looking
+                clear over the rooftops to the Mediterranean, with a 25-metre infinity pool and a
+                cliffside spa on site, and the bay's marina and beach clubs ten minutes downhill.
               </p>
               <p className="mt-5 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
