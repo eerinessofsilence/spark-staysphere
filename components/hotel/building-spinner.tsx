@@ -64,10 +64,14 @@ const DRAG_PX_PER_TURN = 700;
 /** A mouse needs a deliberate push before the building moves; a finger is allowed to be twitchier. */
 const DRAG_THRESHOLD_MOUSE_PX = 50;
 const DRAG_THRESHOLD_TOUCH_PX = 8;
-/** One frame per tick while animating between stops. */
-const STEP_MS = 15;
 /** Stops queued while an animation is already running; beyond this, presses are dropped. */
 const KEYFRAME_QUEUE_MAX = 10;
+/** A jump between stops scales with distance, so a short hop still feels snappy. */
+const KEYFRAME_MS_PER_FRAME = 18;
+const KEYFRAME_MIN_DURATION_MS = 260;
+const KEYFRAME_MAX_DURATION_MS = 620;
+/** Frames beyond the target the swing can overshoot into before settling back. */
+const KEYFRAME_OVERSHOOT_FRAMES = 3;
 const PRELOAD_BATCH_DESKTOP = 12;
 const PRELOAD_BATCH_MOBILE = 8;
 const BACKGROUND_BATCH_DELAY_MS = 120;
@@ -168,6 +172,18 @@ function hotspotOutline(
     x: lower.outline![i]!.x + (upper.outline![i]!.x - lower.outline![i]!.x) * t,
     y: lower.outline![i]!.y + (upper.outline![i]!.y - lower.outline![i]!.y) * t,
   }));
+}
+
+/**
+ * Standard "back" easing (easings.net): overshoots past 1 then eases back to
+ * exactly 1 — a jump between stops swings a couple of frames past the target
+ * and settles, like the real thing has weight instead of stopping dead.
+ */
+function easeOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  const x = t - 1;
+  return 1 + c3 * x * x * x + c1 * x * x;
 }
 
 /** A frame roughly in the middle of a hotspot's visible arc — for a deep link with no explicit frame. */
@@ -304,7 +320,7 @@ export function BuildingSpinner({
   // ---- keyframe navigation ------------------------------------------------
 
   const queueRef = React.useRef<number[]>([]);
-  const animationRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const animationRef = React.useRef<number | null>(null);
   /**
    * Where the presses so far will finish. A second press has to step on from
    * there, not from the frame currently on screen, or it lands on the stop the
@@ -313,14 +329,14 @@ export function BuildingSpinner({
   const intendedRef = React.useRef(frameIndex);
 
   const stopAnimation = React.useCallback(() => {
-    if (animationRef.current) {
-      clearInterval(animationRef.current);
+    if (animationRef.current !== null) {
+      cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
   }, []);
 
   const runQueue = React.useCallback(() => {
-    if (animationRef.current) return;
+    if (animationRef.current !== null) return;
     const target = queueRef.current.shift();
     if (target === undefined) {
       setIsSpinning(false);
@@ -331,21 +347,42 @@ export function BuildingSpinner({
       runQueue();
       return;
     }
-    const direction = delta > 0 ? 1 : -1;
-    let remaining = Math.abs(delta);
+    const start = frameIndexRef.current;
+    const duration = Math.min(
+      KEYFRAME_MAX_DURATION_MS,
+      Math.max(KEYFRAME_MIN_DURATION_MS, Math.abs(delta) * KEYFRAME_MS_PER_FRAME),
+    );
+    // The swing can pass a few frames beyond the target before settling back —
+    // preload those too, in case a deep link landed here before the background
+    // loader reached them.
+    const overshootFrames = Math.min(Math.abs(delta), KEYFRAME_OVERSHOOT_FRAMES);
+    for (let step = 1; step <= overshootFrames; step++) {
+      loadFrame(wrap(target + Math.sign(delta) * step, frameCount));
+    }
     setIsSpinning(true);
     setActiveHotspot(null);
-    animationRef.current = setInterval(() => {
-      const next = wrap(frameIndexRef.current + direction, frameCount);
-      frameIndexRef.current = next;
-      setFrameIndex(next);
-      remaining -= 1;
-      if (remaining <= 0) {
-        stopAnimation();
+    const startTime = performance.now();
+    let drawn = start;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startTime) / duration);
+      const eased = easeOutBack(t);
+      const position = wrap(Math.round(start + delta * eased), frameCount);
+      if (position !== drawn) {
+        drawn = position;
+        frameIndexRef.current = position;
+        setFrameIndex(position);
+      }
+      if (t < 1) {
+        animationRef.current = requestAnimationFrame(tick);
+      } else {
+        animationRef.current = null;
+        frameIndexRef.current = target;
+        setFrameIndex(target);
         runQueue();
       }
-    }, STEP_MS);
-  }, [frameCount, stopAnimation]);
+    };
+    animationRef.current = requestAnimationFrame(tick);
+  }, [frameCount, loadFrame]);
 
   const goToKeyAngle = React.useCallback(
     (direction: 1 | -1) => {
