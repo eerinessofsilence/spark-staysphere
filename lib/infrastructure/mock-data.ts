@@ -163,13 +163,10 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
       roomSlug: 'deluxe-sea',
       href: '/rooms?view=sea',
       cta: 'See sea-view rooms',
-      // Outlines are off for now: the tracked shapes stay in `spinner-outlines.ts`,
-      // and dropping `outline` here is all it takes to switch the zone overlay back on.
-      keyframes: trackedOutlines['sea-view']!.map((keyframe) => ({
-        frameIndex: keyframe.frameIndex,
-        x: keyframe.x,
-        y: keyframe.y,
-      })),
+      // Traced band and all: `spinner-outlines.ts` carries the shape across the
+      // arc where this facade faces the camera, so the zone lights on hover and
+      // moves with the building instead of sitting on one frame.
+      keyframes: trackedOutlines['sea-view']!,
     },
     {
       id: 'cove',
