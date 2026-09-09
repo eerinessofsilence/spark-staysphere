@@ -387,6 +387,29 @@ body {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /*
+   * The one piece of motion on an otherwise still page: a heading arrives
+   * from slightly below as it comes into view, the way the large product
+   * pages do it. Long and heavily eased — a fast reveal reads as a jump.
+   *
+   * Two gates before anything is hidden. `.js` is set by the head script, so
+   * a document that cannot run the observer never has its copy hidden in the
+   * first place; and a visitor who asked for less motion is simply given the
+   * finished state, with nothing to wait for.
+   */
+  [data-reveal] {
+    transition:
+      opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      translate 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .js [data-reveal='pending'] {
+      opacity: 0;
+      translate: 0 1.5rem;
+    }
+  }
 }
 
 /*

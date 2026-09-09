@@ -18,6 +18,13 @@ export const pillVariants = {
   onDark: 'border border-white/20 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20',
   /** Frosted over photography. Hovers to the same warm white, not to plain. */
   glass: 'glass text-foreground hover:bg-glass-tint/90',
+  /**
+   * The one filled pill for a surface that is dark in both schemes — a band
+   * laid over a photograph. Literal colours on purpose: `primary` inverts
+   * with the theme, and on a surface that never changes, it would turn into
+   * an ink pill on a night photograph by day.
+   */
+  onPhoto: 'bg-[#F7F5F0] text-[#161616] hover:bg-white',
 } as const;
 
 export type PillVariant = keyof typeof pillVariants;
