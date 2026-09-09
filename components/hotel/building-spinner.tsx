@@ -51,6 +51,10 @@ interface BuildingSpinnerProps {
   /** Today's flat photo — shown, unchanged, if the frame sequence fails to load. */
   fallbackPhoto: { url: string; width: number; height: number; alt: string };
   title: string;
+  /** Folded into the same pill as the turn controls — see the note below. */
+  location?: string;
+  /** The guest's dates, carried into whatever a hotspot links to. */
+  stayQuery?: string;
   rooms?: Record<string, SpinnerRoomFacts>;
   /** Only the visible layer captures drag/keyboard — a hidden cross-fade layer must not. */
   active: boolean;
@@ -182,6 +186,8 @@ export function BuildingSpinner({
   spinner,
   fallbackPhoto,
   title,
+  location,
+  stayQuery,
   rooms,
   active,
   initialFrame,
@@ -549,10 +555,19 @@ export function BuildingSpinner({
   };
 
   const cardFacts = active_?.hotspot.roomSlug ? rooms?.[active_.hotspot.roomSlug] : undefined;
+  // The stay the guest already chose survives the jump into the catalog, the
+  // same way it does from every other link on the arrival screen.
+  const cardHref = (): string => {
+    const [path, query] = active_!.hotspot.href.split('?');
+    const params = new URLSearchParams(query ?? '');
+    if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
+    const search = params.toString();
+    return search ? `${path}?${search}` : path!;
+  };
   const card = active_ ? (
     <Link
       ref={activeCardRef as React.Ref<HTMLAnchorElement>}
-      href={active_.hotspot.href}
+      href={cardHref()}
       aria-live="polite"
       style={activeCardStyle}
       onPointerDown={(event) => event.stopPropagation()}
@@ -700,9 +715,21 @@ export function BuildingSpinner({
 
       {card}
 
-      {/* Turn the building an eighth at a time — distinct from HotelScene's
-          area-to-area paging arrows, which move between facade/pool/spa/lobby. */}
+      {/* One pill, not two competing for the same bottom-centre spot: the
+          location used to be its own caption over at HotelScene's
+          bottom-left, and on a narrow stage it ran straight into this pill's
+          centred turn controls. Folded in here instead, and centred with
+          them, there is nothing left for it to collide with. */}
       <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/85 p-1 pr-1 backdrop-blur-sm">
+        {location ? (
+          <>
+            <span className="flex items-center gap-1.5 px-3 text-sm text-[#F7F5F0]/85">
+              <MapPin weight="fill" className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">{location}</span>
+            </span>
+            <span aria-hidden="true" className="h-5 w-px shrink-0 bg-white/20" />
+          </>
+        ) : null}
         <button
           type="button"
           aria-label="Turn left"

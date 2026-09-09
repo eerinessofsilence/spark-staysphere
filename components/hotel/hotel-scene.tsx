@@ -288,6 +288,8 @@ export function HotelScene({
                 spinner={spinner}
                 fallbackPhoto={candidate.photo}
                 title={candidate.name}
+                location={location}
+                stayQuery={stayQuery}
                 rooms={rooms}
                 active={spinnerOnly || candidateIndex === index}
                 initialFrame={spinnerInitialFrame}
@@ -524,9 +526,12 @@ export function HotelScene({
         {/* Bottom rail: caption on the left, paging on the right. */}
         <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20 flex items-end justify-between gap-3">
           <div aria-live="polite" className="max-w-[min(24rem,100%)]">
-            {active || namedZone ? null : (
+            {active || namedZone || spinnerOnly ? null : (
               // The caption steps aside while a floor is named: the lowest
-              // band's label lands exactly where the caption sits.
+              // band's label lands exactly where the caption sits. With the
+              // spinner active it steps aside for good — the spinner's own
+              // control pill carries the location now, so there is nothing
+              // left here to collide with it.
               <div className="flex flex-col gap-2 text-white">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-xs backdrop-blur-sm">
                   <MapPin className="size-3.5" aria-hidden="true" />
