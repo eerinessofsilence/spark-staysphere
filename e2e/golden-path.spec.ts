@@ -208,14 +208,41 @@ test('each traced storey of the facade names the room on it', async ({ page }) =
   await expect(storeys).toHaveCount(8, { timeout: 15_000 });
 
   // Fourth floor, counting down from the roof: the storeys run top to bottom.
+  // The shapes take no pointer events — the spinner hit-tests them itself — so
+  // a point inside one is found the same way, from its own geometry.
   const point = await page.evaluate(() => {
-    const band = [...document.querySelectorAll('svg polygon')][4]!;
-    const box = band.getBoundingClientRect();
-    for (let fx = 0.1; fx <= 0.92; fx += 0.03)
-      for (let fy = 0.3; fy <= 0.7; fy += 0.1) {
-        const x = Math.round(box.x + box.width * fx);
-        const y = Math.round(box.y + box.height * fy);
-        if (document.elementFromPoint(x, y) === band) return { x, y };
+    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][4]!;
+    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
+    const corners = band
+      .getAttribute('points')!
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x: x!, y: y! };
+      });
+    const holds = (x: number, y: number) => {
+      let inside = false;
+      for (let i = 0, j = corners.length - 1; i < corners.length; j = i, i += 1) {
+        const a = corners[i]!;
+        const b = corners[j]!;
+        if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      return inside;
+    };
+    const xs = corners.map((c) => c.x);
+    const ys = corners.map((c) => c.y);
+    const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+    const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+    for (let fx = 0.1; fx <= 0.92; fx += 0.02)
+      for (let fy = 0.3; fy <= 0.7; fy += 0.05) {
+        const x = x0 + (x1 - x0) * fx;
+        const y = y0 + (y1 - y0) * fy;
+        if (!holds(x, y)) continue;
+        const cx = Math.round(svgBox.x + x);
+        const cy = Math.round(svgBox.y + y);
+        // Nothing of the spinner's own chrome on top of this spot.
+        if (document.elementFromPoint(cx, cy)?.getAttribute('role') === 'group') return { x: cx, y: cy };
       }
     return null;
   });

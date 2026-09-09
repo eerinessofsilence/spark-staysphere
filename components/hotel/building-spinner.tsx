@@ -72,6 +72,13 @@ const DRAG_THRESHOLD_TOUCH_PX = 8;
 const STEP_MS = 15;
 /** Stops queued while an animation is already running; beyond this, presses are dropped. */
 const KEYFRAME_QUEUE_MAX = 10;
+/**
+ * How long a pointer must rest on a storey before its card opens. A guest who
+ * puts the cursor on the building and drags straight away is turning it, not
+ * asking about a room — and opening the card into the first frames of that drag
+ * is what made the turn stutter as it began.
+ */
+const ZONE_HOVER_DELAY_MS = 120;
 const PRELOAD_BATCH_DESKTOP = 12;
 const PRELOAD_BATCH_MOBILE = 8;
 const BACKGROUND_BATCH_DELAY_MS = 120;
@@ -100,32 +107,60 @@ function coverRect(frame: { width: number; height: number }, dims: { width: numb
  * The arc runs forward (wrapping) from its first keyframe to its last —
  * authored in that sweep order, not necessarily ascending frame numbers.
  */
-function hotspotPosition(
-  hotspot: SpinnerHotspot,
-  frameIndex: number,
-  frameCount: number,
-): { x: number; y: number } | null {
+/**
+ * A hotspot's keyframes, prepared once. Sorting and filtering them per frame —
+ * for every hotspot, twice, on every step of a drag — was throwing away a few
+ * hundred objects a frame and showed up as a stutter as soon as the facade had
+ * a marker for each of its storeys. Keyframes never change, so this is done
+ * when the spinner mounts and only the interpolation is left per frame.
+ */
+interface HotspotTrack {
+  /** Frame the arc opens on, and how many frames it runs for. */
+  first: number;
+  total: number;
+  positions: { pos: number; x: number; y: number }[];
+  outlines: { pos: number; outline: { x: number; y: number }[] }[];
+}
+
+function buildTrack(hotspot: SpinnerHotspot, frameCount: number): HotspotTrack {
   const first = hotspot.keyframes[0]!.frameIndex;
   const last = hotspot.keyframes[hotspot.keyframes.length - 1]!.frameIndex;
-  const total = wrap(last - first, frameCount);
-  const pos = wrap(frameIndex - first, frameCount);
-  if (pos > total) return null;
-
   const withPos = hotspot.keyframes
-    .map((keyframe) => ({ ...keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
+    .map((keyframe) => ({ keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
     .sort((a, b) => a.pos - b.pos);
+  return {
+    first,
+    total: wrap(last - first, frameCount),
+    positions: withPos.map(({ keyframe, pos }) => ({ pos, x: keyframe.x, y: keyframe.y })),
+    outlines: withPos
+      .filter(({ keyframe }) => keyframe.outline && keyframe.outline.length >= 3)
+      .map(({ keyframe, pos }) => ({ pos, outline: keyframe.outline! })),
+  };
+}
 
-  let lower = withPos[0]!;
-  let upper = withPos[withPos.length - 1]!;
-  for (let i = 0; i < withPos.length - 1; i++) {
-    if (pos >= withPos[i]!.pos && pos <= withPos[i + 1]!.pos) {
-      lower = withPos[i]!;
-      upper = withPos[i + 1]!;
+/** The two prepared keyframes bracketing `pos`, and how far between them it sits. */
+function bracket<T extends { pos: number }>(entries: T[], pos: number): { lower: T; upper: T; t: number } {
+  let lower = entries[0]!;
+  let upper = entries[entries.length - 1]!;
+  for (let i = 0; i < entries.length - 1; i += 1) {
+    if (pos >= entries[i]!.pos && pos <= entries[i + 1]!.pos) {
+      lower = entries[i]!;
+      upper = entries[i + 1]!;
       break;
     }
   }
   const span = upper.pos - lower.pos;
-  const t = span === 0 ? 0 : (pos - lower.pos) / span;
+  return { lower, upper, t: span === 0 ? 0 : (pos - lower.pos) / span };
+}
+
+function hotspotPosition(
+  track: HotspotTrack,
+  frameIndex: number,
+  frameCount: number,
+): { x: number; y: number } | null {
+  const pos = wrap(frameIndex - track.first, frameCount);
+  if (pos > track.total) return null;
+  const { lower, upper, t } = bracket(track.positions, pos);
   return { x: lower.x + (upper.x - lower.x) * t, y: lower.y + (upper.y - lower.y) * t };
 }
 
@@ -135,43 +170,41 @@ function hotspotPosition(
  * frame, so the shape turns with the building instead of jumping at each stop.
  */
 function hotspotOutline(
-  hotspot: SpinnerHotspot,
+  track: HotspotTrack,
   frameIndex: number,
   frameCount: number,
 ): { x: number; y: number }[] | null {
-  const first = hotspot.keyframes[0]!.frameIndex;
-  const last = hotspot.keyframes[hotspot.keyframes.length - 1]!.frameIndex;
-  const total = wrap(last - first, frameCount);
-  const pos = wrap(frameIndex - first, frameCount);
-  if (pos > total) return null;
-
-  const withPos = hotspot.keyframes
-    .map((keyframe) => ({ ...keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
-    .sort((a, b) => a.pos - b.pos)
-    .filter((keyframe) => keyframe.outline && keyframe.outline.length >= 3);
-  if (withPos.length === 0) return null;
-
-  let lower = withPos[0]!;
-  let upper = withPos[withPos.length - 1]!;
-  for (let i = 0; i < withPos.length - 1; i++) {
-    if (pos >= withPos[i]!.pos && pos <= withPos[i + 1]!.pos) {
-      lower = withPos[i]!;
-      upper = withPos[i + 1]!;
-      break;
-    }
-  }
+  const pos = wrap(frameIndex - track.first, frameCount);
+  if (pos > track.total || track.outlines.length === 0) return null;
+  const { lower, upper, t } = bracket(track.outlines, pos);
   // Outside the traced span the nearest traced shape is the honest answer.
-  if (pos < lower.pos || pos > upper.pos) {
-    const nearest = pos < lower.pos ? lower : upper;
-    return nearest.outline!;
+  if (pos < lower.pos || pos > upper.pos) return pos < lower.pos ? lower.outline : upper.outline;
+  const count = Math.min(lower.outline.length, upper.outline.length);
+  const points = new Array<{ x: number; y: number }>(count);
+  for (let i = 0; i < count; i += 1) {
+    points[i] = {
+      x: lower.outline[i]!.x + (upper.outline[i]!.x - lower.outline[i]!.x) * t,
+      y: lower.outline[i]!.y + (upper.outline[i]!.y - lower.outline[i]!.y) * t,
+    };
   }
-  const span = upper.pos - lower.pos;
-  const t = span === 0 ? 0 : (pos - lower.pos) / span;
-  const count = Math.min(lower.outline!.length, upper.outline!.length);
-  return Array.from({ length: count }, (_, i) => ({
-    x: lower.outline![i]!.x + (upper.outline![i]!.x - lower.outline![i]!.x) * t,
-    y: lower.outline![i]!.y + (upper.outline![i]!.y - lower.outline![i]!.y) * t,
-  }));
+  return points;
+}
+
+/**
+ * Ray-cast: does this traced shape hold the point? Zones are found this way
+ * rather than by giving their polygons pointer events, because the browser then
+ * has to hit-test every one of them against every mouse move — with a facade
+ * of full-width storeys that showed up as a stutter the moment a drag began.
+ * Coordinates are fractions of the frame, the same space the outlines are in.
+ */
+function outlineHolds(outline: { x: number; y: number }[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i, i += 1) {
+    const a = outline[i]!;
+    const b = outline[j]!;
+    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
 }
 
 /** A frame roughly in the middle of a hotspot's visible arc — for a deep link with no explicit frame. */
@@ -211,6 +244,16 @@ export function BuildingSpinner({
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
   /** A floor band has no marker to hang its card off, so it hangs it off itself. */
   const zoneRefs = React.useRef<Record<string, SVGPolygonElement | null>>({});
+  const hoverTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingZoneRef = React.useRef<string | null>(null);
+
+  const cancelZoneHover = React.useCallback(() => {
+    if (hoverTimerRef.current !== null) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+    pendingZoneRef.current = null;
+  }, []);
+
+  React.useEffect(() => cancelZoneHover, [cancelZoneHover]);
   const [activeAnchor, setActiveAnchor] = React.useState<CardAnchor | null>(null);
 
   const [frameIndex, setFrameIndex] = React.useState(() => {
@@ -404,19 +447,28 @@ export function BuildingSpinner({
 
   const { cardRef: activeCardRef, style: activeCardStyle } = useAnchoredCard(activeAnchor, dims);
 
+  // Prepared once for the whole orbit; only the interpolation runs per frame.
+  const tracks = React.useMemo(
+    () => spinner.hotspots.map((hotspot) => ({ hotspot, track: buildTrack(hotspot, frameCount) })),
+    [spinner.hotspots, frameCount],
+  );
+
   const visible = React.useMemo(
     () =>
-      spinner.hotspots
-        .map((hotspot) => ({
+      tracks
+        .map(({ hotspot, track }) => ({
           hotspot,
-          position: hotspotPosition(hotspot, frameIndex, frameCount),
-          outline: hotspotOutline(hotspot, frameIndex, frameCount),
+          position: hotspotPosition(track, frameIndex, frameCount),
+          // Not while the building is turning: the overlay is down then, and
+          // interpolating a fresh outline for every storey on every frame of a
+          // drag was the bulk of the stutter when one began.
+          outline: isSpinning ? null : hotspotOutline(track, frameIndex, frameCount),
         }))
         .filter(
           (entry): entry is { hotspot: SpinnerHotspot; position: { x: number; y: number }; outline: { x: number; y: number }[] | null } =>
             entry.position !== null,
         ),
-    [spinner.hotspots, frameIndex, frameCount],
+    [tracks, frameIndex, frameCount, isSpinning],
   );
 
   React.useEffect(() => {
@@ -474,9 +526,41 @@ export function BuildingSpinner({
     draggedRef.current = false;
   };
 
+  /** The traced storey under the pointer, in the frame's own coordinates. */
+  const zoneAt = (clientX: number, clientY: number): string | null => {
+    const stage = stageRef.current;
+    const drawn = dims.width > 0 ? coverRect(frameSize, dims) : null;
+    if (!stage || !drawn) return null;
+    const box = stage.getBoundingClientRect();
+    const x = (clientX - box.left - drawn.x) / drawn.width;
+    const y = (clientY - box.top - drawn.y) / drawn.height;
+    // Last drawn wins, so the storey painted on top is the one picked.
+    for (let index = visible.length - 1; index >= 0; index -= 1) {
+      const entry = visible[index]!;
+      if (entry.outline && outlineHolds(entry.outline, x, y)) return entry.hotspot.id;
+    }
+    return null;
+  };
+
   const onPointerMove = (event: React.PointerEvent) => {
     const drag = dragRef.current;
-    if (!drag) return;
+    if (!drag) {
+      // Only over bare stage: a marker or the open card is on top and owns its
+      // own hover, and re-resolving underneath it would close what it opened.
+      if (!isSpinning && event.target === event.currentTarget) {
+        const zone = zoneAt(event.clientX, event.clientY);
+        if (zone !== pendingZoneRef.current) {
+          cancelZoneHover();
+          pendingZoneRef.current = zone;
+          // Leaving is immediate; arriving waits, so sweeping across the facade
+          // does not flash a card for every storey on the way past.
+          if (zone === null) setHoveredHotspot(null);
+          else hoverTimerRef.current = setTimeout(() => setHoveredHotspot(zone), ZONE_HOVER_DELAY_MS);
+        }
+      }
+      return;
+    }
+    cancelZoneHover();
     const deltaX = event.clientX - drag.startX;
     if (!drag.moved && Math.abs(deltaX) < drag.threshold) return;
     if (!drag.moved) {
@@ -666,11 +750,26 @@ export function BuildingSpinner({
       tabIndex={active ? 0 : -1}
       aria-roledescription="carousel"
       aria-label={`${title}, drag or use the arrow keys to spin around the building`}
-      className={cn('relative size-full touch-none outline-none select-none', className)}
+      className={cn(
+        'relative size-full touch-none outline-none select-none',
+        // The shapes are inert now, so the affordance rides on the stage.
+        !isSpinning && hoveredHotspot ? 'cursor-pointer' : null,
+        className,
+      )}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onPointerLeave={() => {
+        cancelZoneHover();
+        if (!dragRef.current) setHoveredHotspot(null);
+      }}
+      onClick={(event) => {
+        // A press that travelled was a drag, not a pick.
+        if (draggedRef.current || event.target !== event.currentTarget) return;
+        const zone = zoneAt(event.clientX, event.clientY);
+        setActiveHotspot((current) => (current === zone ? null : zone));
+      }}
       onKeyDown={onKeyDown}
     >
       <canvas ref={canvasRef} aria-label={title} className="pointer-events-none absolute inset-0 size-full" />
@@ -701,7 +800,7 @@ export function BuildingSpinner({
                 strokeWidth={lit ? 3 : 1.5}
                 strokeLinejoin="round"
                 className={cn(
-                  'pointer-events-auto cursor-pointer transition-[fill,stroke,stroke-width] duration-200',
+                  'transition-[fill,stroke,stroke-width] duration-200',
                   '[filter:drop-shadow(0_1px_3px_rgb(22_22_22/0.55))]',
                   lit
                     ? soldOut
@@ -711,13 +810,6 @@ export function BuildingSpinner({
                       ? 'fill-transparent stroke-[#E5484D]/70'
                       : 'fill-transparent stroke-white/35',
                 )}
-                onMouseEnter={() => setHoveredHotspot(hotspot.id)}
-                onMouseLeave={() => setHoveredHotspot(null)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (draggedRef.current) return;
-                  setActiveHotspot((current) => (current === hotspot.id ? null : hotspot.id));
-                }}
               />
             );
           })}
