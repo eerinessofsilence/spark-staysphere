@@ -209,6 +209,8 @@ export function BuildingSpinner({
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+  /** A floor band has no marker to hang its card off, so it hangs it off itself. */
+  const zoneRefs = React.useRef<Record<string, SVGPolygonElement | null>>({});
   const [activeAnchor, setActiveAnchor] = React.useState<CardAnchor | null>(null);
 
   const [frameIndex, setFrameIndex] = React.useState(() => {
@@ -428,17 +430,22 @@ export function BuildingSpinner({
 
   React.useLayoutEffect(() => {
     const stage = stageRef.current;
-    const marker = shownHotspot ? markerRefs.current[shownHotspot] : null;
-    if (!stage || !marker) {
+    // Whichever of the two the hotspot actually draws: a pinned marker, or the
+    // storey it traces. A band is the width of the building, so its card opens
+    // over the middle of the floor it names rather than at one end of it.
+    const source = shownHotspot
+      ? (markerRefs.current[shownHotspot] ?? zoneRefs.current[shownHotspot])
+      : null;
+    if (!stage || !source) {
       setActiveAnchor(null);
       return;
     }
     const stageRect = stage.getBoundingClientRect();
-    const markerRect = marker.getBoundingClientRect();
+    const sourceRect = source.getBoundingClientRect();
     setActiveAnchor({
-      x: markerRect.left - stageRect.left + markerRect.width / 2,
-      top: markerRect.top - stageRect.top,
-      bottom: markerRect.bottom - stageRect.top,
+      x: sourceRect.left - stageRect.left + sourceRect.width / 2,
+      top: sourceRect.top - stageRect.top,
+      bottom: sourceRect.bottom - stageRect.top,
     });
   }, [shownHotspot, dims.width, dims.height, frameIndex]);
 
@@ -677,22 +684,32 @@ export function BuildingSpinner({
           {visible.map(({ hotspot, outline }) => {
             if (!outline) return null;
             const lit = hoveredHotspot === hotspot.id || activeHotspot === hotspot.id;
-            // Sold stock reads red, everything on sale reads in the product's clay
-            // accent — the zone is legible as inventory before it is hovered.
+            // Sold stock reads red, everything else waits in a thin white line
+            // until it is pointed at. A whole facade of storeys is a stack of
+            // these, and eight of them in the clay accent at once stopped being
+            // a set of rooms and became a cage drawn over the photograph.
             const soldOut = hotspot.roomSlug ? rooms?.[hotspot.roomSlug]?.status === 'sold_out' : false;
             return (
               <polygon
                 key={hotspot.id}
+                ref={(element) => {
+                  zoneRefs.current[hotspot.id] = element;
+                }}
                 points={outline
                   .map((point) => `${rect.x + point.x * rect.width},${rect.y + point.y * rect.height}`)
                   .join(' ')}
-                strokeWidth={lit ? 3 : 2}
+                strokeWidth={lit ? 3 : 1.5}
                 strokeLinejoin="round"
                 className={cn(
                   'pointer-events-auto cursor-pointer transition-[fill,stroke,stroke-width] duration-200',
                   '[filter:drop-shadow(0_1px_3px_rgb(22_22_22/0.55))]',
-                  soldOut ? 'stroke-[#E5484D]' : 'stroke-accent',
-                  lit ? (soldOut ? 'fill-[#E5484D]/45' : 'fill-accent/40') : 'fill-white/[0.06]',
+                  lit
+                    ? soldOut
+                      ? 'fill-[#E5484D]/45 stroke-[#E5484D]'
+                      : 'fill-accent/40 stroke-accent'
+                    : soldOut
+                      ? 'fill-transparent stroke-[#E5484D]/70'
+                      : 'fill-transparent stroke-white/35',
                 )}
                 onMouseEnter={() => setHoveredHotspot(hotspot.id)}
                 onMouseLeave={() => setHoveredHotspot(null)}
@@ -708,9 +725,11 @@ export function BuildingSpinner({
       ) : null}
 
       {!isSpinning
-        ? visible.map(({ hotspot, position }) =>
-            marker(hotspot, position, hotspot.id === activeHotspot, hoveredHotspot === hotspot.id),
-          )
+        ? visible
+            .filter(({ hotspot }) => !hotspot.zone)
+            .map(({ hotspot, position }) =>
+              marker(hotspot, position, hotspot.id === activeHotspot, hoveredHotspot === hotspot.id),
+            )
         : null}
 
       {card}

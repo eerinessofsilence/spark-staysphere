@@ -1,4 +1,4 @@
-import type { AddOn, Hotel, HotelArea, RatePlan, RoomType } from '../domain/schemas';
+import type { AddOn, Hotel, HotelArea, RatePlan, RoomType, SpinnerHotspot } from '../domain/schemas';
 import { trackedOutlines } from './spinner-outlines';
 
 /**
@@ -128,6 +128,67 @@ const hotelAreas: HotelArea[] = [
 const SPIN_FRAME_COUNT = 160;
 
 /**
+ * The facade's storeys, sliced out of the one band that was traced rather than
+ * traced again. `sea-view` runs from the roof parapet down the front of the
+ * building, so every floor is a fixed fraction of it — which means a floor band
+ * follows the building through the whole arc for free, and re-tracking the band
+ * re-tracks all eight of them at once.
+ *
+ * The fractions were measured off frame 140. The parapet stands above the roof
+ * terrace, so the top slice is the deep one; every storey under it is an even
+ * step. Fractions past 1 carry on down the facade below the traced band, which
+ * is where the lower floors are.
+ */
+const FLOOR_EDGES = [0, 0.415, 0.69, 0.966, 1.242, 1.517, 1.793, 2.068, 2.3];
+
+/** One storey of the facade, as keyframes tracking the band it was cut from. */
+function floorBand(index: number): SpinnerHotspot['keyframes'] {
+  const from = FLOOR_EDGES[index]!;
+  const to = FLOOR_EDGES[index + 1]!;
+  return trackedOutlines['sea-view']!.map((keyframe) => {
+    const points = keyframe.outline!;
+    const half = points.length / 2;
+    // The traced band is a strip: the first half runs left to right along its
+    // top edge, the second half back along its bottom, so a column's two ends
+    // are mirrored about the middle.
+    const edgeAt = (depth: number) =>
+      points.slice(0, half).map((top, column) => {
+        const bottom = points[points.length - 1 - column]!;
+        return {
+          x: top.x + (bottom.x - top.x) * depth,
+          y: top.y + (bottom.y - top.y) * depth,
+        };
+      });
+    const upper = edgeAt(from);
+    const lower = edgeAt(to);
+    const middle = Math.floor(half / 2);
+    return {
+      // The card hangs off the middle of the storey, not off a corner of it.
+      x: (upper[middle]!.x + lower[middle]!.x) / 2,
+      y: (upper[middle]!.y + lower[middle]!.y) / 2,
+      frameIndex: keyframe.frameIndex,
+      outline: [...upper, ...[...lower].reverse()],
+    };
+  });
+}
+
+/**
+ * Top down, one room to a storey. Several rooms share most floors, so each band
+ * names the sea-facing one a guest is most likely to be after; the catalog is a
+ * click away for the rest.
+ */
+const FLOOR_ROOMS: { slug: string; name: string; blurb: string }[] = [
+  { slug: 'asteria-penthouse', name: 'Asteria Penthouse', blurb: 'The whole top floor, opening onto the roof terrace and its pool.' },
+  { slug: 'signature-suite', name: 'Signature Suite', blurb: 'Seventh floor, with the deepest balcony on the sea side.' },
+  { slug: 'panorama-suite', name: 'Panorama Suite', blurb: 'Sixth floor, wrapping the corner for a view along the coast.' },
+  { slug: 'terrace-suite', name: 'Terrace Suite', blurb: 'Fifth floor, a full-width terrace above the rooftops.' },
+  { slug: 'deluxe-sea', name: 'Deluxe Sea View', blurb: 'Fourth floor, clear over the town to the water.' },
+  { slug: 'coastal-twin', name: 'Coastal Twin', blurb: 'Third floor, two beds and a balcony facing the sea.' },
+  { slug: 'cove-studio', name: 'Cove Studio', blurb: 'Second floor, a compact studio with the same outlook.' },
+  { slug: 'poolside-suite', name: 'Poolside Suite', blurb: 'Ground floor, opening straight onto the pool deck.' },
+];
+
+/**
  * A drone orbit of the property, 2.25° a frame, so a drag reads as continuous
  * motion rather than a slideshow. Credited in `public/images/CREDITS.md`.
  * `BuildingSpinner` fetches a window around the current frame, not all 160.
@@ -163,10 +224,15 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
       roomSlug: 'deluxe-sea',
       href: '/rooms?view=sea',
       cta: 'See sea-view rooms',
-      // Traced band and all: `spinner-outlines.ts` carries the shape across the
-      // arc where this facade faces the camera, so the zone lights on hover and
-      // moves with the building instead of sitting on one frame.
-      keyframes: trackedOutlines['sea-view']!,
+      // Marker only, and lifted clear above the parapet. The shape it was
+      // traced from is now cut into the storeys below: a second outline over
+      // the same balconies would fight them for the hover, and the pill sitting
+      // at the band's centre sat squarely on two of the floors it supersedes.
+      keyframes: trackedOutlines['sea-view']!.map((keyframe) => {
+        const points = keyframe.outline!;
+        const roofline = points[Math.floor(points.length / 4)]!;
+        return { frameIndex: keyframe.frameIndex, x: roofline.x, y: roofline.y - 0.06 };
+      }),
     },
     {
       id: 'cove',
@@ -182,6 +248,16 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
         { frameIndex: 60, x: 0.72, y: 0.12 },
       ],
     },
+    ...FLOOR_ROOMS.map((room, index) => ({
+      id: `floor-${FLOOR_ROOMS.length - index}`,
+      label: room.name,
+      description: room.blurb,
+      roomSlug: room.slug,
+      href: `/rooms/${room.slug}`,
+      cta: 'See this room',
+      zone: true,
+      keyframes: floorBand(index),
+    })),
   ],
 };
 

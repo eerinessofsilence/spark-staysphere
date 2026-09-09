@@ -93,6 +93,12 @@ export const spinnerHotspotSchema = z.object({
   roomSlug: z.string().nullable(),
   href: z.string(),
   cta: z.string(),
+  /**
+   * A traced floor band rather than a pinned marker. The shape itself is what
+   * the guest points at, so it carries no pill — eight of those stacked up the
+   * facade would bury the building they are drawn on.
+   */
+  zone: z.boolean().optional(),
   keyframes: z.array(spinnerHotspotKeyframeSchema).min(2),
 });
 

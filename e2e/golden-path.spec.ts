@@ -197,6 +197,40 @@ test('the arrival screen turns the building and its hotspots lead into the catal
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
+test('each traced storey of the facade names the room on it', async ({ page }) => {
+  // Deep-linked to a frame inside the arc where the sea facade faces the
+  // camera — that is where the storeys are traced.
+  await page.goto('/?frame=140');
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
+  await expect(scene).toBeVisible();
+
+  const storeys = page.locator('svg polygon');
+  await expect(storeys).toHaveCount(8, { timeout: 15_000 });
+
+  // Fourth floor, counting down from the roof: the storeys run top to bottom.
+  const point = await page.evaluate(() => {
+    const band = [...document.querySelectorAll('svg polygon')][4]!;
+    const box = band.getBoundingClientRect();
+    for (let fx = 0.1; fx <= 0.92; fx += 0.03)
+      for (let fy = 0.3; fy <= 0.7; fy += 0.1) {
+        const x = Math.round(box.x + box.width * fx);
+        const y = Math.round(box.y + box.height * fy);
+        if (document.elementFromPoint(x, y) === band) return { x, y };
+      }
+    return null;
+  });
+  expect(point).not.toBeNull();
+
+  await page.mouse.click(point!.x, point!.y);
+  const card = page.locator('a[href*="/rooms/deluxe-sea"]').filter({ hasText: 'See this room' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Deluxe Sea View');
+
+  await card.click();
+  await expect(page).toHaveURL(/\/rooms\/deluxe-sea/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Deluxe Sea View' })).toBeVisible();
+});
+
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
   await page.goto(`/?${stayQuery}`);
 
