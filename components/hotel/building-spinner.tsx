@@ -74,10 +74,21 @@ const KEYFRAME_MAX_DURATION_MS = 620;
 const KEYFRAME_OVERSHOOT_FRAMES = 3;
 /** A release slower than this is a deliberate stop, not a flick — no momentum. */
 const FLICK_MIN_VELOCITY_PX_PER_MS = 0.35;
-/** How fast the flick's spin sheds speed; halves roughly every ~150ms. */
-const FLICK_DECAY_PER_MS = 0.0045;
+/**
+ * Hard ceiling on the flick's spin speed, in frames per ms. At 160 frames per
+ * turn each frame is 2.25°, so anything faster than this skips several frames
+ * a tick — the images stop reading as one turning building and start popping.
+ * 0.05 frames/ms is ~1 frame per 60Hz tick: brisk, still a single smooth turn.
+ */
+const FLICK_MAX_VELOCITY_FRAMES_PER_MS = 0.05;
+/** A release only ever hands over this fraction of its raw speed — grounds the flick instead of a 1:1 flail. */
+const FLICK_VELOCITY_DAMPING = 0.6;
+/** How fast the flick's spin sheds speed; a gentle, gliding decay rather than a hard brake. */
+const FLICK_DECAY_PER_MS = 0.0022;
 /** Below this the flick is a crawl — hand off to the spring snap onto a stop. */
-const FLICK_STOP_VELOCITY_FRAMES_PER_MS = 0.005;
+const FLICK_STOP_VELOCITY_FRAMES_PER_MS = 0.003;
+/** Longest a single animation tick is allowed to advance by — guards against a stalled tab producing one big jump. */
+const FLICK_MAX_TICK_MS = 48;
 const PRELOAD_BATCH_DESKTOP = 12;
 const PRELOAD_BATCH_MOBILE = 8;
 const BACKGROUND_BATCH_DELAY_MS = 120;
@@ -428,14 +439,15 @@ export function BuildingSpinner({
       stopFlick();
       queueRef.current = [];
       const framesPerPx = frameCount / DRAG_PX_PER_TURN;
-      let velocity = releasePxPerMs * framesPerPx; // frames per ms, signed
+      const rawVelocity = releasePxPerMs * framesPerPx * FLICK_VELOCITY_DAMPING;
+      let velocity = Math.sign(rawVelocity) * Math.min(Math.abs(rawVelocity), FLICK_MAX_VELOCITY_FRAMES_PER_MS);
       let position = frameIndexRef.current;
       let lastTime = performance.now();
-      const deadline = lastTime + 2000; // safety net; decay always gets here first
+      const deadline = lastTime + 2500; // safety net; decay always gets here first
       setIsSpinning(true);
       setActiveHotspot(null);
       const tick = (now: number) => {
-        const dt = now - lastTime;
+        const dt = Math.min(now - lastTime, FLICK_MAX_TICK_MS);
         lastTime = now;
         velocity *= Math.exp(-FLICK_DECAY_PER_MS * dt);
         position += velocity * dt;
