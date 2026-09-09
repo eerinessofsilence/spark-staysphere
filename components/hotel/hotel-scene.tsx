@@ -23,13 +23,17 @@ import {
   ChevronRightIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
+import { BuildingSpinner } from '@/components/hotel/building-spinner';
 import { useAnchoredCard, type CardAnchor } from '@/components/hotel/use-anchored-card';
 import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import { Modal } from '@/components/site/modal';
-import type { HotelArea, Hotspot, RoomOffer } from '@/lib/domain/schemas';
-import { bedLabels, formatFloor, formatMoney } from '@/lib/formatting';
+import type { BuildingSpinnerData, HotelArea, Hotspot, RoomOffer } from '@/lib/domain/schemas';
+import { bedLabels, formatFloor, formatMoney, formatRoomLine } from '@/lib/formatting';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+
+/** The one `HotelArea` a `spinner` replaces the flat photo of — see `SPINNER_SPEC.md`. */
+const SPINNER_AREA_ID = 'hotel';
 
 /**
  * The arrival screen: photography of the property, one area at a time, with
@@ -60,6 +64,8 @@ export interface RoomFacts {
   bedType: RoomOffer['room']['bedType'];
   nightlyPrice: number;
   currency: RoomOffer['price']['currency'];
+  status?: RoomOffer['status'];
+  remaining?: number;
   /** The room's cover, so a phone's sheet can show what the marker points at. */
   photo?: { url: string; width?: number; height?: number };
 }
@@ -71,6 +77,12 @@ interface HotelSceneProps {
   stayQuery?: string;
   /** By room slug, for the markers that point at a room type. */
   rooms?: Record<string, RoomFacts>;
+  /** Replaces the `SPINNER_AREA_ID` area's flat photo with a draggable orbit. */
+  spinner?: BuildingSpinnerData;
+  /** Deep link: `/?frame=N`. */
+  spinnerInitialFrame?: number;
+  /** Deep link: `/?unit=<slug>`, opens turned to a frame where that hotspot is visible. */
+  spinnerFocusHotspotId?: string | null;
   className?: string;
 }
 
@@ -87,7 +99,16 @@ function projectOnto(
   };
 }
 
-export function HotelScene({ areas, location, stayQuery, rooms, className }: HotelSceneProps) {
+export function HotelScene({
+  areas,
+  location,
+  stayQuery,
+  rooms,
+  spinner,
+  spinnerInitialFrame,
+  spinnerFocusHotspotId,
+  className,
+}: HotelSceneProps) {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
@@ -147,7 +168,14 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
     return () => query.removeEventListener('change', apply);
   }, []);
 
-  const area = areas[index] ?? areas[0];
+  /**
+   * With an orbit available the arrival stage is the orbit and nothing else:
+   * no other area's photograph, no name badge, no paging. The remaining areas
+   * stay in the catalog for the rooms and the 360° tour to use.
+   */
+  const spinnerIndex = areas.findIndex((candidate) => candidate.id === SPINNER_AREA_ID);
+  const spinnerOnly = Boolean(spinner) && spinnerIndex >= 0;
+  const area = spinnerOnly ? areas[spinnerIndex]! : (areas[index] ?? areas[0]);
   // A marker sits inside the floor band it belongs to, so hovering it also
   // hovers the band underneath — without this, its pill and the band's own
   // price card land in the same spot and read as one broken tangle. The
@@ -186,6 +214,11 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
 
   if (!area) return null;
 
+  // The spinner owns this area's hotspots and floor bands itself (per-frame
+  // visibility neither the generic outline overlay nor the flat-photo
+  // `roomZones` bands account for) — see `SPINNER_SPEC.md`'s "Target mechanic".
+  const isSpinnerArea = area.id === SPINNER_AREA_ID && Boolean(spinner);
+
   const go = (next: number) => {
     setIndex((next + areas.length) % areas.length);
     setActiveHotspot(null);
@@ -193,11 +226,8 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
   };
 
   /** Floor and tonight's price for a marker that sells a room, as one short line. */
-  const roomLine = (hotspot: Hotspot): string | null => {
-    const facts = hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined;
-    if (!facts) return null;
-    return `${formatFloor(facts.floor)} · from ${formatMoney(facts.nightlyPrice, facts.currency)}`;
-  };
+  const roomLine = (hotspot: Hotspot): string | null =>
+    formatRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined);
 
   const toggleFullscreen = async () => {
     const element = stageRef.current;
@@ -229,7 +259,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
     return search ? `${path}?${search}` : path;
   };
 
-  const active = area.hotspots.find((hotspot) => hotspot.id === activeHotspot) ?? null;
+  const active = isSpinnerArea ? null : (area.hotspots.find((hotspot) => hotspot.id === activeHotspot) ?? null);
 
   return (
     <div className={cn('relative', className)}>
@@ -237,26 +267,44 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
         ref={stageRef}
         role="group"
         aria-roledescription="carousel"
-        aria-label={`Explore the hotel area by area. ${areas.length} areas.`}
+        aria-label={
+          spinnerOnly ? `${area.name}, 360° view` : `Explore the hotel area by area. ${areas.length} areas.`
+        }
         // Square to the screen edges on a phone; the 28px card from `sm`.
         className="relative aspect-[4/3] overflow-hidden bg-stone sm:aspect-[16/10] sm:rounded-[28px]"
       >
         {/* All areas are stacked so switching is instant; only one is visible. */}
-        {areas.map((candidate, candidateIndex) => (
-          <img
+        {(spinnerOnly ? [area] : areas).map((candidate, candidateIndex) => (
+          <div
             key={candidate.id}
-            src={candidate.photo.url}
-            alt={candidateIndex === index ? candidate.photo.alt : ''}
-            width={candidate.photo.width}
-            height={candidate.photo.height}
-            decoding="async"
-            fetchPriority={candidateIndex === 0 ? 'high' : 'auto'}
-            aria-hidden={candidateIndex !== index}
+            aria-hidden={!spinnerOnly && candidateIndex !== index}
             className={cn(
-              'absolute inset-0 size-full object-cover transition-opacity duration-500',
-              candidateIndex === index ? 'opacity-100' : 'opacity-0',
+              'absolute inset-0 size-full transition-opacity duration-500',
+              spinnerOnly || candidateIndex === index ? 'opacity-100' : 'pointer-events-none opacity-0',
             )}
-          />
+          >
+            {candidate.id === SPINNER_AREA_ID && spinner ? (
+              <BuildingSpinner
+                spinner={spinner}
+                fallbackPhoto={candidate.photo}
+                title={candidate.name}
+                rooms={rooms}
+                active={spinnerOnly || candidateIndex === index}
+                initialFrame={spinnerInitialFrame}
+                focusHotspotId={spinnerFocusHotspotId}
+              />
+            ) : (
+              <img
+                src={candidate.photo.url}
+                alt={candidateIndex === index ? candidate.photo.alt : ''}
+                width={candidate.photo.width}
+                height={candidate.photo.height}
+                decoding="async"
+                fetchPriority={candidateIndex === 0 ? 'high' : 'auto'}
+                className="size-full object-cover"
+              />
+            )}
+          </div>
         ))}
 
         <div
@@ -279,7 +327,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
 
         {/* The part of the building a marker stands for, traced on the photo
             and lit on hover — the way a plan lets you point at a wing. */}
-        {dims.width > 0 ? (
+        {!isSpinnerArea && dims.width > 0 ? (
           <svg className="pointer-events-none absolute inset-0 z-[5] size-full" aria-hidden="true">
             {area.hotspots
               .filter((hotspot) => hotspot.outline)
@@ -315,8 +363,10 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
 
         {/* Room zones: the floors of the building, traced on the photo. Hover
             names the room, its floor and its price; a click pins that and
-            offers the way in. */}
-        {dims.width > 0 && area.roomZones && rooms ? (
+            offers the way in. Superseded by the spinner's own markers on its
+            area — a floor band traced against the frame-0 photo would drift
+            off the building the moment the guest drags to another angle. */}
+        {!isSpinnerArea && dims.width > 0 && area.roomZones && rooms ? (
           <>
             <svg className="pointer-events-none absolute inset-0 z-[6] size-full" aria-hidden="true">
               {area.roomZones.map((zone) => {
@@ -393,7 +443,7 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
           </>
         ) : null}
 
-        {area.hotspots.map((hotspot) => {
+        {(isSpinnerArea ? [] : area.hotspots).map((hotspot) => {
           const isActive = hotspot.id === activeHotspot;
           const Icon = hotspotIcons[hotspot.id] ?? MapPin;
           const line = roomLine(hotspot);
@@ -489,24 +539,26 @@ export function HotelScene({ areas, location, stayQuery, rooms, className }: Hot
             )}
           </div>
 
-          <div className="pointer-events-auto flex items-center gap-1 text-white">
-            <button
-              type="button"
-              aria-label="Previous area"
-              onClick={() => go(index - 1)}
-              className={iconButton('glass', 'text-foreground')}
-            >
-              <ChevronLeftIcon className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next area"
-              onClick={() => go(index + 1)}
-              className={iconButton('glass', 'text-foreground')}
-            >
-              <ChevronRightIcon className="size-4" aria-hidden="true" />
-            </button>
-          </div>
+          {spinnerOnly ? null : (
+            <div className="pointer-events-auto flex items-center gap-1 text-white">
+              <button
+                type="button"
+                aria-label="Previous area"
+                onClick={() => go(index - 1)}
+                className={iconButton('glass', 'text-foreground')}
+              >
+                <ChevronLeftIcon className="size-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next area"
+                onClick={() => go(index + 1)}
+                className={iconButton('glass', 'text-foreground')}
+              >
+                <ChevronRightIcon className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
