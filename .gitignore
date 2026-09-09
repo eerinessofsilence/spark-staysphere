@@ -15,3 +15,5 @@ npm-debug.log*
 *.tsbuildinfo
 .playwright/
 e2e/.artifacts/
+# CC0 Poly Haven assets for scripts/asteria-cove.blend — re-fetch with scripts/fetch-polyhaven.py
+scripts/blender-assets/

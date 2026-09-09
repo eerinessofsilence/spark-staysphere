@@ -59,7 +59,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
             <address className="flex flex-col text-sm not-italic">
               <span className="flex min-h-11 items-center gap-2 text-white/70">
                 <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
-                Dalmatian Coast, Croatia
+                Limassol, Cyprus
               </span>
               <a
                 href="mailto:stay@asteriacove.example"

@@ -31,6 +31,16 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const highlights = offers.slice(0, 8);
   const rest = offers.slice(8);
 
+  // Deep link into the building spinner: `?frame=N` turns it directly;
+  // `?unit=<roomSlug or hotspot id>` turns it to wherever that hotspot is visible.
+  const frameParam = typeof params.frame === 'string' ? Number.parseInt(params.frame, 10) : NaN;
+  const spinnerInitialFrame = Number.isFinite(frameParam) ? frameParam : undefined;
+  const unitParam = typeof params.unit === 'string' ? params.unit : undefined;
+  const spinnerFocusHotspotId = unitParam
+    ? (hotel.spinner?.hotspots.find((hotspot) => hotspot.roomSlug === unitParam || hotspot.id === unitParam)
+        ?.id ?? null)
+    : null;
+
   // What the arrival markers may say about a room: the floor from the catalog,
   // the price from the same breakdown every other screen shows.
   const roomFacts = Object.fromEntries(
@@ -42,6 +52,8 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         floor: offer.room.floor,
         capacity: offer.room.capacity,
         bedType: offer.room.bedType,
+        status: offer.status,
+        remaining: offer.remaining,
         nightlyPrice: offer.price.nightlyPrice,
         currency: offer.price.currency,
         photo: coverPhoto(offer.room),
@@ -64,7 +76,15 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               edges and starts straight under the header, rather than sitting
               in the page's gutter as one more card. The inset card returns at
               `sm`, where the canvas around it is composition, not waste. */}
-          <HotelScene areas={hotel.areas} location={hotel.location} stayQuery={stayQuery} rooms={roomFacts} />
+          <HotelScene
+            areas={hotel.areas}
+            location={hotel.location}
+            stayQuery={stayQuery}
+            rooms={roomFacts}
+            spinner={hotel.spinner}
+            spinnerInitialFrame={spinnerInitialFrame}
+            spinnerFocusHotspotId={spinnerFocusHotspotId}
+          />
 
           {/* Its own gutter now: the section gave up its padding so the
               photograph above could reach the edges. */}
