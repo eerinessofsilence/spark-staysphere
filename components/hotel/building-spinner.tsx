@@ -663,7 +663,11 @@ export function BuildingSpinner({
       style={activeCardStyle}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseEnter={() => setHoveredHotspot(active_.hotspot.id)}
-      onMouseLeave={() => setHoveredHotspot(null)}
+      // No leave handler: the card opens under the pointer that summoned it, and
+      // the browser answers that by sending it a leave the instant it mounts —
+      // which shut the topmost storey's card again before it could be read. The
+      // stage resolves the hover on every move anyway, and clears it on the way
+      // out, so there is nothing here left to close.
       className="glass absolute z-30 block w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-3xl text-foreground shadow-soft-lg"
     >
       {cardFacts?.photo ? (

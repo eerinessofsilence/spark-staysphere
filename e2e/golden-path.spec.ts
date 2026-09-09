@@ -258,6 +258,38 @@ test('each traced storey of the facade names the room on it', async ({ page }) =
   await expect(page.getByRole('heading', { level: 1, name: 'Deluxe Sea View' })).toBeVisible();
 });
 
+test('the far side of the building sells its own rooms', async ({ page }) => {
+  // Half a turn from the sea facade: the town side is traced separately, and
+  // names the rooms that face that way.
+  await page.goto('/?frame=60');
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
+  await expect(scene).toBeVisible();
+  await expect(page.locator('svg polygon')).toHaveCount(4, { timeout: 15_000 });
+
+  const point = await page.evaluate(() => {
+    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][1]!;
+    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
+    const corners = band
+      .getAttribute('points')!
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x: x!, y: y! };
+      });
+    const half = Math.floor(corners.length / 4);
+    return {
+      x: Math.round(svgBox.x + (corners[half]!.x + corners[corners.length - 1 - half]!.x) / 2),
+      y: Math.round(svgBox.y + (corners[half]!.y + corners[corners.length - 1 - half]!.y) / 2),
+    };
+  });
+
+  await page.mouse.click(point.x, point.y);
+  const card = page.locator('a[href*="/rooms/skyline-loft"]').filter({ hasText: 'See this room' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Skyline Loft');
+});
+
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
   await page.goto(`/?${stayQuery}`);
 

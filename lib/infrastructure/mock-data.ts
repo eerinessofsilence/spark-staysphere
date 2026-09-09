@@ -139,13 +139,21 @@ const SPIN_FRAME_COUNT = 160;
  * step. Fractions past 1 carry on down the facade below the traced band, which
  * is where the lower floors are.
  */
-const FLOOR_EDGES = [0, 0.415, 0.69, 0.966, 1.242, 1.517, 1.793, 2.068, 2.3];
+const SEA_FLOOR_EDGES = [0, 0.415, 0.69, 0.966, 1.242, 1.517, 1.793, 2.068, 2.3];
 
-/** One storey of the facade, as keyframes tracking the band it was cut from. */
-function floorBand(index: number): SpinnerHotspot['keyframes'] {
-  const from = FLOOR_EDGES[index]!;
-  const to = FLOOR_EDGES[index + 1]!;
-  return trackedOutlines['sea-view']!.map((keyframe) => {
+/**
+ * The far side is traced from its roof soffit down four slabs, so its storeys
+ * are quarters of the band with nothing to extrapolate. It stops at the fifth
+ * floor: below that the trees along the road are in front of the building, and
+ * a storey that lights up behind a tree is worse than no storey at all.
+ */
+const CITY_FLOOR_EDGES = [0, 0.25, 0.5, 0.75, 1];
+
+/** One storey of a facade, as keyframes tracking the band it was cut from. */
+function floorBand(band: string, edges: number[], index: number): SpinnerHotspot['keyframes'] {
+  const from = edges[index]!;
+  const to = edges[index + 1]!;
+  return trackedOutlines[band]!.map((keyframe) => {
     const points = keyframe.outline!;
     const half = points.length / 2;
     // The traced band is a strip: the first half runs left to right along its
@@ -172,12 +180,19 @@ function floorBand(index: number): SpinnerHotspot['keyframes'] {
   });
 }
 
+interface FloorRoom {
+  slug: string;
+  name: string;
+  blurb: string;
+}
+
 /**
  * Top down, one room to a storey. Several rooms share most floors, so each band
- * names the sea-facing one a guest is most likely to be after; the catalog is a
- * click away for the rest.
+ * names the one a guest looking at that side is most likely to be after; the
+ * catalog is a click away for the rest. No room appears on both facades — a
+ * room faces one way.
  */
-const FLOOR_ROOMS: { slug: string; name: string; blurb: string }[] = [
+const SEA_FLOOR_ROOMS: FloorRoom[] = [
   { slug: 'asteria-penthouse', name: 'Asteria Penthouse', blurb: 'The whole top floor, opening onto the roof terrace and its pool.' },
   { slug: 'signature-suite', name: 'Signature Suite', blurb: 'Seventh floor, with the deepest balcony on the sea side.' },
   { slug: 'panorama-suite', name: 'Panorama Suite', blurb: 'Sixth floor, wrapping the corner for a view along the coast.' },
@@ -187,6 +202,28 @@ const FLOOR_ROOMS: { slug: string; name: string; blurb: string }[] = [
   { slug: 'cove-studio', name: 'Cove Studio', blurb: 'Second floor, a compact studio with the same outlook.' },
   { slug: 'poolside-suite', name: 'Poolside Suite', blurb: 'Ground floor, opening straight onto the pool deck.' },
 ];
+
+/** The same, for the four storeys the town side shows above its treeline. */
+const CITY_FLOOR_ROOMS: FloorRoom[] = [
+  { slug: 'sky-terrace-suite', name: 'Sky Terrace Suite', blurb: 'Top floor, its terrace opening onto the roof pool.' },
+  { slug: 'skyline-loft', name: 'Skyline Loft', blurb: 'Seventh floor, over the rooftops to the hills behind town.' },
+  { slug: 'corner-suite', name: 'Corner Suite', blurb: 'Sixth floor, turning the corner where the two facades meet.' },
+  { slug: 'city-view-room', name: 'City View Room', blurb: 'Fifth floor, looking down over the streets of Limassol.' },
+];
+
+/** The storeys of one facade, as hotspots that trace rather than pin. */
+function floorZones(band: string, edges: number[], rooms: FloorRoom[], topFloor: number) {
+  return rooms.map((room, index) => ({
+    id: `${band}-floor-${topFloor - index}`,
+    label: room.name,
+    description: room.blurb,
+    roomSlug: room.slug,
+    href: `/rooms/${room.slug}`,
+    cta: 'See this room',
+    zone: true,
+    keyframes: floorBand(band, edges, index),
+  }));
+}
 
 /**
  * A drone orbit of the property, 2.25° a frame, so a drag reads as continuous
@@ -248,16 +285,27 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
         { frameIndex: 60, x: 0.72, y: 0.12 },
       ],
     },
-    ...FLOOR_ROOMS.map((room, index) => ({
-      id: `floor-${FLOOR_ROOMS.length - index}`,
-      label: room.name,
-      description: room.blurb,
-      roomSlug: room.slug,
-      href: `/rooms/${room.slug}`,
-      cta: 'See this room',
-      zone: true,
-      keyframes: floorBand(index),
-    })),
+    {
+      id: 'city-view',
+      label: 'Town-side rooms',
+      description:
+        'The far side looks inland over the rooftops to the hills, and it is the quiet one — the road runs along the sea front.',
+      roomSlug: 'skyline-loft',
+      href: '/rooms?view=city',
+      cta: 'See town-side rooms',
+      // Marker only, and it outlives its facade's traced storeys on purpose:
+      // without it the quarter-turn past the far corner had nothing on it at
+      // all, and a stage a guest cannot touch reads as broken rather than plain.
+      keyframes: [
+        { frameIndex: 34, x: 0.5876, y: 0.29 },
+        { frameIndex: 60, x: 0.5194, y: 0.31 },
+        { frameIndex: 86, x: 0.4238, y: 0.30 },
+        { frameIndex: 100, x: 0.45, y: 0.30 },
+        { frameIndex: 112, x: 0.47, y: 0.30 },
+      ],
+    },
+    ...floorZones('sea-view', SEA_FLOOR_EDGES, SEA_FLOOR_ROOMS, 8),
+    ...floorZones('city-view', CITY_FLOOR_EDGES, CITY_FLOOR_ROOMS, 8),
   ],
 };
 
