@@ -302,10 +302,14 @@ export function HotelScene({
         aria-label={
           spinnerOnly ? `${area.name}, 360° view` : `Explore the hotel area by area. ${areas.length} areas.`
         }
-        // Square to the screen edges on a phone; the 28px card from `sm`.
-        // The fallback overlay drops all of that for the real viewport.
+        // Runs to the screen edges on a phone, and as tall as the footage will
+        // carry: the frames are 16:9, so a taller stage crops their sides, and
+        // past square that starts cutting the building itself rather than the
+        // town around it. The 28px card returns from `sm`, where the stage is
+        // wider than it is tall again. The fallback overlay drops all of it for
+        // the real viewport.
         className={cn(
-          'relative aspect-[4/3] overflow-hidden bg-stone sm:aspect-[16/10] sm:rounded-[28px]',
+          'relative aspect-square overflow-hidden bg-stone sm:aspect-[16/10] sm:rounded-[28px]',
           fakeFullscreen && 'fixed inset-0 z-50 aspect-auto rounded-none sm:aspect-auto sm:rounded-none',
         )}
       >
