@@ -66,29 +66,35 @@ const DRAG_THRESHOLD_MOUSE_PX = 50;
 const DRAG_THRESHOLD_TOUCH_PX = 8;
 /** Stops queued while an animation is already running; beyond this, presses are dropped. */
 const KEYFRAME_QUEUE_MAX = 10;
-/** A jump between stops scales with distance, so a short hop still feels snappy. */
-const KEYFRAME_MS_PER_FRAME = 18;
-const KEYFRAME_MIN_DURATION_MS = 260;
-const KEYFRAME_MAX_DURATION_MS = 620;
-/** Frames beyond the target the swing can overshoot into before settling back. */
-const KEYFRAME_OVERSHOOT_FRAMES = 3;
+/**
+ * One damped spring carries every landing on a stop — an arrow press (which
+ * starts at rest) and a flick handoff (which starts already moving) are the
+ * same simulation with a different initial velocity, so there is no seam
+ * where a fixed-duration tween would have to pick up a flick's leftover speed
+ * and jerk. Damping ratio ~1 (critical): a hint of overshoot, no wobble.
+ */
+const SPRING_STIFFNESS_PER_MS2 = 0.00017; // ~170 /s²
+const SPRING_DAMPING_PER_MS = 0.026; // ~26 /s
+const SPRING_REST_DISTANCE_FRAMES = 0.05;
+const SPRING_REST_VELOCITY_FRAMES_PER_MS = 0.0005;
+/** Integration step guard: a stalled tab must not feed the spring one huge dt. */
+const SPRING_MAX_TICK_MS = 32;
+/** Safety net if the spring never quite settles below the rest thresholds. */
+const SPRING_TIMEOUT_MS = 3000;
+/** Preloaded past the target in case the spring's overshoot needs a frame not yet loaded. */
+const SPRING_OVERSHOOT_PRELOAD_FRAMES = 4;
 /** A release slower than this is a deliberate stop, not a flick — no momentum. */
 const FLICK_MIN_VELOCITY_PX_PER_MS = 0.35;
 /**
- * Hard ceiling on the flick's spin speed, in frames per ms. At 160 frames per
- * turn each frame is 2.25°, so anything faster than this skips several frames
- * a tick — the images stop reading as one turning building and start popping.
- * 0.05 frames/ms is ~1 frame per 60Hz tick: brisk, still a single smooth turn.
+ * Hard ceiling on the flick's hand-off speed, in frames per ms. At 160 frames
+ * per turn each frame is 2.25° — faster than this and the spring's first few
+ * ticks would still skip several frames before it can rein the speed in.
  */
 const FLICK_MAX_VELOCITY_FRAMES_PER_MS = 0.05;
 /** A release only ever hands over this fraction of its raw speed — grounds the flick instead of a 1:1 flail. */
 const FLICK_VELOCITY_DAMPING = 0.6;
-/** How fast the flick's spin sheds speed; a gentle, gliding decay rather than a hard brake. */
-const FLICK_DECAY_PER_MS = 0.0022;
-/** Below this the flick is a crawl — hand off to the spring snap onto a stop. */
-const FLICK_STOP_VELOCITY_FRAMES_PER_MS = 0.003;
-/** Longest a single animation tick is allowed to advance by — guards against a stalled tab producing one big jump. */
-const FLICK_MAX_TICK_MS = 48;
+/** Heuristic only, for picking *which* stop the momentum is heading toward — not part of the motion itself. */
+const FLICK_TARGET_CARRY_PER_MS = 0.003;
 const PRELOAD_BATCH_DESKTOP = 12;
 const PRELOAD_BATCH_MOBILE = 8;
 const BACKGROUND_BATCH_DELAY_MS = 120;
@@ -189,18 +195,6 @@ function hotspotOutline(
     x: lower.outline![i]!.x + (upper.outline![i]!.x - lower.outline![i]!.x) * t,
     y: lower.outline![i]!.y + (upper.outline![i]!.y - lower.outline![i]!.y) * t,
   }));
-}
-
-/**
- * Standard "back" easing (easings.net): overshoots past 1 then eases back to
- * exactly 1 — a jump between stops swings a couple of frames past the target
- * and settles, like the real thing has weight instead of stopping dead.
- */
-function easeOutBack(t: number): number {
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  const x = t - 1;
-  return 1 + c3 * x * x * x + c1 * x * x;
 }
 
 /** A frame roughly in the middle of a hotspot's visible arc — for a deep link with no explicit frame. */
@@ -352,127 +346,120 @@ export function BuildingSpinner({
     }
   }, []);
 
+  /**
+   * Called by `runSpring` once a landing settles, to start the next queued
+   * stop. Held in a ref rather than a direct call so `runSpring` and
+   * `runQueue` — which each need to call the other — don't have to be
+   * declared in an order that satisfies both `useCallback` dependency lists.
+   */
+  const runQueueRef = React.useRef<() => void>(() => {});
+
+  /**
+   * Springs the view from wherever it is (and however fast it's already
+   * moving) onto `target`. An arrow press calls this with `initialVelocity`
+   * 0; a flick hands off its leftover speed instead — same simulation
+   * either way, so there is no seam where a fixed-duration tween would have
+   * to inherit a flick's speed and visibly jerk.
+   */
+  const runSpring = React.useCallback(
+    (target: number, initialVelocity: number) => {
+      stopAnimation();
+      const start = frameIndexRef.current;
+      const delta = ringDelta(start, target, frameCount);
+      const targetUnwrapped = start + delta;
+      const direction = Math.sign(delta) || Math.sign(initialVelocity) || 1;
+      // The spring can overshoot a little before settling back — preload past
+      // the target too, in case a deep link or a fast flick lands here before
+      // the background loader reaches those frames.
+      for (let step = 1; step <= SPRING_OVERSHOOT_PRELOAD_FRAMES; step++) {
+        loadFrame(wrap(target + direction * step, frameCount));
+      }
+      setIsSpinning(true);
+      setActiveHotspot(null);
+      let position = start;
+      let velocity = initialVelocity;
+      let lastTime = performance.now();
+      const deadline = lastTime + SPRING_TIMEOUT_MS;
+      let drawn = wrap(Math.round(position), frameCount);
+      const tick = (now: number) => {
+        const dt = Math.min(now - lastTime, SPRING_MAX_TICK_MS);
+        lastTime = now;
+        const acceleration =
+          -SPRING_STIFFNESS_PER_MS2 * (position - targetUnwrapped) - SPRING_DAMPING_PER_MS * velocity;
+        velocity += acceleration * dt;
+        position += velocity * dt;
+        const next = wrap(Math.round(position), frameCount);
+        if (next !== drawn) {
+          drawn = next;
+          frameIndexRef.current = next;
+          intendedRef.current = next;
+          setFrameIndex(next);
+        }
+        const settled =
+          Math.abs(position - targetUnwrapped) < SPRING_REST_DISTANCE_FRAMES &&
+          Math.abs(velocity) < SPRING_REST_VELOCITY_FRAMES_PER_MS;
+        if (!settled && now < deadline) {
+          animationRef.current = requestAnimationFrame(tick);
+        } else {
+          animationRef.current = null;
+          frameIndexRef.current = wrap(target, frameCount);
+          intendedRef.current = wrap(target, frameCount);
+          setFrameIndex(wrap(target, frameCount));
+          runQueueRef.current();
+        }
+      };
+      animationRef.current = requestAnimationFrame(tick);
+    },
+    [frameCount, loadFrame, stopAnimation],
+  );
+
   const runQueue = React.useCallback(() => {
-    if (animationRef.current !== null) return;
     const target = queueRef.current.shift();
     if (target === undefined) {
       setIsSpinning(false);
       return;
     }
-    const delta = ringDelta(frameIndexRef.current, target, frameCount);
-    if (delta === 0) {
-      runQueue();
-      return;
-    }
-    const start = frameIndexRef.current;
-    const duration = Math.min(
-      KEYFRAME_MAX_DURATION_MS,
-      Math.max(KEYFRAME_MIN_DURATION_MS, Math.abs(delta) * KEYFRAME_MS_PER_FRAME),
-    );
-    // The swing can pass a few frames beyond the target before settling back —
-    // preload those too, in case a deep link landed here before the background
-    // loader reached them.
-    const overshootFrames = Math.min(Math.abs(delta), KEYFRAME_OVERSHOOT_FRAMES);
-    for (let step = 1; step <= overshootFrames; step++) {
-      loadFrame(wrap(target + Math.sign(delta) * step, frameCount));
-    }
-    setIsSpinning(true);
-    setActiveHotspot(null);
-    const startTime = performance.now();
-    let drawn = start;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - startTime) / duration);
-      const eased = easeOutBack(t);
-      const position = wrap(Math.round(start + delta * eased), frameCount);
-      if (position !== drawn) {
-        drawn = position;
-        frameIndexRef.current = position;
-        setFrameIndex(position);
-      }
-      if (t < 1) {
-        animationRef.current = requestAnimationFrame(tick);
-      } else {
-        animationRef.current = null;
-        frameIndexRef.current = target;
-        setFrameIndex(target);
-        runQueue();
-      }
-    };
-    animationRef.current = requestAnimationFrame(tick);
-  }, [frameCount, loadFrame]);
+    runSpring(target, 0);
+  }, [runSpring]);
 
-  /** Where a flick hands off once it slows to a crawl — whichever stop is closest either way. */
-  const snapToNearestKeyAngle = React.useCallback(() => {
-    if (keyAngles.length === 0) return;
-    const from = frameIndexRef.current;
-    let best = keyAngles[0]!;
-    let bestDistance = Infinity;
-    for (const angle of keyAngles) {
-      const distance = Math.abs(ringDelta(from, angle, frameCount));
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = angle;
-      }
-    }
-    intendedRef.current = best;
-    queueRef.current = [best];
-    runQueue();
-  }, [keyAngles, frameCount, runQueue]);
-
-  const flickRef = React.useRef<number | null>(null);
-
-  const stopFlick = React.useCallback(() => {
-    if (flickRef.current !== null) {
-      cancelAnimationFrame(flickRef.current);
-      flickRef.current = null;
-    }
-  }, []);
+  React.useEffect(() => {
+    runQueueRef.current = runQueue;
+  }, [runQueue]);
 
   /**
-   * Continues the spin after a fast release, decaying exponentially like a
-   * flywheel losing spin, then settles onto the nearest stop with the same
-   * spring the arrows use — the flick and the arrow jump end the same way.
+   * Continues the spin after a fast release on the same spring an arrow
+   * press uses, just started already moving: predicts where the release
+   * speed would coast to, picks the nearest stop to that landing spot, and
+   * springs there with the real leftover velocity — no separate decay phase
+   * to hand off from, so nothing has to jerk at the transition.
    */
   const startFlick = React.useCallback(
     (releasePxPerMs: number) => {
-      stopAnimation();
-      stopFlick();
       queueRef.current = [];
+      if (keyAngles.length === 0) return;
       const framesPerPx = frameCount / DRAG_PX_PER_TURN;
       const rawVelocity = releasePxPerMs * framesPerPx * FLICK_VELOCITY_DAMPING;
-      let velocity = Math.sign(rawVelocity) * Math.min(Math.abs(rawVelocity), FLICK_MAX_VELOCITY_FRAMES_PER_MS);
-      let position = frameIndexRef.current;
-      let lastTime = performance.now();
-      const deadline = lastTime + 2500; // safety net; decay always gets here first
-      setIsSpinning(true);
-      setActiveHotspot(null);
-      const tick = (now: number) => {
-        const dt = Math.min(now - lastTime, FLICK_MAX_TICK_MS);
-        lastTime = now;
-        velocity *= Math.exp(-FLICK_DECAY_PER_MS * dt);
-        position += velocity * dt;
-        const next = wrap(Math.round(position), frameCount);
-        if (next !== frameIndexRef.current) {
-          frameIndexRef.current = next;
-          intendedRef.current = next;
-          setFrameIndex(next);
+      const velocity = Math.sign(rawVelocity) * Math.min(Math.abs(rawVelocity), FLICK_MAX_VELOCITY_FRAMES_PER_MS);
+      const start = frameIndexRef.current;
+      const predicted = wrap(Math.round(start + velocity / FLICK_TARGET_CARRY_PER_MS), frameCount);
+      let best = keyAngles[0]!;
+      let bestDistance = Infinity;
+      for (const angle of keyAngles) {
+        const distance = Math.abs(ringDelta(predicted, angle, frameCount));
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = angle;
         }
-        if (Math.abs(velocity) > FLICK_STOP_VELOCITY_FRAMES_PER_MS && now < deadline) {
-          flickRef.current = requestAnimationFrame(tick);
-        } else {
-          flickRef.current = null;
-          snapToNearestKeyAngle();
-        }
-      };
-      flickRef.current = requestAnimationFrame(tick);
+      }
+      intendedRef.current = best;
+      runSpring(best, velocity);
     },
-    [frameCount, stopAnimation, stopFlick, snapToNearestKeyAngle],
+    [frameCount, keyAngles, runSpring],
   );
 
   const goToKeyAngle = React.useCallback(
     (direction: 1 | -1) => {
       if (keyAngles.length === 0) return;
-      stopFlick();
       if (queueRef.current.length >= KEYFRAME_QUEUE_MAX) return;
       const from = intendedRef.current;
       // The next stop the given way round, never the one we are already sitting on.
@@ -491,13 +478,10 @@ export function BuildingSpinner({
       queueRef.current.push(best);
       runQueue();
     },
-    [keyAngles, frameCount, runQueue, stopFlick],
+    [keyAngles, frameCount, runQueue],
   );
 
-  React.useEffect(() => () => {
-    stopAnimation();
-    stopFlick();
-  }, [stopAnimation, stopFlick]);
+  React.useEffect(() => () => stopAnimation(), [stopAnimation]);
 
   // ---- url ----------------------------------------------------------------
 
@@ -583,7 +567,6 @@ export function BuildingSpinner({
   const onPointerDown = (event: React.PointerEvent) => {
     if (!active || hasError) return;
     stopAnimation();
-    stopFlick();
     queueRef.current = [];
     intendedRef.current = frameIndexRef.current;
     // Capture is taken only once the drag moves: capturing on press retargets the
