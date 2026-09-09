@@ -35,7 +35,7 @@ npm run test:e2e     # Playwright golden path, 1440px and 390px
 |---|---|
 | `/` | Arrival: the property area by area with hotspots into the catalog; how it works; stay search |
 | `/rooms` | Catalog: URL-driven dates, guests, budget, room type, view, beds, area, floor, amenities, sort |
-| `/rooms/[slug]` | Room detail: photo gallery with tabs and fullscreen, facts, add-ons, sticky server-quoted summary |
+| `/rooms/[slug]` | Room detail: photo gallery with a draggable 360° tab and fullscreen, facts, add-ons, sticky server-quoted summary |
 | `/book/[slug]` | Six-step booking: stay, room and rate, services, guest details, demo payment, review |
 | `/booking/[reference]` | Confirmation: reference, dates, room, services, price breakdown |
 | `/admin` | Demo operations: availability overrides, add-on enablement, session bookings, integration status |
@@ -63,6 +63,9 @@ computes a price: every total on screen comes from a server quote.
 - Payment is **demo only**. No card fields are rendered and no card data is collected.
 - Photography is **licensed stock** from Unsplash standing in for the property's own, stored
   locally in `public/images` and credited in `public/images/CREDITS.md`. Nothing is hotlinked.
+  The room gallery's 360° tab is a real draggable panorama (Pannellum, vendored at
+  `public/vendor/pannellum`), but over a stand-in equirectangular photo, not the property's own
+  tiles.
 - Bookings, payment attempts, admin overrides, and inventory holds are **durable** (D1), so a
   demo booking survives a `npm run dev` restart. The room/rate/add-on catalog stays static seed
   data — see TECH.md's Persistence section.
