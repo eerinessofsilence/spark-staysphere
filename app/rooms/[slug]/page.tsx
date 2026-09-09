@@ -127,7 +127,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   itself, and paged by the arrows beside the heading. */}
               <ul
                 id="amenities-rail"
-                className="no-scrollbar -mx-3 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6"
+                className="no-scrollbar -mx-3 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 scroll-pl-3 sm:-mx-6 sm:px-6 sm:scroll-pl-6"
               >
                 {room.amenities.map((amenity) => {
                   const Icon = featureIcon(amenity);
