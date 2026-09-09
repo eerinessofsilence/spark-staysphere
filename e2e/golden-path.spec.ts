@@ -324,9 +324,12 @@ test('adding a service leaves the guest where they were on the page', async ({ p
   // The selection is repriced by a server action, not by re-routing to the
   // same page with another query: a route change puts the whole page behind
   // `loading.tsx`, which is what threw the guest back to the top.
-  const routeRequests: string[] = [];
+  // Only this page re-rendering counts: prefetching the booking step the
+  // "Book this room" link now points at is a different route, and wanted.
+  const rerenders: string[] = [];
   page.on('request', (request) => {
-    if (request.url().includes('_rsc')) routeRequests.push(request.url());
+    const url = new URL(request.url());
+    if (url.searchParams.has('_rsc') && url.pathname.startsWith('/rooms/')) rerenders.push(url.href);
   });
 
   await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
@@ -335,7 +338,7 @@ test('adding a service leaves the guest where they were on the page', async ({ p
     page.getByRole('complementary', { name: 'Your stay' }).getByText('Airport transfer'),
   ).toBeVisible();
 
-  expect(routeRequests).toEqual([]);
+  expect(rerenders).toEqual([]);
   expect(
     await page.evaluate(() => (window as unknown as { __sameDocument?: true }).__sameDocument === true),
   ).toBe(true);
