@@ -1,31 +1,22 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { buildQuery } from '@/lib/application/search-params';
-import type { AddOn, Quote, StayCriteria } from '@/lib/domain/schemas';
+import type { AddOn } from '@/lib/domain/schemas';
 import { formatMoney } from '@/lib/formatting';
 import { AddOnCatalog } from './add-on-catalog';
+import { useRoomPricing } from './room-pricing';
 import { cn } from '@/lib/utils';
 
 interface AddOnPickerProps {
   addOns: AddOn[];
-  criteria: StayCriteria;
-  /** Selection lives in the URL so the server re-quotes and owns every total. */
-  selected: string[];
 }
 
-export function AddOnPicker({ addOns, criteria, selected }: AddOnPickerProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = React.useTransition();
+export function AddOnPicker({ addOns }: AddOnPickerProps) {
+  // Selection and repricing belong to the page, not to this list: the two
+  // pickers and the summary all sell into the same quote.
+  const { selected, repricing: isPending, setAddOns: change } = useRoomPricing();
   const enabled = addOns.filter((addOn) => addOn.enabled);
-
-  const change = (next: string[]) => {
-    const query = buildQuery({ criteria, addOnIds: next });
-    startTransition(() => router.replace(`${pathname}?${query}`, { scroll: false }));
-  };
 
   if (enabled.length === 0) {
     return (
@@ -48,34 +39,21 @@ export function AddOnPicker({ addOns, criteria, selected }: AddOnPickerProps) {
   );
 }
 
-interface QuoteLinesProps {
-  quote: Quote;
-  /**
-   * Pass the stay and the current selection to make the summary editable: a
-   * guest who changes their mind should not have to find the card they bought
-   * something from. Left out on a screen where the order is already placed.
-   */
-  criteria?: StayCriteria;
-  selected?: string[];
-}
-
-/** Line-item view of a server quote. Never recomputed on the client. */
-export function QuoteLines({ quote, criteria, selected }: QuoteLinesProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = React.useTransition();
+/**
+ * Line-item view of the server's quote. Never recomputed on the client, and
+ * editable in place: a guest who changes their mind should not have to find
+ * the card they bought something from.
+ */
+export function QuoteLines() {
+  const { quote, selected, repricing: isPending, setAddOns } = useRoomPricing();
   const { price } = quote;
-  const editable = Boolean(criteria && selected);
 
   /** Drops a line, and anything that was only ever an extra on it. */
   const remove = (addOnId: string) => {
-    if (!criteria || !selected) return;
     const alsoGoing = new Set(
       price.addOnLines.filter((line) => line.parentId === addOnId).map((line) => line.addOnId),
     );
-    const next = selected.filter((id) => id !== addOnId && !alsoGoing.has(id));
-    const query = buildQuery({ criteria, addOnIds: next });
-    startTransition(() => router.replace(`${pathname}?${query}`, { scroll: false }));
+    setAddOns(selected.filter((id) => id !== addOnId && !alsoGoing.has(id)));
   };
 
   return (
@@ -91,7 +69,7 @@ export function QuoteLines({ quote, criteria, selected }: QuoteLinesProps) {
           value={formatMoney(line.total, price.currency)}
           // An extra reads as belonging to the thing above it, not as its own order.
           indented={Boolean(line.parentId)}
-          onRemove={editable ? () => remove(line.addOnId) : undefined}
+          onRemove={() => remove(line.addOnId)}
           removeLabel={`Remove ${line.name}`}
         />
       ))}

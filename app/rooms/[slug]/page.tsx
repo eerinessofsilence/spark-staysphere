@@ -17,19 +17,12 @@ import {
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseAddOnIds, parseCriteria } from '@/lib/application/search-params';
-import {
-  bedLabels,
-  formatDateRange,
-  formatFloor,
-  formatGuests,
-  formatMoney,
-  formatNights,
-  viewLabels,
-} from '@/lib/formatting';
+import { bedLabels, formatFloor, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
-import { AddOnPicker, QuoteLines } from '@/components/rooms/add-on-picker';
-import { StayDatesSummary } from '@/components/search/stay-dates-summary';
+import { AddOnPicker } from '@/components/rooms/add-on-picker';
 import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
+import { RoomPricing } from '@/components/rooms/room-pricing';
+import { RoomSummary } from '@/components/rooms/room-summary';
 import { amenityTone, factTone, featureIcon, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import { RoomGallery } from '@/components/rooms/room-gallery';
 import { ScrollArrows } from '@/components/rooms/room-strip-controls';
@@ -58,7 +51,6 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   const { room, ratePlan } = offer;
   const soldOut = offer.status === 'sold_out';
   const stayQuery = buildQuery({ criteria });
-  const bookQuery = buildQuery({ criteria, addOnIds: quote.addOnIds });
   const services = addOns.filter((addOn) => addOn.category === 'service');
   const dining = addOns.filter((addOn) => addOn.category === 'dining');
   const lateCheckOut = services.find((addOn) => addOn.id === 'addon_late' && addOn.enabled);
@@ -72,7 +64,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   ];
 
   return (
-    <>
+    <RoomPricing roomSlug={room.slug} criteria={criteria} quote={quote}>
       <SiteHeader stayQuery={stayQuery} />
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
@@ -243,7 +235,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
               <p className="mt-2 mb-5 text-sm text-muted-foreground">
                 Priced by the booking engine and added to your total immediately.
               </p>
-              <AddOnPicker addOns={services} criteria={criteria} selected={quote.addOnIds} />
+              <AddOnPicker addOns={services} />
             </section>
 
             {/* The kitchen sells through the same engine, but it is a different decision. */}
@@ -256,67 +248,21 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   Food and drink arranged before you arrive and charged with the stay, so nothing is
                   settled at the table.
                 </p>
-                <AddOnPicker addOns={dining} criteria={criteria} selected={quote.addOnIds} />
+                <AddOnPicker addOns={dining} />
               </section>
             ) : null}
           </div>
 
-          {/* Sticky booking summary */}
-          <aside aria-labelledby="summary-heading" className="lg:sticky lg:top-28 lg:h-fit">
-            <div className="rounded-[28px] bg-card p-6 shadow-soft">
-              <h2 id="summary-heading" className="text-sm font-medium text-muted-foreground">
-                Your stay
-              </h2>
-              {/* The dates are what is actually being booked — the same voice
-                  the price gets below, not a footnote under a card title. */}
-              <StayDatesSummary checkIn={criteria.checkIn} checkOut={criteria.checkOut} className="mt-3" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatNights(quote.price.nights)} · {formatGuests(criteria.adults, criteria.children)}
-              </p>
-
-              <div className="mt-5 border-t border-border pt-5">
-                <QuoteLines quote={quote} criteria={criteria} selected={quote.addOnIds} />
-              </div>
-
-              <div className="mt-5 flex items-baseline justify-between gap-4 border-t border-border pt-5">
-                <span className="text-sm font-medium">Total</span>
-                <span className="text-display text-4xl">{formatMoney(quote.price.total, quote.price.currency)}</span>
-              </div>
-
-              {quote.price.otaComparisonTotal && quote.price.directSaving > 0 ? (
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-accent-strong">
-                    {formatMoney(quote.price.directSaving, quote.price.currency)} less
-                  </span>{' '}
-                  than the {formatMoney(quote.price.otaComparisonTotal, quote.price.currency)} demo partner-site
-                  price. A simulated comparison, not a live rate.
-                </p>
-              ) : null}
-
-              {soldOut ? (
-                <div className="mt-6">
-                  <p role="status" className="rounded-2xl bg-danger/10 p-3 text-sm text-danger">
-                    This room is fully booked for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
-                  </p>
-                  <Link href={`/rooms?${stayQuery}`} className={pill('secondary', 'mt-3 w-full')}>
-                    See available rooms
-                  </Link>
-                </div>
-              ) : (
-                <Link href={`/book/${room.slug}?${bookQuery}`} className={pill('primary', 'mt-6 min-h-12 w-full')}>
-                  Book this room
-                </Link>
-              )}
-
-              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                Demo booking. Payment is simulated and no card details are collected.
-              </p>
-            </div>
-          </aside>
+          <RoomSummary
+            roomSlug={room.slug}
+            criteria={criteria}
+            roomsHref={`/rooms?${stayQuery}`}
+            soldOut={soldOut}
+          />
         </div>
       </main>
-      <MobileBookBar quote={quote} bookHref={`/book/${room.slug}?${bookQuery}`} roomsHref={`/rooms?${stayQuery}`} />
+      <MobileBookBar roomSlug={room.slug} criteria={criteria} roomsHref={`/rooms?${stayQuery}`} />
       <SiteFooter stayQuery={stayQuery} clearsFloatingBar />
-    </>
+    </RoomPricing>
   );
 }

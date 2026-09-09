@@ -310,6 +310,38 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
 });
 
+test('adding a service leaves the guest where they were on the page', async ({ page }) => {
+  await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
+  await page.getByRole('heading', { name: 'Add services', level: 2 }).scrollIntoViewIfNeeded();
+
+  // Survives only if the document is never reloaded.
+  await page.evaluate(() => {
+    (window as unknown as { __sameDocument?: true }).__sameDocument = true;
+  });
+  const scrollBefore = await page.evaluate(() => Math.round(window.scrollY));
+  expect(scrollBefore).toBeGreaterThan(0);
+
+  // The selection is repriced by a server action, not by re-routing to the
+  // same page with another query: a route change puts the whole page behind
+  // `loading.tsx`, which is what threw the guest back to the top.
+  const routeRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('_rsc')) routeRequests.push(request.url());
+  });
+
+  await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
+  await expect(page).toHaveURL(/addOn=addon_transfer/);
+  await expect(
+    page.getByRole('complementary', { name: 'Your stay' }).getByText('Airport transfer'),
+  ).toBeVisible();
+
+  expect(routeRequests).toEqual([]);
+  expect(
+    await page.evaluate(() => (window as unknown as { __sameDocument?: true }).__sameDocument === true),
+  ).toBe(true);
+  expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(scrollBefore);
+});
+
 test('a guest can complete a demo booking through to confirmation', async ({ page }) => {
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
 
