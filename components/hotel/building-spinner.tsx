@@ -125,51 +125,6 @@ function hotspotPosition(
   return { x: lower.x + (upper.x - lower.x) * t, y: lower.y + (upper.y - lower.y) * t };
 }
 
-/**
- * The traced footprint at `frameIndex`, or `null` where the hotspot carries no
- * outline. Corners are interpolated between the two keyframes bracketing the
- * frame, so the shape turns with the building instead of jumping at each stop.
- */
-function hotspotOutline(
-  hotspot: SpinnerHotspot,
-  frameIndex: number,
-  frameCount: number,
-): { x: number; y: number }[] | null {
-  const first = hotspot.keyframes[0]!.frameIndex;
-  const last = hotspot.keyframes[hotspot.keyframes.length - 1]!.frameIndex;
-  const total = wrap(last - first, frameCount);
-  const pos = wrap(frameIndex - first, frameCount);
-  if (pos > total) return null;
-
-  const withPos = hotspot.keyframes
-    .map((keyframe) => ({ ...keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
-    .sort((a, b) => a.pos - b.pos)
-    .filter((keyframe) => keyframe.outline && keyframe.outline.length >= 3);
-  if (withPos.length === 0) return null;
-
-  let lower = withPos[0]!;
-  let upper = withPos[withPos.length - 1]!;
-  for (let i = 0; i < withPos.length - 1; i++) {
-    if (pos >= withPos[i]!.pos && pos <= withPos[i + 1]!.pos) {
-      lower = withPos[i]!;
-      upper = withPos[i + 1]!;
-      break;
-    }
-  }
-  // Outside the traced span the nearest traced shape is the honest answer.
-  if (pos < lower.pos || pos > upper.pos) {
-    const nearest = pos < lower.pos ? lower : upper;
-    return nearest.outline!;
-  }
-  const span = upper.pos - lower.pos;
-  const t = span === 0 ? 0 : (pos - lower.pos) / span;
-  const count = Math.min(lower.outline!.length, upper.outline!.length);
-  return Array.from({ length: count }, (_, i) => ({
-    x: lower.outline![i]!.x + (upper.outline![i]!.x - lower.outline![i]!.x) * t,
-    y: lower.outline![i]!.y + (upper.outline![i]!.y - lower.outline![i]!.y) * t,
-  }));
-}
-
 /** A frame roughly in the middle of a hotspot's visible arc — for a deep link with no explicit frame. */
 function midArcFrame(hotspot: SpinnerHotspot, frameCount: number): number {
   const first = hotspot.keyframes[0]!.frameIndex;
@@ -399,14 +354,9 @@ export function BuildingSpinner({
   const visible = React.useMemo(
     () =>
       spinner.hotspots
-        .map((hotspot) => ({
-          hotspot,
-          position: hotspotPosition(hotspot, frameIndex, frameCount),
-          outline: hotspotOutline(hotspot, frameIndex, frameCount),
-        }))
+        .map((hotspot) => ({ hotspot, position: hotspotPosition(hotspot, frameIndex, frameCount) }))
         .filter(
-          (entry): entry is { hotspot: SpinnerHotspot; position: { x: number; y: number }; outline: { x: number; y: number }[] | null } =>
-            entry.position !== null,
+          (entry): entry is { hotspot: SpinnerHotspot; position: { x: number; y: number } } => entry.position !== null,
         ),
     [spinner.hotspots, frameIndex, frameCount],
   );
@@ -652,45 +602,6 @@ export function BuildingSpinner({
       onKeyDown={onKeyDown}
     >
       <canvas ref={canvasRef} aria-label={title} className="pointer-events-none absolute inset-0 size-full" />
-
-      {/* The part of the building a marker stands for, traced on the frame and
-          lit on hover — the way a plan lets you point at a wing. The shapes take
-          no pointer events: a drag that starts on one must still turn the view,
-          so hover and click are found by hit-testing in the handlers above. */}
-      {!isSpinning && rect ? (
-        <svg className="pointer-events-none absolute inset-0 z-[5] size-full" aria-hidden="true">
-          {visible.map(({ hotspot, outline }) => {
-            if (!outline) return null;
-            const lit = hoveredHotspot === hotspot.id || activeHotspot === hotspot.id;
-            // Sold stock reads red, everything on sale reads in the product's clay
-            // accent — the zone is legible as inventory before it is hovered.
-            const soldOut = hotspot.roomSlug ? rooms?.[hotspot.roomSlug]?.status === 'sold_out' : false;
-            return (
-              <polygon
-                key={hotspot.id}
-                points={outline
-                  .map((point) => `${rect.x + point.x * rect.width},${rect.y + point.y * rect.height}`)
-                  .join(' ')}
-                strokeWidth={lit ? 3 : 2}
-                strokeLinejoin="round"
-                className={cn(
-                  'pointer-events-auto cursor-pointer transition-[fill,stroke,stroke-width] duration-200',
-                  '[filter:drop-shadow(0_1px_3px_rgb(22_22_22/0.55))]',
-                  soldOut ? 'stroke-[#E5484D]' : 'stroke-accent',
-                  lit ? (soldOut ? 'fill-[#E5484D]/45' : 'fill-accent/40') : 'fill-white/[0.06]',
-                )}
-                onMouseEnter={() => setHoveredHotspot(hotspot.id)}
-                onMouseLeave={() => setHoveredHotspot(null)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (draggedRef.current) return;
-                  setActiveHotspot((current) => (current === hotspot.id ? null : hotspot.id));
-                }}
-              />
-            );
-          })}
-        </svg>
-      ) : null}
 
       {!isSpinning
         ? visible.map(({ hotspot, position }) =>
