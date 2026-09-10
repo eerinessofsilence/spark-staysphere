@@ -359,7 +359,12 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
   // Fewer cards, and every one of them a sea view — not a fixed number, so
   // the catalog can grow without this test needing to know how many.
   await expect.poll(() => cards.count()).toBeLessThan(initialCount);
+  // A grid tile carries the price and the size; the row is the layout that
+  // spells the view out, so "every result is a sea view" is read there.
+  await page.goto(`/rooms?${stayQuery}&view=sea&layout=list`);
   for (const text of await cards.allInnerTexts()) expect(text).toContain('Sea view');
+  await page.goBack();
+  await expect(page).toHaveURL(/view=sea/);
 
   await withFilters(page, () =>
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'false'),
