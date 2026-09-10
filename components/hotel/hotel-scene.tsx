@@ -304,14 +304,12 @@ export function HotelScene({
         }
         // Fills the screen below the header on a phone — 5rem is that
         // header's own height (h-14 + its pt-3) plus this section's pt-3
-        // above the stage; update it if either changes. The frames are 16:9,
-        // far short of a phone screen, so `BuildingSpinner` no longer just
-        // covers this box: past a square crop that starts cutting into the
-        // building rather than the town around it, so it holds the frame at
-        // that safe size and pads the rest with a blurred copy of itself,
-        // the way a portrait app frames landscape source photos. The 28px
-        // card returns from `sm`, where the stage is wider than tall again.
-        // The fallback overlay drops all of it for the real viewport.
+        // above the stage; update it if either changes. The frames are 16:9
+        // against a portrait screen, so covering this box crops their sides
+        // hard: the building is a wide, low slab and a phone is tall, and
+        // there is no scale that fits all of one into the other. Full bleed
+        // wins over bars. The 28px card returns from `sm`, where the stage is
+        // wider than tall again, and the fallback overlay drops all of it.
         className={cn(
           'relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[28px]',
           fakeFullscreen && 'fixed inset-0 z-50 h-auto aspect-auto rounded-none sm:aspect-auto sm:rounded-none',

@@ -101,22 +101,6 @@ function coverRect(frame: { width: number; height: number }, dims: { width: numb
 }
 
 /**
- * Where the frame actually lands in a stage taller than it is wide. A plain
- * cover crop of 16:9 footage in a phone-height stage cuts into the building
- * itself past a square crop, not just the town around it — checked around
- * the whole orbit. So the frame is held at that safe square size, centred in
- * whatever height the stage has past it, rather than stretched to fill it.
- * Every reader of the frame's geometry — the paint, the markers, the zone
- * hit-test — goes through this so a marker never drifts off what is drawn.
- */
-function frameLayout(frame: { width: number; height: number }, dims: { width: number; height: number }) {
-  const coreHeight = Math.min(dims.height, dims.width);
-  const core = coverRect(frame, { width: dims.width, height: coreHeight });
-  core.y += (dims.height - coreHeight) / 2;
-  return { core, letterboxed: dims.height > dims.width };
-}
-
-/**
  * Where a hotspot sits at `frameIndex`, or `null` outside its visible arc.
  * The arc runs forward (wrapping) from its first keyframe to its last —
  * authored in that sweep order, not necessarily ascending frame numbers.
@@ -345,26 +329,12 @@ export function BuildingSpinner({
     return () => observer.disconnect();
   }, []);
 
-  // The canvas's own backing store is only ever the safe square crop, never
-  // the full (possibly phone-height) stage: a canvas that big cost real
-  // per-frame paint time regardless of how little of it actually changed,
-  // which undid the point of leaving the letterbox bands alone below. The
-  // bands are a separate, ordinary `<img>` instead — see `backdropFrame`.
-  const coreDims = { width: dims.width, height: Math.min(dims.height, dims.width) };
-  const letterboxed = dims.height > dims.width;
-
   React.useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || coreDims.width === 0 || coreDims.height === 0) return;
+    if (!canvas || dims.width === 0 || dims.height === 0) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const pixelWidth = Math.round(coreDims.width * dpr);
-    const pixelHeight = Math.round(coreDims.height * dpr);
-    // Setting `.width`/`.height` clears the canvas even when the value is
-    // unchanged, so this only touches it on an actual resize.
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-      canvas.width = pixelWidth;
-      canvas.height = pixelHeight;
-    }
+    canvas.width = Math.round(dims.width * dpr);
+    canvas.height = Math.round(dims.height * dpr);
     const context = canvas.getContext('2d');
     if (!context) return;
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -374,19 +344,10 @@ export function BuildingSpinner({
     // Nothing decoded here yet: hold the last drawn frame rather than flashing empty.
     const image = imagesRef.current[frameIndex];
     if (!image || !readyRef.current.has(frameIndex)) return;
-    const rect = coverRect(frameSize, coreDims);
-    context.clearRect(0, 0, coreDims.width, coreDims.height);
+    const rect = coverRect(frameSize, dims);
+    context.clearRect(0, 0, dims.width, dims.height);
     context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
-  }, [frameIndex, coreDims.width, coreDims.height, readyTick, frameSize.width, frameSize.height]);
-
-  /** The frame shown, blurred, in the bands a square crop leaves bare — only
-      the settled frame, not every step of a turn: the blur barely differs
-      from one frame to the next, so there is nothing a mid-turn update would
-      actually show the guest, only cost. */
-  const [backdropFrame, setBackdropFrame] = React.useState<number | null>(null);
-  React.useEffect(() => {
-    if (!isSpinning) setBackdropFrame(frameIndex);
-  }, [frameIndex, isSpinning]);
+  }, [frameIndex, dims, readyTick, frameSize.width, frameSize.height]);
 
   // ---- keyframe navigation ------------------------------------------------
 
@@ -565,7 +526,7 @@ export function BuildingSpinner({
   /** The traced storey under the pointer, in the frame's own coordinates. */
   const zoneAt = (clientX: number, clientY: number): string | null => {
     const stage = stageRef.current;
-    const drawn = dims.width > 0 ? frameLayout(frameSize, dims).core : null;
+    const drawn = dims.width > 0 ? coverRect(frameSize, dims) : null;
     if (!stage || !drawn) return null;
     const box = stage.getBoundingClientRect();
     const x = (clientX - box.left - drawn.x) / drawn.width;
@@ -631,7 +592,7 @@ export function BuildingSpinner({
 
   // ---- render -------------------------------------------------------------
 
-  const rect = dims.width > 0 ? frameLayout(frameSize, dims).core : null;
+  const rect = dims.width > 0 ? coverRect(frameSize, dims) : null;
   const positionFor = (point: { x: number; y: number }): React.CSSProperties => {
     if (!rect) return { left: `${point.x * 100}%`, top: `${point.y * 100}%` };
     return { left: rect.x + point.x * rect.width, top: rect.y + point.y * rect.height };
@@ -812,25 +773,7 @@ export function BuildingSpinner({
       }}
       onKeyDown={onKeyDown}
     >
-      {letterboxed && backdropFrame !== null ? (
-        // Ordinary CSS, not the canvas: a `filter: blur` here is the
-        // compositor's job, not the raster path the crisp frame above needs
-        // every step of a drag to stay free for.
-        <img
-          key={backdropFrame}
-          src={spinner.frames[backdropFrame]?.imageUrl}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          className="pointer-events-none absolute inset-0 size-full scale-110 object-cover object-center brightness-[0.65] blur-2xl"
-        />
-      ) : null}
-      <canvas
-        ref={canvasRef}
-        aria-label={title}
-        className="pointer-events-none absolute inset-x-0 top-0 size-full"
-        style={letterboxed ? { top: (dims.height - coreDims.height) / 2, height: coreDims.height } : undefined}
-      />
+      <canvas ref={canvasRef} aria-label={title} className="pointer-events-none absolute inset-0 size-full" />
 
       {/* The part of the building a marker stands for, traced on the frame and
           lit on hover — the way a plan lets you point at a wing. The shapes take
