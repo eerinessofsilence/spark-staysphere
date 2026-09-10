@@ -901,10 +901,15 @@ export function BuildingSpinner({
               </span>
             ) : null}
 
-            <h3 className="text-display mt-3 text-2xl">{cardFacts?.name ?? active_.hotspot.label}</h3>
+            {/* No heading here: the sheet's own bar already names the room,
+                and saying it twice reads as a mistake. The price is what the
+                guest came to this sheet for, so it takes the display size. */}
             {cardFacts ? (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatMoney(cardFacts.nightlyPrice, cardFacts.currency)} a night
+              <p className="mt-3 flex items-baseline gap-1.5">
+                <span className="text-display text-3xl">
+                  {formatMoney(cardFacts.nightlyPrice, cardFacts.currency)}
+                </span>
+                <span className="text-sm text-muted-foreground">a night</span>
               </p>
             ) : null}
 
