@@ -115,6 +115,11 @@ export function HotelScene({
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
   const [dims, setDims] = React.useState({ width: 0, height: 0 });
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  // iOS Safari has no Fullscreen API for anything but a `<video>` element —
+  // `element.requestFullscreen` either doesn't exist or returns a promise
+  // that never settles — so the button falls back to a CSS overlay there,
+  // which gets the same "off with the chrome" effect on every browser.
+  const [fakeFullscreen, setFakeFullscreen] = React.useState(false);
   const [hoveredZone, setHoveredZone] = React.useState<string | null>(null);
   // Below `sm` a marker opens the product's sheet instead of a card floating
   // on a 275px-tall photograph. Read after mount, which is always before a
@@ -159,6 +164,23 @@ export function HotelScene({
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
+
+  // The overlay's own escape hatch: Escape closes it, and the page behind it
+  // must not scroll under it while it's up — the native API gets both for
+  // free, so only the fallback needs to do this itself.
+  React.useEffect(() => {
+    if (!fakeFullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFakeFullscreen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [fakeFullscreen]);
 
   React.useEffect(() => {
     const query = window.matchMedia('(max-width: 639px)');
@@ -232,11 +254,21 @@ export function HotelScene({
   const toggleFullscreen = async () => {
     const element = stageRef.current;
     if (!element) return;
+    if (fakeFullscreen) {
+      setFakeFullscreen(false);
+      return;
+    }
+    if (typeof element.requestFullscreen !== 'function' || document.fullscreenEnabled === false) {
+      setFakeFullscreen(true);
+      return;
+    }
     try {
       if (document.fullscreenElement === element) await document.exitFullscreen();
       else await element.requestFullscreen();
     } catch {
-      // Fullscreen is a progressive enhancement; ignore refusals (iOS Safari).
+      // Still refused (Safari's own permission prompt, an embedded webview,
+      // …) — the overlay is the fallback of last resort.
+      setFakeFullscreen(true);
     }
   };
 
@@ -270,8 +302,18 @@ export function HotelScene({
         aria-label={
           spinnerOnly ? `${area.name}, 360° view` : `Explore the hotel area by area. ${areas.length} areas.`
         }
-        // Square to the screen edges on a phone; the 28px card from `sm`.
-        className="relative aspect-[4/3] overflow-hidden bg-stone sm:aspect-[16/10] sm:rounded-[28px]"
+        // Fills the screen below the header on a phone — 5rem is that
+        // header's own height (h-14 + its pt-3) plus this section's pt-3
+        // above the stage; update it if either changes. The frames are 16:9
+        // against a portrait screen, so covering this box crops their sides
+        // hard: the building is a wide, low slab and a phone is tall, and
+        // there is no scale that fits all of one into the other. Full bleed
+        // wins over bars. The 28px card returns from `sm`, where the stage is
+        // wider than tall again, and the fallback overlay drops all of it.
+        className={cn(
+          'relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[28px]',
+          fakeFullscreen && 'fixed inset-0 z-50 h-auto aspect-auto rounded-none sm:aspect-auto sm:rounded-none',
+        )}
       >
         {/* All areas are stacked so switching is instant; only one is visible. */}
         {(spinnerOnly ? [area] : areas).map((candidate, candidateIndex) => (
@@ -288,6 +330,7 @@ export function HotelScene({
                 spinner={spinner}
                 fallbackPhoto={candidate.photo}
                 title={candidate.name}
+                stayQuery={stayQuery}
                 rooms={rooms}
                 active={spinnerOnly || candidateIndex === index}
                 initialFrame={spinnerInitialFrame}
@@ -314,11 +357,11 @@ export function HotelScene({
 
         <button
           type="button"
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
+          aria-label={isFullscreen || fakeFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
           onClick={toggleFullscreen}
           className={iconButton('glass', 'absolute top-4 right-4 z-20')}
         >
-          {isFullscreen ? (
+          {isFullscreen || fakeFullscreen ? (
             <ArrowsPointingInIcon className="size-5" aria-hidden="true" />
           ) : (
             <ArrowsPointingOutIcon className="size-5" aria-hidden="true" />
@@ -524,9 +567,12 @@ export function HotelScene({
         {/* Bottom rail: caption on the left, paging on the right. */}
         <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20 flex items-end justify-between gap-3">
           <div aria-live="polite" className="max-w-[min(24rem,100%)]">
-            {active || namedZone ? null : (
+            {active || namedZone || spinnerOnly ? null : (
               // The caption steps aside while a floor is named: the lowest
-              // band's label lands exactly where the caption sits.
+              // band's label lands exactly where the caption sits. With the
+              // spinner active it steps aside for good — the turn controls
+              // sit in that same spot, and the location is still readable
+              // just below, in the About section.
               <div className="flex flex-col gap-2 text-white">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-xs backdrop-blur-sm">
                   <MapPin className="size-3.5" aria-hidden="true" />

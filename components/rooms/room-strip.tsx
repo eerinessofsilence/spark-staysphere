@@ -30,7 +30,7 @@ export function RoomStrip({ offers, stayQuery, className, id }: RoomStripProps) 
     <ul
       id={id}
       className={cn(
-        'no-scrollbar -mx-3 flex snap-x snap-mandatory gap-4 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6',
+        'no-scrollbar -mx-3 flex snap-x snap-mandatory gap-4 overflow-x-auto px-3 pb-2 scroll-pl-3 sm:-mx-6 sm:px-6 sm:scroll-pl-6',
         className,
       )}
     >

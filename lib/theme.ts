@@ -46,5 +46,9 @@ export function storeTheme(preference: ThemePreference): void {
  * Runs in `<head>`, before the first paint, so a visitor who chose day does
  * not get a black screen for a frame first. Kept as one small string rather
  * than a module because it has to execute before anything is downloaded.
+ *
+ * It also marks the document as scripted: the scroll reveal starts its
+ * headings invisible, and only a document that can run the observer that
+ * brings them back is allowed to hide them in the first place.
  */
-export const THEME_BOOTSTRAP = `(function(){try{var p=localStorage.getItem('${THEME_STORAGE_KEY}');if(p!=='light'&&p!=='dark'&&p!=='system')p='${DEFAULT_THEME}';var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
+export const THEME_BOOTSTRAP = `(function(){document.documentElement.classList.add('js');try{var p=localStorage.getItem('${THEME_STORAGE_KEY}');if(p!=='light'&&p!=='dark'&&p!=='system')p='${DEFAULT_THEME}';var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;

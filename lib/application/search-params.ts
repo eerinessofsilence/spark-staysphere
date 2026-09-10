@@ -36,7 +36,7 @@ const sortOrders: SortOrder[] = ['recommended', 'price_asc', 'price_desc', 'area
 export type CatalogLayout = 'grid' | 'list';
 
 export function parseLayout(params: SearchParamsInput): CatalogLayout {
-  return first(params[searchParamKeys.layout]) === 'grid' ? 'grid' : 'list';
+  return first(params[searchParamKeys.layout]) === 'list' ? 'list' : 'grid';
 }
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -174,7 +174,7 @@ export function buildQuery({ criteria, filters, addOnIds, layout }: QueryInput):
   }
 
   addOnIds?.forEach((id) => params.append(searchParamKeys.addOn, id));
-  if (layout && layout !== 'list') params.set(searchParamKeys.layout, layout);
+  if (layout && layout !== 'grid') params.set(searchParamKeys.layout, layout);
 
   return params.toString();
 }

@@ -1,4 +1,4 @@
-import type { AddOn, Hotel, HotelArea, RatePlan, RoomType } from '../domain/schemas';
+import type { AddOn, Hotel, HotelArea, RatePlan, RoomType, SpinnerHotspot } from '../domain/schemas';
 import { trackedOutlines } from './spinner-outlines';
 
 /**
@@ -128,6 +128,104 @@ const hotelAreas: HotelArea[] = [
 const SPIN_FRAME_COUNT = 160;
 
 /**
+ * The facade's storeys, sliced out of the one band that was traced rather than
+ * traced again. `sea-view` runs from the roof parapet down the front of the
+ * building, so every floor is a fixed fraction of it — which means a floor band
+ * follows the building through the whole arc for free, and re-tracking the band
+ * re-tracks all eight of them at once.
+ *
+ * The fractions were measured off frame 140. The parapet stands above the roof
+ * terrace, so the top slice is the deep one; every storey under it is an even
+ * step. Fractions past 1 carry on down the facade below the traced band, which
+ * is where the lower floors are.
+ */
+const SEA_FLOOR_EDGES = [0, 0.415, 0.69, 0.966, 1.242, 1.517, 1.793, 2.068, 2.3];
+
+/**
+ * The far side is traced from its roof soffit down four slabs, so its storeys
+ * are quarters of the band with nothing to extrapolate. It stops at the fifth
+ * floor: below that the trees along the road are in front of the building, and
+ * a storey that lights up behind a tree is worse than no storey at all.
+ */
+const CITY_FLOOR_EDGES = [0, 0.25, 0.5, 0.75, 1];
+
+/** One storey of a facade, as keyframes tracking the band it was cut from. */
+function floorBand(band: string, edges: number[], index: number): SpinnerHotspot['keyframes'] {
+  const from = edges[index]!;
+  const to = edges[index + 1]!;
+  return trackedOutlines[band]!.map((keyframe) => {
+    const points = keyframe.outline!;
+    const half = points.length / 2;
+    // The traced band is a strip: the first half runs left to right along its
+    // top edge, the second half back along its bottom, so a column's two ends
+    // are mirrored about the middle.
+    const edgeAt = (depth: number) =>
+      points.slice(0, half).map((top, column) => {
+        const bottom = points[points.length - 1 - column]!;
+        return {
+          x: top.x + (bottom.x - top.x) * depth,
+          y: top.y + (bottom.y - top.y) * depth,
+        };
+      });
+    const upper = edgeAt(from);
+    const lower = edgeAt(to);
+    const middle = Math.floor(half / 2);
+    return {
+      // The card hangs off the middle of the storey, not off a corner of it.
+      x: (upper[middle]!.x + lower[middle]!.x) / 2,
+      y: (upper[middle]!.y + lower[middle]!.y) / 2,
+      frameIndex: keyframe.frameIndex,
+      outline: [...upper, ...[...lower].reverse()],
+    };
+  });
+}
+
+interface FloorRoom {
+  slug: string;
+  name: string;
+  blurb: string;
+}
+
+/**
+ * Top down, one room to a storey. Several rooms share most floors, so each band
+ * names the one a guest looking at that side is most likely to be after; the
+ * catalog is a click away for the rest. No room appears on both facades — a
+ * room faces one way.
+ */
+const SEA_FLOOR_ROOMS: FloorRoom[] = [
+  { slug: 'asteria-penthouse', name: 'Asteria Penthouse', blurb: 'The whole top floor, opening onto the roof terrace and its pool.' },
+  { slug: 'signature-suite', name: 'Signature Suite', blurb: 'Seventh floor, with the deepest balcony on the sea side.' },
+  { slug: 'panorama-suite', name: 'Panorama Suite', blurb: 'Sixth floor, wrapping the corner for a view along the coast.' },
+  { slug: 'terrace-suite', name: 'Terrace Suite', blurb: 'Fifth floor, a full-width terrace above the rooftops.' },
+  { slug: 'deluxe-sea', name: 'Deluxe Sea View', blurb: 'Fourth floor, clear over the town to the water.' },
+  { slug: 'coastal-twin', name: 'Coastal Twin', blurb: 'Third floor, two beds and a balcony facing the sea.' },
+  { slug: 'cove-studio', name: 'Cove Studio', blurb: 'Second floor, a compact studio with the same outlook.' },
+  { slug: 'poolside-suite', name: 'Poolside Suite', blurb: 'Ground floor, opening straight onto the pool deck.' },
+];
+
+/** The same, for the four storeys the town side shows above its treeline. */
+const CITY_FLOOR_ROOMS: FloorRoom[] = [
+  { slug: 'sky-terrace-suite', name: 'Sky Terrace Suite', blurb: 'Top floor, its terrace opening onto the roof pool.' },
+  { slug: 'skyline-loft', name: 'Skyline Loft', blurb: 'Seventh floor, over the rooftops to the hills behind town.' },
+  { slug: 'corner-suite', name: 'Corner Suite', blurb: 'Sixth floor, turning the corner where the two facades meet.' },
+  { slug: 'city-view-room', name: 'City View Room', blurb: 'Fifth floor, looking down over the streets of Limassol.' },
+];
+
+/** The storeys of one facade, as hotspots that trace rather than pin. */
+function floorZones(band: string, edges: number[], rooms: FloorRoom[], topFloor: number) {
+  return rooms.map((room, index) => ({
+    id: `${band}-floor-${topFloor - index}`,
+    label: room.name,
+    description: room.blurb,
+    roomSlug: room.slug,
+    href: `/rooms/${room.slug}`,
+    cta: 'See this room',
+    zone: true,
+    keyframes: floorBand(band, edges, index),
+  }));
+}
+
+/**
  * A drone orbit of the property, 2.25° a frame, so a drag reads as continuous
  * motion rather than a slideshow. Credited in `public/images/CREDITS.md`.
  * `BuildingSpinner` fetches a window around the current frame, not all 160.
@@ -147,8 +245,9 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
   // screen, so anything downscaled here is upscaled straight back on display.
   frameWidth: 1920,
   frameHeight: 1080,
-  /** Eight stops, 45° apart, so one arrow press turns the building an eighth of a turn. */
-  keyAngles: Array.from({ length: 8 }, (_, step) => step * (SPIN_FRAME_COUNT / 8)),
+  /** Four stops, 90° apart: one arrow press turns the building a quarter turn,
+      so the four presses of a full circle each land on a different face. */
+  keyAngles: Array.from({ length: 4 }, (_, step) => step * (SPIN_FRAME_COUNT / 4)),
   frames: Array.from({ length: SPIN_FRAME_COUNT }, (_, index) => ({
     index,
     imageUrl: `/images/hotel/spin/frame-${String(index).padStart(3, '0')}.webp`,
@@ -162,13 +261,15 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
       roomSlug: 'deluxe-sea',
       href: '/rooms?view=sea',
       cta: 'See sea-view rooms',
-      // Outlines are off for now: the tracked shapes stay in `spinner-outlines.ts`,
-      // and dropping `outline` here is all it takes to switch the zone overlay back on.
-      keyframes: trackedOutlines['sea-view']!.map((keyframe) => ({
-        frameIndex: keyframe.frameIndex,
-        x: keyframe.x,
-        y: keyframe.y,
-      })),
+      // Marker only, and lifted clear above the parapet. The shape it was
+      // traced from is now cut into the storeys below: a second outline over
+      // the same balconies would fight them for the hover, and the pill sitting
+      // at the band's centre sat squarely on two of the floors it supersedes.
+      keyframes: trackedOutlines['sea-view']!.map((keyframe) => {
+        const points = keyframe.outline!;
+        const roofline = points[Math.floor(points.length / 4)]!;
+        return { frameIndex: keyframe.frameIndex, x: roofline.x, y: roofline.y - 0.06 };
+      }),
     },
     {
       id: 'cove',
@@ -184,6 +285,27 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
         { frameIndex: 60, x: 0.72, y: 0.12 },
       ],
     },
+    {
+      id: 'city-view',
+      label: 'Town-side rooms',
+      description:
+        'The far side looks inland over the rooftops to the hills, and it is the quiet one — the road runs along the sea front.',
+      roomSlug: 'skyline-loft',
+      href: '/rooms?view=city',
+      cta: 'See town-side rooms',
+      // Marker only, and it outlives its facade's traced storeys on purpose:
+      // without it the quarter-turn past the far corner had nothing on it at
+      // all, and a stage a guest cannot touch reads as broken rather than plain.
+      keyframes: [
+        { frameIndex: 34, x: 0.5876, y: 0.29 },
+        { frameIndex: 60, x: 0.5194, y: 0.31 },
+        { frameIndex: 86, x: 0.4238, y: 0.30 },
+        { frameIndex: 100, x: 0.45, y: 0.30 },
+        { frameIndex: 112, x: 0.47, y: 0.30 },
+      ],
+    },
+    ...floorZones('sea-view', SEA_FLOOR_EDGES, SEA_FLOOR_ROOMS, 8),
+    ...floorZones('city-view', CITY_FLOOR_EDGES, CITY_FLOOR_ROOMS, 8),
   ],
 };
 
@@ -202,74 +324,41 @@ export const demoHotel: Hotel = {
   // front of it — each one's roof the terrace of the floor above — the low spa
   // wing to the west, and the pool on the plinth's edge above the cove.
   model: {
-    floorHeight: 3.4,
+    floorHeight: 3.2,
     blocks: [
       {
-        id: 'tower',
+        id: 'slab',
         x: 0,
-        z: -14,
-        width: 30,
-        depth: 14,
+        z: 0,
+        width: 62,
+        depth: 17,
+        bow: 6,
         fromFloor: 1,
-        toFloor: 7,
+        toFloor: 8,
         balconies: ['front'],
         glazedFloors: [1],
         roofTerrace: true,
       },
       {
-        id: 'penthouse',
-        x: 0,
-        z: -16,
-        width: 22,
-        depth: 10,
-        fromFloor: 8,
-        toFloor: 8,
-        balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'terrace',
-        x: 2,
-        z: -2,
-        width: 34,
-        depth: 10,
+        id: 'corner',
+        x: 34,
+        z: -7,
+        width: 16,
+        depth: 15,
+        bow: 1.5,
         fromFloor: 1,
-        toFloor: 5,
+        toFloor: 6,
         balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'seafront',
-        x: 4,
-        z: 7,
-        width: 28,
-        depth: 8,
-        fromFloor: 1,
-        toFloor: 3,
-        balconies: ['front'],
-        roofTerrace: true,
-      },
-      {
-        id: 'spa',
-        x: -25,
-        z: -6,
-        width: 12,
-        depth: 18,
-        fromFloor: 1,
-        toFloor: 2,
-        balconies: ['left', 'front'],
         glazedFloors: [1],
         roofTerrace: true,
       },
     ],
     grounds: {
-      width: 84,
-      depth: 62,
-      height: 7,
-      pool: { x: 8, z: 18, width: 25, depth: 7 },
-      sea: true,
+      width: 108,
+      depth: 68,
+      height: 3,
     },
-    view: { azimuth: 58, elevation: 19 },
+    view: { azimuth: 24, elevation: 17 },
   },
 };
 
@@ -487,9 +576,9 @@ const roomSeed: RoomSeed[] = [
       'The plainest way to wake up to the water: a queen bed, a chair by the glass, and the whole cove in the window.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Rain shower', 'Blackout blinds', 'Nespresso bar'],
     photos: [
-      { file: 'balcony', label: 'The view', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'balcony', label: 'The view', width: 16000, height: 2134, from: 'deluxe-sea' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'coastal-twin' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'deluxe-sea' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'deluxe-sea' },
     ],
   },
   {
@@ -505,9 +594,9 @@ const roomSeed: RoomSeed[] = [
       'A compact room over the fishing cove, with a slim balcony wide enough for two coffees and the morning boats.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Balcony', 'Rain shower', 'Work desk'],
     photos: [
-      { file: 'balcony', label: 'Balcony', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'balcony', label: 'Balcony', width: 16000, height: 1387, from: 'coastal-twin' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'coastal-twin' },
     ],
   },
   {
@@ -533,12 +622,12 @@ const roomSeed: RoomSeed[] = [
       {
         file: 'terrace',
         label: 'Garden terrace',
-        width: 1600,
-        height: 1067,
+        width: 16000,
+        height: 2845,
         from: 'garden-studio',
       },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'garden-studio' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'garden-studio' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'garden-studio' },
     ],
   },
   {
@@ -554,9 +643,9 @@ const roomSeed: RoomSeed[] = [
       'Faces the old town rather than the water: rooftops, bell towers, and the harbour lights after dark.',
     amenities: ['Wi-Fi', 'Air conditioning', 'Work desk', 'Rain shower', 'Blackout blinds'],
     photos: [
-      { file: 'window', label: 'The window', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'window', label: 'The window', width: 16000, height: 2400, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 16000, height: 1065, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'skyline-loft' },
     ],
   },
   {
@@ -579,9 +668,9 @@ const roomSeed: RoomSeed[] = [
       'Nespresso bar',
     ],
     photos: [
-      { file: 'terrace', label: 'Pool deck', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'terrace', label: 'Pool deck', width: 16000, height: 1064, from: 'pool-terrace' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'pool-terrace' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'pool-terrace' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'pool-terrace' },
     ],
   },
   {
@@ -606,7 +695,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'terrace', label: 'Terrace', width: 1600, height: 1067, from: 'panorama-suite' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'panorama-suite' },
     ],
   },
   {
@@ -631,7 +720,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'panorama-suite' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'panorama-suite' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'panorama-suite' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'panorama-suite' },
     ],
   },
   {
@@ -655,8 +744,8 @@ const roomSeed: RoomSeed[] = [
     ],
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'skyline-loft' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'skyline-loft' },
+      { file: 'bedroom', label: 'Bedroom', width: 16000, height: 1065, from: 'skyline-loft' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'skyline-loft' },
     ],
   },
   {
@@ -682,7 +771,7 @@ const roomSeed: RoomSeed[] = [
     photos: [
       { file: 'living', label: 'Living room', width: 1600, height: 1067, from: 'family-residence' },
       { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'family-residence' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'family-residence' },
     ],
   },
   {
@@ -708,12 +797,12 @@ const roomSeed: RoomSeed[] = [
       {
         file: 'second-bedroom',
         label: 'Second bedroom',
-        width: 1600,
-        height: 1067,
+        width: 16000,
+        height: 2400,
         from: 'family-residence',
       },
       { file: 'bedroom', label: 'Main bedroom', width: 1600, height: 1067, from: 'deluxe-sea' },
-      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1067, from: 'family-residence' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 2400, from: 'family-residence' },
     ],
   },
   {

@@ -1,11 +1,15 @@
+'use client';
+
 import Link from 'next/link';
-import type { Quote } from '@/lib/domain/schemas';
+import { useRoomPricing } from '@/components/rooms/room-pricing';
+import { buildQuery } from '@/lib/application/search-params';
+import type { StayCriteria } from '@/lib/domain/schemas';
 import { formatMoney, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 
 interface MobileBookBarProps {
-  quote: Quote;
-  bookHref: string;
+  roomSlug: string;
+  criteria: StayCriteria;
   roomsHref: string;
 }
 
@@ -14,7 +18,9 @@ interface MobileBookBarProps {
  * one action ride along the bottom edge instead. Hidden from `lg` up, where
  * the summary column is always in view.
  */
-export function MobileBookBar({ quote, bookHref, roomsHref }: MobileBookBarProps) {
+export function MobileBookBar({ roomSlug, criteria, roomsHref }: MobileBookBarProps) {
+  const { quote } = useRoomPricing();
+  const bookHref = `/book/${roomSlug}?${buildQuery({ criteria, addOnIds: quote.addOnIds })}`;
   const soldOut = !quote.available;
   return (
     <div className="fixed inset-x-3 bottom-3 z-30 lg:hidden">

@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { Bed, MapPin, Ruler } from '@phosphor-icons/react/dist/ssr';
 import { useAnchoredCard, type CardAnchor } from '@/components/hotel/use-anchored-card';
+import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
+import { Modal } from '@/components/site/modal';
 import type { BuildingSpinnerData, Currency, RoomStatus, SpinnerHotspot } from '@/lib/domain/schemas';
 import { bedLabels, formatMoney, formatRoomLine, statusText } from '@/lib/formatting';
-import { iconButton, pill } from '@/lib/ui';
+import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 /**
@@ -51,6 +53,8 @@ interface BuildingSpinnerProps {
   /** Today's flat photo — shown, unchanged, if the frame sequence fails to load. */
   fallbackPhoto: { url: string; width: number; height: number; alt: string };
   title: string;
+  /** The guest's dates, carried into whatever a hotspot links to. */
+  stayQuery?: string;
   rooms?: Record<string, SpinnerRoomFacts>;
   /** Only the visible layer captures drag/keyboard — a hidden cross-fade layer must not. */
   active: boolean;
@@ -96,32 +100,56 @@ function coverRect(frame: { width: number; height: number }, dims: { width: numb
  * The arc runs forward (wrapping) from its first keyframe to its last —
  * authored in that sweep order, not necessarily ascending frame numbers.
  */
-function hotspotPosition(
-  hotspot: SpinnerHotspot,
-  frameIndex: number,
-  frameCount: number,
-): { x: number; y: number } | null {
+/**
+ * A hotspot's keyframes, prepared once. Sorting and filtering them per frame —
+ * for every hotspot, twice, on every step of a drag — was throwing away a few
+ * hundred objects a frame and showed up as a stutter as soon as the facade had
+ * a marker for each of its storeys. Keyframes never change, so this is done
+ * when the spinner mounts and only the interpolation is left per frame.
+ */
+interface HotspotTrack {
+  /** Frame the arc opens on, and how many frames it runs for. */
+  first: number;
+  total: number;
+  positions: { pos: number; x: number; y: number }[];
+}
+
+function buildTrack(hotspot: SpinnerHotspot, frameCount: number): HotspotTrack {
   const first = hotspot.keyframes[0]!.frameIndex;
   const last = hotspot.keyframes[hotspot.keyframes.length - 1]!.frameIndex;
-  const total = wrap(last - first, frameCount);
-  const pos = wrap(frameIndex - first, frameCount);
-  if (pos > total) return null;
-
   const withPos = hotspot.keyframes
-    .map((keyframe) => ({ ...keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
+    .map((keyframe) => ({ keyframe, pos: wrap(keyframe.frameIndex - first, frameCount) }))
     .sort((a, b) => a.pos - b.pos);
+  return {
+    first,
+    total: wrap(last - first, frameCount),
+    positions: withPos.map(({ keyframe, pos }) => ({ pos, x: keyframe.x, y: keyframe.y })),
+  };
+}
 
-  let lower = withPos[0]!;
-  let upper = withPos[withPos.length - 1]!;
-  for (let i = 0; i < withPos.length - 1; i++) {
-    if (pos >= withPos[i]!.pos && pos <= withPos[i + 1]!.pos) {
-      lower = withPos[i]!;
-      upper = withPos[i + 1]!;
+/** The two prepared keyframes bracketing `pos`, and how far between them it sits. */
+function bracket<T extends { pos: number }>(entries: T[], pos: number): { lower: T; upper: T; t: number } {
+  let lower = entries[0]!;
+  let upper = entries[entries.length - 1]!;
+  for (let i = 0; i < entries.length - 1; i += 1) {
+    if (pos >= entries[i]!.pos && pos <= entries[i + 1]!.pos) {
+      lower = entries[i]!;
+      upper = entries[i + 1]!;
       break;
     }
   }
   const span = upper.pos - lower.pos;
-  const t = span === 0 ? 0 : (pos - lower.pos) / span;
+  return { lower, upper, t: span === 0 ? 0 : (pos - lower.pos) / span };
+}
+
+function hotspotPosition(
+  track: HotspotTrack,
+  frameIndex: number,
+  frameCount: number,
+): { x: number; y: number } | null {
+  const pos = wrap(frameIndex - track.first, frameCount);
+  if (pos > track.total) return null;
+  const { lower, upper, t } = bracket(track.positions, pos);
   return { x: lower.x + (upper.x - lower.x) * t, y: lower.y + (upper.y - lower.y) * t };
 }
 
@@ -137,6 +165,7 @@ export function BuildingSpinner({
   spinner,
   fallbackPhoto,
   title,
+  stayQuery,
   rooms,
   active,
   initialFrame,
@@ -155,6 +184,9 @@ export function BuildingSpinner({
   const [dims, setDims] = React.useState({ width: 0, height: 0 });
   const [hasError, setHasError] = React.useState(false);
   const [isSpinning, setIsSpinning] = React.useState(false);
+  // Below `sm` a storey opens the product's own sheet instead of a card
+  // floating on the stage — the same swap `HotelScene` makes for its markers.
+  const [isPhone, setIsPhone] = React.useState(false);
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
@@ -223,6 +255,14 @@ export function BuildingSpinner({
     }, BACKGROUND_BATCH_DELAY_MS);
     return () => window.clearInterval(timer);
   }, [loadFrame, frameCount]);
+
+  React.useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const apply = () => setIsPhone(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
 
   // ---- canvas -------------------------------------------------------------
 
@@ -351,14 +391,20 @@ export function BuildingSpinner({
 
   const { cardRef: activeCardRef, style: activeCardStyle } = useAnchoredCard(activeAnchor, dims);
 
+  // Prepared once for the whole orbit; only the interpolation runs per frame.
+  const tracks = React.useMemo(
+    () => spinner.hotspots.map((hotspot) => ({ hotspot, track: buildTrack(hotspot, frameCount) })),
+    [spinner.hotspots, frameCount],
+  );
+
   const visible = React.useMemo(
     () =>
-      spinner.hotspots
-        .map((hotspot) => ({ hotspot, position: hotspotPosition(hotspot, frameIndex, frameCount) }))
+      tracks
+        .map(({ hotspot, track }) => ({ hotspot, position: hotspotPosition(track, frameIndex, frameCount) }))
         .filter(
           (entry): entry is { hotspot: SpinnerHotspot; position: { x: number; y: number } } => entry.position !== null,
         ),
-    [spinner.hotspots, frameIndex, frameCount],
+    [tracks, frameIndex, frameCount],
   );
 
   React.useEffect(() => {
@@ -499,15 +545,28 @@ export function BuildingSpinner({
   };
 
   const cardFacts = active_?.hotspot.roomSlug ? rooms?.[active_.hotspot.roomSlug] : undefined;
-  const card = active_ ? (
+  // The stay the guest already chose survives the jump into the catalog, the
+  // same way it does from every other link on the arrival screen.
+  const cardHref = (): string => {
+    const [path, query] = active_!.hotspot.href.split('?');
+    const params = new URLSearchParams(query ?? '');
+    if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
+    const search = params.toString();
+    return search ? `${path}?${search}` : path!;
+  };
+  const card = active_ && !isPhone ? (
     <Link
       ref={activeCardRef as React.Ref<HTMLAnchorElement>}
-      href={active_.hotspot.href}
+      href={cardHref()}
       aria-live="polite"
       style={activeCardStyle}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseEnter={() => setHoveredHotspot(active_.hotspot.id)}
-      onMouseLeave={() => setHoveredHotspot(null)}
+      // No leave handler: the card opens under the pointer that summoned it, and
+      // the browser answers that by sending it a leave the instant it mounts —
+      // which shut the topmost storey's card again before it could be read. The
+      // stage resolves the hover on every move anyway, and clears it on the way
+      // out, so there is nothing here left to close.
       className="glass absolute z-30 block w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-3xl text-foreground shadow-soft-lg"
     >
       {cardFacts?.photo ? (
@@ -611,9 +670,7 @@ export function BuildingSpinner({
 
       {card}
 
-      {/* Turn the building an eighth at a time — distinct from HotelScene's
-          area-to-area paging arrows, which move between facade/pool/spa/lobby. */}
-      <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/85 p-1 pr-1 backdrop-blur-sm">
+      <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/85 p-1 backdrop-blur-sm">
         <button
           type="button"
           aria-label="Turn left"
@@ -634,6 +691,86 @@ export function BuildingSpinner({
           <ChevronRightIcon className="size-5" aria-hidden="true" />
         </button>
       </div>
+
+      {/* The phone's version of the storey card: the product's own sheet, the
+          same one every other tap opens. There is no room for a card floating
+          beside a storey when the stage is the whole screen, and a sheet has
+          room for the prose the card had to drop. */}
+      <Modal
+        open={Boolean(activeHotspot) && isPhone}
+        onClose={() => setActiveHotspot(null)}
+        title={cardFacts?.name ?? active_?.hotspot.label ?? ''}
+      >
+        {active_ ? (
+          <div className="flex flex-col">
+            {cardFacts?.photo ? (
+              <img
+                src={cardFacts.photo.url}
+                alt=""
+                width={cardFacts.photo.width}
+                height={cardFacts.photo.height}
+                className="aspect-[3/2] w-full rounded-[20px] object-cover"
+              />
+            ) : null}
+
+            {cardFacts?.status ? (
+              <span
+                className={cn(
+                  'mt-5 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                  cardFacts.status === 'sold_out' ? 'bg-stone text-muted-foreground' : 'bg-[#E8F3EC] text-[#1F6B41]',
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    cardFacts.status === 'sold_out' ? 'bg-muted-foreground' : 'bg-[#2F9E63]',
+                  )}
+                />
+                {statusText(cardFacts.status, cardFacts.remaining ?? 0)}
+              </span>
+            ) : null}
+
+            {/* No heading here: the sheet's own bar already names the room,
+                and saying it twice reads as a mistake. The price is what the
+                guest came to this sheet for, so it takes the display size. */}
+            {cardFacts ? (
+              <p className="mt-3 flex items-baseline gap-1.5">
+                <span className="text-display text-3xl">
+                  {formatMoney(cardFacts.nightlyPrice, cardFacts.currency)}
+                </span>
+                <span className="text-sm text-muted-foreground">a night</span>
+              </p>
+            ) : null}
+
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+              {active_.hotspot.description}
+            </p>
+
+            {cardFacts ? (
+              <ul className="mt-4 flex flex-wrap gap-1.5">
+                <li className={tag(tintSurface[factTone.area])}>
+                  <Ruler weight="fill" className={cn('size-3.5', tintInk[factTone.area])} aria-hidden="true" />
+                  {cardFacts.areaM2} m²
+                </li>
+                <li className={tag(tintSurface[factTone.bed])}>
+                  <Bed weight="fill" className={cn('size-3.5', tintInk[factTone.bed])} aria-hidden="true" />
+                  {bedLabels[cardFacts.bedType]}
+                </li>
+                <li className={tag(tintSurface[factTone.capacity])}>
+                  <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
+                  Sleeps {cardFacts.capacity}
+                </li>
+              </ul>
+            ) : null}
+
+            <Link href={cardHref()} className={pill('primary', 'mt-6 min-h-12 w-full justify-center')}>
+              {active_.hotspot.cta}
+              <ArrowRightIcon className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

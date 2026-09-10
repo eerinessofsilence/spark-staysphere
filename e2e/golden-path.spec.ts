@@ -166,35 +166,130 @@ test('no route overflows the phone viewport', async ({ page }, testInfo) => {
   }
 });
 
-test('the arrival screen presents the hotel area by area with hotspots', async ({ page }) => {
-  await page.goto('/');
+test('the arrival screen turns the building and its hotspots lead into the catalog', async ({
+  page,
+}) => {
+  await page.goto(`/?${stayQuery}`);
 
   await expect(page.getByRole('heading', { level: 1, name: 'Asteria Cove' })).toBeVisible();
-  const scene = page.getByRole('group', { name: /Explore the hotel area by area/ });
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
   await expect(scene).toBeVisible();
 
-  // Switch to the pool area, then open its hotspot. Areas page with the
-  // arrows on the stage's bottom rail — the hotel's own hotspots are up
-  // first, the pool's replace them once "Next area" has paged forward.
+  // A hotspot only exists across the frames where the thing it names faces the
+  // camera, so the marker is the proof the orbit is on a frame that shows it.
   const seaViewHotspot = scene.getByRole('button', { name: /Sea-view rooms/ });
   await expect(seaViewHotspot).toBeVisible();
-  await actUntil(
-    () => page.getByRole('button', { name: 'Next area' }).click(),
-    () =>
-      expect(scene.getByRole('button', { name: 'Infinity edge' })).toBeVisible({ timeout: 3_000 }),
-  );
 
-  const cta = page.getByRole('link', { name: 'See pool-access rooms' });
+  // The whole card is the link — pressing the marker opens it, and its call to
+  // action is inside it.
+  const card = page.getByRole('link', { name: /See sea-view rooms/ });
   await actUntil(
     async () => {
-      if (!(await cta.isVisible())) await page.getByRole('button', { name: 'Infinity edge' }).click();
+      if (!(await card.isVisible())) await seaViewHotspot.click();
     },
-    () => expect(cta).toBeVisible({ timeout: 3_000 }),
+    () => expect(card).toBeVisible({ timeout: 3_000 }),
   );
 
-  await cta.click();
-  await expect(page).toHaveURL(/\/rooms\?.*view=pool/);
+  await card.click();
+  // The dates the guest arrived with come along, the same as every other link
+  // out of the arrival screen.
+  await expect(page).toHaveURL(new RegExp(`/rooms\\?.*view=sea.*checkIn=${checkIn}`));
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
+});
+
+test('each traced storey of the facade names the room on it', async ({ page }) => {
+  // Deep-linked to a frame inside the arc where the sea facade faces the
+  // camera — that is where the storeys are traced.
+  await page.goto('/?frame=140');
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
+  await expect(scene).toBeVisible();
+
+  const storeys = page.locator('svg polygon');
+  await expect(storeys).toHaveCount(8, { timeout: 15_000 });
+
+  // Fourth floor, counting down from the roof: the storeys run top to bottom.
+  // The shapes take no pointer events — the spinner hit-tests them itself — so
+  // a point inside one is found the same way, from its own geometry.
+  const point = await page.evaluate(() => {
+    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][4]!;
+    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
+    const corners = band
+      .getAttribute('points')!
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x: x!, y: y! };
+      });
+    const holds = (x: number, y: number) => {
+      let inside = false;
+      for (let i = 0, j = corners.length - 1; i < corners.length; j = i, i += 1) {
+        const a = corners[i]!;
+        const b = corners[j]!;
+        if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      return inside;
+    };
+    const xs = corners.map((c) => c.x);
+    const ys = corners.map((c) => c.y);
+    const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+    const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+    for (let fx = 0.1; fx <= 0.92; fx += 0.02)
+      for (let fy = 0.3; fy <= 0.7; fy += 0.05) {
+        const x = x0 + (x1 - x0) * fx;
+        const y = y0 + (y1 - y0) * fy;
+        if (!holds(x, y)) continue;
+        const cx = Math.round(svgBox.x + x);
+        const cy = Math.round(svgBox.y + y);
+        // Nothing of the spinner's own chrome on top of this spot.
+        if (document.elementFromPoint(cx, cy)?.getAttribute('role') === 'group') return { x: cx, y: cy };
+      }
+    return null;
+  });
+  expect(point).not.toBeNull();
+
+  await page.mouse.click(point!.x, point!.y);
+  // A desk gets a card floating beside the storey, a phone the product's own
+  // sheet — either way the room is named and the way in says the same thing.
+  const openInto = page.locator('a[href*="/rooms/deluxe-sea"]').filter({ hasText: 'See this room' });
+  await expect(openInto).toBeVisible();
+  await expect(page.getByText('Deluxe Sea View').first()).toBeVisible();
+
+  await openInto.click();
+  await expect(page).toHaveURL(/\/rooms\/deluxe-sea/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Deluxe Sea View' })).toBeVisible();
+});
+
+test('the far side of the building sells its own rooms', async ({ page }) => {
+  // Half a turn from the sea facade: the town side is traced separately, and
+  // names the rooms that face that way.
+  await page.goto('/?frame=60');
+  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
+  await expect(scene).toBeVisible();
+  await expect(page.locator('svg polygon')).toHaveCount(4, { timeout: 15_000 });
+
+  const point = await page.evaluate(() => {
+    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][1]!;
+    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
+    const corners = band
+      .getAttribute('points')!
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x: x!, y: y! };
+      });
+    const half = Math.floor(corners.length / 4);
+    return {
+      x: Math.round(svgBox.x + (corners[half]!.x + corners[corners.length - 1 - half]!.x) / 2),
+      y: Math.round(svgBox.y + (corners[half]!.y + corners[corners.length - 1 - half]!.y) / 2),
+    };
+  });
+
+  await page.mouse.click(point.x, point.y);
+  const openInto = page.locator('a[href*="/rooms/skyline-loft"]').filter({ hasText: 'See this room' });
+  await expect(openInto).toBeVisible();
+  await expect(page.getByText('Skyline Loft').first()).toBeVisible();
 });
 
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
@@ -264,7 +359,12 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
   // Fewer cards, and every one of them a sea view — not a fixed number, so
   // the catalog can grow without this test needing to know how many.
   await expect.poll(() => cards.count()).toBeLessThan(initialCount);
+  // A grid tile carries the price and the size; the row is the layout that
+  // spells the view out, so "every result is a sea view" is read there.
+  await page.goto(`/rooms?${stayQuery}&view=sea&layout=list`);
   for (const text of await cards.allInnerTexts()) expect(text).toContain('Sea view');
+  await page.goBack();
+  await expect(page).toHaveURL(/view=sea/);
 
   await withFilters(page, () =>
     toggle(page.getByRole('button', { name: 'Sea view', exact: true }), 'false'),
@@ -308,6 +408,41 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   await page.getByRole('tab', { name: 'Bathroom' }).click();
   await expect(page.getByRole('tab', { name: 'Bathroom' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
+});
+
+test('adding a service leaves the guest where they were on the page', async ({ page }) => {
+  await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
+  await page.getByRole('heading', { name: 'Add services', level: 2 }).scrollIntoViewIfNeeded();
+
+  // Survives only if the document is never reloaded.
+  await page.evaluate(() => {
+    (window as unknown as { __sameDocument?: true }).__sameDocument = true;
+  });
+  const scrollBefore = await page.evaluate(() => Math.round(window.scrollY));
+  expect(scrollBefore).toBeGreaterThan(0);
+
+  // The selection is repriced by a server action, not by re-routing to the
+  // same page with another query: a route change puts the whole page behind
+  // `loading.tsx`, which is what threw the guest back to the top.
+  // Only this page re-rendering counts: prefetching the booking step the
+  // "Book this room" link now points at is a different route, and wanted.
+  const rerenders: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.searchParams.has('_rsc') && url.pathname.startsWith('/rooms/')) rerenders.push(url.href);
+  });
+
+  await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
+  await expect(page).toHaveURL(/addOn=addon_transfer/);
+  await expect(
+    page.getByRole('complementary', { name: 'Your stay' }).getByText('Airport transfer'),
+  ).toBeVisible();
+
+  expect(rerenders).toEqual([]);
+  expect(
+    await page.evaluate(() => (window as unknown as { __sameDocument?: true }).__sameDocument === true),
+  ).toBe(true);
+  expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(scrollBefore);
 });
 
 test('a guest can complete a demo booking through to confirmation', async ({ page }) => {
@@ -422,11 +557,17 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin');
 
   const row = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
-  // Assert on the re-rendered status, not the select value: a pre-hydration
-  // selectOption changes the DOM without ever reaching the server action.
+  // Reload before asserting, and assert on the override the server sent back:
+  // a pre-hydration selectOption changes the DOM without ever reaching the
+  // server action, and a reload is what tells the two apart. The status column
+  // beside it cannot: it shows plain availability for the admin's own demo
+  // stay, which already reads "Fully booked" here whatever the override says.
   await actUntil(
-    async () => void (await row.getByRole('combobox').selectOption('sold_out')),
-    () => expect(row.locator('td').nth(3)).toContainText('Fully booked', { timeout: 3_000 }),
+    async () => {
+      await row.getByRole('combobox').selectOption('sold_out');
+      await page.reload();
+    },
+    () => expect(row.getByRole('combobox')).toHaveValue('sold_out', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
@@ -442,9 +583,11 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin');
   const restored = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
   await actUntil(
-    async () => void (await restored.getByRole('combobox').selectOption('auto')),
-    () =>
-      expect(restored.locator('td').nth(3)).not.toContainText('Fully booked', { timeout: 3_000 }),
+    async () => {
+      await restored.getByRole('combobox').selectOption('auto');
+      await page.reload();
+    },
+    () => expect(restored.getByRole('combobox')).toHaveValue('auto', { timeout: 3_000 }),
   );
 });
 

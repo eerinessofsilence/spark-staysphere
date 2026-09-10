@@ -78,6 +78,84 @@
           ]
         }
       ]
+    },
+    {
+      "id": "city-view",
+      "spanBefore": 26,
+      "spanAfter": 26,
+      "anchors": [
+        {
+          "frameIndex": 60,
+          "arcPos": 0,
+          "_comment": "The far side, half a turn from the sea facade. Top edge on the roof soffit, bottom on the fourth slab down. Only the curved balcony run is traced: the flat end wings either side carry no balconies on this face.",
+          "outline": [
+            {
+              "x": 0.38,
+              "y": 0.297
+            },
+            {
+              "x": 0.42,
+              "y": 0.3
+            },
+            {
+              "x": 0.46,
+              "y": 0.303
+            },
+            {
+              "x": 0.5,
+              "y": 0.305
+            },
+            {
+              "x": 0.54,
+              "y": 0.305
+            },
+            {
+              "x": 0.58,
+              "y": 0.303
+            },
+            {
+              "x": 0.62,
+              "y": 0.3
+            },
+            {
+              "x": 0.655,
+              "y": 0.296
+            },
+            {
+              "x": 0.655,
+              "y": 0.454
+            },
+            {
+              "x": 0.62,
+              "y": 0.464
+            },
+            {
+              "x": 0.58,
+              "y": 0.471
+            },
+            {
+              "x": 0.54,
+              "y": 0.475
+            },
+            {
+              "x": 0.5,
+              "y": 0.475
+            },
+            {
+              "x": 0.46,
+              "y": 0.47
+            },
+            {
+              "x": 0.42,
+              "y": 0.462
+            },
+            {
+              "x": 0.38,
+              "y": 0.451
+            }
+          ]
+        }
+      ]
     }
   ]
 }

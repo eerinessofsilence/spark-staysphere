@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRightIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon, ArrowUpRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
@@ -11,6 +11,7 @@ import { RoomStrip } from '@/components/rooms/room-strip';
 import { RoomStripControls, ScrollArrows } from '@/components/rooms/room-strip-controls';
 import { StaySearchBar } from '@/components/search/stay-search-bar';
 import { ParallaxImage } from '@/components/site/parallax-image';
+import { Reveal } from '@/components/site/reveal';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -97,14 +98,51 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
           </div>
         </section>
 
+        {/* About the hotel. The interactive scene above is where a guest
+            explores; this is the one paragraph that says what the place
+            actually is, for the guest who wants that before anything else. */}
+        <section aria-labelledby="about-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+          {/* No card, no shadow: this reads as the page's own copy, not one
+              more tile among the room cards. Half the band each — at a third
+              of the width the photograph was a thumbnail sat beside display
+              type, too small to be the view it is meant to sell. */}
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <Reveal>
+              <h2 id="about-heading" className="text-display text-4xl sm:text-5xl">
+                About {hotel.name}
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+                Eight floors of white balconies curving above the town, the upper ones looking
+                clear over the rooftops to the Mediterranean, with a 25-metre infinity pool and a
+                cliffside spa on site, and the bay's marina and beach clubs ten minutes downhill.
+              </p>
+              <p className="mt-5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
+                {hotel.location}
+              </p>
+            </Reveal>
+            <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[28px]">
+              <img
+                src="/images/hotel/cove.webp"
+                alt="The cove below Asteria Cove, with the beach club and the boat to the islands"
+                width={2000}
+                height={3000}
+                loading="lazy"
+                decoding="async"
+                className="size-full object-cover"
+              />
+            </Reveal>
+          </div>
+        </section>
+
         {/* Recommended rooms */}
         <section aria-labelledby="rooms-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
           <div className="flex flex-wrap items-end gap-4">
-            <div>
+            <Reveal>
               <h2 id="rooms-heading" className="text-display text-4xl sm:text-5xl">
                 Where to stay
               </h2>
-            </div>
+            </Reveal>
             {/* `ml-auto` on the row: a wrap on a narrow screen puts this on
                 its own line, where `justify-between` on the row itself would
                 align a lone item to the start instead of the end. Within the
@@ -132,15 +170,17 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                   matches "The other rooms" rail below. */}
               <ul
                 id="highlights-rail"
-                className="no-scrollbar -mx-3 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:-mx-6 sm:px-6 lg:gap-[42px]"
+                className="no-scrollbar -mx-3 mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-3 pb-2 scroll-pl-3 sm:-mx-6 sm:px-6 sm:scroll-pl-6"
               >
                 {/* Sized from the rail, not in px: exactly four across from
                     `lg`, three from `sm`, two on a phone — the width is the
-                    section's, minus the gaps between the tiles it holds. */}
+                    section's, minus the gaps between the tiles it holds. One
+                    gap size throughout (20px) rather than a wider one at
+                    `lg`, so the spacing itself never changes, only the count. */}
                 {highlights.map((offer) => (
                   <li
                     key={offer.room.id}
-                    className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3)] lg:w-[calc((100%-126px)/4)]"
+                    className="w-[calc((100%-1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3)] lg:w-[calc((100%-3.75rem)/4)]"
                   >
                     <RoomCard offer={offer} stayQuery={stayQuery} />
                   </li>
@@ -151,22 +191,44 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         </section>
 
         {/* Closing band */}
-        <section className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
-          {/* Ink under the photograph, not just behind it: the copy on
-              this band is white, and the photo is lazy-loaded, so by day
-              an unloaded frame would leave white text on a pale page. */}
+        <section aria-labelledby="closing-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+          {/* Ink under the photograph, not just behind it: the copy here is
+              white and the photo is lazy-loaded, so an unloaded frame would
+              otherwise leave white text on a pale page. */}
           <div className="relative overflow-hidden rounded-[28px] bg-ink">
             <ParallaxImage src="/images/hotel/pool.webp" alt="" width={2000} height={1334} />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10" />
-            <div className="relative flex flex-col items-start gap-6 p-8 text-[#F7F5F0] sm:p-12 lg:min-h-[24rem] lg:justify-end">
-              <p className="text-display max-w-xl text-4xl sm:text-5xl">
-                Take the whole journey, <span className="text-accent-italic text-accent-strong">end to end.</span>
-              </p>
-              <p className="max-w-md text-sm leading-relaxed text-white/75">
+            {/* Two scrims rather than one flat wash across the middle. The
+                copy sits bottom-left, so the photograph is darkened hardest
+                exactly there and left alone where nothing is written — the
+                single left-to-right gradient dimmed the whole picture and
+                still left the body copy sitting on open water. */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent"
+            />
+            <div className="relative flex flex-col items-start gap-7 p-8 pt-40 text-[#F7F5F0] sm:p-12 sm:pt-56 lg:min-h-[32rem] lg:justify-end">
+              <Reveal>
+                {/* The section's actual heading, not a paragraph that looks
+                    like one. The emphasis is carried by the italic serif
+                    alone: the accent token behind it is clay by day, and a
+                    dark clay on a dark photograph read as mud. */}
+                <h2
+                  id="closing-heading"
+                  className="text-display max-w-2xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl"
+                >
+                  Take the whole journey,{' '}
+                  <span className="text-accent-italic sm:whitespace-nowrap">end to end.</span>
+                </h2>
+              </Reveal>
+              <p className="max-w-md text-[15px] leading-relaxed text-white/85">
                 Search, inspect a room, add services, and confirm. Payment is simulated and clearly
                 labelled — no card details are ever collected.
               </p>
-              <Link href={`/rooms?${stayQuery}`} className={pill('glass')}>
+              <Link href={`/rooms?${stayQuery}`} className={pill('onPhoto', 'min-h-12 px-6')}>
                 Start with the rooms
                 <ArrowRightIcon className="size-4" aria-hidden="true" />
               </Link>
@@ -178,11 +240,11 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         {rest.length > 0 ? (
           <section aria-labelledby="rest-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
             <div className="flex flex-wrap items-end gap-4">
-              <div>
+              <Reveal>
                 <h2 id="rest-heading" className="text-display text-4xl sm:text-5xl">
                   The other rooms
                 </h2>
-              </div>
+              </Reveal>
               <RoomStripControls
                 targetId="other-rooms-rail"
                 href={`/rooms?${stayQuery}`}

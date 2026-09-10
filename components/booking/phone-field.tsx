@@ -15,12 +15,14 @@ export interface Country {
 }
 
 /**
- * Dial codes a guest booking a Croatian hotel is actually likely to pick —
+ * Dial codes a guest booking a Cypriot hotel is actually likely to pick —
  * the property's own country first, then the rest of Europe by how often
  * European guests book it, then the other markets a demo needs to cover.
  * Not the full ITU list: this is a booking form, not a phone directory.
  */
 export const COUNTRIES: Country[] = [
+  { iso: 'CY', name: 'Cyprus', dial: '+357', flag: '🇨🇾' },
+  { iso: 'GR', name: 'Greece', dial: '+30', flag: '🇬🇷' },
   { iso: 'HR', name: 'Croatia', dial: '+385', flag: '🇭🇷' },
   { iso: 'DE', name: 'Germany', dial: '+49', flag: '🇩🇪' },
   { iso: 'AT', name: 'Austria', dial: '+43', flag: '🇦🇹' },
@@ -44,7 +46,6 @@ export const COUNTRIES: Country[] = [
   { iso: 'HU', name: 'Hungary', dial: '+36', flag: '🇭🇺' },
   { iso: 'RO', name: 'Romania', dial: '+40', flag: '🇷🇴' },
   { iso: 'BG', name: 'Bulgaria', dial: '+359', flag: '🇧🇬' },
-  { iso: 'GR', name: 'Greece', dial: '+30', flag: '🇬🇷' },
   { iso: 'RS', name: 'Serbia', dial: '+381', flag: '🇷🇸' },
   { iso: 'BA', name: 'Bosnia and Herzegovina', dial: '+387', flag: '🇧🇦' },
   { iso: 'ME', name: 'Montenegro', dial: '+382', flag: '🇲🇪' },
@@ -67,7 +68,7 @@ export const COUNTRIES: Country[] = [
   { iso: 'ZA', name: 'South Africa', dial: '+27', flag: '🇿🇦' },
 ];
 
-export const DEFAULT_COUNTRY_ISO = 'HR';
+export const DEFAULT_COUNTRY_ISO = 'CY';
 
 export function countryByIso(iso: string): Country {
   return COUNTRIES.find((country) => country.iso === iso) ?? COUNTRIES[0]!;

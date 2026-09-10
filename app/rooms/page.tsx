@@ -4,7 +4,6 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import {
-  activeFilterCount,
   buildQuery,
   parseCriteria,
   parseFilters,
@@ -36,10 +35,9 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
   const today = toIsoDate(new Date());
 
   const result = await catalogService.search(DEMO_HOTEL_SLUG, criteria, filters);
-  const { offers, totalRooms, facets } = result;
+  const { offers, facets } = result;
 
   const stayQuery = buildQuery({ criteria, filters, layout });
-  const filterCount = activeFilterCount(filters);
   const nights = offers[0]?.price.nights ?? 1;
 
   return (
@@ -81,22 +79,9 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           />
 
           <section aria-label="Search results">
-            {/* The count and the two controls do not fit one line on a phone —
-                together they were wider than the column and pushed the results
-                past the page's own gutter. Below `sm` they stack. */}
-            <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <p role="status" className="text-sm">
-                <span className="font-medium">
-                  {offers.length} of {totalRooms} room types
-                </span>
-                <span className="text-muted-foreground">
-                  {filterCount > 0 ? ` match ${filterCount} ${filterCount === 1 ? 'filter' : 'filters'}` : ' fit your stay'}
-                </span>
-              </p>
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <LayoutToggle criteria={criteria} filters={filters} layout={layout} />
-                <SortSelect criteria={criteria} filters={filters} layout={layout} />
-              </div>
+            <div className="flex flex-wrap items-center justify-end gap-2 pb-5">
+              <LayoutToggle criteria={criteria} filters={filters} layout={layout} />
+              <SortSelect criteria={criteria} filters={filters} layout={layout} />
             </div>
 
             {offers.length === 0 ? (

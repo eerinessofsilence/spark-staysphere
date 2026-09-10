@@ -53,12 +53,15 @@ export function LayoutToggle({ criteria, filters, layout }: LayoutToggleProps) {
             onClick={() => select(option.value)}
             aria-pressed={active}
             className={cn(
-              'inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors',
+              'inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors sm:min-h-9 sm:px-3',
               active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone',
             )}
           >
             <option.icon className="size-4" aria-hidden="true" />
-            {option.label}
+            {/* The label is read but not drawn on a phone: spelled out, the two
+                segments and the sort control together ran past the column and
+                the sort dropped to a line of its own. */}
+            <span className="sr-only sm:not-sr-only">{option.label}</span>
           </button>
         );
       })}
