@@ -249,11 +249,13 @@ test('each traced storey of the facade names the room on it', async ({ page }) =
   expect(point).not.toBeNull();
 
   await page.mouse.click(point!.x, point!.y);
-  const card = page.locator('a[href*="/rooms/deluxe-sea"]').filter({ hasText: 'See this room' });
-  await expect(card).toBeVisible();
-  await expect(card).toContainText('Deluxe Sea View');
+  // A desk gets a card floating beside the storey, a phone the product's own
+  // sheet — either way the room is named and the way in says the same thing.
+  const openInto = page.locator('a[href*="/rooms/deluxe-sea"]').filter({ hasText: 'See this room' });
+  await expect(openInto).toBeVisible();
+  await expect(page.getByText('Deluxe Sea View').first()).toBeVisible();
 
-  await card.click();
+  await openInto.click();
   await expect(page).toHaveURL(/\/rooms\/deluxe-sea/);
   await expect(page.getByRole('heading', { level: 1, name: 'Deluxe Sea View' })).toBeVisible();
 });
@@ -285,9 +287,9 @@ test('the far side of the building sells its own rooms', async ({ page }) => {
   });
 
   await page.mouse.click(point.x, point.y);
-  const card = page.locator('a[href*="/rooms/skyline-loft"]').filter({ hasText: 'See this room' });
-  await expect(card).toBeVisible();
-  await expect(card).toContainText('Skyline Loft');
+  const openInto = page.locator('a[href*="/rooms/skyline-loft"]').filter({ hasText: 'See this room' });
+  await expect(openInto).toBeVisible();
+  await expect(page.getByText('Skyline Loft').first()).toBeVisible();
 });
 
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {

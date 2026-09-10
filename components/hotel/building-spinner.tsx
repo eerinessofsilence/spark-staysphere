@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { Bed, MapPin, Ruler } from '@phosphor-icons/react/dist/ssr';
 import { useAnchoredCard, type CardAnchor } from '@/components/hotel/use-anchored-card';
+import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
+import { Modal } from '@/components/site/modal';
 import type { BuildingSpinnerData, Currency, RoomStatus, SpinnerHotspot } from '@/lib/domain/schemas';
 import { bedLabels, formatMoney, formatRoomLine, statusText } from '@/lib/formatting';
-import { iconButton, pill } from '@/lib/ui';
+import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 /**
@@ -236,6 +238,9 @@ export function BuildingSpinner({
   const [dims, setDims] = React.useState({ width: 0, height: 0 });
   const [hasError, setHasError] = React.useState(false);
   const [isSpinning, setIsSpinning] = React.useState(false);
+  // Below `sm` a storey opens the product's own sheet instead of a card
+  // floating on the stage — the same swap `HotelScene` makes for its markers.
+  const [isPhone, setIsPhone] = React.useState(false);
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
@@ -316,6 +321,14 @@ export function BuildingSpinner({
     }, BACKGROUND_BATCH_DELAY_MS);
     return () => window.clearInterval(timer);
   }, [loadFrame, frameCount]);
+
+  React.useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const apply = () => setIsPhone(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
 
   // ---- canvas -------------------------------------------------------------
 
@@ -652,7 +665,7 @@ export function BuildingSpinner({
     const search = params.toString();
     return search ? `${path}?${search}` : path!;
   };
-  const card = active_ ? (
+  const card = active_ && !isPhone ? (
     <Link
       ref={activeCardRef as React.Ref<HTMLAnchorElement>}
       href={cardHref()}
@@ -848,6 +861,81 @@ export function BuildingSpinner({
           <ChevronRightIcon className="size-5" aria-hidden="true" />
         </button>
       </div>
+
+      {/* The phone's version of the storey card: the product's own sheet, the
+          same one every other tap opens. There is no room for a card floating
+          beside a storey when the stage is the whole screen, and a sheet has
+          room for the prose the card had to drop. */}
+      <Modal
+        open={Boolean(activeHotspot) && isPhone}
+        onClose={() => setActiveHotspot(null)}
+        title={cardFacts?.name ?? active_?.hotspot.label ?? ''}
+      >
+        {active_ ? (
+          <div className="flex flex-col">
+            {cardFacts?.photo ? (
+              <img
+                src={cardFacts.photo.url}
+                alt=""
+                width={cardFacts.photo.width}
+                height={cardFacts.photo.height}
+                className="aspect-[3/2] w-full rounded-[20px] object-cover"
+              />
+            ) : null}
+
+            {cardFacts?.status ? (
+              <span
+                className={cn(
+                  'mt-5 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                  cardFacts.status === 'sold_out' ? 'bg-stone text-muted-foreground' : 'bg-[#E8F3EC] text-[#1F6B41]',
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    cardFacts.status === 'sold_out' ? 'bg-muted-foreground' : 'bg-[#2F9E63]',
+                  )}
+                />
+                {statusText(cardFacts.status, cardFacts.remaining ?? 0)}
+              </span>
+            ) : null}
+
+            <h3 className="text-display mt-3 text-2xl">{cardFacts?.name ?? active_.hotspot.label}</h3>
+            {cardFacts ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatMoney(cardFacts.nightlyPrice, cardFacts.currency)} a night
+              </p>
+            ) : null}
+
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+              {active_.hotspot.description}
+            </p>
+
+            {cardFacts ? (
+              <ul className="mt-4 flex flex-wrap gap-1.5">
+                <li className={tag(tintSurface[factTone.area])}>
+                  <Ruler weight="fill" className={cn('size-3.5', tintInk[factTone.area])} aria-hidden="true" />
+                  {cardFacts.areaM2} m²
+                </li>
+                <li className={tag(tintSurface[factTone.bed])}>
+                  <Bed weight="fill" className={cn('size-3.5', tintInk[factTone.bed])} aria-hidden="true" />
+                  {bedLabels[cardFacts.bedType]}
+                </li>
+                <li className={tag(tintSurface[factTone.capacity])}>
+                  <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
+                  Sleeps {cardFacts.capacity}
+                </li>
+              </ul>
+            ) : null}
+
+            <Link href={cardHref()} className={pill('primary', 'mt-6 min-h-12 w-full justify-center')}>
+              {active_.hotspot.cta}
+              <ArrowRightIcon className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
