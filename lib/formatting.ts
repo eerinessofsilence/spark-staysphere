@@ -136,10 +136,11 @@ function describeAssistantFilters(filters: RoomFilters, currency: Currency): str
 }
 
 /**
- * The one deterministic sentence the assistant panel is allowed to show as
- * its result — composed here from the app's own numbers, never written by
- * the model. `DESIGN_SYSTEM.md › Rules 2`: counts read as a sentence, not a
- * stat tile.
+ * The one deterministic result line the assistant panel is allowed to show —
+ * composed here from the app's own numbers, never written by the model.
+ * `DESIGN_SYSTEM.md › Rules 2`: counts read as a sentence, not a stat tile.
+ * Two lines: the answer (how many, matching what), then the stay it was
+ * priced for — so the number a guest is scanning for is not buried mid-sentence.
  */
 export function formatAssistantSummary(input: {
   matchedRooms: number;
@@ -148,15 +149,15 @@ export function formatAssistantSummary(input: {
   criteria: StayCriteria;
   currency: Currency;
   fromNightly: number | null;
-}): string {
+}): { lead: string; detail: string } {
   const descriptors = describeAssistantFilters(input.filters, input.currency);
-  const matchPart = descriptors.length
+  const lead = descriptors.length
     ? `${input.matchedRooms} of ${input.totalRooms} room types match ${descriptors.join(', ')}`
     : `${input.matchedRooms} of ${input.totalRooms} room types are available`;
-  const datePart = `for ${formatDateShort(input.criteria.checkIn)} – ${formatDateShort(input.criteria.checkOut)}`;
-  const pricePart =
-    input.fromNightly !== null ? `, from ${formatMoney(input.fromNightly, input.currency)} a night` : '';
-  return `${matchPart} — ${datePart}${pricePart}.`;
+  const dates = `${formatDateShort(input.criteria.checkIn)} – ${formatDateShort(input.criteria.checkOut)}`;
+  const detail =
+    input.fromNightly !== null ? `${dates} · from ${formatMoney(input.fromNightly, input.currency)} a night` : dates;
+  return { lead, detail };
 }
 
 export function formatPricingUnit(unit: AddOn['pricingUnit']): string {

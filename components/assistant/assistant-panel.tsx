@@ -35,6 +35,9 @@ const EXAMPLE_UTTERANCES = [
   'A quiet garden room next weekend',
 ];
 
+/** Three across: a tile narrower than that drops its name to two lines and stops reading at a glance. */
+const SHOWN_CARDS = 3;
+
 const PHASE_LABEL: Partial<Record<AssistantPhase, string>> = {
   idle: 'Tell me what you are looking for, or use the mic.',
   listening: 'Listening — tap the mic again to stop.',
@@ -269,18 +272,21 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           ? Math.min(...result.offers.map((offer) => offer.price.nightlyPrice))
           : null,
       })
-    : '';
+    : null;
 
   if (!rendered || !mounted) return null;
 
   const statusLabel =
-    phase === 'results'
-      ? summary
-      : phase === 'empty'
-        ? `No rooms match that combination for ${formatDateRange(criteria.checkIn, criteria.checkOut)}.`
-        : phase === 'error'
-          ? (errorMessage ?? 'Something went wrong.')
-          : (PHASE_LABEL[phase] ?? '');
+    phase === 'empty'
+      ? `No rooms match that combination for ${formatDateRange(criteria.checkIn, criteria.checkOut)}.`
+      : phase === 'error'
+        ? (errorMessage ?? 'Something went wrong.')
+        : (PHASE_LABEL[phase] ?? '');
+  // A re-search from a chip keeps the last answer on screen, dimmed, so the
+  // cards do not blink out and back for the round trip.
+  const hasOffers = result !== null && result.offers.length > 0;
+  const showingResults = hasOffers && (phase === 'results' || phase === 'thinking');
+  const refreshing = showingResults && phase === 'thinking';
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:p-6">
@@ -307,10 +313,10 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           // own the browser re-runs the backdrop blur against the page on every
           // frame of the open, and the arrival comes in steps.
           'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
-          // Tall enough that a full result — summary, chips, four cards and the
-          // handoff link — lands without an inner scroll, and still bounded by
-          // the window so a short desktop one does not push the CTA off.
-          'max-h-[85dvh] sm:max-h-[min(37rem,85dvh)] sm:max-w-3xl',
+          // Tall enough that a full result — the answer, chips, three tiles and
+          // the handoff link — lands without an inner scroll, and still bounded
+          // by the window so a short desktop one does not push the CTA off.
+          'max-h-[85dvh] sm:max-h-[min(42rem,85dvh)] sm:max-w-3xl',
           mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-10' : 'sm:mb-10',
           visible
             ? 'translate-y-0 opacity-100 sm:scale-100'
@@ -328,15 +334,18 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <p role="status" aria-live="polite" className="text-base leading-relaxed text-foreground">
-            {statusLabel}
-          </p>
+          <div role="status" aria-live="polite">
+            {phase === 'results' && summary ? (
+              <>
+                <p className="text-display text-xl leading-tight sm:text-2xl">{summary.lead}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{summary.detail}</p>
+              </>
+            ) : (
+              <p className="text-base leading-relaxed text-foreground">{statusLabel}</p>
+            )}
+          </div>
 
-          {phase === 'results' && result?.interpretedBy === 'keyword' ? (
-            <p className="mt-1.5 text-xs text-muted-foreground">Matching on keywords — no AI key is configured for this demo.</p>
-          ) : null}
-
-          {chips.length > 0 && (phase === 'results' || phase === 'empty') ? (
+          {chips.length > 0 && (phase === 'results' || phase === 'empty' || refreshing) ? (
             <ul className="mt-3 flex flex-wrap gap-1.5">
               {chips.map((chip) => (
                 <li key={chip.key}>
@@ -349,18 +358,23 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
             </ul>
           ) : null}
 
-          {phase === 'results' && result ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {result.offers.slice(0, 4).map((offer) => (
-                <RoomCard key={offer.room.id} offer={offer} stayQuery={result.query} layout="tile" />
-              ))}
-            </div>
-          ) : null}
+          {showingResults && result ? (
+            <div aria-busy={refreshing} className={cn('transition-opacity duration-200', refreshing && 'opacity-50')}>
+              {/* A phone gets the rail the room page uses — three tiles side by
+                  side would be too narrow to read, and two-then-one strands a
+                  card on its own row. From `sm` the three sit in a grid. */}
+              <ul className="no-scrollbar -mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 scroll-pl-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+                {result.offers.slice(0, SHOWN_CARDS).map((offer) => (
+                  <li key={offer.room.id} className="w-[70%] shrink-0 snap-start sm:w-auto">
+                    <RoomCard offer={offer} stayQuery={result.query} layout="tile" />
+                  </li>
+                ))}
+              </ul>
 
-          {phase === 'results' && result ? (
-            <Link href={`/rooms?${result.query}`} className={pill('primary', 'mt-4 w-full')}>
-              See all {result.totalRooms} rooms
-            </Link>
+              <Link href={`/rooms?${result.query}`} className={pill('primary', 'mt-4 w-full')}>
+                {result.offers.length > SHOWN_CARDS ? `See all ${result.offers.length} rooms` : 'Compare in the catalog'}
+              </Link>
+            </div>
           ) : null}
 
           {phase === 'results' && result && result.unresolved.length > 0 ? (
@@ -457,6 +471,14 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               Cancel
             </button>
           </div>
+        ) : null}
+
+        {/* Below the input, not between the answer and its cards: a note about
+            the demo's plumbing is the last thing a guest scanning results needs. */}
+        {result?.interpretedBy === 'keyword' ? (
+          <p className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+            Matching on keywords — no AI key is configured for this demo.
+          </p>
         ) : null}
       </div>
     </div>,
