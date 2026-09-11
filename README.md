@@ -42,6 +42,8 @@ npm run test:e2e     # Playwright golden path, 1440px and 390px
 | `POST /api/quotes` | Server-authoritative price and availability for a stay |
 | `POST /api/bookings` | Creates a demo booking; requires an `Idempotency-Key` header |
 | `GET /api/bookings/:reference` | Reads a booking created in this process |
+| `POST /api/assistant/search` | An utterance, interpreted into a filter object and priced through `CatalogService` |
+| `POST /api/assistant/transcribe` | One audio recording, transcribed to plain text |
 
 ## Architecture
 
@@ -70,6 +72,11 @@ computes a price: every total on screen comes from a server quote.
   demo booking survives a `npm run dev` restart. The room/rate/add-on catalog stays static seed
   data — see TECH.md's Persistence section.
 - Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin` says so.
+- The AI room finder (the round control, bottom-right) interprets an utterance into a filter
+  object — it never invents a room, a price, or availability, and every enum it may use is one the
+  catalog already owns. With `OPENAI_API_KEY` set it uses OpenAI for interpretation and
+  transcription; unset, search still answers through a deterministic keyword interpreter and the
+  mic is unavailable. See TECH.md's "AI concierge" section.
 
 See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for the design rules and
 tokens (read the Rules first), and `AGENTS.md` for contribution rules.

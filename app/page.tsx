@@ -5,6 +5,7 @@ import { coverPhoto } from '@/lib/domain/room-attributes';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseCriteria, toIsoDate } from '@/lib/application/search-params';
 import { pill } from '@/lib/ui';
+import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { HotelScene } from '@/components/hotel/hotel-scene';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomStrip } from '@/components/rooms/room-strip';
@@ -256,6 +257,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         ) : null}
       </main>
       <SiteFooter stayQuery={stayQuery} />
+      <AssistantLauncher />
     </>
   );
 }

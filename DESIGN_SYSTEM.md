@@ -208,6 +208,15 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   same genre of template motion rule 3 already bans in cards — a staggered fade-up is exactly what
   the first, generic pass of this product did, and the read is identical whether the cliché is a
   visual one or a motion one.
+- **The one scoped exception**: the AI room finder's orbs (`components/assistant/thinking-orbs.tsx`)
+  animate continuously while listening, transcribing, or thinking. This is not decoration — it is
+  the product's only channel for a machine state that has no other visible signal, and every state
+  it represents also carries its own text in a `role="status"` region, so the animation is never
+  the only thing saying what is happening. It stays inside the assistant panel, uses only
+  `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
+  the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
+  Nothing else in the product gets this exception; a template-motion request elsewhere should still
+  be refused on rule 3's terms.
 
 ## Accessibility
 

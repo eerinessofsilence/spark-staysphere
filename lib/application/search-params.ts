@@ -24,8 +24,11 @@ export const searchParamKeys = {
   layout: 'layout',
 } as const;
 
-const views: RoomType['view'][] = ['sea', 'garden', 'pool', 'city'];
-const bedTypes: RoomType['bedType'][] = ['king', 'queen', 'twin'];
+/** Exported so any caller validating a `view`/`bedType` (e.g. the assistant's sanitiser) shares this one union. */
+export const roomViews: RoomType['view'][] = ['sea', 'garden', 'pool', 'city'];
+export const roomBedTypes: RoomType['bedType'][] = ['king', 'queen', 'twin'];
+const views = roomViews;
+const bedTypes = roomBedTypes;
 const sortOrders: SortOrder[] = ['recommended', 'price_asc', 'price_desc', 'area_desc'];
 
 /**
@@ -55,8 +58,19 @@ function toInt(value: string | undefined, fallback: number | null): number | nul
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function isIsoDate(value: string | undefined): value is string {
+/** Exported so callers outside a URL (the assistant's sanitiser) can reuse the one check. */
+export function isIsoDate(value: string | undefined | null): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value));
+}
+
+/** The one adults clamp, shared by URL parsing and the assistant's sanitiser. */
+export function clampAdults(value: number): number {
+  return Math.min(8, Math.max(1, Math.round(value)));
+}
+
+/** The one children clamp, shared by URL parsing and the assistant's sanitiser. */
+export function clampChildren(value: number): number {
+  return Math.min(6, Math.max(0, Math.round(value)));
 }
 
 export function toIsoDate(date: Date): string {
@@ -85,8 +99,8 @@ export function parseCriteria(params: SearchParamsInput, today: Date = new Date(
   const checkOut =
     parsedCheckOut > checkIn ? parsedCheckOut : toIsoDate(addDays(parseISO(checkIn), 1));
 
-  const adults = Math.min(8, Math.max(1, toInt(first(params[searchParamKeys.adults]), 2) ?? 2));
-  const children = Math.min(6, Math.max(0, toInt(first(params[searchParamKeys.children]), 0) ?? 0));
+  const adults = clampAdults(toInt(first(params[searchParamKeys.adults]), 2) ?? 2);
+  const children = clampChildren(toInt(first(params[searchParamKeys.children]), 0) ?? 0);
 
   return { checkIn, checkOut, adults, children };
 }

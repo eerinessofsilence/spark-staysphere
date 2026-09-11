@@ -8,3 +8,8 @@ import { env } from 'cloudflare:workers';
 export function getDemoDatabase(): D1Database | null {
   return (env as Cloudflare.Env).DB ?? null;
 }
+
+/** Same call-time-resolution rule as `getDemoDatabase`. Never cache this at module scope. */
+export function getOpenAiKey(): string | null {
+  return (env as Cloudflare.Env).OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? null;
+}

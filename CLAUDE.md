@@ -23,6 +23,12 @@ Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (
 in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
 and TECH.md's Persistence section.
 
+A persistent AI room finder — a round control on every guest route — turns a spoken or typed
+request into a filter object through a `RoomSearchInterpreter` port (OpenAI, or a deterministic
+keyword fallback with no key configured), sanitises it against the live catalog, and hands the
+result to the same `CatalogService`/`buildPriceBreakdown` path everything else uses; see TECH.md's
+"AI concierge" section.
+
 Still future work: auth on `/admin`, the property's own photography, and production PMS, channel
 manager, payment, and CRM integrations.
 

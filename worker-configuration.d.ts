@@ -7,5 +7,7 @@
 declare namespace Cloudflare {
   interface Env {
     DB?: D1Database;
+    /** Resolved by lib/infrastructure/cloudflare-env.ts#getOpenAiKey; see .dev.vars locally. */
+    OPENAI_API_KEY?: string;
   }
 }

@@ -13,12 +13,12 @@ import {
 } from '@/lib/application/search-params';
 import { formatDateRange, formatGuests, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
+import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { LayoutToggle } from '@/components/rooms/layout-toggle';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomFiltersPanel } from '@/components/rooms/room-filters';
 import { SortSelect } from '@/components/rooms/sort-select';
 import { StaySearchBar } from '@/components/search/stay-search-bar';
-import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -56,11 +56,11 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
       />
       <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
         <header className="max-w-2xl">
-          <SectionLabel>
-            {formatDateRange(criteria.checkIn, criteria.checkOut)} · {formatNights(nights)} ·{' '}
+          <h1 className="text-display text-5xl sm:text-6xl">Choose your room</h1>
+          <p className="mt-3 text-base text-muted-foreground">
+            {formatDateRange(criteria.checkIn, criteria.checkOut)} for {formatNights(nights)},{' '}
             {formatGuests(criteria.adults, criteria.children)}
-          </SectionLabel>
-          <h1 className="text-display mt-4 text-5xl sm:text-6xl">Choose your room</h1>
+          </p>
         </header>
 
         {/* From `lg` the same search rides in the header instead. */}
@@ -69,7 +69,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           <StaySearchBar criteria={criteria} filters={filters} minDate={today} submitLabel="Update stay" />
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:gap-8">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-8">
           <RoomFiltersPanel
             criteria={criteria}
             filters={filters}
@@ -108,6 +108,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
         </div>
       </main>
       <SiteFooter stayQuery={stayQuery} />
+      <AssistantLauncher />
     </>
   );
 }

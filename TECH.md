@@ -71,6 +71,56 @@ The room/rate/add-on *catalog* (names, prices, descriptions) is never written to
 static seed data in `mock-data.ts` in both backends, since nothing in the guest or admin UI edits
 it. Only the state a booking or an admin action actually mutates is durable.
 
+## AI concierge
+
+A guest can describe what they want in their own words — voice or text — from a persistent
+control on every guest route (`components/assistant/`). The rule that governs it: **the model
+interprets language, it never produces inventory, availability, or money.**
+
+```text
+utterance (voice → text, or typed)
+  → RoomSearchInterpreter port          ← OpenAI, structured output
+  → SearchIntent                        ← criteria/filters as a Partial, plus unresolved phrases
+  → AssistantService.ask                ← sanitises every enum and amenity against the live facets,
+                                           clamps adults/children and dates with search-params.ts's
+                                           own clamps, merges onto the guest's existing stay
+  → CatalogService.search               ← the existing service, unchanged
+  → RoomOffer[] priced by buildPriceBreakdown
+```
+
+`lib/domain/assistant.ts` derives the OpenAI Structured Outputs JSON Schema from the same Zod
+schema (`assistantIntentWireSchema`) the response is parsed back through with `z.toJSONSchema` —
+one source for the contract in both directions, never a hand-maintained second copy. The
+deterministic summary sentence and the "I ignored …" line are composed in
+`lib/formatting.ts`/`components/assistant/assistant-panel.tsx` from the app's own numbers; nothing
+the model writes is ever shown as a fact about a room.
+
+`lib/application/container.ts` resolves `getOpenAiKey()` (`lib/infrastructure/cloudflare-env.ts`)
+at call time — same rule as `getDemoDatabase`, since `env` bindings are only reliable once a
+request is in flight — and picks `lib/infrastructure/openai-search-interpreter.ts` when a key
+resolves, falling back to `lib/infrastructure/keyword-search-interpreter.ts` (a small, deterministic
+phrase-to-filter vocabulary) otherwise or if the OpenAI call itself throws. The same shape as the
+D1-or-in-memory fallback in `durable-hotel-repository.ts`, and the reason a keyless `npm run dev`
+and `npm run test:e2e` still answer end to end. Speech has no such fallback:
+`lib/infrastructure/openai-transcriber.ts` is the only transcriber, so
+`POST /api/assistant/transcribe` returns 503 when no key is configured.
+
+Both OpenAI adapters call the REST API with `fetch` (`https://api.openai.com/v1`), not the `openai`
+npm package — the Worker build does not need an SDK for two endpoints. Model ids are named
+constants (`ASSISTANT_MODEL` in `openai-search-interpreter.ts`, `ASSISTANT_TRANSCRIBE_MODEL` in
+`openai-transcriber.ts`) so they are swappable in one place each; both were verified against
+OpenAI's current model list rather than assumed, and should be re-checked before being rolled
+forward. Interpretation runs at `temperature: 0` with a capped `max_tokens`. Transcription is
+`multipart/form-data` to `/v1/audio/transcriptions`, with the filename's extension matched to the
+browser's actual recording container (`.webm` for Chrome/Firefox Opus, `.m4a` for Safari) since the
+endpoint sniffs it.
+
+`lib/application/assistant-rate-limit.ts` is a per-isolate sliding-window limiter plus a
+one-request-in-flight lock per client, the same process-local shape as the rest of the demo's
+in-memory state. Production needs a KV- or Redis-backed limiter shared across isolates. Neither
+route ever logs an utterance or audio — only a correlation id and the outcome — and the uploaded
+recording is never written anywhere; it is discarded with the request once transcription returns.
+
 ## Production source of truth
 
 PMS/channel manager owns rooms, restrictions, rates, inventory, and reservation updates. StaySphere should call one internal booking API; the frontend must not independently synchronize OTA inventory. Booking.com/Airbnb access is through official partner programs or the selected channel manager.
@@ -143,4 +193,6 @@ and add-on enablement do not survive a restart, and are not shared between isola
 database, no auth on `/admin`, no real payment, and no PMS, channel manager, or OTA connection.
 Downstream CRM/PMS delivery is best-effort and swallowed on failure; production needs a queue with
 retries. The photographs are licensed stock standing in for the property's own and must be
-replaced before any real launch.
+replaced before any real launch. The AI concierge's rate limiter is per-isolate, not shared; without
+`OPENAI_API_KEY` its search still works (the keyword interpreter) but its mic does not (no
+transcription fallback exists).

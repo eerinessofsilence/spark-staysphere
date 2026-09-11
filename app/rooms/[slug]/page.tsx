@@ -19,6 +19,7 @@ import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseAddOnIds, parseCriteria } from '@/lib/application/search-params';
 import { bedLabels, formatFloor, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
+import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { AddOnPicker } from '@/components/rooms/add-on-picker';
 import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
 import { RoomPricing } from '@/components/rooms/room-pricing';
@@ -87,7 +88,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                 stated in full, and more usefully, in the stay summary once
                 the guest is deciding — not as a small badge up here. */}
             <div className="mt-6">
-              <p className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+              <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
                 {room.description}
               </p>
               <ul className="mt-5 flex flex-wrap gap-1.5">
@@ -119,7 +120,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   itself, and paged by the arrows beside the heading. */}
               <ul
                 id="amenities-rail"
-                className="no-scrollbar -mx-3 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 scroll-pl-3 sm:-mx-6 sm:px-6 sm:scroll-pl-6"
+                className="no-scrollbar -mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto py-8"
               >
                 {room.amenities.map((amenity) => {
                   const Icon = featureIcon(amenity);
@@ -134,7 +135,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                         className={cn('size-8 shrink-0 sm:size-9', tintInk[tone])}
                         aria-hidden="true"
                       />
-                      <span className="text-[15px] leading-snug font-medium text-foreground">
+                      <span className="text-base leading-snug font-medium text-foreground">
                         {amenity}
                       </span>
                     </li>
@@ -214,7 +215,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   the primary action. A second sentence spells out what the
                   policy actually buys the guest, since "free cancellation"
                   alone reads as marketing until it says free of what. */}
-              <div className="mt-5 flex items-start gap-3 rounded-3xl bg-success/10 p-4 text-[15px]">
+              <div className="mt-5 flex items-start gap-3 rounded-3xl bg-success/10 p-4 text-base">
                 <CalendarCheck
                   weight="fill"
                   className="mt-0.5 size-5 shrink-0 text-success"
@@ -263,6 +264,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
       </main>
       <MobileBookBar roomSlug={room.slug} criteria={criteria} roomsHref={`/rooms?${stayQuery}`} />
       <SiteFooter stayQuery={stayQuery} clearsFloatingBar />
+      <AssistantLauncher mobileOffset="above-book-bar" />
     </RoomPricing>
   );
 }

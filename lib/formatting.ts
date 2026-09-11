@@ -1,6 +1,10 @@
 import { format, parseISO } from 'date-fns';
+// Type-only: `RoomFilters` is an application-layer shape, reused here rather
+// than restated so the assistant's summary sentence and the catalog page
+// describe the same filter object with one vocabulary.
+import type { RoomFilters } from './application/catalog-service';
 import type { RoomCategory } from './domain/room-attributes';
-import type { AddOn, Currency, PaymentMethod, RoomStatus, RoomType } from './domain/schemas';
+import type { AddOn, Currency, PaymentMethod, RoomStatus, RoomType, StayCriteria } from './domain/schemas';
 
 /** Fixed locale on purpose: server and client must format identically or React rehydrates wrong. */
 const MONEY_LOCALE = 'en-GB';
@@ -107,6 +111,52 @@ export function formatFloor(floor: number): string {
   if (floor === 0) return 'Ground floor';
   const suffix = floor === 1 ? 'st' : floor === 2 ? 'nd' : floor === 3 ? 'rd' : 'th';
   return `${floor}${suffix} floor`;
+}
+
+function roundedMoney(amount: number, currency: Currency): string {
+  return new Intl.NumberFormat(MONEY_LOCALE, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/** The filter chips as a sentence fragment — "sea view, balcony, under €400" — never a fact the model wrote itself. */
+function describeAssistantFilters(filters: RoomFilters, currency: Currency): string[] {
+  const parts: string[] = [
+    ...filters.views.map((view) => viewLabels[view].toLowerCase()),
+    ...filters.bedTypes.map((bed) => bedLabels[bed].toLowerCase()),
+    ...filters.categories.map((category) => categoryLabels[category].toLowerCase()),
+    ...filters.amenities.map((amenity) => amenity.toLowerCase()),
+  ];
+  if (filters.minPrice !== null) parts.push(`over ${roundedMoney(filters.minPrice, currency)}`);
+  if (filters.maxPrice !== null) parts.push(`under ${roundedMoney(filters.maxPrice, currency)}`);
+  return parts;
+}
+
+/**
+ * The one deterministic sentence the assistant panel is allowed to show as
+ * its result — composed here from the app's own numbers, never written by
+ * the model. `DESIGN_SYSTEM.md › Rules 2`: counts read as a sentence, not a
+ * stat tile.
+ */
+export function formatAssistantSummary(input: {
+  matchedRooms: number;
+  totalRooms: number;
+  filters: RoomFilters;
+  criteria: StayCriteria;
+  currency: Currency;
+  fromNightly: number | null;
+}): string {
+  const descriptors = describeAssistantFilters(input.filters, input.currency);
+  const matchPart = descriptors.length
+    ? `${input.matchedRooms} of ${input.totalRooms} room types match ${descriptors.join(', ')}`
+    : `${input.matchedRooms} of ${input.totalRooms} room types are available`;
+  const datePart = `for ${formatDateShort(input.criteria.checkIn)} – ${formatDateShort(input.criteria.checkOut)}`;
+  const pricePart =
+    input.fromNightly !== null ? `, from ${formatMoney(input.fromNightly, input.currency)} a night` : '';
+  return `${matchPart} — ${datePart}${pricePart}.`;
 }
 
 export function formatPricingUnit(unit: AddOn['pricingUnit']): string {
