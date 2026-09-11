@@ -68,8 +68,12 @@ const DRAG_PX_PER_TURN = 700;
 /** A mouse needs a deliberate push before the building moves; a finger is allowed to be twitchier. */
 const DRAG_THRESHOLD_MOUSE_PX = 50;
 const DRAG_THRESHOLD_TOUCH_PX = 8;
-/** One frame per tick while animating between stops. */
-const STEP_MS = 15;
+/**
+ * Frames a second while travelling between stops. Capped at a 60Hz screen's own
+ * rate: the old 15ms interval asked for ~67, and the frames the display could
+ * not present were dropped unevenly, which is what read as judder.
+ */
+const STEP_FPS = 60;
 /** Stops queued while an animation is already running; beyond this, presses are dropped. */
 const KEYFRAME_QUEUE_MAX = 10;
 const PRELOAD_BATCH_DESKTOP = 12;
@@ -301,7 +305,7 @@ export function BuildingSpinner({
   // ---- keyframe navigation ------------------------------------------------
 
   const queueRef = React.useRef<number[]>([]);
-  const animationRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const animationRef = React.useRef<number | null>(null);
   /**
    * Where the presses so far will finish. A second press has to step on from
    * there, not from the frame currently on screen, or it lands on the stop the
@@ -310,14 +314,14 @@ export function BuildingSpinner({
   const intendedRef = React.useRef(frameIndex);
 
   const stopAnimation = React.useCallback(() => {
-    if (animationRef.current) {
-      clearInterval(animationRef.current);
+    if (animationRef.current !== null) {
+      cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
   }, []);
 
   const runQueue = React.useCallback(() => {
-    if (animationRef.current) return;
+    if (animationRef.current !== null) return;
     const target = queueRef.current.shift();
     if (target === undefined) {
       setIsSpinning(false);
@@ -329,20 +333,33 @@ export function BuildingSpinner({
       return;
     }
     const direction = delta > 0 ? 1 : -1;
-    let remaining = Math.abs(delta);
+    const total = Math.abs(delta);
+    const from = frameIndexRef.current;
+    const startedAt = performance.now();
+    let stepped = 0;
     setIsSpinning(true);
     setActiveHotspot(null);
-    animationRef.current = setInterval(() => {
-      const next = wrap(frameIndexRef.current + direction, frameCount);
-      frameIndexRef.current = next;
-      setFrameIndex(next);
-      remaining -= 1;
-      if (remaining <= 0) {
-        stopAnimation();
-        runQueue();
+    const tick = (now: number) => {
+      // Where the clock says the turn should be, not one frame per tick: the
+      // journey then takes the same time on a 120Hz screen as on a 60Hz one.
+      // Never more than a frame at a time, so a late tick holds the turn where
+      // it is rather than jumping a gap across the facade.
+      const due = Math.floor(((now - startedAt) / 1000) * STEP_FPS);
+      stepped = Math.min(total, Math.max(stepped, Math.min(due, stepped + 1)));
+      const next = wrap(from + direction * stepped, frameCount);
+      if (next !== frameIndexRef.current) {
+        frameIndexRef.current = next;
+        setFrameIndex(next);
       }
-    }, STEP_MS);
-  }, [frameCount, stopAnimation]);
+      if (stepped >= total) {
+        animationRef.current = null;
+        runQueue();
+        return;
+      }
+      animationRef.current = requestAnimationFrame(tick);
+    };
+    animationRef.current = requestAnimationFrame(tick);
+  }, [frameCount]);
 
   const goToKeyAngle = React.useCallback(
     (direction: 1 | -1) => {
