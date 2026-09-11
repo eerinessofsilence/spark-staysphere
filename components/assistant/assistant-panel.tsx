@@ -472,14 +472,6 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
             </button>
           </div>
         ) : null}
-
-        {/* Below the input, not between the answer and its cards: a note about
-            the demo's plumbing is the last thing a guest scanning results needs. */}
-        {result?.interpretedBy === 'keyword' ? (
-          <p className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
-            Matching on keywords — no AI key is configured for this demo.
-          </p>
-        ) : null}
       </div>
     </div>,
     document.body,
