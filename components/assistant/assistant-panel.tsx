@@ -215,6 +215,20 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     void runSearch('', next, nextCriteria);
   };
 
+  // "None of these" — drops the answer and hands the guest back the input,
+  // not just a cleared form: the stay may as well go back to what it was
+  // before this utterance touched it.
+  const startNewSearch = React.useCallback(() => {
+    setResult(null);
+    setErrorMessage(null);
+    setPhase('idle');
+    setInputValue('');
+    setCriteria(baseCriteria);
+    setFilters(baseFilters);
+    // After the swap has had time to play, not mid-transition.
+    window.setTimeout(() => inputRef.current?.focus(), OVERLAY_TRANSITION_MS);
+  }, [baseCriteria, baseFilters]);
+
   const chips: FilterChip[] = [
     ...(criteria.checkIn !== baseCriteria.checkIn || criteria.checkOut !== baseCriteria.checkOut
       ? [
@@ -370,10 +384,6 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
                   </li>
                 ))}
               </ul>
-
-              <Link href={`/rooms?${result.query}`} className={pill('primary', 'mt-4 w-full')}>
-                {result.offers.length > SHOWN_CARDS ? `See all ${result.offers.length} rooms` : 'Compare in the catalog'}
-              </Link>
             </div>
           ) : null}
 
@@ -420,49 +430,97 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           ) : null}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border/60 p-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value.slice(0, 400))}
-            placeholder="A quiet sea-view suite for two, under €400…"
-            aria-label="Describe the room you want"
-            maxLength={400}
-            disabled={phase === 'listening' || phase === 'transcribing'}
-            className={fieldClass}
-          />
+        {/*
+         * The input row and the results actions share one footer cell and
+         * cross-fade between each other rather than one replacing the other
+         * outright — both stay mounted (so focus/measurement never glitches),
+         * the inactive one drops out of the tab order and stops taking clicks,
+         * and neither is ever seen mid-fade at the other's z-index because
+         * they occupy the same grid cell.
+         */}
+        <div className="relative grid border-t border-border/60">
+          <form
+            onSubmit={handleSubmit}
+            aria-hidden={showingResults}
+            className={cn(
+              'col-start-1 row-start-1 flex items-center gap-2 p-3 transition-[opacity,translate] duration-200 ease-out',
+              showingResults ? 'pointer-events-none translate-y-1 opacity-0' : 'translate-y-0 opacity-100',
+            )}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value.slice(0, 400))}
+              placeholder="A quiet sea-view suite for two, under €400…"
+              aria-label="Describe the room you want"
+              maxLength={400}
+              tabIndex={showingResults ? -1 : undefined}
+              disabled={showingResults || phase === 'listening' || phase === 'transcribing'}
+              className={fieldClass}
+            />
 
-          {!micHidden ? (
+            {!micHidden ? (
+              <button
+                type="button"
+                tabIndex={showingResults ? -1 : undefined}
+                onClick={() => {
+                  if (voice.status === 'listening') voice.stop();
+                  else {
+                    voice.reset();
+                    void voice.start();
+                  }
+                }}
+                aria-label={voice.status === 'listening' ? 'Stop recording' : 'Speak your search'}
+                className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
+              >
+                {voice.status === 'listening' ? (
+                  <StopCircleIcon className="size-5" aria-hidden="true" />
+                ) : (
+                  <MicrophoneIcon className="size-5" aria-hidden="true" />
+                )}
+              </button>
+            ) : null}
+
+            <button
+              type="submit"
+              aria-label="Search"
+              tabIndex={showingResults ? -1 : undefined}
+              disabled={
+                showingResults || !inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'
+              }
+              className={iconButton('dark')}
+            >
+              <PaperAirplaneIcon className="size-4" aria-hidden="true" />
+            </button>
+          </form>
+
+          <div
+            aria-hidden={!showingResults}
+            className={cn(
+              'col-start-1 row-start-1 flex items-center gap-2 p-3 transition-[opacity,translate] duration-200 ease-out',
+              showingResults ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0',
+            )}
+          >
             <button
               type="button"
-              onClick={() => {
-                if (voice.status === 'listening') voice.stop();
-                else {
-                  voice.reset();
-                  void voice.start();
-                }
-              }}
-              aria-label={voice.status === 'listening' ? 'Stop recording' : 'Speak your search'}
-              className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
+              tabIndex={showingResults ? undefined : -1}
+              onClick={startNewSearch}
+              className={pill('secondary')}
             >
-              {voice.status === 'listening' ? (
-                <StopCircleIcon className="size-5" aria-hidden="true" />
-              ) : (
-                <MicrophoneIcon className="size-5" aria-hidden="true" />
-              )}
+              New search
             </button>
-          ) : null}
-
-          <button
-            type="submit"
-            aria-label="Search"
-            disabled={!inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'}
-            className={iconButton('dark')}
-          >
-            <PaperAirplaneIcon className="size-4" aria-hidden="true" />
-          </button>
-        </form>
+            <Link
+              href={result ? `/rooms?${result.query}` : '#'}
+              tabIndex={showingResults ? undefined : -1}
+              className={pill('primary', 'flex-1 justify-center')}
+            >
+              {result && result.offers.length > SHOWN_CARDS
+                ? `See all ${result.offers.length} rooms`
+                : 'Compare in the catalog'}
+            </Link>
+          </div>
+        </div>
 
         {phase === 'listening' ? (
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
