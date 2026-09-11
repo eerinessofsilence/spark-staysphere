@@ -575,7 +575,7 @@ export function BookingFlow({
                           <method.icon weight="fill" className={cn('size-5', tintInk[method.tone])} />
                         </span>
                         <span className="flex min-w-0 flex-col gap-1">
-                          <span className="text-display text-[15px] leading-tight">{method.label}</span>
+                          <span className="text-display text-base leading-tight">{method.label}</span>
                           <span className="text-sm leading-snug text-muted-foreground">{method.hint}</span>
                         </span>
                         {selected ? (

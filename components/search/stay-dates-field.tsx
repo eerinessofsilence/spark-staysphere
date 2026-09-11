@@ -288,7 +288,7 @@ export function StayDatesField({
           caption_label: 'text-display text-base',
           month_grid: 'mt-3 w-full border-collapse',
           weekdays: 'flex',
-          weekday: 'flex-1 pb-2 text-[11px] font-normal text-muted-foreground',
+          weekday: 'flex-1 pb-2 text-xs font-normal text-muted-foreground',
           week: 'flex w-full',
           // The circles already fade; without this the band behind them snaps.
           day: 'relative flex-1 p-0 text-center transition-colors',
@@ -408,7 +408,7 @@ export function StayDatesField({
           <CalendarIcon className="size-3.5" aria-hidden="true" />
           {label}
         </span>
-        <span className="mt-0.5 text-[15px] font-medium">{display}</span>
+        <span className="mt-0.5 text-base font-medium">{display}</span>
       </button>
     );
   };

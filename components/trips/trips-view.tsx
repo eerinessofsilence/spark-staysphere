@@ -89,7 +89,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
       {trips.length === 0 ? (
         <div className="rounded-[28px] border border-dashed border-border p-10 text-center">
           <h2 className="text-display text-3xl">No trips yet</h2>
-          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
             Bookings you make here are listed on this page. Booked on another device? Find it with
             your reference below.
           </p>
@@ -311,7 +311,7 @@ function CancelDialog({
       {trip ? (
         <form onSubmit={submit}>
           <h2 className="text-display text-2xl">Cancel this stay?</h2>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
             {trip.roomName}, {formatDateRange(trip.checkIn, trip.checkOut)} · {trip.reference}. The
             room goes back on sale straight away. Nothing was charged in this demo, so there is
             nothing to refund — and the booking cannot be reinstated afterwards.

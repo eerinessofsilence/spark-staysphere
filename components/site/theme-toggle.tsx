@@ -63,7 +63,7 @@ export function ThemeToggle() {
               aria-checked={selected}
               onClick={() => choose(option.value)}
               className={cn(
-                'flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-[13px] font-medium transition-colors',
+                'flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-colors',
                 selected ? 'bg-card text-foreground shadow-soft' : 'text-muted-foreground hover:text-foreground',
               )}
             >

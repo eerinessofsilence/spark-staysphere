@@ -176,7 +176,7 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
             </span>
           )}
           <span className="flex min-w-0 flex-col gap-1">
-            <span className="text-display text-[15px] leading-tight">{addOn.name}</span>
+            <span className="text-display text-base leading-tight">{addOn.name}</span>
             {/* Money in the display face, the unit small beside it — the same
                 voice the panel and the bill give a price. */}
             <span className="flex items-baseline gap-1.5 whitespace-nowrap">
@@ -340,7 +340,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
           </span>
           <span className="text-sm text-muted-foreground">{formatPricingUnit(addOn.pricingUnit)}</span>
         </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{addOn.description}</p>
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">{addOn.description}</p>
       </div>
 
       {extras.length > 0 ? (
@@ -375,7 +375,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
                     />
                     <span className="flex flex-1 items-start justify-between gap-4">
                       <span className="min-w-0">
-                        <span className="block text-[15px] font-medium">{extra.name}</span>
+                        <span className="block text-base font-medium">{extra.name}</span>
                         <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
                           {extra.description}
                         </span>

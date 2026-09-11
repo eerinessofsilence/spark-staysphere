@@ -36,7 +36,7 @@ export function pill(variant: PillVariant = 'primary', className?: string): stri
 /** Small descriptive chip: room facts, amenities, statuses. Never an action. */
 export function tag(className?: string): string {
   return cn(
-    'inline-flex items-center gap-1.5 rounded-full bg-stone px-3 py-1.5 text-xs font-medium text-foreground',
+    'inline-flex items-center gap-1.5 rounded-full bg-stone px-3 py-1 text-xs font-medium text-foreground',
     className,
   );
 }

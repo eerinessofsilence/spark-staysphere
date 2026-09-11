@@ -207,7 +207,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
 }
 
 const rowClass =
-  'flex min-h-12 items-center gap-3 rounded-2xl px-3 text-left text-[15px] transition-colors hover:bg-stone/60';
+  'flex min-h-12 items-center gap-3 rounded-2xl px-3 text-left text-base transition-colors hover:bg-stone/60';
 
 /**
  * Heroicons, drawn at the row's own weight rather than filled: these mark what

@@ -80,7 +80,7 @@ export default async function AdminPage() {
           <div>
             <SectionLabel>Hotel admin · demo</SectionLabel>
             <h1 className="text-display mt-4 text-5xl sm:text-6xl">{hotel.name} operations</h1>
-            <p className="mt-4 max-w-2xl text-[15px] text-muted-foreground">
+            <p className="mt-4 max-w-2xl text-base text-muted-foreground">
               Controls below write to the in-memory demo state only. A production admin writes
               through the PMS adapter, and inventory stays owned by the PMS or channel manager.
             </p>

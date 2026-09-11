@@ -42,7 +42,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
 
         <header className="mb-8 max-w-2xl">
           <h1 className="text-display text-5xl sm:text-6xl">Complete your stay</h1>
-          <p className="mt-4 text-[15px] text-muted-foreground">
+          <p className="mt-4 text-base text-muted-foreground">
             Six short steps. Nothing is charged, no card details are collected, and the price is
             rechecked on the server before the booking is created.
           </p>

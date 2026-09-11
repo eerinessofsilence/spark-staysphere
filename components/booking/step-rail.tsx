@@ -72,7 +72,7 @@ export function StepRail({ steps, current, onSelect, className }: StepRailProps)
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-semibold',
+                    'grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold',
                     state === 'current' && 'bg-primary text-primary-foreground',
                     state === 'done' && 'bg-accent-soft text-accent-strong',
                     state === 'todo' && 'border border-border text-muted-foreground',

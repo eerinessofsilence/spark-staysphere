@@ -14,6 +14,7 @@ import {
 import type { RoomType, StayCriteria } from '@/lib/domain/schemas';
 import { bedLabels, categoryLabels, formatMoney, viewLabels } from '@/lib/formatting';
 import { fieldClass, pill } from '@/lib/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -51,10 +52,10 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
             }
           />
           <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[28px] border-t border-border">
-            <SheetHeader className="border-b border-border">
+            <SheetHeader className="border-b border-border px-6 py-4">
               <SheetTitle className="text-display text-xl font-medium">Filter rooms</SheetTitle>
             </SheetHeader>
-            <div className="overflow-y-auto px-4 pb-4">
+            <div className="overflow-y-auto px-6 pb-4">
               <FilterControls
                 idPrefix="sheet"
                 criteria={criteria}
@@ -64,7 +65,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
                 showTitle={false}
               />
             </div>
-            <div className="border-t border-border bg-card p-4">
+            <div className="border-t border-border bg-card px-6 py-4">
               <button type="button" onClick={() => setSheetOpen(false)} className={pill('primary', 'w-full')}>
                 Show {resultCount} {resultCount === 1 ? 'room' : 'rooms'}
               </button>
@@ -75,7 +76,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
 
       <aside
         aria-label="Room filters"
-        className="hidden lg:sticky lg:top-28 lg:block lg:h-fit lg:rounded-[28px] lg:bg-card lg:p-6 lg:shadow-soft"
+        className="hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:rounded-[28px] lg:bg-card lg:p-6 lg:shadow-soft"
       >
         <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} layout={layout} />
       </aside>
@@ -133,9 +134,9 @@ function FilterControls({
           type="button"
           disabled={isDefault}
           onClick={() => apply({ ...defaultRoomFilters, sort: filters.sort })}
-          className={pill('ghost', 'h-10 px-3 text-accent-strong disabled:text-muted-foreground')}
+          className={pill('ghost', 'h-8 px-3 text-accent-strong disabled:text-muted-foreground')}
         >
-          <XMarkIcon className="size-3.5" aria-hidden="true" />
+          <XMarkIcon className="size-4" strokeWidth={2.4} aria-hidden="true" />
           Reset
         </button>
       </div>
@@ -236,7 +237,7 @@ function FilterControls({
             id={`${idPrefix}-hide-sold-out`}
             checked={!filters.includeSoldOut}
             onCheckedChange={(checked) => apply({ ...filters, includeSoldOut: !checked })}
-            className="h-6 w-11 shrink-0"
+            className="shrink-0"
           />
         </label>
       </Group>
@@ -247,7 +248,7 @@ function FilterControls({
 function Group({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-labelledby={id}>
-      <h3 id={id} className="mb-3 font-sans text-sm font-medium tracking-normal">
+      <h3 id={id} className="mb-3 font-sans text-base font-medium tracking-normal">
         {title}
       </h3>
       {children}
@@ -277,7 +278,7 @@ function Chips<T extends string>({
             aria-pressed={pressed}
             onClick={() => onToggle(option.value)}
             className={cn(
-              'inline-flex min-h-10 cursor-pointer items-center rounded-full border px-3.5 text-sm transition-colors',
+              'inline-flex h-8 cursor-pointer items-center rounded-full border px-3 text-xs transition-colors',
               pressed ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-stone',
             )}
           >
@@ -307,13 +308,22 @@ function SelectField({
       <label htmlFor={id} className="mb-1.5 block text-xs text-muted-foreground">
         {label}
       </label>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className={fieldClass}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select items={options} value={value} onValueChange={(next) => onChange(next ?? '')}>
+        <SelectTrigger id={id} className={cn(fieldClass, 'justify-between gap-2 py-0')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

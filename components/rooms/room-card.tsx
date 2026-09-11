@@ -74,7 +74,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
   );
 
   const name = (
-    <h3 className={cn('text-display leading-tight', row ? 'text-2xl' : 'text-[15px] @xs:text-lg')}>
+    <h3 className={cn('text-display leading-tight', row ? 'text-2xl' : 'text-base @xs:text-lg')}>
       {/* Stretched: the card has no button, so the whole of it is the target
           rather than these few words. */}
       <Link href={href} className="before:absolute before:inset-0">
@@ -148,7 +148,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div>
           {name}
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {room.description}
           </p>
         </div>

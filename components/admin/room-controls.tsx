@@ -90,7 +90,7 @@ export function AddOnToggle({
           router.refresh();
           setPending(false);
         }}
-        className="h-6 w-11 shrink-0"
+        className="shrink-0"
       />
       <span className={cn('font-medium', !enabled && 'text-muted-foreground')}>
         {enabled ? 'On sale' : 'Withdrawn'}

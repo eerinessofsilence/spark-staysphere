@@ -262,7 +262,7 @@ export function GuestsField({
           <UsersIcon className="size-3.5" aria-hidden="true" />
           Guests
         </span>
-        <span className="mt-0.5 block text-[15px] font-medium">{summary}</span>
+        <span className="mt-0.5 block text-base font-medium">{summary}</span>
       </button>
       {overlay}
     </div>

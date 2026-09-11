@@ -640,7 +640,7 @@ export function HotelScene({
                       {facts.name} · {roomLine(active)}
                     </p>
                   ) : null}
-                  <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                     {active.description}
                   </p>
 
