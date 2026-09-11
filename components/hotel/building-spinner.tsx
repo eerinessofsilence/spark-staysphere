@@ -528,15 +528,15 @@ export function BuildingSpinner({
         onMouseLeave={() => setHoveredHotspot(null)}
         style={positionFor(point)}
         className={cn(
-          'absolute z-10 flex min-h-11 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2.5 rounded-full p-1 pr-1 text-sm font-medium transition-colors sm:pr-4',
+          'absolute z-10 flex min-h-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 rounded-full p-1 pr-1 text-xs font-medium transition-colors sm:pr-3',
           isActive || isHovered ? 'bg-ink text-[#F7F5F0]' : 'glass text-foreground hover:bg-white/90',
         )}
       >
         <span
           aria-hidden="true"
-          className={cn('grid size-9 place-items-center rounded-full', isActive ? 'bg-white/15 text-white' : 'bg-ink text-[#F7F5F0]')}
+          className={cn('grid size-7 place-items-center rounded-full', isActive ? 'bg-white/15 text-white' : 'bg-ink text-[#F7F5F0]')}
         >
-          <MapPin weight="fill" className="size-4" />
+          <MapPin weight="fill" className="size-3.5" />
         </span>
         <span className="hidden sm:inline">
           {hotspot.label}
