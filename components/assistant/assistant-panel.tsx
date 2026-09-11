@@ -283,7 +283,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           : (PHASE_LABEL[phase] ?? '');
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:justify-end sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:p-6">
       <button
         type="button"
         tabIndex={-1}
@@ -301,14 +301,20 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         aria-modal="true"
         aria-label="Find a room by voice or description"
         tabIndex={-1}
-        style={{ transformOrigin: 'bottom right' }}
+        style={{ transformOrigin: 'bottom center' }}
         className={cn(
-          'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
-          'max-h-[85dvh] sm:max-h-[36rem] sm:max-w-md',
-          mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-24' : 'sm:mb-24',
+          // `will-change` because the panel is frosted: without a layer of its
+          // own the browser re-runs the backdrop blur against the page on every
+          // frame of the open, and the arrival comes in steps.
+          'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
+          // Tall enough that a full result — summary, chips, four cards and the
+          // handoff link — lands without an inner scroll, and still bounded by
+          // the window so a short desktop one does not push the CTA off.
+          'max-h-[85dvh] sm:max-h-[min(37rem,85dvh)] sm:max-w-3xl',
+          mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-10' : 'sm:mb-10',
           visible
             ? 'translate-y-0 opacity-100 sm:scale-100'
-            : 'translate-y-8 opacity-0 sm:translate-y-0 sm:scale-95',
+            : 'translate-y-4 opacity-0 sm:translate-y-0 sm:scale-[0.98]',
         )}
       >
         <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
