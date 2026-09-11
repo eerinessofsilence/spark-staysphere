@@ -245,9 +245,11 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
   // screen, so anything downscaled here is upscaled straight back on display.
   frameWidth: 1920,
   frameHeight: 1080,
-  /** Four stops, 90° apart: one arrow press turns the building a quarter turn,
-      so the four presses of a full circle each land on a different face. */
-  keyAngles: Array.from({ length: 4 }, (_, step) => step * (SPIN_FRAME_COUNT / 4)),
+  /** Front, side, back, side — picked by hand from the full capture, not an
+      even quarter-turn: the property's own footprint doesn't sit on a clean
+      rectangle, so the four faces that actually front, side and back the
+      building land on these frames rather than N/4 apart. */
+  keyAngles: [23, 60, 97, 140],
   frames: Array.from({ length: SPIN_FRAME_COUNT }, (_, index) => ({
     index,
     imageUrl: `/images/hotel/spin/frame-${String(index).padStart(3, '0')}.webp`,

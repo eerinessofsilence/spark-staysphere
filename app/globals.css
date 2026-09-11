@@ -381,11 +381,15 @@ body {
    */
   .no-scrollbar {
     scrollbar-width: none;
+    scrollbar-color: transparent transparent;
     -ms-overflow-style: none;
   }
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
   }
 
   /*

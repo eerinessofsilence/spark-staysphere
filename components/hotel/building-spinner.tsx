@@ -198,7 +198,9 @@ export function BuildingSpinner({
       const hotspot = spinner.hotspots.find((candidate) => candidate.id === focusHotspotId);
       if (hotspot) return midArcFrame(hotspot, frameCount);
     }
-    return 0;
+    // Frame 0 isn't necessarily a face of the building — land on whichever
+    // stop the property listed first instead of an arbitrary capture angle.
+    return keyAngles[0] ?? 0;
   });
   const frameIndexRef = React.useRef(frameIndex);
   frameIndexRef.current = frameIndex;
