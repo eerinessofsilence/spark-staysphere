@@ -73,13 +73,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
         </div>
 
         <div className="mt-10 border-t border-white/15 pt-6">
-          <p className="max-w-4xl text-xs leading-relaxed text-white/45">
-            Asteria Cove is a fictional property. Rates, availability, comparison prices, and
-            payments are simulated — no card data is collected and no reservation is made anywhere.
-            Photographs and 360° captures are licensed stand-ins for the property's own, credited
-            in <code className="text-white/60">public/images/CREDITS.md</code>.
-          </p>
-          <p className="mt-4 text-xs text-white/35">
+          <p className="text-xs text-white/35">
             © {new Date().getFullYear()} Spark StaySphere — demo build.
           </p>
         </div>
