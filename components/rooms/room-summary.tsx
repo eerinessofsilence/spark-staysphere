@@ -45,6 +45,8 @@ export function RoomSummary({ roomSlug, criteria, roomsHref, soldOut }: RoomSumm
 
         <div className="mt-5 flex items-baseline justify-between gap-4 border-t border-border pt-5">
           <span className="text-sm font-medium">Total</span>
+          {/* Same size as the checkout review's sidebar total (booking-flow.tsx)
+              — same card, two steps of the same decision. */}
           <span className="text-display text-[2rem]">{formatMoney(quote.price.total, quote.price.currency)}</span>
         </div>
 

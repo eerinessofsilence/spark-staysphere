@@ -24,7 +24,7 @@ export default function GlobalError({
       <span className="grid size-12 place-items-center rounded-full bg-danger/10 text-danger">
         <Warning weight="fill" className="size-6" aria-hidden="true" />
       </span>
-      <h1 className="text-display mt-6 text-4xl">Something went wrong</h1>
+      <h1 className="text-display mt-6 text-4xl sm:text-5xl">Something went wrong</h1>
       <p role="alert" className="mt-4 text-muted-foreground">
         We could not load this part of the booking demo. Nothing was charged or reserved.
       </p>

@@ -135,6 +135,37 @@ Titles and body differ by size and weight, not by typeface — the way the platf
 - **Accent — Instrument Serif italic** through `.text-accent-italic`, for the one emphasised
   phrase a screen is allowed.
 
+### Size scale (mobile first)
+
+Named tiers, not ad hoc classes — pick the row that matches the element's *role*, not the one
+that happens to look right next to it. Sizes below are the mobile (unprefixed) value; `→` gives
+the `sm:` step where one exists. A role with no `sm:` step is meant to hold its size across
+breakpoints.
+
+| Role | Mobile → `sm:` | Class | Where |
+|---|---|---|---|
+| Hero name | `clamp(3.25rem, 10vw, 8rem)` | `.text-display` inline style | Arrival hero property name |
+| Page title | 48px → 60px | `text-5xl sm:text-6xl` | Main flow pages: rooms, trips, book, admin, confirmation |
+| Page title, compact | 36px → 48px | `text-4xl sm:text-5xl` | Utility pages: error, not-found |
+| Page title, minimal | 24px → 30px | `text-2xl sm:text-3xl` | Room detail — the name sits directly above the gallery, so it doesn't compete with the photo the way a standalone page title can |
+| Section heading | 36px → 48px | `text-4xl sm:text-5xl` | Home page marketing sections (About, Rooms, Rest of the rooms) |
+| Subsection heading | 30px | `text-3xl` | In-page sections: room detail (amenities, rate, policies, add-ons), admin panels, empty states |
+| Compact heading | 24px | `text-2xl` | Dialogs, booking-flow step headers, summary-card titles (room name in a sidebar) |
+| Card title, full-width | 24px | `text-2xl` | Room name in a list row, or standalone card |
+| Card title, home rail | 20px | `text-xl` | Room name on the home page's horizontal room rail |
+| Card title, tile | 14–18px, container-scaled | `text-base @xs:text-lg` (grid) | Room name on a narrow catalog grid tile — scales with the tile, not the viewport |
+| Panel/field label | 14–15px, weight 500 | `font-sans text-sm font-medium tracking-normal` | A label that reads as a heading's job but a body's weight: filter group titles, a rate plan name under a room |
+| Summary total | 32px | `text-[2rem]` | The running total in a *mid-journey* sidebar card — room detail and checkout review share the same card, so they share this size |
+| Final total | 36px | `text-4xl` | The total on the confirmation page — the one number left to read once everything else is decided, so it gets the bigger of the two |
+| Sticky-bar total | 20px | `text-xl` | The docked mobile book bar — space is the constraint, not hierarchy |
+| Card nightly price | 18–24px, container-scaled | `text-lg @xs:text-2xl` (grid) / `text-2xl` (row) | Same container-query logic as the card title beside it |
+| Stat figure | 36px | `text-4xl` | Admin dashboard counters |
+| Body | 14–15px | `text-sm` / `text-base` | Paragraphs, captions inside cards |
+| Caption / meta | 12px | `text-xs` | Timestamps, fine print, helper text under a field |
+
+When a new number or heading doesn't fit a row above, it's a sign to name a new tier here — not to
+free-hand a `text-*xl` that happens to look right on one screen.
+
 ## Shape and space
 
 - Spacing unit 4px; preferred steps 8, 12, 16, 24, 32, 48, 64, 96.

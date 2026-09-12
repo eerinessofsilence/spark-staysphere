@@ -754,7 +754,10 @@ export function BookingFlow({
 
             <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-border pt-4">
               <span className="text-sm font-medium">Total</span>
-              <span className="text-display text-3xl">
+              {/* Same card as the room page's "Your stay" sidebar — same size,
+                  so the total doesn't quietly grow or shrink between the two
+                  steps of the same decision. */}
+              <span className="text-display text-[2rem]">
                 {formatMoney(quote.price.total, quote.price.currency)}
               </span>
             </div>
