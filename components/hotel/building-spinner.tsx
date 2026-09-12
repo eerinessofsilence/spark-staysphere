@@ -665,6 +665,11 @@ export function BuildingSpinner({
     );
   }
 
+  // `touch-pan-y`, not `touch-none`: the stage fills the phone's screen, so
+  // `none` turned it into a dead zone the page could not be scrolled past — a
+  // swipe down spun the building instead of moving on. The browser keeps
+  // vertical panning (and cancels our pointer stream when it claims the
+  // gesture, which ends the drag); horizontal travel is still ours to turn.
   return (
     <div
       ref={stageRef}
@@ -672,7 +677,7 @@ export function BuildingSpinner({
       tabIndex={active ? 0 : -1}
       aria-roledescription="carousel"
       aria-label={`${title}, drag or use the arrow keys to spin around the building`}
-      className={cn('relative size-full touch-none outline-none select-none', className)}
+      className={cn('relative size-full touch-pan-y outline-none select-none', className)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
