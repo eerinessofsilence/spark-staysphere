@@ -78,7 +78,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
         <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
           <div className="min-w-0">
             <header className="mb-5">
-              <h1 className="text-display text-5xl sm:text-6xl">{room.name}</h1>
+              <h1 className="text-display text-2xl sm:text-3xl">{room.name}</h1>
             </header>
 
             <RoomGallery room={room} />
