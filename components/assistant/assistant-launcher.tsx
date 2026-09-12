@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { Sparkle } from '@phosphor-icons/react/dist/ssr';
 import { cn } from '@/lib/utils';
 import { AssistantPanel } from './assistant-panel';
-import { ThinkingOrbs } from './thinking-orbs';
 
 interface AssistantLauncherProps {
   /**
@@ -48,7 +48,12 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
           open && 'pointer-events-none scale-90 opacity-0',
         )}
       >
-        <ThinkingOrbs phase="idle" />
+        {/* A sparkle, not the orbs: at rest the orbs read as a globe or a
+            loading spinner, and a guest had no way to know this was the
+            assistant. The sparkle is what "AI" looks like now; the orbs stay
+            for the panel's own listening/thinking states, which is the only
+            place the motion exception covers. */}
+        <Sparkle weight="fill" className="size-8 text-foreground" aria-hidden="true" />
       </button>
 
       <AssistantPanel open={open} onClose={close} mobileOffset={mobileOffset} />
