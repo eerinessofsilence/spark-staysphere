@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { EyeSlashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { EyeSlash } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { roomCategory } from '@/lib/domain/room-attributes';
 import { formatMoney } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
+import { SectionLabel } from '@/components/site/section-label';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
 
@@ -27,7 +29,8 @@ export default async function ContentOverviewPage() {
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[1200px] px-3 py-8 sm:px-6 lg:py-12">
         <header>
-          <h1 className="text-display mt-2 text-5xl sm:text-6xl">Site content</h1>
+          <SectionLabel>Site content · demo</SectionLabel>
+          <h1 className="text-display mt-4 text-5xl sm:text-6xl">Site content</h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground">
             Edit what guests see without a deploy. Changes here show up on the site and in the AI
             room finder immediately.
@@ -92,7 +95,7 @@ export default async function ContentOverviewPage() {
                       <Td>
                         {room.hidden ? (
                           <span className={tag()}>
-                            <EyeSlashIcon className="size-3.5" aria-hidden="true" />
+                            <EyeSlash weight="fill" className="size-3.5" aria-hidden="true" />
                             Hidden
                           </span>
                         ) : (

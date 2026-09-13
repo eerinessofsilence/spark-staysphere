@@ -143,7 +143,11 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
   ).toBeVisible();
 
   await page.goto('/admin/content/add-ons/addon_sunset-kayak-tour');
-  await page.getByLabel('On sale').uncheck();
+  const enabledSwitch = page.getByRole('switch', { name: 'On sale' });
+  await actUntil(
+    () => enabledSwitch.click(),
+    () => expect(enabledSwitch).toHaveAttribute('aria-checked', 'false', { timeout: 3_000 }),
+  );
   await actUntil(
     () => page.getByRole('button', { name: 'Save add-on' }).click(),
     () => expect(page.getByText('Add-on saved.')).toBeVisible({ timeout: 5_000 }),

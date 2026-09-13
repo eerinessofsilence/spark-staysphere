@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDownIcon, ChevronUpIcon, PhotoIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { iconButton, pill } from '@/lib/ui';
 import { MediaPicker } from './media-picker';
@@ -47,7 +48,7 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
                     <img src={asset.url} alt="" className="size-full object-cover" />
                   ) : (
                     <span className="grid size-full place-items-center text-muted-foreground">
-                      <PhotoIcon className="size-5" aria-hidden="true" />
+                      <Image weight="fill" className="size-5" aria-hidden="true" />
                     </span>
                   )}
                 </span>

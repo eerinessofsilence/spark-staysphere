@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { Warning } from '@phosphor-icons/react/dist/ssr';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { pill } from '@/lib/ui';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 
@@ -71,10 +72,10 @@ export function ContentForm({
         {state.status === 'error' ? (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-3 rounded-3xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger"
+            className="mb-6 flex items-start gap-3 rounded-3xl border border-danger/30 bg-danger/10 p-4"
           >
-            <ExclamationTriangleIcon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-            <p>{state.message}</p>
+            <Warning weight="fill" className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden="true" />
+            <p className="text-sm font-medium">{state.message}</p>
           </div>
         ) : null}
 

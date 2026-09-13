@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { bedLabels, formatMoney, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
@@ -46,16 +47,16 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
     <>
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <Link href="/admin/content" className={pill('secondary')}>
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
+            Content
+          </Link>
+        </nav>
+
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">
-              <Link href="/admin/content" className="hover:text-accent-strong">
-                Content
-              </Link>
-              {' / '}
-              {room.name}
-            </p>
-            <h1 className="text-display mt-2 text-4xl sm:text-5xl">{room.name}</h1>
+            <h1 className="text-display text-5xl sm:text-6xl">{room.name}</h1>
             <p className="mt-2 text-sm text-muted-foreground">/rooms/{room.slug}</p>
           </div>
           <div className="flex flex-col items-end gap-3">
@@ -73,7 +74,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
         <ContentForm action={boundUpdateRoom} initialVersion={room.version} submitLabel="Save room">
           <div className="mt-8 grid gap-8">
             <div role="group" aria-labelledby="room-details-heading">
-              <h2 id="room-details-heading" className="text-display text-xl">
+              <h2 id="room-details-heading" className="text-base font-medium">
                 Details
               </h2>
               <div className="mt-4 grid gap-4">
@@ -114,7 +115,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
             </div>
 
             <div role="group" aria-labelledby="room-amenities-heading">
-              <h2 id="room-amenities-heading" className="text-display text-xl">
+              <h2 id="room-amenities-heading" className="text-base font-medium">
                 Amenities
               </h2>
               <div className="mt-4">
@@ -123,7 +124,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
             </div>
 
             <div role="group" aria-labelledby="room-media-heading">
-              <h2 id="room-media-heading" className="text-display text-xl">
+              <h2 id="room-media-heading" className="text-base font-medium">
                 Photos and views
               </h2>
               <div className="mt-4">

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
@@ -21,16 +22,15 @@ export default async function HotelContentPage() {
     <>
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <Link href="/admin/content" className={pill('secondary')}>
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
+            Content
+          </Link>
+        </nav>
+
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              <Link href="/admin/content" className="hover:text-accent-strong">
-                Content
-              </Link>
-              {' / '}Hotel
-            </p>
-            <h1 className="text-display mt-2 text-4xl sm:text-5xl">{hotel.name}</h1>
-          </div>
+          <h1 className="text-display text-5xl sm:text-6xl">{hotel.name}</h1>
           <a href="/" target="_blank" rel="noreferrer" className={pill('secondary')}>
             Open on site
           </a>
@@ -38,7 +38,7 @@ export default async function HotelContentPage() {
 
         <ContentForm action={updateHotelAction} initialVersion={version} submitLabel="Save hotel details">
           <div role="group" aria-labelledby="hotel-basics-heading" className="mt-8 grid gap-4">
-            <h2 id="hotel-basics-heading" className="text-display text-xl">
+            <h2 id="hotel-basics-heading" className="text-base font-medium">
               Basics
             </h2>
             <HotelBasics hotel={hotel} />

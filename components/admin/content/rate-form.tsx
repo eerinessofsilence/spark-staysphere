@@ -1,6 +1,7 @@
 'use client';
 
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
+import { Switch } from '@/components/ui/switch';
 import { ContentForm } from './content-form';
 import { Field, TextInput } from './fields';
 import { OrderedStringList } from './ordered-string-list';
@@ -44,7 +45,6 @@ export function RateForm({
 }: RateFormProps) {
   return (
     <ContentForm action={formAction} initialVersion={initialVersion} submitLabel={submitLabel} extraActions={extraActions}>
-
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id={`${idPrefix}-name`} name="name" label="Name">
@@ -77,8 +77,13 @@ export function RateForm({
             defaultValue={initial.otaComparisonPrice}
           />
         </Field>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
-          <input type="checkbox" name="breakfastIncluded" defaultChecked={initial.breakfastIncluded} className="size-4" />
+        <label htmlFor={`${idPrefix}-breakfastIncluded`} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+          <Switch
+            id={`${idPrefix}-breakfastIncluded`}
+            name="breakfastIncluded"
+            defaultChecked={initial.breakfastIncluded}
+            className="shrink-0"
+          />
           Breakfast included
         </label>
         <Field id={`${idPrefix}-cancellationPolicy`} name="cancellationPolicy" label="Cancellation policy">

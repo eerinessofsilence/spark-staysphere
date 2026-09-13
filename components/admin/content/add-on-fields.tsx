@@ -1,8 +1,9 @@
 import type { AddOn } from '@/lib/domain/schemas';
+import type { MediaAsset } from '@/lib/domain/ports';
+import { Switch } from '@/components/ui/switch';
 import { AddOnNameField } from './add-on-name-field';
 import { Field, Select, TextArea, TextInput } from './fields';
 import { PhotoListEditor } from './photo-list-editor';
-import type { MediaAsset } from '@/lib/domain/ports';
 
 const PRICING_UNIT_LABELS: Record<AddOn['pricingUnit'], string> = {
   per_stay: 'Per stay',
@@ -38,7 +39,7 @@ export function AddOnFields({
   return (
     <div className="grid gap-6">
       <div role="group" aria-labelledby="addon-details-heading">
-        <h2 id="addon-details-heading" className="text-display text-xl">
+        <h2 id="addon-details-heading" className="text-base font-medium">
           Details
         </h2>
         <div className="mt-4 grid gap-4">
@@ -68,7 +69,7 @@ export function AddOnFields({
       </div>
 
       <div role="group" aria-labelledby="addon-pricing-heading">
-        <h2 id="addon-pricing-heading" className="text-display text-xl">
+        <h2 id="addon-pricing-heading" className="text-base font-medium">
           Pricing
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -88,14 +89,14 @@ export function AddOnFields({
             </Select>
           </Field>
         </div>
-        <label className="mt-4 flex min-h-11 items-center gap-2 text-sm">
-          <input type="checkbox" name="enabled" defaultChecked={initial.enabled} className="size-4" />
+        <label htmlFor="addon-enabled" className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+          <Switch id="addon-enabled" name="enabled" defaultChecked={initial.enabled} className="shrink-0" />
           On sale
         </label>
       </div>
 
       <div role="group" aria-labelledby="addon-photos-heading">
-        <h2 id="addon-photos-heading" className="text-display text-xl">
+        <h2 id="addon-photos-heading" className="text-base font-medium">
           Photos
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">A dish is chosen by sight; a service is shown by name only.</p>

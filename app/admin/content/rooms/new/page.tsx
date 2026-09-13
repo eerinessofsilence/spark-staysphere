@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { bedLabels, viewLabels } from '@/lib/formatting';
+import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
@@ -21,13 +23,14 @@ export default async function NewRoomPage() {
     <>
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/admin/content" className="hover:text-accent-strong">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <Link href="/admin/content" className={pill('secondary')}>
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
             Content
           </Link>
-          {' / '}New room type
-        </p>
-        <h1 className="text-display mt-2 text-4xl sm:text-5xl">New room type</h1>
+        </nav>
+
+        <h1 className="text-display text-5xl sm:text-6xl">New room type</h1>
         <p className="mt-4 max-w-2xl text-base text-muted-foreground">
           A new room starts hidden from the site. Once it has at least one rate and one photo, show
           it from its own page.
@@ -36,7 +39,7 @@ export default async function NewRoomPage() {
         <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type">
           <div className="mt-8 grid gap-6">
             <div role="group" aria-labelledby="identity-heading">
-              <h2 id="identity-heading" className="text-display text-xl">
+              <h2 id="identity-heading" className="text-base font-medium">
                 Identity
               </h2>
               <div className="mt-4">
@@ -45,7 +48,7 @@ export default async function NewRoomPage() {
             </div>
 
             <div role="group" aria-labelledby="details-heading">
-              <h2 id="details-heading" className="text-display text-xl">
+              <h2 id="details-heading" className="text-base font-medium">
                 Details
               </h2>
               <div className="mt-4 grid gap-4">
@@ -85,7 +88,7 @@ export default async function NewRoomPage() {
             </div>
 
             <div role="group" aria-labelledby="amenities-heading">
-              <h2 id="amenities-heading" className="text-display text-xl">
+              <h2 id="amenities-heading" className="text-base font-medium">
                 Amenities
               </h2>
               <div className="mt-4">
@@ -94,7 +97,7 @@ export default async function NewRoomPage() {
             </div>
 
             <div role="group" aria-labelledby="media-heading">
-              <h2 id="media-heading" className="text-display text-xl">
+              <h2 id="media-heading" className="text-base font-medium">
                 Photos
               </h2>
               <div className="mt-4">

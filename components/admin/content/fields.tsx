@@ -35,14 +35,14 @@ export function Field({
 }) {
   const error = useFieldError(name ?? id);
   return (
-    <div className="grid gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm text-muted-foreground">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-      {error ? (
-        <p className="text-xs font-medium text-danger" role="alert">
+      {hint ? <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p> : null}
+      {error && error.trim() ? (
+        <p role="alert" className="mt-1.5 text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}

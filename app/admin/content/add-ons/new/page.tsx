@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
+import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { AddOnFields } from '@/components/admin/content/add-on-fields';
 import { SiteFooter } from '@/components/site/site-footer';
@@ -21,13 +23,14 @@ export default async function NewAddOnPage() {
     <>
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/admin/content" className="hover:text-accent-strong">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <Link href="/admin/content" className={pill('secondary')}>
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
             Content
           </Link>
-          {' / '}New add-on
-        </p>
-        <h1 className="text-display mt-2 text-4xl sm:text-5xl">New add-on</h1>
+        </nav>
+
+        <h1 className="text-display text-5xl sm:text-6xl">New add-on</h1>
 
         <div className="mt-8">
           <ContentForm action={createAddOnAction} initialVersion={0} submitLabel="Create add-on">

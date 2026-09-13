@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
@@ -34,17 +35,15 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
     <>
       <SiteHeader />
       <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <Link href="/admin/content" className={pill('secondary')}>
+            <ArrowLeftIcon className="size-4" aria-hidden="true" />
+            Content
+          </Link>
+        </nav>
+
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              <Link href="/admin/content" className="hover:text-accent-strong">
-                Content
-              </Link>
-              {' / '}
-              {addOn.name}
-            </p>
-            <h1 className="text-display mt-2 text-4xl sm:text-5xl">{addOn.name}</h1>
-          </div>
+          <h1 className="text-display text-5xl sm:text-6xl">{addOn.name}</h1>
           <div className="flex flex-col items-end gap-3">
             <a href="/rooms" target="_blank" rel="noreferrer" className={pill('secondary')}>
               Open on site
