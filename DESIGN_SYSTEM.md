@@ -207,6 +207,14 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   catalog category from its name, an add-on's card mark from its name) shows that derived value or
   mark right beside the field, live as it's typed, rather than leaving it invisible until the page
   is saved and reloaded.
+- **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
+  shell rather than the guest header — a 28px card sidebar on a desk (brand, the property,
+  navigation grouped as Operations, Content and Settings, the guest-site link, the signed-in
+  account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
+  current page takes the primary fill, the way the catalog's layout segment marks its active
+  option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
+  `AdminPage` and `AdminPageHeader`. Anything a screen shows without real data behind it carries a
+  visible demo label.
 
 ## Motion
 

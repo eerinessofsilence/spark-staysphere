@@ -37,6 +37,8 @@ npm run test:e2e     # Playwright golden path; needs `npx playwright install chr
 ## Architecture
 
 - `app/`: routes, layouts, route-level UI, server actions, and `app/api` route handlers.
+  `app/admin/layout.tsx` wraps every admin route in the back-office shell
+  (`components/admin/shell/`: sidebar, phone menu sheet, `AdminPage`/`AdminPageHeader`).
   `app/admin/content/`: the CMS — six routes (overview, hotel, room `[id]`/`new`, add-on
   `[id]`/`new`), each `export const dynamic = 'force-dynamic'` and its own `actions.ts`; `_lib/`
   holds the shared `revalidateContent()` helper and the `ContentResult` → form-state mapping.
@@ -48,10 +50,11 @@ npm run test:e2e     # Playwright golden path; needs `npx playwright install chr
 - `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`.
 - `lib/domain/`: Zod schemas, inferred types, and ports — including `CatalogContentPort` (the
   CMS's storage boundary), `MediaLibraryPort`, `catalog-overlay.ts`'s seed+overlay merge, and
-  `media.ts`'s media-asset predicates.
+  `media.ts`'s media-asset predicates, and `room-units.ts` — physical rooms derived from room types
+  and `allocateRoomType`, the one rule for who is in which room each night.
 - `lib/application/`: use cases and business rules, including `content-service.ts` — every CMS
   business rule (slugs, references, currency, media, concurrency), never in a component or a
-  server action.
+  server action — and `inventory-service.ts`, the floor plan, the chessboard and a booking's room.
 - `lib/application/container.ts`: the composition root — the only module allowed to import
   `lib/infrastructure`.
 - `lib/infrastructure/`: mock data and adapter/repository implementations, including the CMS

@@ -44,8 +44,8 @@ overrides, add-on enablement, integration status rows).
 
 ## Persistence
 
-Bookings, payment attempts, room-status overrides, add-on toggles, and confirmed-booking
-inventory holds are durable: `lib/application/container.ts` exports
+Bookings (and the room a guest chose, in `booking_units`), payment attempts, room-status overrides,
+and confirmed-booking inventory holds are durable: `lib/application/container.ts` exports
 `durableHotelRepository`/`durableDemoControlPort` (`lib/infrastructure/durable-hotel-repository.ts`),
 which resolve a D1 binding *at call time* (never once at module load, since `env` bindings are
 only guaranteed once a request is in flight — see `lib/infrastructure/cloudflare-env.ts`) and read
@@ -138,6 +138,35 @@ the same as its DOM `id`). Reorderable lists (`amenities`, a rate's `includedSer
 serialized into one hidden JSON input the server action reads back with `parseJsonList`. The media
 picker is the shared product `Modal`, listing the manifest with a folder filter.
 
+## Physical rooms, the floor plan and the chessboard
+
+The catalog sells room types; a floor plan and a PMS chessboard need doors. `lib/domain/room-units.ts`
+derives every physical room from the same unit counts availability already sells (`unitsFor`), so
+the catalog, the guest floor plan and the back office can never report a different number of rooms.
+Rooms are numbered floor by floor (`305`), sea facade first, and a room's facade follows from its view
+(sea and pool → sea side, city and garden → town side). Numbers are always derived from every room
+type, hidden ones included, so they stay stable when the CMS hides a type.
+
+`allocateRoomType` is the one rule for who is in which room on each night, and both views call it:
+bookings that named a room get it; other confirmed bookings go, in booking order, to the
+lowest-ranked room free for their whole stay (a stay never changes rooms mid-way); whatever
+availability still counts as taken fills the lowest-ranked free rooms as simulated demand, or as
+closed when an admin override is behind it. Ranks are hashed per room type so occupied doors scatter.
+`InventoryService` (`lib/application/inventory-service.ts`) exposes it as `getFloorPlan` (one stay,
+guest-facing, hidden types left out), `getChessboard` (every room across a window of nights, with
+bookings, demand, closures and daily arrivals and departures) and `getBookingRoom`. Simulated demand
+is cut into 2–5-night blocks only so the chessboard reads like a PMS, and is labelled as simulated
+wherever it appears.
+
+A booking may carry `unitNumber`, the room the guest picked. `booking-intake.ts` checks that room is
+free for the stay (`isUnitFreeForStay`) before confirming — skipped on an idempotent replay, which
+would otherwise find the room taken by itself — and refuses with `unavailable`. It is stored in
+`booking_units (booking_id, unit_number)`, joined into every booking read; a separate table because
+there is no migration runner to `ALTER` `bookings`. Known gaps: two concurrent requests for the same
+room can both pass the check (in production the PMS owns room assignment), and because chosen rooms
+are honoured booking by booking, the rooms free for a whole stay can occasionally number fewer than
+the catalog's per-night minimum.
+
 ## AI concierge
 
 A guest can describe what they want in their own words — voice or text — from a persistent
@@ -202,6 +231,8 @@ Implemented as route handlers in this app; there is no separate API service.
   `paymentMethod` (`card` | `apple_pay` | `google_pay` | `bank_transfer` | `pay_at_hotel`) is
   optional and defaults to `card`; the two that settle later record a `demo_pending` payment
   attempt instead of an authorization.
+  An optional `unitNumber` (e.g. `"402"`) books that exact room; it must belong to the room type and
+  be free for the whole stay, or the request gets 409 `unavailable`.
 - `GET /api/bookings/:reference` — reads a booking from the current process.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather
