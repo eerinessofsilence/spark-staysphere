@@ -194,6 +194,19 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   compositor layer. The fill is the warm white of the ink pills, not plain white, which over a
   blue sea would read as grey. The dark counterpart is the same class under `.dark`, so a panel
   can never be frosted white on a dark page.
+- **CMS forms** (`/admin/content`, `components/admin/content/`): the one place the product has a
+  data-entry form of any size, so it gets its own small set of shared pieces rather than each page
+  composing `fieldClass` by hand. `ContentForm` is the shell — `useActionState`, the field-error
+  context every `Field` reads its own error from (by the server action's Zod key, not the DOM
+  `id`), the conflict/rule-violation banner, a `role="status"` success message, the save button's
+  own pending state, and a `beforeunload` warning once something has changed. A reorderable list
+  (`amenities`, a rate's included services, a room's photos) is rows with up/down/remove
+  `iconButton`s and one hidden JSON input, never a drag-and-drop library. The media picker is the
+  shared `Modal`, listing the committed manifest with a folder filter — no free-text URL field
+  exists anywhere in the CMS. A field whose value is derived elsewhere in the product (a room's
+  catalog category from its name, an add-on's card mark from its name) shows that derived value or
+  mark right beside the field, live as it's typed, rather than leaving it invisible until the page
+  is saved and reloaded.
 
 ## Motion
 

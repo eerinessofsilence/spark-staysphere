@@ -67,9 +67,76 @@ statement must be a single line: `D1Database.exec()` splits its input on `\n`, n
 multi-line `CREATE TABLE` silently breaks into unparsable fragments; schema init uses `batch()`
 with one prepared statement per table instead.
 
-The room/rate/add-on *catalog* (names, prices, descriptions) is never written to D1 — it stays
-static seed data in `mock-data.ts` in both backends, since nothing in the guest or admin UI edits
-it. Only the state a booking or an admin action actually mutates is durable.
+The room/rate/add-on *catalog* (names, prices, descriptions) is never written directly — the seed
+in `mock-data.ts` stays fixed in every backend. What `/admin/content` edits is an overlay on top of
+it: see "Content management (CMS)" below.
+
+## Content management (CMS)
+
+`/admin/content` lets a hotel team edit the hotel's copy, room types, rates, and add-ons without a
+deploy — but the seed in `mock-data.ts` is never mutated. Every edit is a row in one D1 table,
+`catalog_entries (kind, id, hotel_id, data, version, updated_at)`, keyed by `(kind, id)` where
+`kind` is `'hotel' | 'room' | 'rate' | 'addon'` and `data` is the full entity as JSON. A row with
+an id the seed already has *replaces* that entity wholesale; a new id is a new entity. "Reset demo
+state" on `/admin` clears the whole table for the hotel, so the catalog falls back to seed.
+
+```text
+Seed (mock-data.ts)  ──┐
+                        ├─▶ mergeCatalog (lib/domain/catalog-overlay.ts) ─▶ HotelRepository read
+CMS overlay (D1)     ──┘
+```
+
+`lib/domain/catalog-overlay.ts`'s `mergeCatalog` is the one merge function both the D1 and
+in-memory backends call — `durable-hotel-repository.ts`'s `getHotel`/`listRooms`/`listRatePlans`/
+`listAddOns` fetch the seed array and the matching overlay rows (through `CatalogContentPort`,
+resolved D1-or-in-memory the same way and at the same call time as the rest of that file) and merge
+them. `HotelRepository` reads are therefore always the *current* catalog, CMS-hidden rooms
+included — hiding a room from guests is a business rule, not a storage rule, so it lives in
+`CatalogService.getHotel`/`search`/`getRoomDetail` instead (a hidden room's hotspots, floor zones,
+and spinner markers are stripped from the guest-facing `Hotel`; `search`/`getRoomDetail` exclude
+it, the latter via the existing `RoomNotFoundError` → 404). `/admin/content` reads through
+`HotelRepository` directly, unfiltered, since a hotel team needs to see and edit a hidden room's
+hotspot too.
+
+`lib/application/content-service.ts` owns every business rule a write has to pass: kebab-case,
+unique, immutable-after-creation slugs; a rate's `roomTypeId` and an add-on's `parentId` must
+reference an existing entity (parent one level deep, no self-reference); a visible (non-hidden)
+room needs at least one rate and one `image` media item, checked both when a room is edited and
+when it is un-hidden; every price's currency must equal the hotel's; a media `url` must resolve in
+the media library, and a `360` item must be an equirectangular (2:1) file from
+`public/images/panoramas`; an entity referenced by any booking can only be hidden or withdrawn,
+never deleted, and a hard delete is refused for anything that came from the seed regardless
+(`content-service.ts`'s own `seedIds`, built in `container.ts` from `mock-data.ts` — the only place
+that touches infrastructure directly, per the container-only-import rule). Every write is
+optimistic-concurrency-checked: `CatalogContentPort.upsertEntry` takes an `expectedVersion` (`0`
+for an entity never overlaid) and returns a conflict, writing nothing, if the stored version has
+moved on. `assertCanEditContent()` is the single authorization choke point — it always allows for
+now (auth is CLAUDE.md's roadmap step 8) — every mutator in `content-service.ts` calls it first.
+
+An add-on's `enabled` flag used to live in its own `addon_toggles` D1 table, written only by
+`/admin`'s quick switch. It is now just a field on the add-on entity, written through the same
+overlay path from both `/admin`'s switch and the CMS's own form
+(`ContentService.setAddOnEnabled`), so the two can never disagree about which value won; the old
+table's `CREATE TABLE` was dropped from `d1-schema.ts` (an already-provisioned local D1 keeps an
+unused, harmless copy — there is no migration runner).
+
+There is no upload path in v1 (`.openai/hosting.json` has `r2: null`). The whole media library is
+`public/images/**`, minus the spinner's orbit frames, read into a committed JSON manifest by
+`scripts/generate-media-manifest.mjs` (`npm run generate:media-manifest`) — width/height are parsed
+straight out of each WebP's own header bytes (`VP8 `/`VP8L`/`VP8X`), no image library. `MediaAsset`/
+`MediaLibraryPort` (declared in `lib/domain/ports.ts`) are what `content-service.ts` validates media
+urls against; `MediaStoragePort` is declared alongside them for a future upload adapter, not
+implemented.
+
+`/admin/content`'s forms are server actions with Zod validation, driven by `useActionState`
+through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm` —
+the field-error banner, the `role="status"` success message, the save button's pending state, and
+a `beforeunload` warning once a field has changed. `Field` (`components/admin/content/fields.tsx`)
+reads its own error out of that wrapper's context by the Zod field-error key (`name`, not always
+the same as its DOM `id`). Reorderable lists (`amenities`, a rate's `includedServices`, a room's
+`media`, an add-on's `photos`) have no drag-and-drop library — up/down/remove buttons, with state
+serialized into one hidden JSON input the server action reads back with `parseJsonList`. The media
+picker is the shared product `Modal`, listing the manifest with a folder filter.
 
 ## AI concierge
 
@@ -139,6 +206,8 @@ Implemented as route handlers in this app; there is no separate API service.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather
 than fetching these routes, and `/admin` writes through server actions on the `DemoControlPort`.
+`/admin/content` is server actions only too (`app/admin/content/**/actions.ts`, through
+`ContentService`) — the CMS added no new HTTP routes.
 
 Still to build when a real backend exists: `GET /hotels/:slug`, `GET /hotels/:id/rooms`,
 `POST /holds` as a standalone call, and authenticated admin endpoints.
@@ -188,11 +257,14 @@ the scene's colours off the page's own tokens.
 
 ## Current limitations
 
-Demo state is process-local and resets with the worker isolate — bookings, availability overrides,
-and add-on enablement do not survive a restart, and are not shared between isolates. There is no
-database, no auth on `/admin`, no real payment, and no PMS, channel manager, or OTA connection.
-Downstream CRM/PMS delivery is best-effort and swallowed on failure; production needs a queue with
-retries. The photographs are licensed stock standing in for the property's own and must be
-replaced before any real launch. The AI concierge's rate limiter is per-isolate, not shared; without
-`OPENAI_API_KEY` its search still works (the keyword interpreter) but its mic does not (no
-transcription fallback exists).
+Without a D1 binding, demo state (including the CMS overlay) is process-local and resets with the
+worker isolate. There is no auth on `/admin` or `/admin/content` — `assertCanEditContent()` in
+`content-service.ts` is a no-op until CLAUDE.md's roadmap step 8 — no real payment, and no PMS,
+channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
+failure; production needs a queue with retries. The photographs are licensed stock standing in for
+the property's own and must be replaced before any real launch; the CMS has no upload path to do
+that with yet (`MediaStoragePort` is declared, not implemented — see "Content management (CMS)").
+The CMS itself has no drafts, version history, or scheduled publishing (every save is immediate and
+live), and supports one hotel at a time, though every overlay row already carries a `hotel_id`. The
+AI concierge's rate limiter is per-isolate, not shared; without `OPENAI_API_KEY` its search still
+works (the keyword interpreter) but its mic does not (no transcription fallback exists).
