@@ -67,7 +67,11 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   return (
     <RoomPricing roomSlug={room.slug} criteria={criteria} quote={quote}>
       <SiteHeader stayQuery={stayQuery} />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
+      {/* No bottom clearance for the mobile book bar here: the footer right
+          below already reserves it at the true bottom of the page
+          (`clearsFloatingBar`), so adding it here too just doubled the gap
+          between the summary card and the footer, with nothing in it. */}
+      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
