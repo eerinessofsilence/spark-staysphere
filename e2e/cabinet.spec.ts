@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator } from '@playwright/test';
 
 function isoDaysFromNow(days: number): string {
   const date = new Date();
@@ -18,6 +18,19 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
     await act();
     await effect();
   }).toPass({ timeout: 20_000, intervals: [250, 500, 1000] });
+}
+
+/** A checkbox settles after a round trip; guard on its state so a retry never toggles it back. */
+async function check(box: Locator) {
+  await actUntil(
+    async () => {
+      if ((await box.getAttribute('aria-checked')) !== 'true') {
+        await box.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+        await box.click();
+      }
+    },
+    () => expect(box).toHaveAttribute('aria-checked', 'true', { timeout: 3_000 }),
+  );
 }
 
 async function bookFreeDeluxeRoom(request: APIRequestContext, project: string) {
@@ -84,4 +97,52 @@ test('a room the guest chose shows on that room in the chessboard', async ({ pag
     'href',
     `/admin/bookings/${reference}`,
   );
+});
+
+test('a guest picks a room on the floor plan, books it, and the back office sees that room', async ({
+  page,
+}) => {
+  const checkIn = isoDaysFromNow(offset + 20);
+  const checkOut = isoDaysFromNow(offset + 23);
+  await page.goto(`/rooms?layout=plan&checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=0`);
+
+  const free = page.getByRole('button', { name: /^Room \w{3,4}, .+\. Free for your dates$/ }).first();
+  await expect(free).toBeVisible();
+  const room = (await free.getAttribute('aria-label'))!.match(/^Room (\w{3,4}),/)![1]!;
+
+  const bookLink = page.getByRole('link', { name: `Book room ${room}` });
+  await actUntil(
+    async () => {
+      if (!(await bookLink.isVisible())) await free.click();
+    },
+    () => expect(bookLink).toBeVisible({ timeout: 3_000 }),
+  );
+  const slug = (await bookLink.getAttribute('href'))!.match(/^\/book\/([^?]+)\?/)![1]!;
+
+  await bookLink.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Complete your stay' })).toBeVisible();
+  await expect(page.getByText(`Room ${room}`).first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel('First name').fill(guest.firstName);
+  await page.getByLabel('Last name').fill(guest.lastName);
+  await page.getByLabel('Email').fill(guest.email);
+  await page.getByLabel('Phone').fill(guest.phone);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await check(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }));
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Confirm demo booking' }).click();
+
+  await expect(page).toHaveURL(/\/booking\/AC-/, { timeout: 20_000 });
+  await expect(page.getByText(`Room ${room}`)).toBeVisible();
+  const reference = (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
+
+  await page.goto(`/admin/chessboard?from=${checkIn}&type=room_${slug}`);
+  await expect(
+    page
+      .getByRole('group', { name: `Room ${room}` })
+      .getByRole('button', { name: new RegExp(`^Booking ${reference},.*room chosen by guest$`) }),
+  ).toBeVisible();
 });
