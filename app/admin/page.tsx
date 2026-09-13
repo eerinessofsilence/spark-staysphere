@@ -95,7 +95,7 @@ export default async function AdminPage() {
         </dl>
 
         <section aria-labelledby="rooms-heading" className="mt-12">
-          <h2 id="rooms-heading" className="text-display text-3xl">
+          <h2 id="rooms-heading" className="text-display text-2xl sm:text-3xl">
             Rooms and availability
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -156,7 +156,7 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="addons-heading" className="mt-12">
-          <h2 id="addons-heading" className="text-display text-3xl">
+          <h2 id="addons-heading" className="text-display text-2xl sm:text-3xl">
             Add-ons
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -200,7 +200,7 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="bookings-heading" className="mt-12">
-          <h2 id="bookings-heading" className="text-display text-3xl">
+          <h2 id="bookings-heading" className="text-display text-2xl sm:text-3xl">
             Bookings in this demo session
           </h2>
 
@@ -303,7 +303,7 @@ export default async function AdminPage() {
         </section>
 
         <section aria-labelledby="integrations-heading" className="mt-12 mb-4">
-          <h2 id="integrations-heading" className="text-display text-3xl">
+          <h2 id="integrations-heading" className="text-display text-2xl sm:text-3xl">
             Integrations
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">

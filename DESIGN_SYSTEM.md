@@ -149,7 +149,7 @@ breakpoints.
 | Page title, compact | 36px → 48px | `text-4xl sm:text-5xl` | Utility pages: error, not-found |
 | Page title, minimal | 24px → 30px | `text-2xl sm:text-3xl` | Room detail — the name sits directly above the gallery, so it doesn't compete with the photo the way a standalone page title can |
 | Section heading | 36px → 48px | `text-4xl sm:text-5xl` | Home page marketing sections (About, Rooms, Rest of the rooms) |
-| Subsection heading | 30px | `text-3xl` | In-page sections: room detail (amenities, rate, policies, add-ons), admin panels, empty states |
+| Subsection heading | 24px → 30px | `text-2xl sm:text-3xl` | In-page sections: room detail (amenities, rate, policies, add-ons), admin panels, empty states |
 | Compact heading | 24px | `text-2xl` | Dialogs, booking-flow step headers, summary-card titles (room name in a sidebar) |
 | Card title, full-width | 24px | `text-2xl` | Room name in a list row, or standalone card |
 | Card title, home rail | 20px | `text-xl` | Room name on the home page's horizontal room rail |

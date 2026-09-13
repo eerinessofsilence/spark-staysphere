@@ -88,7 +88,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
     <div className="mt-10">
       {trips.length === 0 ? (
         <div className="rounded-[28px] border border-dashed border-border p-10 text-center">
-          <h2 className="text-display text-3xl">No trips yet</h2>
+          <h2 className="text-display text-2xl sm:text-3xl">No trips yet</h2>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
             Bookings you make here are listed on this page. Booked on another device? Find it with
             your reference below.

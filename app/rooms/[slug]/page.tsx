@@ -107,7 +107,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
 
             <section aria-labelledby="amenities-heading" className="mt-20">
               <div className="flex flex-wrap items-end gap-4">
-                <h2 id="amenities-heading" className="text-display text-3xl">
+                <h2 id="amenities-heading" className="text-display text-2xl sm:text-3xl">
                   In the room
                 </h2>
                 <ScrollArrows targetId="amenities-rail" className="ml-auto" />
@@ -149,7 +149,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="rate-heading" className="mt-20">
-              <h2 id="rate-heading" className="text-display text-3xl">
+              <h2 id="rate-heading" className="text-display text-2xl sm:text-3xl">
                 {ratePlan.name}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">Included at no extra cost.</p>
@@ -178,7 +178,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="policies-heading" className="mt-20">
-              <h2 id="policies-heading" className="text-display text-3xl">
+              <h2 id="policies-heading" className="text-display text-2xl sm:text-3xl">
                 Check-in &amp; check-out
               </h2>
               {/* The hours a guest actually plans a flight or a taxi around,
@@ -234,7 +234,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="addons-heading" className="mt-20">
-              <h2 id="addons-heading" className="text-display text-3xl">
+              <h2 id="addons-heading" className="text-display text-2xl sm:text-3xl">
                 Add services
               </h2>
               <p className="mt-2 mb-5 text-sm text-muted-foreground">
@@ -246,7 +246,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             {/* The kitchen sells through the same engine, but it is a different decision. */}
             {dining.some((addOn) => addOn.enabled && !addOn.parentId) ? (
               <section aria-labelledby="dining-heading" className="mt-20">
-                <h2 id="dining-heading" className="text-display text-3xl">
+                <h2 id="dining-heading" className="text-display text-2xl sm:text-3xl">
                   Order from the kitchen
                 </h2>
                 <p className="mt-2 mb-5 text-sm text-muted-foreground">

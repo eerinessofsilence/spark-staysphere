@@ -126,7 +126,7 @@ function EmptyResults({
         <MagnifyingGlassIcon className="size-5" aria-hidden="true" />
       </span>
       <div>
-        <h2 className="text-display text-3xl">No rooms match those filters</h2>
+        <h2 className="text-display text-2xl sm:text-3xl">No rooms match those filters</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
           Your dates and party size are still applied. Clearing the filters will show every room
           type that sleeps {criteria.adults + criteria.children}.
