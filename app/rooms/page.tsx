@@ -2,18 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
-import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
+import { catalogService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
 import {
   buildQuery,
   parseCriteria,
   parseFilters,
   parseLayout,
+  parseRoomNumber,
   toIsoDate,
   type CatalogLayout,
 } from '@/lib/application/search-params';
 import { formatDateRange, formatGuests, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
+import { FloorPlan } from '@/components/rooms/floor-plan/floor-plan';
 import { LayoutToggle } from '@/components/rooms/layout-toggle';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomFiltersPanel } from '@/components/rooms/room-filters';
@@ -35,6 +37,8 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
   const today = toIsoDate(new Date());
 
   const result = await catalogService.search(DEMO_HOTEL_SLUG, criteria, filters);
+  const plan =
+    layout === 'plan' ? await inventoryService.getFloorPlan(DEMO_HOTEL_SLUG, criteria, filters) : null;
   const { offers, facets } = result;
 
   const stayQuery = buildQuery({ criteria, filters, layout });
@@ -80,11 +84,27 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
 
           <section aria-label="Search results">
             <div className="flex flex-wrap items-center justify-end gap-2 pb-5">
+              {plan ? (
+                <p className="mr-auto text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {plan.availableCount} of {plan.units.length}
+                  </span>{' '}
+                  {plan.availableCount === 1 ? 'room is' : 'rooms are'} free for{' '}
+                  {formatDateRange(criteria.checkIn, criteria.checkOut)}
+                </p>
+              ) : null}
               <LayoutToggle criteria={criteria} filters={filters} layout={layout} />
-              <SortSelect criteria={criteria} filters={filters} layout={layout} />
+              {plan ? null : <SortSelect criteria={criteria} filters={filters} layout={layout} />}
             </div>
 
-            {offers.length === 0 ? (
+            {plan ? (
+              <FloorPlan
+                units={plan.units}
+                floors={plan.floors}
+                criteria={criteria}
+                initialRoom={parseRoomNumber(params)}
+              />
+            ) : offers.length === 0 ? (
               <EmptyResults criteria={criteria} layout={layout} />
             ) : (
               <div

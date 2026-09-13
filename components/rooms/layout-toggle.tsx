@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Bars3Icon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { Bars3Icon, BuildingOffice2Icon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import type { RoomFilters } from '@/lib/application/catalog-service';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
@@ -17,6 +17,7 @@ interface LayoutToggleProps {
 const options: { value: CatalogLayout; label: string; icon: typeof Bars3Icon }[] = [
   { value: 'grid', label: 'Grid', icon: Squares2X2Icon },
   { value: 'list', label: 'List', icon: Bars3Icon },
+  { value: 'plan', label: 'Floor plan', icon: BuildingOffice2Icon },
 ];
 
 /**

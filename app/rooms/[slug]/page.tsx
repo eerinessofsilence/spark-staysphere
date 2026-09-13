@@ -13,6 +13,7 @@ import {
   ArrowLeftIcon,
   ArrowLeftStartOnRectangleIcon,
   ArrowRightEndOnRectangleIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
@@ -99,6 +100,13 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   </li>
                 ))}
               </ul>
+              <Link
+                href={`/rooms?${buildQuery({ criteria, layout: 'plan' })}`}
+                className={pill('secondary', 'mt-5')}
+              >
+                <BuildingOffice2Icon className="size-4" aria-hidden="true" />
+                Choose your exact room on the floor plan
+              </Link>
             </div>
 
             <section aria-labelledby="amenities-heading" className="mt-20">
