@@ -23,6 +23,9 @@ const addOnSchema = z.object({ addOnId: z.string().min(1), enabled: z.boolean() 
 function refresh() {
   revalidatePath('/admin');
   revalidatePath('/admin/content');
+  revalidatePath('/admin/rates');
+  revalidatePath('/admin/bookings');
+  revalidatePath('/admin/chessboard');
   revalidatePath('/rooms');
   revalidatePath('/');
 }

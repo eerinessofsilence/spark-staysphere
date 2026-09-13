@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 const overrideOptions: { value: RoomStatus | 'auto'; label: string }[] = [
-  { value: 'auto', label: 'Auto (simulated demand)' },
+  { value: 'auto', label: 'Auto (simulated)' },
   { value: 'available', label: statusLabels.available },
   { value: 'limited', label: statusLabels.limited },
   { value: 'last_room', label: statusLabels.last_room },
@@ -82,6 +82,7 @@ export function AddOnToggle({
     <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
       <Switch
         id={id}
+        aria-label={addOnName}
         checked={enabled}
         disabled={pending}
         onCheckedChange={async (checked) => {

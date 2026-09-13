@@ -1,358 +1,238 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowsClockwise, Plugs, Prohibit } from '@phosphor-icons/react/dist/ssr';
-import { pill } from '@/lib/ui';
-import { defaultRoomFilters } from '@/lib/application/catalog-service';
+import { addDays, parseISO } from 'date-fns';
+import { CalendarBlank, CheckCircle, MinusCircle } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import {
-  bookingService,
-  catalogService,
   demoControl,
   DEMO_HOTEL_SLUG,
   hotelRepository,
+  inventoryService,
 } from '@/lib/application/container';
-import { parseCriteria } from '@/lib/application/search-params';
-import type { IntegrationStatus, RoomStatus } from '@/lib/domain/schemas';
-import {
-  formatDate,
-  formatDateRange,
-  formatGuests,
-  formatMoney,
-  formatPricingUnit,
-  paymentMethodLabels,
-  viewLabels,
-} from '@/lib/formatting';
-import { AddOnToggle, ResetDemoButton, RoomStatusControl } from '@/components/admin/room-controls';
-import { StatusBadge } from '@/components/rooms/status-badge';
-import { SectionLabel } from '@/components/site/section-label';
+import type { ChessboardDay } from '@/lib/application/inventory-service';
+import { toIsoDate } from '@/lib/application/search-params';
+import { nightsBetween } from '@/lib/domain/pricing';
+import type { Booking } from '@/lib/domain/schemas';
+import { formatDateRange, formatDateShort, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
+import { pill } from '@/lib/ui';
+import { ResetDemoButton } from '@/components/admin/room-controls';
+import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
+import { adapterLabels } from '@/components/admin/operations/labels';
+import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
+import { TableCard, Td, Th } from '@/components/admin/operations/table';
+import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export const metadata: Metadata = {
-  title: 'Hotel admin demo — Asteria Cove | SPARK StaySphere 360',
+  title: 'Overview — Hotel admin | SPARK StaySphere 360',
 };
 
-/** Demo state is process-local, so this page must never be cached. */
 export const dynamic = 'force-dynamic';
 
-const adapterLabels: Record<IntegrationStatus['adapter'], string> = {
-  pms: 'Property management system',
-  channel_manager: 'Channel manager',
-  booking_engine: 'Booking engine',
-  payment: 'Payment provider',
-  crm: 'CRM',
-};
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
 
-export default async function AdminPage() {
-  const criteria = parseCriteria({});
-  const [{ hotel, offers }, integrations, bookings] = await Promise.all([
-    catalogService.search(DEMO_HOTEL_SLUG, criteria, {
-      ...defaultRoomFilters,
-      // Show every room type, including any that cannot sleep the default party.
-      includeSoldOut: true,
-    }),
-    demoControl.listIntegrationStatuses(),
+function tonightSentence(day: ChessboardDay | undefined, totalRooms: number): string {
+  if (!day) return '';
+  const share = totalRooms > 0 ? Math.round((day.occupied / totalRooms) * 100) : 0;
+  const movement = [
+    day.arrivals > 0 ? plural(day.arrivals, 'booking arrives', 'bookings arrive') : null,
+    day.departures > 0 ? plural(day.departures, 'booking checks out', 'bookings check out') : null,
+  ].filter((part): part is string => part !== null);
+  return `Tonight ${day.occupied} of ${totalRooms} rooms are occupied (${share}%), including simulated demand. ${
+    movement.length > 0 ? `${movement.join(' and ')} today.` : 'No demo bookings arrive or leave today.'
+  }`;
+}
+
+export default async function AdminOverviewPage() {
+  const today = toIsoDate(new Date());
+  const [board, bookings, integrations] = await Promise.all([
+    inventoryService.getChessboard(DEMO_HOTEL_SLUG, today, 14),
     hotelRepository.listBookings(),
+    demoControl.listIntegrationStatuses(),
   ]);
-
+  const { hotel } = board;
   const rooms = await hotelRepository.listRooms(hotel.id);
-  const allOffers = rooms.map((room) => ({
-    room,
-    offer: offers.find((candidate) => candidate.room.id === room.id) ?? null,
-  }));
+  const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
 
-  const overrides = await Promise.all(
-    rooms.map(async (room) => [room.id, await demoControl.getRoomStatusOverride(room.id)] as const),
-  );
-  const overrideMap = new Map<string, RoomStatus | null>(overrides);
-
-  const addOns = await hotelRepository.listAddOns(hotel.id);
-  const confirmations = await Promise.all(
-    bookings.map((booking) => bookingService.getConfirmation(booking.reference)),
-  );
-
-  const revenue = bookings.reduce((sum, booking) => sum + booking.total, 0);
+  const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const confirmed = sorted.filter((booking) => booking.status === 'confirmed');
+  const revenue = confirmed.reduce((sum, booking) => sum + booking.total, 0);
+  const weekEnd = toIsoDate(addDays(parseISO(today), 7));
+  const arriving = confirmed
+    .filter((booking) => booking.checkIn >= today && booking.checkIn < weekEnd)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+  const leaving = confirmed
+    .filter((booking) => booking.checkOut >= today && booking.checkOut < weekEnd)
+    .sort((a, b) => a.checkOut.localeCompare(b.checkOut));
+  const recent = sorted.slice(0, 5);
 
   return (
-    <>
-      <main id="main" className="mx-auto w-full max-w-[1400px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <SectionLabel>Hotel admin · demo</SectionLabel>
-            <h1 className="text-display mt-4 text-5xl sm:text-6xl">{hotel.name} operations</h1>
-            <p className="mt-4 max-w-2xl text-base text-muted-foreground">
-              Controls below write to the in-memory demo state only. A production admin writes
-              through the PMS adapter, and inventory stays owned by the PMS or channel manager.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/admin/content" className={pill('secondary')}>
-              Site content
-            </Link>
+    <AdminPage>
+      <AdminPageHeader
+        label="Hotel admin · demo"
+        title={hotel.name}
+        description={tonightSentence(board.days[0], board.totalRooms)}
+        actions={
+          <>
             <ResetDemoButton />
-          </div>
-        </header>
+            <Link href="/admin/chessboard" className={pill('primary')}>
+              Open chessboard
+            </Link>
+          </>
+        }
+      />
 
-        <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-6">
-          <Metric label="room types" value={String(rooms.length)} />
-          <Metric label="bookings this session" value={String(bookings.length)} />
-          <Metric label="demo revenue" value={formatMoney(revenue, hotel.currency)} />
-        </dl>
+      <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-6">
+        <Metric label="rooms in the building" value={String(board.totalRooms)} />
+        <Metric
+          label={confirmed.length === 1 ? 'confirmed demo booking' : 'confirmed demo bookings'}
+          value={String(confirmed.length)}
+        />
+        <Metric label="demo revenue from confirmed stays" value={formatMoney(revenue, hotel.currency)} />
+      </dl>
 
-        <section aria-labelledby="rooms-heading" className="mt-12">
-          <h2 id="rooms-heading" className="text-display text-3xl">
-            Rooms and availability
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Status is simulated per date. Setting an override forces that status for every date and
-            immediately changes what guests see in the catalog.
+      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <OccupancyChart days={board.days} totalRooms={board.totalRooms} />
+
+        <section aria-labelledby="week-heading" className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+          <h3 id="week-heading" className="font-medium">
+            Next 7 days
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Demo bookings arriving and leaving. Simulated demand isn&apos;t listed.
           </p>
+          {arriving.length === 0 && leaving.length === 0 ? (
+            <p className="mt-6 rounded-2xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+              No demo arrivals or departures this week. A booking that starts within seven days shows up here.
+            </p>
+          ) : (
+            <div className="mt-5 grid gap-6">
+              <Movements title="Arriving" bookings={arriving} dates={arriving.map((booking) => booking.checkIn)} roomNames={roomNames} />
+              <Movements title="Leaving" bookings={leaving} dates={leaving.map((booking) => booking.checkOut)} roomNames={roomNames} />
+            </div>
+          )}
+        </section>
+      </div>
 
-          <div className="relative mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
-            <table className="w-full min-w-[46rem] border-collapse text-sm">
-              <caption className="sr-only">
-                Room types with their current demo status and availability override
-              </caption>
+      <section aria-labelledby="recent-heading" className="mt-12">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 id="recent-heading" className="text-display text-3xl">
+            Recent bookings
+          </h2>
+          {recent.length > 0 ? (
+            <Link href="/admin/bookings" className={pill('secondary')}>
+              All bookings
+              <ArrowRightIcon className="size-4" aria-hidden="true" />
+            </Link>
+          ) : null}
+        </div>
+
+        {recent.length === 0 ? (
+          <div className="mt-5 flex flex-col items-center gap-3 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+            <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
+              <CalendarBlank weight="fill" className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="text-display text-2xl">No bookings yet</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Complete a demo booking on the guest site and it appears here, on the chessboard, and in
+                Bookings.
+              </p>
+            </div>
+            <Link href="/rooms" className={pill('primary')}>
+              Make a demo booking
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-5">
+            <TableCard caption="The five most recent demo bookings" className="min-w-[50rem]">
               <thead>
-                <tr className="border-b border-border text-left">
-                  <Th>Room type</Th>
-                  <Th>Specs</Th>
-                  <Th>Rate</Th>
-                  <Th>Status for the demo stay</Th>
-                  <Th>Override</Th>
+                <tr className="border-b border-border">
+                  <Th>Reference</Th>
+                  <Th>Guest</Th>
+                  <Th>Room</Th>
+                  <Th>Stay</Th>
+                  <Th className="text-right">Total</Th>
+                  <Th>Status</Th>
                 </tr>
               </thead>
               <tbody>
-                {allOffers.map(({ room, offer }) => (
-                  <tr key={room.id} className="border-b border-border last:border-b-0">
-                    <Td>
-                      <Link href={`/rooms/${room.slug}`} className="font-medium hover:text-accent-strong">
-                        {room.name}
+                {recent.map((booking) => (
+                  <tr key={booking.id} className="border-b border-border last:border-b-0">
+                    <Td className="whitespace-nowrap">
+                      <Link
+                        href={`/admin/bookings/${booking.reference}`}
+                        className="text-display text-base hover:text-accent-strong"
+                      >
+                        {booking.reference}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">{room.id}</span>
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {room.areaM2} m² · {viewLabels[room.view]} · sleeps {room.capacity}
                     </Td>
                     <Td>
-                      {offer
-                        ? `${formatMoney(offer.ratePlan.nightlyPrice, offer.ratePlan.currency)}/night`
-                        : '—'}
+                      {booking.guest.firstName} {booking.guest.lastName}
+                      <span className="block text-xs text-muted-foreground">{booking.guest.email}</span>
+                    </Td>
+                    <Td>{roomNames.get(booking.roomTypeId) ?? booking.roomTypeId}</Td>
+                    <Td className="whitespace-nowrap">
+                      {formatDateRange(booking.checkIn, booking.checkOut)}
+                      <span className="block text-xs text-muted-foreground">
+                        {formatNights(nightsBetween(booking.checkIn, booking.checkOut))} ·{' '}
+                        {formatGuests(booking.adults, booking.children)}
+                      </span>
+                    </Td>
+                    <Td className="text-right font-medium tabular-nums">
+                      {formatMoney(booking.total, booking.currency)}
                     </Td>
                     <Td>
-                      {offer ? (
-                        <StatusBadge status={offer.status} remaining={offer.remaining} />
-                      ) : (
-                        <span className="text-muted-foreground">Not sellable for this party</span>
-                      )}
-                    </Td>
-                    <Td className="w-64">
-                      <RoomStatusControl
-                        roomTypeId={room.id}
-                        roomName={room.name}
-                        value={overrideMap.get(room.id) ?? 'auto'}
-                      />
+                      <BookingStatusBadge status={booking.status} />
                     </Td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </TableCard>
           </div>
-        </section>
+        )}
+      </section>
 
-        <section aria-labelledby="addons-heading" className="mt-12">
-          <h2 id="addons-heading" className="text-display text-3xl">
-            Add-ons
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Withdrawing an add-on removes it from the room detail page and the booking flow, and
-            drops it from any quote that still references it.
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {addOns
-              .filter((addOn) => !addOn.parentId)
-              .map((addOn) => {
-                // Extras are sold inside their parent, so they are listed here
-                // rather than given a card and a switch of their own.
-                const extras = addOns.filter((entry) => entry.parentId === addOn.id);
-                return (
-                  <div key={addOn.id} className="rounded-[28px] bg-card shadow-soft p-5">
-                    <h3 className="font-medium">{addOn.name}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{addOn.description}</p>
-                    <p className="mt-3 text-sm font-medium">
-                      {formatMoney(addOn.price, addOn.currency)}{' '}
-                      <span className="font-normal text-muted-foreground">
-                        {formatPricingUnit(addOn.pricingUnit)}
-                      </span>
-                    </p>
-                    {extras.length > 0 ? (
-                      <ul className="mt-3 grid gap-1 text-sm text-muted-foreground">
-                        {extras.map((extra) => (
-                          <li key={extra.id}>
-                            + {extra.name} · {formatMoney(extra.price, extra.currency)}{' '}
-                            {formatPricingUnit(extra.pricingUnit)}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    <div className="mt-3 border-t border-border pt-3">
-                      <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </section>
-
-        <section aria-labelledby="bookings-heading" className="mt-12">
-          <h2 id="bookings-heading" className="text-display text-3xl">
-            Bookings in this demo session
-          </h2>
-
-          {confirmations.length === 0 ? (
-            <div className="mt-5 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
-              <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
-                <Prohibit weight="fill" className="size-5" aria-hidden="true" />
-              </span>
-              <div>
-                <h3 className="text-display text-2xl">No bookings yet</h3>
-                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                  Complete a demo booking and it will appear here until the server restarts.
-                </p>
-              </div>
-              <Link href="/rooms" className={pill('primary')}>
-                Make a demo booking
-              </Link>
-            </div>
-          ) : (
-            <div className="relative mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
-              <table className="w-full min-w-[52rem] border-collapse text-sm">
-                <caption className="sr-only">Demo bookings created in this server process</caption>
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <Th>Reference</Th>
-                    <Th>Guest</Th>
-                    <Th>Room</Th>
-                    <Th>Stay</Th>
-                    <Th>Services</Th>
-                    <Th>Total</Th>
-                    <Th>Payment</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {confirmations.map(({ booking, room, addOns: bookingAddOns, payments }) => (
-                    <tr key={booking.id} className="border-b border-border last:border-b-0">
-                      <Td>
-                        <Link
-                          href={`/booking/${booking.reference}`}
-                          className="text-display text-base hover:text-accent-strong"
-                        >
-                          {booking.reference}
-                        </Link>
-                        <span className="block text-xs text-muted-foreground">
-                          {formatDate(booking.createdAt.slice(0, 10))}
-                        </span>
-                      </Td>
-                      <Td>
-                        {booking.guest.firstName} {booking.guest.lastName}
-                        <span className="block text-xs text-muted-foreground">
-                          {booking.guest.email}
-                        </span>
-                      </Td>
-                      <Td>{room?.name ?? booking.roomTypeId}</Td>
-                      <Td className="whitespace-nowrap">
-                        {formatDateRange(booking.checkIn, booking.checkOut)}
-                        <span className="block text-xs text-muted-foreground">
-                          {formatGuests(booking.adults, booking.children)}
-                        </span>
-                      </Td>
-                      <Td className="text-muted-foreground">
-                        {bookingAddOns.length
-                          ? bookingAddOns.map((addOn) => addOn.name).join(', ')
-                          : '—'}
-                      </Td>
-                      <Td className="font-medium tabular-nums">
-                        {formatMoney(booking.total, booking.currency)}
-                      </Td>
-                      <Td>
-                        {/* The method and what became of it: a transfer or a
-                            desk payment is genuinely still pending, which is
-                            not the same as no attempt having been made. */}
-                        <span
-                          className={
-                            payments.some((payment) => payment.status === 'authorized')
-                              ? 'text-success'
-                              : 'text-warning'
-                          }
-                        >
-                          {payments.some((payment) => payment.status === 'authorized')
-                            ? 'Authorized'
-                            : payments.length > 0
-                              ? 'Awaiting payment'
-                              : 'No attempt'}
-                        </span>
-                        {payments.at(-1)?.provider ? (
-                          <span className="block text-xs text-muted-foreground">
-                            {paymentMethodLabels[
-                              payments.at(-1)!.provider as keyof typeof paymentMethodLabels
-                            ] ?? payments.at(-1)!.provider}
-                          </span>
-                        ) : null}
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section aria-labelledby="integrations-heading" className="mt-12 mb-4">
+      <section aria-labelledby="integrations-heading" className="mt-12">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 id="integrations-heading" className="text-display text-3xl">
             Integrations
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Every adapter below runs a mock implementation. None of them is connected to a real PMS,
-            channel manager, payment provider, or CRM.
-          </p>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {integrations.map((integration) => (
-              <li
-                key={integration.adapter}
-                className="rounded-[28px] bg-card shadow-soft p-5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="font-medium">{adapterLabels[integration.adapter]}</h3>
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-stone text-muted-foreground">
-                    <Plugs weight="fill" className="size-4" aria-hidden="true" />
-                  </span>
-                </div>
-                <dl className="mt-4 grid gap-2 text-sm">
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Mode</dt>
-                    <dd className="font-medium capitalize">{integration.mode}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Connected</dt>
-                    <dd
-                      className={
-                        integration.connected ? 'font-medium text-success' : 'font-medium text-warning'
-                      }
-                    >
-                      {integration.connected ? 'Yes — mock' : 'No'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Last sync</dt>
-                    <dd className="flex items-center gap-1.5 font-medium">
-                      <ArrowsClockwise weight="bold" className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                      {integration.lastSyncAt ? formatDate(integration.lastSyncAt.slice(0, 10)) : 'Never'}
-                    </dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </main>
-    </>
+          <Link href="/admin/integrations" className={pill('secondary')}>
+            Manage integrations
+            <ArrowRightIcon className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Every adapter runs a mock implementation in this demo — none is connected to a real system.
+        </p>
+        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[28px] bg-card shadow-soft">
+          {integrations.map((integration) => (
+            <li
+              key={integration.adapter}
+              className="flex min-h-14 flex-col items-start justify-center gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            >
+              <span className="font-medium">{adapterLabels[integration.adapter]}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm">
+                {integration.connected ? (
+                  <>
+                    <CheckCircle weight="fill" className="size-4 text-success" aria-hidden="true" />
+                    Connected · mock adapter
+                  </>
+                ) : (
+                  <>
+                    <MinusCircle weight="fill" className="size-4 text-muted-foreground" aria-hidden="true" />
+                    Not connected
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </AdminPage>
   );
 }
 
@@ -365,14 +245,46 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Movements({
+  title,
+  bookings,
+  dates,
+  roomNames,
+}: {
+  title: string;
+  bookings: Booking[];
+  dates: string[];
+  roomNames: Map<string, string>;
+}): ReactNode {
   return (
-    <th scope="col" className="px-4 py-3 text-sm font-normal text-muted-foreground">
-      {children}
-    </th>
+    <div>
+      <h4 className="text-sm text-muted-foreground">
+        {title} · {bookings.length}
+      </h4>
+      {bookings.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">None this week.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-border">
+          {bookings.map((booking, index) => (
+            <li key={booking.id} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+              <span className="min-w-0">
+                <Link
+                  href={`/admin/bookings/${booking.reference}`}
+                  className="font-medium hover:text-accent-strong"
+                >
+                  {booking.guest.firstName} {booking.guest.lastName}
+                </Link>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {roomNames.get(booking.roomTypeId) ?? booking.roomTypeId} · {booking.reference}
+                </span>
+              </span>
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground">
+                {formatDateShort(dates[index]!)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
-}
-
-function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 align-top ${className ?? ''}`}>{children}</td>;
 }

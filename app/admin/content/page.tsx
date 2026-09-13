@@ -6,6 +6,7 @@ import { contentService } from '@/lib/application/container';
 import { roomCategory } from '@/lib/domain/room-attributes';
 import { formatMoney } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
+import { AddOnToggle } from '@/components/admin/room-controls';
 import { SectionLabel } from '@/components/site/section-label';
 
 export const metadata: Metadata = {
@@ -150,11 +151,10 @@ export default async function ContentOverviewPage() {
                       <Td className="text-muted-foreground capitalize">{addOn.category}</Td>
                       <Td>{formatMoney(addOn.price, addOn.currency)}</Td>
                       <Td>
-                        {addOn.enabled ? (
-                          <span className={tag('bg-tint-sage text-tint-sage-ink')}>On sale</span>
-                        ) : (
-                          <span className={tag()}>Withdrawn</span>
-                        )}
+                        {/* The 44px switch target sits on the row's first text line, not below it. */}
+                        <div className="-my-2.5">
+                          <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
+                        </div>
                       </Td>
                       <Td>
                         <Link href={`/admin/content/add-ons/${addOn.id}`} className="font-medium hover:text-accent-strong">
