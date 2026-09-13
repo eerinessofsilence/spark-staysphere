@@ -445,6 +445,32 @@ test('adding a service leaves the guest where they were on the page', async ({ p
   expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(scrollBefore);
 });
 
+test('on a phone the book bar opens the bill, editable in place', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'The book bar only shows below lg');
+  // A room that is free on these dates: a sold-out one swaps the bar's line
+  // for "Fully booked", which is right, but not what this test is about.
+  await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
+  const firstCard = page.getByRole('region', { name: 'Search results' }).locator('article').first();
+  const roomName = (await firstCard.getByRole('heading').innerText()).trim();
+  await firstCard.getByRole('link', { name: roomName }).click();
+  await expect(page.getByRole('heading', { level: 1, name: roomName })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
+  const bar = page.getByRole('button', { name: /Show what is in your stay/ });
+  // The bar says a service is in, not only that the number moved.
+  await expect(bar).toContainText('1 service');
+
+  await bar.click();
+  const sheet = page.getByRole('dialog', { name: 'Your stay' });
+  await expect(sheet.getByText('Airport transfer')).toBeVisible();
+  await expect(sheet.getByRole('link', { name: 'Book this room' })).toHaveAttribute('href', /addOn=addon_transfer/);
+
+  // Taking it out from the sheet reprices the same quote the page shows.
+  await sheet.getByRole('button', { name: 'Remove Airport transfer' }).click();
+  await expect(sheet.getByText('Airport transfer')).toHaveCount(0);
+  await expect(bar).toContainText('taxes included');
+});
+
 test('a guest can complete a demo booking through to confirmation', async ({ page }) => {
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
 
