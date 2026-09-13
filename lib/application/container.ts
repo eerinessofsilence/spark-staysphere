@@ -18,6 +18,7 @@ import { AssistantError, AssistantService } from './assistant-service';
 import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
 import { ContentService } from './content-service';
+import { InventoryService } from './inventory-service';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -38,6 +39,8 @@ export const DEMO_HOTEL_SLUG = 'asteria-cove';
 const bookingEngineAdapter = createBookingEngineAdapter(hotelRepository);
 
 export const catalogService = new CatalogService(hotelRepository, bookingEngineAdapter);
+
+export const inventoryService = new InventoryService(hotelRepository, demoControl, catalogService);
 
 export const bookingService = new BookingService(
   hotelRepository,

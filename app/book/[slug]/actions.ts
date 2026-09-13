@@ -26,6 +26,8 @@ export interface ConfirmBookingInput {
   /** Total the guest saw on the review step. */
   expectedTotal: number;
   paymentMethod: PaymentMethod;
+  /** A room picked on the floor plan; omitted, any room of the type is booked. */
+  unitNumber?: string;
   /** Generated once per booking attempt in the browser; replays are no-ops. */
   idempotencyKey: string;
 }

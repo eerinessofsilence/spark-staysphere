@@ -324,6 +324,7 @@ export const bookingSchema = z.object({
   children: z.number().int().nonnegative(),
   guest: guestSchema,
   addOnIds: z.array(z.string()),
+  unitNumber: z.string().optional(),
   total: z.number().nonnegative(),
   currency: currencySchema,
   status: z.enum(['draft', 'held', 'confirmed', 'cancelled']),
@@ -426,6 +427,8 @@ export const bookingRequestSchema = z.object({
   children: z.number().int().nonnegative(),
   guest: guestSchema,
   addOnIds: z.array(z.string()),
+  /** A room picked on the floor plan; omitted, any room of the type. */
+  unitNumber: z.string().optional(),
   /** Total shown to the guest at review time; confirmation fails if it drifted. */
   expectedTotal: z.number().nonnegative(),
   paymentMethod: paymentMethodSchema,
