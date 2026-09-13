@@ -17,8 +17,6 @@ import {
 } from '@phosphor-icons/react/dist/ssr';
 import {
   ArrowRightIcon,
-  ArrowsPointingInIcon,
-  ArrowsPointingOutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   UsersIcon,
@@ -114,12 +112,6 @@ export function HotelScene({
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
   const [dims, setDims] = React.useState({ width: 0, height: 0 });
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-  // iOS Safari has no Fullscreen API for anything but a `<video>` element —
-  // `element.requestFullscreen` either doesn't exist or returns a promise
-  // that never settles — so the button falls back to a CSS overlay there,
-  // which gets the same "off with the chrome" effect on every browser.
-  const [fakeFullscreen, setFakeFullscreen] = React.useState(false);
   const [hoveredZone, setHoveredZone] = React.useState<string | null>(null);
   // Below `sm` a marker opens the product's sheet instead of a card floating
   // on a 275px-tall photograph. Read after mount, which is always before a
@@ -158,29 +150,6 @@ export function HotelScene({
       bottom: markerRect.bottom - stageRect.top,
     });
   }, [activeHotspot, dims.width, dims.height]);
-
-  React.useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
-  }, []);
-
-  // The overlay's own escape hatch: Escape closes it, and the page behind it
-  // must not scroll under it while it's up — the native API gets both for
-  // free, so only the fallback needs to do this itself.
-  React.useEffect(() => {
-    if (!fakeFullscreen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFakeFullscreen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [fakeFullscreen]);
 
   React.useEffect(() => {
     const query = window.matchMedia('(max-width: 639px)');
@@ -251,27 +220,6 @@ export function HotelScene({
   const roomLine = (hotspot: Hotspot): string | null =>
     formatRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined);
 
-  const toggleFullscreen = async () => {
-    const element = stageRef.current;
-    if (!element) return;
-    if (fakeFullscreen) {
-      setFakeFullscreen(false);
-      return;
-    }
-    if (typeof element.requestFullscreen !== 'function' || document.fullscreenEnabled === false) {
-      setFakeFullscreen(true);
-      return;
-    }
-    try {
-      if (document.fullscreenElement === element) await document.exitFullscreen();
-      else await element.requestFullscreen();
-    } catch {
-      // Still refused (Safari's own permission prompt, an embedded webview,
-      // …) — the overlay is the fallback of last resort.
-      setFakeFullscreen(true);
-    }
-  };
-
   const project = (point: { x: number; y: number }) => projectOnto(point, area.photo, dims);
 
   /** A marker's place, as a style; percentages until the stage has been measured. */
@@ -310,10 +258,7 @@ export function HotelScene({
         // there is no scale that fits all of one into the other. Full bleed
         // wins over bars. The 28px card returns from `sm`, where the stage is
         // wider than tall again, and the fallback overlay drops all of it.
-        className={cn(
-          'relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[28px]',
-          fakeFullscreen && 'fixed inset-0 z-50 h-auto aspect-auto rounded-none sm:aspect-auto sm:rounded-none',
-        )}
+        className="relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[28px]"
       >
         {/* All areas are stacked so switching is instant; only one is visible. */}
         {(spinnerOnly ? [area] : areas).map((candidate, candidateIndex) => (
@@ -354,19 +299,6 @@ export function HotelScene({
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent"
         />
-
-        <button
-          type="button"
-          aria-label={isFullscreen || fakeFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
-          onClick={toggleFullscreen}
-          className={iconButton('glass', 'absolute top-4 right-4 z-20')}
-        >
-          {isFullscreen || fakeFullscreen ? (
-            <ArrowsPointingInIcon className="size-5" aria-hidden="true" />
-          ) : (
-            <ArrowsPointingOutIcon className="size-5" aria-hidden="true" />
-          )}
-        </button>
 
         {/* The part of the building a marker stands for, traced on the photo
             and lit on hover — the way a plan lets you point at a wing. */}
