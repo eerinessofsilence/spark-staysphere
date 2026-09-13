@@ -554,14 +554,14 @@ export function BuildingSpinner({
         <span
           aria-hidden="true"
           className={cn(
-            'grid size-10 place-items-center rounded-full transition-[transform,background-color] duration-200 sm:size-9',
+            'grid size-11 place-items-center rounded-full transition-[transform,background-color] duration-200 sm:size-10',
             isActive
               ? 'bg-ink text-[#F7F5F0] shadow-soft'
               : 'glass-lens text-[#161616]',
             !isActive && isHovered && 'scale-110',
           )}
         >
-          <MapPin weight="fill" className="size-4 drop-shadow-[0_1px_0_rgb(255_255_255/0.6)]" />
+          <MapPin weight="fill" className="size-5" />
         </span>
         <span
           className={cn(
