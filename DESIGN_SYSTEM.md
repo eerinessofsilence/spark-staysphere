@@ -180,8 +180,11 @@ free-hand a `text-*xl` that happens to look right on one screen.
 - Hero areas are `HotelArea` records with a photo, a caption, and hotspots stored as fractions
   of the photo. Hotspots are mapped through the same `object-fit: cover` maths the browser uses
   so a marker stays on the balcony it points at.
-- Hotspots are pills: ink circle with a filled icon, then the label. Labels collapse to the icon
-  below `sm`. Tapping opens a frosted card with the description and one CTA.
+- Hotspots are glass lenses (`.glass-lens`): a near-clear disc with a lit rim and a sheen
+  across its upper half, so the balcony it sits on stays visible through it, carrying a filled
+  ink pin. From `sm` the label rides beside it as its own small `.glass` chip — not one pill
+  around both, which on a phone was a grey ring around an ink dot. The pressed lens fills with
+  ink. Tapping opens a frosted card with the description and one CTA.
 - Room galleries show one photograph at a time with pill tabs (thumbnail + label), paging
   arrows, a `01 / 04` counter, and fullscreen.
 - Photographs always carry `width`/`height` to avoid layout shift, and `loading="lazy"` unless
