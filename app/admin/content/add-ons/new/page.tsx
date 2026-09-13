@@ -5,8 +5,6 @@ import { contentService } from '@/lib/application/container';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { AddOnFields } from '@/components/admin/content/add-on-fields';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 import { createAddOnAction } from './actions';
 
 export const metadata: Metadata = { title: 'New add-on — Content | SPARK StaySphere 360' };
@@ -21,8 +19,7 @@ export default async function NewAddOnPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href="/admin/content" className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -50,7 +47,6 @@ export default async function NewAddOnPage() {
           </ContentForm>
         </div>
       </main>
-      <SiteFooter />
     </>
   );
 }

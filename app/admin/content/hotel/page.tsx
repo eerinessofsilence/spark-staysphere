@@ -5,8 +5,6 @@ import { contentService } from '@/lib/application/container';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, TextArea, TextInput } from '@/components/admin/content/fields';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 import { updateHotelAction } from './actions';
 
 export const metadata: Metadata = {
@@ -20,8 +18,7 @@ export default async function HotelContentPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href="/admin/content" className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -130,7 +127,6 @@ export default async function HotelContentPage() {
           </div>
         </ContentForm>
       </main>
-      <SiteFooter />
     </>
   );
 }

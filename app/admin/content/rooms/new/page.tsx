@@ -9,8 +9,6 @@ import { Field, Select, TextArea, TextInput } from '@/components/admin/content/f
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
 import { OrderedStringList } from '@/components/admin/content/ordered-string-list';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 import { createRoomAction } from './actions';
 
 export const metadata: Metadata = { title: 'New room type — Content | SPARK StaySphere 360' };
@@ -21,8 +19,7 @@ export default async function NewRoomPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href="/admin/content" className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -107,7 +104,6 @@ export default async function NewRoomPage() {
           </div>
         </ContentForm>
       </main>
-      <SiteFooter />
     </>
   );
 }

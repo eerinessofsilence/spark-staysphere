@@ -7,8 +7,6 @@ import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { AddOnFields } from '@/components/admin/content/add-on-fields';
 import { DeleteEntityButton } from '@/components/admin/content/delete-entity-button';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 import { deleteAddOnAction, updateAddOnAction } from './actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -33,8 +31,7 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href="/admin/content" className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -87,7 +84,6 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
           </ContentForm>
         </div>
       </main>
-      <SiteFooter />
     </>
   );
 }

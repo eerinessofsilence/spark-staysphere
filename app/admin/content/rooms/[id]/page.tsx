@@ -13,8 +13,6 @@ import { OrderedStringList } from '@/components/admin/content/ordered-string-lis
 import { RateForm } from '@/components/admin/content/rate-form';
 import { RoomNameField } from '@/components/admin/content/room-name-field';
 import { RoomVisibilityToggle } from '@/components/admin/content/room-visibility-toggle';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 import {
   createRateAction,
   deleteRateAction,
@@ -45,8 +43,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[900px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href="/admin/content" className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -195,7 +192,6 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
           </div>
         </section>
       </main>
-      <SiteFooter />
     </>
   );
 }

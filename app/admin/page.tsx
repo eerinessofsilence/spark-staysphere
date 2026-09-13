@@ -24,8 +24,6 @@ import {
 import { AddOnToggle, ResetDemoButton, RoomStatusControl } from '@/components/admin/room-controls';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { SectionLabel } from '@/components/site/section-label';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 
 export const metadata: Metadata = {
   title: 'Hotel admin demo — Asteria Cove | SPARK StaySphere 360',
@@ -74,8 +72,7 @@ export default async function AdminPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[1400px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <SectionLabel>Hotel admin · demo</SectionLabel>
@@ -355,7 +352,6 @@ export default async function AdminPage() {
           </ul>
         </section>
       </main>
-      <SiteFooter />
     </>
   );
 }

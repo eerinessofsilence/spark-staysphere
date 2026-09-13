@@ -7,8 +7,6 @@ import { roomCategory } from '@/lib/domain/room-attributes';
 import { formatMoney } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { SectionLabel } from '@/components/site/section-label';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
 
 export const metadata: Metadata = {
   title: 'Content — Hotel admin | SPARK StaySphere 360',
@@ -26,8 +24,7 @@ export default async function ContentOverviewPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main id="main" className="mx-auto max-w-[1200px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="mx-auto w-full max-w-[1200px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
         <header>
           <SectionLabel>Site content · demo</SectionLabel>
           <h1 className="text-display mt-4 text-5xl sm:text-6xl">Site content</h1>
@@ -172,7 +169,6 @@ export default async function ContentOverviewPage() {
           )}
         </section>
       </main>
-      <SiteFooter />
     </>
   );
 }
