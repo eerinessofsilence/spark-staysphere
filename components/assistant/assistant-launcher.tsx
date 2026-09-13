@@ -41,7 +41,7 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          'glass fixed right-3 z-40 flex size-20 scale-100 items-center justify-center rounded-full p-2 shadow-soft-lg outline-none transition-[opacity,scale] duration-200 ease-out hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          'bg-primary fixed right-3 z-40 flex size-20 scale-100 items-center justify-center rounded-full p-2 shadow-soft-lg outline-none transition-[opacity,scale] duration-200 ease-out hover:scale-105 hover:bg-primary-hover active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
           mobileOffset === 'above-book-bar'
             ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 lg:bottom-6'
             : 'bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6',
@@ -52,8 +52,15 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
             loading spinner, and a guest had no way to know this was the
             assistant. The sparkle is what "AI" looks like now; the orbs stay
             for the panel's own listening/thinking states, which is the only
-            place the motion exception covers. */}
-        <Sparkle weight="fill" className="size-8 text-foreground" aria-hidden="true" />
+            place the motion exception covers.
+
+            A filled primary disc rather than the frosted glass every other
+            floating control uses: glass over the light canvas read as just
+            another pale circle, and the mark on it barely showed. Reads
+            `text-primary-foreground`, not a literal white, so it stays
+            legible whatever `--primary` resolves to (ink, lime, or the
+            current cyan try). */}
+        <Sparkle weight="fill" className="text-primary-foreground size-8" aria-hidden="true" />
       </button>
 
       <AssistantPanel open={open} onClose={close} mobileOffset={mobileOffset} />
