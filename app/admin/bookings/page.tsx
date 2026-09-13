@@ -197,7 +197,9 @@ export default async function BookingsPage({
                       {room ? (
                         <>
                           Room {room.number}
-                          {room.chosenByGuest ? (
+                          {booking.status === 'cancelled' ? (
+                            ' · released'
+                          ) : room.chosenByGuest ? (
                             <>
                               <PushPin weight="fill" className="size-3.5 text-foreground" aria-hidden="true" />
                               <span className="sr-only">(chosen by the guest)</span>

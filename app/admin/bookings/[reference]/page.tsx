@@ -128,7 +128,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                 <span className="inline-flex flex-col items-end">
                   <span>Room {assigned.number}</span>
                   <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
-                    {assigned.chosenByGuest ? (
+                    {booking.status === 'cancelled' ? (
+                      'Released'
+                    ) : assigned.chosenByGuest ? (
                       <>
                         <PushPin weight="fill" className="size-3.5 text-foreground" aria-hidden="true" />
                         Chosen by the guest
