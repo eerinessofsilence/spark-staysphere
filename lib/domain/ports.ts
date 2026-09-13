@@ -43,10 +43,15 @@ export interface HotelRepository {
  * Demo-only inventory controls backing `/admin`. Production replaces this with
  * PMS write-through; the guest-facing code never depends on it.
  */
+/**
+ * An add-on's `enabled` flag used to live in its own DemoControlPort method
+ * backed by a separate table; it is now just a field on the add-on entity,
+ * written through `CatalogContentPort` by `content-service.ts` — the same
+ * path whether it's flipped from `/admin`'s quick switch or from the CMS.
+ */
 export interface DemoControlPort {
   setRoomStatusOverride(roomTypeId: string, status: RoomStatus | null): Promise<void>;
   getRoomStatusOverride(roomTypeId: string): Promise<RoomStatus | null>;
-  setAddOnEnabled(addOnId: string, enabled: boolean): Promise<void>;
   listIntegrationStatuses(): Promise<IntegrationStatus[]>;
   reset(): Promise<void>;
 }
@@ -114,4 +119,85 @@ export interface SpeechTranscriber {
     mimeType: string;
     language?: string;
   }): Promise<{ text: string }>;
+}
+
+/** One file the media picker can offer, read from the generated manifest. */
+export interface MediaAsset {
+  url: string;
+  folder: string;
+  filename: string;
+  width: number;
+  height: number;
+  bytes: number;
+}
+
+/**
+ * Not implemented in v1 — `.openai/hosting.json` has `r2: null`, and the CMS
+ * only ever picks from `public/images/**` (see `lib/infrastructure/media-library.ts`).
+ * Declared now so the day R2 is configured, an adapter implementing this is
+ * the only new infrastructure content-service needs; the picker UI and the
+ * "url must be in the media library" rule do not change shape.
+ */
+export interface MediaStoragePort {
+  upload(input: { filename: string; contentType: string; bytes: ArrayBuffer }): Promise<MediaAsset>;
+  delete(url: string): Promise<void>;
+}
+
+/** The read-only vocabulary the CMS media picker and its validation draw from. */
+export interface MediaLibraryPort {
+  list(): MediaAsset[];
+  find(url: string): MediaAsset | undefined;
+}
+
+/** The four kinds of catalog entity the CMS can overlay onto seed data. */
+export type CatalogEntryKind = 'hotel' | 'room' | 'rate' | 'addon';
+
+/**
+ * One overlay row: a full entity that either replaces a seed entity of the
+ * same `kind`/`id`, or — for an id the seed never had — is a wholly new one.
+ * `version` starts at `0` for an entity that has never been overlaid (the
+ * seed itself), so a first edit can still be submitted with an
+ * `expectedVersion` and be caught by a concurrent first edit.
+ */
+export interface CatalogEntryRecord<T = unknown> {
+  kind: CatalogEntryKind;
+  id: string;
+  hotelId: string;
+  data: T;
+  version: number;
+  updatedAt: string;
+}
+
+export type CatalogUpsertResult =
+  | { ok: true; version: number }
+  | { ok: false; conflict: true; currentVersion: number };
+
+/**
+ * The CMS's storage boundary. Seed data (`lib/infrastructure/mock-data.ts`)
+ * is never mutated — this port only ever holds overlay rows, one per
+ * `(kind, id)`, and `reset()` clears them so the catalog falls back to seed.
+ * `lib/application/content-service.ts` is the only caller: it owns the
+ * business rules (slugs, references, currency, media, concurrency), this
+ * port just persists what it decides. Wired only in `container.ts`.
+ */
+export interface CatalogContentPort {
+  getEntry(kind: CatalogEntryKind, id: string): Promise<CatalogEntryRecord | null>;
+  /** Every overlay row of one kind for the hotel — includes hidden rooms. */
+  listEntries(kind: CatalogEntryKind, hotelId: string): Promise<CatalogEntryRecord[]>;
+  /**
+   * Replaces the row, but only if `expectedVersion` matches what is stored
+   * (or the row does not exist yet and `expectedVersion` is `0`). A mismatch
+   * returns `{ ok: false, conflict: true, currentVersion }` and writes nothing.
+   */
+  upsertEntry(input: {
+    kind: CatalogEntryKind;
+    id: string;
+    hotelId: string;
+    data: unknown;
+    expectedVersion: number;
+  }): Promise<CatalogUpsertResult>;
+  /** Removes the overlay row only — never the seed entity underneath it. */
+  deleteEntry(kind: CatalogEntryKind, id: string): Promise<void>;
+  /** Clears every overlay row for the hotel; the catalog reverts to seed. */
+  reset(hotelId: string): Promise<void>;
 }

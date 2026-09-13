@@ -13,13 +13,15 @@ import { demoAddOns, demoHotel, demoRates, demoRooms } from './mock-data';
  * Process-local in-memory demo state. This is the fallback used whenever no
  * D1 binding is configured (see durable-hotel-repository.ts), and it is also
  * exactly what ran before persistence existed — bookings, overrides, and
- * holds here reset with the worker isolate.
+ * holds here reset with the worker isolate. The catalog itself (including an
+ * add-on's `enabled` flag) is seed-only here; the CMS overlay that can
+ * replace it lives in `catalog-content-mock.ts` and is merged on top by
+ * `durable-hotel-repository.ts`.
  */
 const bookingsByIdempotencyKey = new Map<string, Booking>();
 const bookingsByReference = new Map<string, Booking>();
 const paymentAttempts = new Map<string, PaymentAttempt[]>();
 const roomStatusOverrides = new Map<string, RoomStatus>();
-const addOnEnabled = new Map<string, boolean>();
 /** `${roomTypeId}|${yyyy-MM-dd}` → units taken by demo bookings made this session. */
 const demoHolds = new Map<string, number>();
 
@@ -49,10 +51,7 @@ export const mockHotelRepository: HotelRepository = {
   },
   async listAddOns(hotelId) {
     if (hotelId !== demoHotel.id) return [];
-    return demoAddOns.map((addOn) => ({
-      ...addOn,
-      enabled: addOnEnabled.get(addOn.id) ?? addOn.enabled,
-    }));
+    return demoAddOns.map((addOn) => ({ ...addOn }));
   },
   async getAvailability(roomTypeId, from, to) {
     if (!demoRooms.some((room) => room.id === roomTypeId)) return [];
@@ -116,9 +115,6 @@ export const mockDemoControlPort: DemoControlPort = {
   async getRoomStatusOverride(roomTypeId) {
     return roomStatusOverrides.get(roomTypeId) ?? null;
   },
-  async setAddOnEnabled(addOnId, enabled) {
-    addOnEnabled.set(addOnId, enabled);
-  },
   async listIntegrationStatuses() {
     return integrationStatuses.map((status) => ({ ...status }));
   },
@@ -127,7 +123,6 @@ export const mockDemoControlPort: DemoControlPort = {
     bookingsByReference.clear();
     paymentAttempts.clear();
     roomStatusOverrides.clear();
-    addOnEnabled.clear();
     demoHolds.clear();
   },
 };

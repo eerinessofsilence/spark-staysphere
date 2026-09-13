@@ -217,6 +217,14 @@ export const roomTypeSchema = z.object({
   bedType: z.enum(['king', 'twin', 'queen']),
   view: z.enum(['sea', 'garden', 'pool', 'city']),
   amenities: z.array(z.string()),
+  /**
+   * Withdrawn from the site by the CMS. Optional so this ships without
+   * touching every existing `RoomType` fixture (the same trick as `spinner`
+   * and `model` on `Hotel`). A hidden room stays visible in `/admin/content`
+   * but is excluded everywhere a guest could reach it — see
+   * `CatalogService.getHotel`/`search`/`getRoomDetail`.
+   */
+  hidden: z.boolean().optional(),
   media: z.array(
     z.object({
       type: z.enum(['image', '360', 'gltf']),

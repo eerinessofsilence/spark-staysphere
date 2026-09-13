@@ -1,13 +1,23 @@
-import type { DemoControlPort, HotelRepository, RoomSearchInterpreter, SpeechTranscriber } from '../domain/ports';
+import type {
+  CatalogEntryKind,
+  DemoControlPort,
+  HotelRepository,
+  RoomSearchInterpreter,
+  SpeechTranscriber,
+} from '../domain/ports';
 import { getOpenAiKey } from '../infrastructure/cloudflare-env';
+import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
+import { mediaLibraryPort } from '../infrastructure/media-library';
+import { demoAddOns, demoHotel, demoRates, demoRooms } from '../infrastructure/mock-data';
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
 import { createOpenAiTranscriber } from '../infrastructure/openai-transcriber';
 import { AssistantError, AssistantService } from './assistant-service';
 import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
+import { ContentService } from './content-service';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -22,6 +32,9 @@ import { CatalogService } from './catalog-service';
 export const hotelRepository: HotelRepository = durableHotelRepository;
 export const demoControl: DemoControlPort = durableDemoControlPort;
 
+/** The demo tenant. A white-label deployment resolves this per host or per route. */
+export const DEMO_HOTEL_SLUG = 'asteria-cove';
+
 const bookingEngineAdapter = createBookingEngineAdapter(hotelRepository);
 
 export const catalogService = new CatalogService(hotelRepository, bookingEngineAdapter);
@@ -32,6 +45,22 @@ export const bookingService = new BookingService(
   mockPaymentProvider,
   mockCrmAdapter,
   mockPmsAdapter,
+);
+
+/** Which ids came from mock-data.ts — the only ones content-service refuses to hard-delete. */
+const seedIds: Record<CatalogEntryKind, ReadonlySet<string>> = {
+  hotel: new Set([demoHotel.id]),
+  room: new Set(demoRooms.map((room) => room.id)),
+  rate: new Set(demoRates.map((rate) => rate.id)),
+  addon: new Set(demoAddOns.map((addOn) => addOn.id)),
+};
+
+export const contentService = new ContentService(
+  hotelRepository,
+  durableCatalogContentPort,
+  mediaLibraryPort,
+  DEMO_HOTEL_SLUG,
+  seedIds,
 );
 
 /**
@@ -85,6 +114,3 @@ export const speechTranscriber: SpeechTranscriber = {
     return createOpenAiTranscriber(apiKey).transcribe(input);
   },
 };
-
-/** The demo tenant. A white-label deployment resolves this per host or per route. */
-export const DEMO_HOTEL_SLUG = 'asteria-cove';
