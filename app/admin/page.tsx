@@ -85,7 +85,12 @@ export default async function AdminPage() {
               through the PMS adapter, and inventory stays owned by the PMS or channel manager.
             </p>
           </div>
-          <ResetDemoButton />
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/admin/content" className={pill('secondary')}>
+              Site content
+            </Link>
+            <ResetDemoButton />
+          </div>
         </header>
 
         <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-6">
