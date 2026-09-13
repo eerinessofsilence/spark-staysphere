@@ -158,7 +158,19 @@ test('resetting demo state clears bookings and availability overrides', async ({
 
 test('no route overflows the phone viewport', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Only meaningful at the phone width');
-  for (const path of ['/', `/rooms?${stayQuery}`, `/rooms/deluxe-sea?${stayQuery}`, `/book/deluxe-sea?${stayQuery}`, '/admin']) {
+  for (const path of [
+    '/',
+    `/rooms?${stayQuery}`,
+    `/rooms/deluxe-sea?${stayQuery}`,
+    `/book/deluxe-sea?${stayQuery}`,
+    '/admin',
+    '/admin/content',
+    '/admin/content/hotel',
+    '/admin/content/rooms/room_deluxe-sea',
+    '/admin/content/rooms/new',
+    '/admin/content/add-ons/addon_late',
+    '/admin/content/add-ons/new',
+  ]) {
     await page.goto(path);
     // Android Chrome widens the layout viewport to any overflow, which shows up here.
     expect(await page.evaluate(() => window.innerWidth), path).toBe(390);
