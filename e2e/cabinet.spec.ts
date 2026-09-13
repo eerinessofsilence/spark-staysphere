@@ -6,11 +6,21 @@ function isoDaysFromNow(days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+interface Stay {
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+}
+
 // A far stay that moves each run, so reruns against the persisted D1 never run out of rooms.
 const offset = 200 + (Math.floor(Date.now() / 1000) % 100);
-const stay = { checkIn: isoDaysFromNow(offset), checkOut: isoDaysFromNow(offset + 3), adults: 2, children: 0 };
 const guest = { firstName: 'Mira', lastName: 'Hollis', email: 'mira@example.com', phone: '91 555 0177' };
 const roomLabel = /^Room \w{3,4}$/;
+
+function stayFrom(days: number): Stay {
+  return { checkIn: isoDaysFromNow(days), checkOut: isoDaysFromNow(days + 3), adults: 2, children: 0 };
+}
 
 /** A click on a server-rendered island is lost until React attaches its listeners. */
 async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
@@ -33,25 +43,39 @@ async function check(box: Locator) {
   );
 }
 
-async function bookFreeDeluxeRoom(request: APIRequestContext, project: string) {
-  const quote = await request.post('/api/quotes', {
-    data: { roomSlug: 'deluxe-sea', ...stay, addOnIds: [] },
-  });
+async function bookDeluxeRoom(request: APIRequestContext, stay: Stay, room: string, key: string) {
+  const quote = await request.post('/api/quotes', { data: { roomSlug: 'deluxe-sea', ...stay, addOnIds: [] } });
   expect(quote.ok()).toBeTruthy();
   const quoted = await quote.json();
-  const expectedTotal = (quoted.quote ?? quoted).price.total;
+  return request.post('/api/bookings', {
+    headers: { 'Idempotency-Key': key },
+    data: {
+      roomSlug: 'deluxe-sea',
+      ...stay,
+      addOnIds: [],
+      guest,
+      expectedTotal: (quoted.quote ?? quoted).price.total,
+      unitNumber: room,
+    },
+  });
+}
 
-  for (const room of ['401', '402', '403', '404', '405', '406', '407', '408']) {
-    const response = await request.post('/api/bookings', {
-      headers: { 'Idempotency-Key': `cabinet-${project}-${Date.now()}-${room}` },
-      data: { roomSlug: 'deluxe-sea', ...stay, addOnIds: [], guest, expectedTotal, unitNumber: room },
-    });
-    if (response.status() === 409) continue;
-    expect(response.status()).toBe(201);
-    const { booking } = await response.json();
-    return { reference: booking.reference as string, room };
+/**
+ * Books a named Deluxe Sea View room. Simulated demand can sell the whole type out on some nights,
+ * so it walks forward a week at a time until a stay has a room left, and returns the stay it used.
+ */
+async function bookFreeDeluxeRoom(request: APIRequestContext, project: string) {
+  for (let week = 0; week < 6; week += 1) {
+    const stay = stayFrom(offset + week * 7);
+    for (const room of ['401', '402', '403', '404', '405', '406', '407', '408']) {
+      const response = await bookDeluxeRoom(request, stay, room, `cabinet-${project}-${Date.now()}-${room}`);
+      if (response.status() === 409) continue;
+      expect(response.status(), await response.text()).toBe(201);
+      const { booking } = await response.json();
+      return { reference: booking.reference as string, room, stay };
+    }
   }
-  throw new Error('No Deluxe Sea View room was free for the test stay.');
+  throw new Error('No Deluxe Sea View room was free for any of the test stays.');
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -78,7 +102,7 @@ test('the chessboard lays out every room and filters by room type', async ({ pag
 });
 
 test('a room the guest chose shows on that room in the chessboard', async ({ page, request }, testInfo) => {
-  const { reference, room } = await bookFreeDeluxeRoom(request, testInfo.project.name);
+  const { reference, room, stay } = await bookFreeDeluxeRoom(request, testInfo.project.name);
 
   await page.goto(`/admin/chessboard?from=${stay.checkIn}&type=room_deluxe-sea`);
   const bar = page
@@ -145,4 +169,45 @@ test('a guest picks a room on the floor plan, books it, and the back office sees
       .getByRole('group', { name: `Room ${room}` })
       .getByRole('button', { name: new RegExp(`^Booking ${reference},.*room chosen by guest$`) }),
   ).toBeVisible();
+});
+
+test('the desk finds a booking, sees its room, and cancelling puts the room back on sale', async ({
+  page,
+  request,
+}, testInfo) => {
+  const { reference, room, stay } = await bookFreeDeluxeRoom(request, testInfo.project.name);
+
+  await page.goto(`/admin/bookings?q=${reference}`);
+  const row = page.getByRole('row').filter({ hasText: reference });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText(`Room ${room}`)).toBeVisible();
+  await expect(row.getByText('(chosen by the guest)')).toBeAttached();
+
+  await row.getByRole('link', { name: reference }).click();
+  await expect(page.getByRole('heading', { level: 1, name: reference })).toBeVisible();
+  await expect(page.getByText(`Room ${room}`, { exact: true })).toBeVisible();
+  await expect(page.getByText('Chosen by the guest', { exact: true })).toBeVisible();
+
+  const dialog = page.getByRole('dialog', { name: 'Cancel booking' });
+  await actUntil(
+    () => page.getByRole('button', { name: 'Cancel booking' }).click(),
+    () => expect(dialog).toBeVisible({ timeout: 3_000 }),
+  );
+  await dialog.getByRole('button', { name: 'Yes, cancel booking' }).click();
+  await expect(page.getByText('Booking cancelled. Its nights are back on sale.')).toBeVisible();
+  await expect(page.getByText('Released', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
+
+  await page.goto(`/admin/chessboard?from=${stay.checkIn}&type=room_deluxe-sea`);
+  await expect(page.getByRole('group', { name: `Room ${room}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: new RegExp(`^Booking ${reference},`) })).toHaveCount(0);
+
+  // The same room can be booked again for the same nights.
+  const rebooked = await bookDeluxeRoom(
+    request,
+    stay,
+    room,
+    `cabinet-rebook-${testInfo.project.name}-${Date.now()}`,
+  );
+  expect(rebooked.status(), await rebooked.text()).toBe(201);
 });
