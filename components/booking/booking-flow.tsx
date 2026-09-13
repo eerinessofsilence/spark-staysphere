@@ -19,14 +19,18 @@ import type {
 } from '@/lib/domain/schemas';
 import {
   addOnCategoryLabels,
+  facadeLabels,
   formatDateRange,
+  formatFloor,
   formatGuests,
   formatMoney,
   formatNights,
+  formatRoomNumber,
   viewLabels,
 } from '@/lib/formatting';
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
+import { facadeOf } from '@/lib/domain/room-units';
 import { AddOnCatalog } from '@/components/rooms/add-on-catalog';
 import { featureIcon, tintInk, tintSurface, type AmenityTone } from '@/components/rooms/feature-icon';
 import { BillRow } from '@/components/rooms/add-on-picker';
@@ -110,6 +114,8 @@ interface BookingFlowProps {
   initialQuote: Quote;
   initialAddOnIds: string[];
   minDate: string;
+  /** A room the guest picked on the floor plan, already checked free for the stay. */
+  roomNumber?: string | null;
 }
 
 type FlowError = {
@@ -127,6 +133,7 @@ export function BookingFlow({
   initialQuote,
   initialAddOnIds,
   minDate,
+  roomNumber: initialRoomNumber = null,
 }: BookingFlowProps) {
   const router = useRouter();
   const [stepIndex, setStepIndex] = React.useState(0);
@@ -151,6 +158,7 @@ export function BookingFlow({
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string[]>>({});
   const [flowError, setFlowError] = React.useState<FlowError | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [roomNumber, setRoomNumber] = React.useState<string | null>(initialRoomNumber);
   // Held across retries so a resubmitted booking is never duplicated.
   const idempotencyKey = React.useRef<string | null>(null);
 
@@ -254,6 +262,7 @@ export function BookingFlow({
       guest,
       expectedTotal: quote.price.total,
       paymentMethod,
+      unitNumber: roomNumber ?? undefined,
       idempotencyKey: idempotencyKey.current,
     });
 
@@ -311,7 +320,24 @@ export function BookingFlow({
                   summary and confirm again.
                 </p>
               ) : null}
-              {flowError.code === 'unavailable' ? (
+              {flowError.code === 'unavailable' && roomNumber ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/rooms?${buildQuery({ criteria, layout: 'plan' })}`} className={pill('secondary')}>
+                    Pick another room on the plan
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoomNumber(null);
+                      setFlowError(null);
+                    }}
+                    className={pill('secondary')}
+                  >
+                    Book any {room.name} instead
+                  </button>
+                </div>
+              ) : null}
+              {flowError.code === 'unavailable' && !roomNumber ? (
                 <Link
                   href={`/rooms?${stayQuery}`}
                   className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 font-medium"
@@ -626,7 +652,8 @@ export function BookingFlow({
                 {formatGuests(criteria.adults, criteria.children)}
               </ReviewRow>
               <ReviewRow label="Room">
-                {room.name}, {ratePlan.name}
+                {room.name}
+                {roomNumber ? `, ${formatRoomNumber(roomNumber).toLowerCase()}` : ''}, {ratePlan.name}
               </ReviewRow>
               <ReviewRow label="Services">
                 {quote.price.addOnLines.length
@@ -720,6 +747,24 @@ export function BookingFlow({
             {room.name}
           </h2>
           <p className="text-sm text-muted-foreground">{hotel.name}</p>
+          {roomNumber ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 rounded-2xl bg-stone/60 py-1 pr-1 pl-3 text-sm">
+              <span>
+                <span className="font-medium">{formatRoomNumber(roomNumber)}</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  · {formatFloor(room.floor)}, {facadeLabels[facadeOf(room.view)].toLowerCase()}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setRoomNumber(null)}
+                className="min-h-11 cursor-pointer rounded-full px-3 font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Any room instead
+              </button>
+            </div>
+          ) : null}
 
           <StayDatesSummary checkIn={criteria.checkIn} checkOut={criteria.checkOut} className="mt-4" />
           <p className="mt-2 text-sm text-muted-foreground">
