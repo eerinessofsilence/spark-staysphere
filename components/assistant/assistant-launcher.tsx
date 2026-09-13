@@ -58,8 +58,8 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
             floating control uses: glass over the light canvas read as just
             another pale circle, and the mark on it barely showed. Reads
             `text-primary-foreground`, not a literal white, so it stays
-            legible whatever `--primary` resolves to (ink, lime, or the
-            current cyan try). */}
+            legible whatever `--primary` resolves to (ink by day, lime by
+            night). */}
         <Sparkle weight="fill" className="text-primary-foreground size-8" aria-hidden="true" />
       </button>
 

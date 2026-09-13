@@ -145,16 +145,14 @@ body {
   --card-foreground: var(--ink);
   --popover: #ffffff;
   --popover-foreground: var(--ink);
-  /* Trying an electric-cyan primary in place of the ink pill — see rule 6:
-     this is a live experiment against "never blue", not yet a kept choice. */
-  --primary: #06e1ff;
-  --primary-foreground: #0a1418;
+  --primary: var(--ink);
+  --primary-foreground: #f7f5f0;
   /*
    * The primary pill's hover, its own token because the pill is not always
    * ink: by night it is lime, and a fixed "slightly lighter ink" would be
    * wrong there. Every primary control reads this rather than a literal.
    */
-  --primary-hover: #05bfd9;
+  --primary-hover: #2b2b2b;
   /*
    * The one surface allowed to stay light on a dark page: the stay search
    * on a phone. By day it is the same white as any card; by night it is a
@@ -226,12 +224,10 @@ body {
   --card-foreground: #f4f2ec;
   --popover: #1e1e1e;
   --popover-foreground: #f4f2ec;
-  /* By night the primary action is normally the lime pill — swapped here for
-     the same cyan experiment as the light scheme, so the button matches
-     across both. */
-  --primary: #06e1ff;
-  --primary-foreground: #0a1418;
-  --primary-hover: #05bfd9;
+  /* By night the primary action is the lime pill, with the canvas as its text. */
+  --primary: #d4ff3a;
+  --primary-foreground: #141414;
+  --primary-hover: #c2ec2e;
   --surface-raised: #f4f2ec;
   --surface-raised-foreground: #141414;
   --secondary: #262626;
