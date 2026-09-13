@@ -111,11 +111,11 @@ that touches infrastructure directly, per the container-only-import rule). Every
 optimistic-concurrency-checked: `CatalogContentPort.upsertEntry` takes an `expectedVersion` (`0`
 for an entity never overlaid) and returns a conflict, writing nothing, if the stored version has
 moved on. `assertCanEditContent()` is the single authorization choke point — it always allows for
-now (auth is CLAUDE.md's roadmap step 8) — every mutator in `content-service.ts` calls it first.
+now (auth is CLAUDE.md's roadmap step 9) — every mutator in `content-service.ts` calls it first.
 
 An add-on's `enabled` flag used to live in its own `addon_toggles` D1 table, written only by
 `/admin`'s quick switch. It is now just a field on the add-on entity, written through the same
-overlay path from both `/admin`'s switch and the CMS's own form
+overlay path from both the on-sale switch in `/admin/content`'s add-on list and the CMS's own form
 (`ContentService.setAddOnEnabled`), so the two can never disagree about which value won; the old
 table's `CREATE TABLE` was dropped from `d1-schema.ts` (an already-provisioned local D1 keeps an
 unused, harmless copy — there is no migration runner).
@@ -166,6 +166,31 @@ there is no migration runner to `ALTER` `bookings`. Known gaps: two concurrent r
 room can both pass the check (in production the PMS owns room assignment), and because chosen rooms
 are honoured booking by booking, the rooms free for a whole stay can occasionally number fewer than
 the catalog's per-night minimum.
+
+## Back office
+
+`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around three groups of
+screens. What reads and writes real demo data, and what is a labelled mock-up of a later feature:
+
+| Route | What it does | Backed by |
+| --- | --- | --- |
+| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status, "Reset demo state" | `InventoryService.getChessboard`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin/chessboard` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getChessboard` — live; demand is simulated and says so |
+| `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; guest, room, money, payment attempts, activity; cancel | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom` — live. "Resend confirmation" is demo-only |
+| `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
+| `/admin/content/**` | The CMS, plus the add-on on-sale switch | `ContentService` — live |
+| `/admin/media` | The media manifest with where each file is used | `ContentService.listMedia` — live, read-only; upload is disabled |
+| `/admin/settings` | Identity (live, read from the CMS), accent preview, domain, languages, guest emails | Mock-up — nothing is saved |
+| `/admin/settings/team` | Members, invite, roles × permissions | Mock-up — the invite adds a row in this browser only |
+| `/admin/integrations` | Adapter status per port, connect dialog | Live mock statuses; credential fields disabled |
+
+`BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
+`stay_started` rules as the guest's, without the email check, since the desk is trusted (until
+auth, anyone who can open `/admin` is). A cancelled booking releases its nights and its room at
+once, because both the floor plan and the chessboard recompute `allocateRoomType` on read. The rates
+screen saves through `ContentService.updateRate` with the rate's `version`, so it and the CMS rate
+form share one concurrency check and one overlay row. Every write revalidates the admin screens
+that show it and the guest routes it reprices.
 
 ## AI concierge
 
@@ -236,9 +261,10 @@ Implemented as route handlers in this app; there is no separate API service.
 - `GET /api/bookings/:reference` — reads a booking from the current process.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather
-than fetching these routes, and `/admin` writes through server actions on the `DemoControlPort`.
-`/admin/content` is server actions only too (`app/admin/content/**/actions.ts`, through
-`ContentService`) — the CMS added no new HTTP routes.
+than fetching these routes. The back office is server actions only: overrides and the demo reset
+through the `DemoControlPort` (`app/admin/actions.ts`), the desk's cancel through `BookingService`
+(`app/admin/bookings/actions.ts`), base rates and the CMS through `ContentService`
+(`app/admin/rates/actions.ts`, `app/admin/content/**/actions.ts`) — no new HTTP routes.
 
 Still to build when a real backend exists: `GET /hotels/:slug`, `GET /hotels/:id/rooms`,
 `POST /holds` as a standalone call, and authenticated admin endpoints.
@@ -290,8 +316,9 @@ the scene's colours off the page's own tokens.
 
 Without a D1 binding, demo state (including the CMS overlay) is process-local and resets with the
 worker isolate. There is no auth on `/admin` or `/admin/content` — `assertCanEditContent()` in
-`content-service.ts` is a no-op until CLAUDE.md's roadmap step 8 — no real payment, and no PMS,
-channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
+`content-service.ts` is a no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
+channel manager, or OTA connection. The back office's team and roles screen is a mock-up of that
+future auth, brand settings save nothing, and integration credentials cannot be entered. Downstream CRM/PMS delivery is best-effort and swallowed on
 failure; production needs a queue with retries. The photographs are licensed stock standing in for
 the property's own and must be replaced before any real launch; the CMS has no upload path to do
 that with yet (`MediaStoragePort` is declared, not implemented — see "Content management (CMS)").

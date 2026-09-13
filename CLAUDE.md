@@ -8,12 +8,19 @@ The product must feel like one connected booking experience, not a landing page 
 
 ## Current scope
 
-The guest journey is built end to end: arrival (`/`), catalog (`/rooms`), room detail
-(`/rooms/[slug]`), a six-step demo booking (`/book/[slug]`), confirmation (`/booking/[reference]`),
-hotel operations (`/admin`), and a basic content-management system at `/admin/content` (hotel copy,
-room types, rates, add-ons — see TECH.md's "Content management (CMS)" section). Quotes and
-bookings are exposed as server actions and as `POST /api/quotes`, `POST /api/bookings`, and
-`GET /api/bookings/:reference`; the CMS is server actions only, no new API routes.
+The guest journey is built end to end: arrival (`/`), catalog (`/rooms`, including a floor plan
+where a guest picks the exact room), room detail (`/rooms/[slug]`), a six-step demo booking
+(`/book/[slug]`), and confirmation (`/booking/[reference]`). Quotes and bookings are exposed as
+server actions and as `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bookings/:reference`;
+the back office is server actions only, no new API routes.
+
+The hotel's back office (`/admin`) has its own shell and three groups of screens. Operations: an
+overview, a rooms × nights chessboard, bookings with detail and cancel, and rates & availability.
+Content: the CMS at `/admin/content` (hotel copy, room types, rates, add-ons — see TECH.md's
+"Content management (CMS)") and a media library. Settings: brand & domain, team & roles, and
+integrations. Screens with demo data behind them are live; brand, team and integration credentials
+are clearly labelled mock-ups of what a client will manage. TECH.md's "Back office" table says which
+is which.
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. Below the arrival photograph the building is a
@@ -31,8 +38,9 @@ keyword fallback with no key configured), sanitises it against the live catalog,
 result to the same `CatalogService`/`buildPriceBreakdown` path everything else uses; see TECH.md's
 "AI concierge" section.
 
-Still future work: auth on `/admin`, the property's own photography, and production PMS, channel
-manager, payment, and CRM integrations.
+Still future work: auth on `/admin` (and with it real team roles), saved brand settings and media
+uploads, the property's own photography, and production PMS, channel manager, payment, and CRM
+integrations.
 
 ## Technical decisions
 
@@ -69,14 +77,19 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 5. ~~Persist demo state (D1) so bookings survive a restart and are shared across isolates.~~ Done.
 6. ~~Basic CMS in `/admin/content` for the hotel copy, room types, rates, and add-ons, with a D1
    overlay on the seed catalog.~~ Done.
-7. Replace stock photography with the property's own, add real 360 tiles if the property has them,
+7. ~~Back office for the demo: shell, overview, chessboard, bookings with cancel, rates &
+   availability, media library, and brand/team/integrations mock-ups; physical rooms and the guest
+   floor plan.~~ Done.
+8. Replace stock photography with the property's own, add real 360 tiles if the property has them,
    and its own GLB in place of the block massing (`Hotel.model.url`).
-8. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
-   one gate to wire it into), then the first real PMS or channel-manager adapter behind the
-   existing ports. A production PMS/channel-manager also becomes the owner of prices and rates,
-   which the CMS documents inline on those fields but does not enforce.
-9. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
-10. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
-    draft/versioned content, multi-hotel support (`hotel_id` is already in every overlay row).
+9. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
+   one gate to wire it into), with the roles already drawn on `/admin/settings/team`; then the first
+   real PMS or channel-manager adapter behind the existing ports. A production PMS/channel-manager
+   also becomes the owner of prices, rates and room assignment, which the CMS and rates screen
+   document inline but do not enforce.
+10. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
+11. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
+    saved brand settings, draft/versioned content, multi-hotel support (`hotel_id` is already in
+    every overlay row).
 
 Read `AGENTS.md`, `TECH.md`, and `DESIGN_SYSTEM.md` before changing architecture or UI.

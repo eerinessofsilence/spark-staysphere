@@ -42,12 +42,17 @@ npm run test:e2e     # Playwright golden path; needs `npx playwright install chr
   `app/admin/content/`: the CMS — six routes (overview, hotel, room `[id]`/`new`, add-on
   `[id]`/`new`), each `export const dynamic = 'force-dynamic'` and its own `actions.ts`; `_lib/`
   holds the shared `revalidateContent()` helper and the `ContentResult` → form-state mapping.
-- `components/`: reusable UI primitives (`ui/`) and product components (`hotel/`, `rooms/`,
-  `booking/`, `search/`, `site/`, `admin/`, `admin/content/` — the CMS's form shell (`ContentForm`,
-  `Field`), the reorderable-list and media-picker editors, and the derived-value fields
-  (`RoomNameField`, `AddOnNameField`) that surface `roomCategory`/`featureIcon`/`addOnIcon`
-  live next to the field they're derived from).
-- `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`.
+- `components/`: reusable UI primitives (`ui/`) and product components (`hotel/`, `rooms/` —
+  including `rooms/floor-plan/`, `booking/`, `search/`, `site/`, `admin/`, `admin/content/` — the
+  CMS's form shell (`ContentForm`, `Field`), the reorderable-list and media-picker editors, and the
+  derived-value fields (`RoomNameField`, `AddOnNameField`) that surface
+  `roomCategory`/`featureIcon`/`addOnIcon` live next to the field they're derived from;
+  `admin/chessboard/`, `admin/operations/` — tables, status badges, the occupancy chart, the rate
+  form and booking actions — and `admin/settings/` — brand, team, integrations and media screens,
+  mock-ups where there is no data behind them).
+- `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`,
+  `inventory.spec.ts` for booking an exact room over the API, and `cabinet.spec.ts` for the floor
+  plan, the chessboard and the bookings desk.
 - `lib/domain/`: Zod schemas, inferred types, and ports — including `CatalogContentPort` (the
   CMS's storage boundary), `MediaLibraryPort`, `catalog-overlay.ts`'s seed+overlay merge, and
   `media.ts`'s media-asset predicates, and `room-units.ts` — physical rooms derived from room types

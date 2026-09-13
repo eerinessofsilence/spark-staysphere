@@ -214,7 +214,23 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   current page takes the primary fill, the way the catalog's layout segment marks its active
   option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
   `AdminPage` and `AdminPageHeader`. Anything a screen shows without real data behind it carries a
-  visible demo label.
+  visible demo label — a `tag()` in the page header's actions, never only a footnote.
+  - **Tables** sit in `TableCard` (`components/admin/operations/table.tsx`): a 28px card that
+    scrolls sideways inside itself, so the page never does at 390px. Columns get a `min-w-*` on the
+    table rather than squeezing. Headers are muted sentence case; the row's key (a reference, a
+    room type) is the link.
+  - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
+    icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
+    on the overview are a baseline-aligned row of number + words between two rules, not tiles.
+  - **The chessboard** (`components/admin/chessboard/`) is one row per door, grouped by room type,
+    one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
+    when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
+    tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is
+    a button whose label reads the whole booking.
+  - **The floor plan** (`components/rooms/floor-plan/`, guest-facing but the same model) is floors
+    × doors, sea side and town side. A cell's surface says its state for the stay being searched —
+    sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
+    it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
 
 ## Motion
 
