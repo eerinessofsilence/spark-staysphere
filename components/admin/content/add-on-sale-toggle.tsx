@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Switch } from '@/components/ui/switch';
 import { announceVersion } from './version-channel';
+import { useUndoableToggle } from './use-undoable-toggle';
 
 export interface SaleToggleResult {
   ok: boolean;
@@ -26,15 +27,7 @@ interface AddOnSaleToggleProps {
  */
 export function AddOnSaleToggle({ addOnId, enabled, action }: AddOnSaleToggleProps) {
   const router = useRouter();
-  const [pending, setPending] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-  const [undoTo, setUndoTo] = React.useState<boolean | null>(null);
-
-  React.useEffect(() => {
-    if (undoTo === null) return;
-    const timer = window.setTimeout(() => setUndoTo(null), 12_000);
-    return () => window.clearTimeout(timer);
-  }, [undoTo]);
+  const { pending, setPending, message, setMessage, undoTo, setUndoTo } = useUndoableToggle<boolean>();
 
   const apply = async (next: boolean, offerUndo: boolean) => {
     setPending(true);

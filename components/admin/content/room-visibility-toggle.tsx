@@ -6,6 +6,7 @@ import { ArrowPathIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outlin
 import { pill } from '@/lib/ui';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { announceVersion, useSharedVersion } from './version-channel';
+import { useUndoableToggle } from './use-undoable-toggle';
 
 interface RoomVisibilityToggleProps {
   hidden: boolean;
@@ -32,17 +33,9 @@ export function RoomVisibilityToggle({ hidden, version: savedVersion, action, ro
   const router = useRouter();
   const versionKey = `room:${roomId}`;
   const [version, setVersion] = useSharedVersion(versionKey, savedVersion);
-  const [pending, setPending] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-  const [undoTo, setUndoTo] = React.useState<boolean | null>(null);
+  const { pending, setPending, message, setMessage, undoTo, setUndoTo } = useUndoableToggle<boolean>();
 
   React.useEffect(() => setVersion(savedVersion), [savedVersion, setVersion]);
-
-  React.useEffect(() => {
-    if (undoTo === null) return;
-    const timer = window.setTimeout(() => setUndoTo(null), 12_000);
-    return () => window.clearTimeout(timer);
-  }, [undoTo]);
 
   const apply = async (nextHidden: boolean, offerUndo: boolean) => {
     setPending(true);

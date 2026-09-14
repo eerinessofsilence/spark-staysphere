@@ -6,6 +6,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { fieldClass, pill } from '@/lib/ui';
 import { resetDemoState, setRoomStatus } from '@/app/admin/actions';
 import type { SaleToggleResult } from '@/components/admin/content/add-on-sale-toggle';
+import { useUndoableToggle } from '@/components/admin/content/use-undoable-toggle';
 import type { RoomStatus } from '@/lib/domain/schemas';
 import { statusLabels } from '@/lib/formatting';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -95,16 +96,8 @@ export function AddOnToggle({
   action: (id: string, enabled: boolean) => Promise<SaleToggleResult>;
 }) {
   const router = useRouter();
-  const [pending, setPending] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-  const [undoTo, setUndoTo] = React.useState<boolean | null>(null);
+  const { pending, setPending, message, setMessage, undoTo, setUndoTo } = useUndoableToggle<boolean>();
   const id = `addon-toggle-${addOnId}`;
-
-  React.useEffect(() => {
-    if (undoTo === null) return;
-    const timer = window.setTimeout(() => setUndoTo(null), 12_000);
-    return () => window.clearTimeout(timer);
-  }, [undoTo]);
 
   const change = async (checked: boolean, offerUndo: boolean) => {
     setPending(true);
