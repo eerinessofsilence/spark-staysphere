@@ -22,5 +22,6 @@
       "files": ["components/ui/**"],
       "rules": { "no-restricted-imports": "off" }
     }
-  ]
+  ],
+  "ignorePatterns": ["public/vendor/**"]
 }
