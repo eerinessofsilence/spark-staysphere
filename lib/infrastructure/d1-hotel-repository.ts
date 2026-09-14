@@ -1,9 +1,7 @@
 import {
-  addOnSchema,
   bookingSchema,
   paymentAttemptSchema,
   roomStatusSchema,
-  type AddOn,
   type Availability,
   type Booking,
   type PaymentAttempt,
@@ -11,15 +9,16 @@ import {
 } from '../domain/schemas';
 import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
 import { ensureSchema } from './d1-schema';
-import { demoAddOns, demoHotel } from './mock-data';
 
 /**
  * D1-backed reads and writes for the durable slice of demo state: bookings,
  * payment attempts, admin overrides, and confirmed-booking holds. The
- * room/rate/add-on catalog stays static seed data (mock-data.ts) in every
- * backend — only what a guest or the admin panel actually mutates lives here.
- * Every function is a plain (db, ...args) call, dispatched to by
- * durable-hotel-repository.ts; nothing here decides whether D1 is in use.
+ * room/rate/add-on catalog's *baseline* stays static seed data (mock-data.ts)
+ * in every backend; the CMS overlay on top of it lives in
+ * `catalog-content-d1.ts`/`catalog-content-mock.ts` instead — this module
+ * only holds what a guest or the admin panel's booking-adjacent controls
+ * actually mutate. Every function is a plain (db, ...args) call, dispatched
+ * to by durable-hotel-repository.ts; nothing here decides whether D1 is in use.
  */
 
 interface BookingRow {
@@ -42,7 +41,12 @@ interface BookingRow {
   currency: string;
   status: string;
   created_at: string;
+  unit_number: string | null;
 }
+
+// A separate table rather than a new column: there is no migration runner to ALTER an existing one.
+const BOOKING_SELECT =
+  'SELECT b.*, u.unit_number FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id';
 
 function rowToBooking(row: BookingRow): Booking {
   return bookingSchema.parse({
@@ -67,6 +71,7 @@ function rowToBooking(row: BookingRow): Booking {
     currency: row.currency,
     status: row.status,
     createdAt: row.created_at,
+    unitNumber: row.unit_number ?? undefined,
   });
 }
 
@@ -76,7 +81,7 @@ export async function findBookingByIdempotencyKey(
 ): Promise<Booking | null> {
   await ensureSchema(db);
   const row = await db
-    .prepare('SELECT * FROM bookings WHERE idempotency_key = ?')
+    .prepare(`${BOOKING_SELECT} WHERE b.idempotency_key = ?`)
     .bind(key)
     .first<BookingRow>();
   return row ? rowToBooking(row) : null;
@@ -88,7 +93,7 @@ export async function getBookingByReference(
 ): Promise<Booking | null> {
   await ensureSchema(db);
   const row = await db
-    .prepare('SELECT * FROM bookings WHERE reference = ?')
+    .prepare(`${BOOKING_SELECT} WHERE b.reference = ?`)
     .bind(reference)
     .first<BookingRow>();
   return row ? rowToBooking(row) : null;
@@ -139,7 +144,7 @@ export async function cancelBooking(
 export async function listBookings(db: D1Database): Promise<Booking[]> {
   await ensureSchema(db);
   const { results } = await db
-    .prepare('SELECT * FROM bookings ORDER BY created_at DESC')
+    .prepare(`${BOOKING_SELECT} ORDER BY b.created_at DESC`)
     .all<BookingRow>();
   return results.map(rowToBooking);
 }
@@ -187,6 +192,12 @@ export async function saveBooking(db: D1Database, booking: Booking): Promise<Boo
     .run();
 
   const inserted = (insertResult.meta.changes ?? 0) > 0;
+  if (inserted && booking.unitNumber) {
+    await db
+      .prepare('INSERT INTO booking_units (booking_id, unit_number) VALUES (?, ?) ON CONFLICT (booking_id) DO NOTHING')
+      .bind(booking.id, booking.unitNumber)
+      .run();
+  }
   if (inserted && booking.status === 'confirmed') {
     const nights = nightsInRange(booking.checkIn, booking.checkOut);
     if (nights.length > 0) {
@@ -283,33 +294,6 @@ export async function setRoomStatusOverride(
     .run();
 }
 
-export async function setAddOnEnabled(
-  db: D1Database,
-  addOnId: string,
-  enabled: boolean,
-): Promise<void> {
-  await ensureSchema(db);
-  await db
-    .prepare(
-      `INSERT INTO addon_toggles (addon_id, enabled) VALUES (?, ?)
-       ON CONFLICT (addon_id) DO UPDATE SET enabled = excluded.enabled`,
-    )
-    .bind(addOnId, enabled ? 1 : 0)
-    .run();
-}
-
-export async function listAddOns(db: D1Database, hotelId: string): Promise<AddOn[]> {
-  if (hotelId !== demoHotel.id) return [];
-  await ensureSchema(db);
-  const { results } = await db
-    .prepare('SELECT addon_id, enabled FROM addon_toggles')
-    .all<{ addon_id: string; enabled: number }>();
-  const overrides = new Map(results.map((row) => [row.addon_id, row.enabled === 1]));
-  return demoAddOns.map((addOn) =>
-    addOnSchema.parse({ ...addOn, enabled: overrides.get(addOn.id) ?? addOn.enabled }),
-  );
-}
-
 export async function getAvailability(
   db: D1Database,
   roomTypeId: string,
@@ -346,8 +330,8 @@ export async function reset(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM bookings'),
     db.prepare('DELETE FROM payment_attempts'),
     db.prepare('DELETE FROM room_status_overrides'),
-    db.prepare('DELETE FROM addon_toggles'),
     db.prepare('DELETE FROM inventory_holds'),
+    db.prepare('DELETE FROM booking_units'),
   ]);
 }
 

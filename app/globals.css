@@ -283,6 +283,20 @@ body {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+  /*
+   * A numeric field's up/down spinner is drawn by the browser, not the
+   * product — a different size and shape on every engine, and never the
+   * pill chrome every other field carries. Every `input[type=number]`
+   * reads as the same plain field as `TextInput`, with nothing appended.
+   */
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   h1,
   h2,
   h3 {

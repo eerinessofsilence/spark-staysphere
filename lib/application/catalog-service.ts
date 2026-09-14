@@ -81,10 +81,38 @@ export class CatalogService {
     private readonly bookingEngine: BookingEngineAdapter,
   ) {}
 
+  /**
+   * The guest-facing hotel: hotspots, floor zones, and spinner markers that
+   * point at a room the CMS has hidden are stripped, so a guest can never
+   * land on a withdrawn room from the arrival scene or the 3D model. CMS
+   * pages read the same entity through `hotelRepository.getHotel` directly
+   * instead, unfiltered, since a hotel team needs to see and edit every
+   * hotspot whether or not the room behind it is currently on sale.
+   */
   async getHotel(slug: string): Promise<Hotel> {
     const hotel = await this.repository.getHotel(slug);
     if (!hotel) throw new HotelNotFoundError(slug);
-    return hotel;
+
+    const rooms = await this.repository.listRooms(hotel.id);
+    const hiddenSlugs = new Set(rooms.filter((room) => room.hidden).map((room) => room.slug));
+    if (hiddenSlugs.size === 0) return hotel;
+
+    return {
+      ...hotel,
+      areas: hotel.areas.map((area) => ({
+        ...area,
+        hotspots: area.hotspots.filter((hotspot) => !hotspot.roomSlug || !hiddenSlugs.has(hotspot.roomSlug)),
+        roomZones: area.roomZones?.filter((zone) => !hiddenSlugs.has(zone.roomSlug)),
+      })),
+      spinner: hotel.spinner
+        ? {
+            ...hotel.spinner,
+            hotspots: hotel.spinner.hotspots.filter(
+              (hotspot) => !hotspot.roomSlug || !hiddenSlugs.has(hotspot.roomSlug),
+            ),
+          }
+        : hotel.spinner,
+    };
   }
 
   async listAddOns(hotelId: string): Promise<AddOn[]> {
@@ -127,7 +155,7 @@ export class CatalogService {
     filters: RoomFilters,
   ): Promise<SearchResult> {
     const hotel = await this.getHotel(hotelSlug);
-    const rooms = await this.repository.listRooms(hotel.id);
+    const rooms = (await this.repository.listRooms(hotel.id)).filter((room) => !room.hidden);
     const guests = criteria.adults + criteria.children;
 
     const built = await Promise.all(rooms.map((room) => this.buildOffer(room, criteria)));
@@ -157,7 +185,7 @@ export class CatalogService {
   ): Promise<RoomDetail> {
     const hotel = await this.getHotel(hotelSlug);
     const rooms = await this.repository.listRooms(hotel.id);
-    const room = rooms.find((candidate) => candidate.slug === roomSlug);
+    const room = rooms.find((candidate) => candidate.slug === roomSlug && !candidate.hidden);
     if (!room) throw new RoomNotFoundError(roomSlug);
 
     const offer = await this.buildOffer(room, criteria);

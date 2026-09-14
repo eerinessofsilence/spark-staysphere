@@ -1,5 +1,6 @@
 import { addDays, format, isValid, parseISO } from 'date-fns';
 import { roomCategories, type RoomCategory } from '../domain/room-attributes';
+import { ROOM_NUMBER } from '../domain/room-units';
 import type { RoomType, StayCriteria } from '../domain/schemas';
 import { defaultRoomFilters, type RoomFilters, type SortOrder } from './catalog-service';
 
@@ -22,6 +23,7 @@ export const searchParamKeys = {
   sort: 'sort',
   addOn: 'addOn',
   layout: 'layout',
+  room: 'room',
 } as const;
 
 /** Exported so any caller validating a `view`/`bedType` (e.g. the assistant's sanitiser) shares this one union. */
@@ -36,10 +38,11 @@ const sortOrders: SortOrder[] = ['recommended', 'price_asc', 'price_desc', 'area
  * which rooms come back — but it lives in the URL with them so the choice
  * survives a filter change and travels with a shared link.
  */
-export type CatalogLayout = 'grid' | 'list';
+export type CatalogLayout = 'grid' | 'list' | 'plan';
 
 export function parseLayout(params: SearchParamsInput): CatalogLayout {
-  return first(params[searchParamKeys.layout]) === 'list' ? 'list' : 'grid';
+  const value = first(params[searchParamKeys.layout]);
+  return value === 'list' || value === 'plan' ? value : 'grid';
 }
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -131,6 +134,11 @@ export function parseAddOnIds(params: SearchParamsInput): string[] {
   return many(params[searchParamKeys.addOn]);
 }
 
+export function parseRoomNumber(params: SearchParamsInput): string | null {
+  const value = first(params[searchParamKeys.room]);
+  return value && ROOM_NUMBER.test(value) ? value : null;
+}
+
 export function filtersAreDefault(filters: RoomFilters): boolean {
   return (
     filters.minPrice === null &&
@@ -164,10 +172,12 @@ interface QueryInput {
   addOnIds?: string[];
   /** Carried through so changing a filter does not throw the guest back to the grid. */
   layout?: CatalogLayout;
+  /** A room picked on the floor plan. */
+  roomNumber?: string;
 }
 
 /** Builds the canonical query string so every link in the app carries the stay. */
-export function buildQuery({ criteria, filters, addOnIds, layout }: QueryInput): string {
+export function buildQuery({ criteria, filters, addOnIds, layout, roomNumber }: QueryInput): string {
   const params = new URLSearchParams();
   params.set(searchParamKeys.checkIn, criteria.checkIn);
   params.set(searchParamKeys.checkOut, criteria.checkOut);
@@ -189,6 +199,7 @@ export function buildQuery({ criteria, filters, addOnIds, layout }: QueryInput):
 
   addOnIds?.forEach((id) => params.append(searchParamKeys.addOn, id));
   if (layout && layout !== 'grid') params.set(searchParamKeys.layout, layout);
+  if (roomNumber) params.set(searchParamKeys.room, roomNumber);
 
   return params.toString();
 }

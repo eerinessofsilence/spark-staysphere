@@ -1,0 +1,466 @@
+[
+  {
+    "url": "/images/dining/arrival-wine-2.webp",
+    "folder": "dining",
+    "filename": "arrival-wine-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 173902
+  },
+  {
+    "url": "/images/dining/arrival-wine-3.webp",
+    "folder": "dining",
+    "filename": "arrival-wine-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 241810
+  },
+  {
+    "url": "/images/dining/arrival-wine.webp",
+    "folder": "dining",
+    "filename": "arrival-wine.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 62844
+  },
+  {
+    "url": "/images/dining/breakfast-2.webp",
+    "folder": "dining",
+    "filename": "breakfast-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 47710
+  },
+  {
+    "url": "/images/dining/breakfast-3.webp",
+    "folder": "dining",
+    "filename": "breakfast-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 69628
+  },
+  {
+    "url": "/images/dining/breakfast.webp",
+    "folder": "dining",
+    "filename": "breakfast.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 76248
+  },
+  {
+    "url": "/images/dining/cheese-board-2.webp",
+    "folder": "dining",
+    "filename": "cheese-board-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 105876
+  },
+  {
+    "url": "/images/dining/cheese-board-3.webp",
+    "folder": "dining",
+    "filename": "cheese-board-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 120980
+  },
+  {
+    "url": "/images/dining/cheese-board.webp",
+    "folder": "dining",
+    "filename": "cheese-board.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 187656
+  },
+  {
+    "url": "/images/dining/figs-2.webp",
+    "folder": "dining",
+    "filename": "figs-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 99760
+  },
+  {
+    "url": "/images/dining/figs-3.webp",
+    "folder": "dining",
+    "filename": "figs-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 114456
+  },
+  {
+    "url": "/images/dining/figs.webp",
+    "folder": "dining",
+    "filename": "figs.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 69184
+  },
+  {
+    "url": "/images/dining/oysters-2.webp",
+    "folder": "dining",
+    "filename": "oysters-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 131880
+  },
+  {
+    "url": "/images/dining/oysters-3.webp",
+    "folder": "dining",
+    "filename": "oysters-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 174228
+  },
+  {
+    "url": "/images/dining/oysters.webp",
+    "folder": "dining",
+    "filename": "oysters.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 127798
+  },
+  {
+    "url": "/images/dining/terrace-dinner-2.webp",
+    "folder": "dining",
+    "filename": "terrace-dinner-2.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 84396
+  },
+  {
+    "url": "/images/dining/terrace-dinner-3.webp",
+    "folder": "dining",
+    "filename": "terrace-dinner-3.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 74130
+  },
+  {
+    "url": "/images/dining/terrace-dinner.webp",
+    "folder": "dining",
+    "filename": "terrace-dinner.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 250792
+  },
+  {
+    "url": "/images/hotel/cove.webp",
+    "folder": "hotel",
+    "filename": "cove.webp",
+    "width": 2000,
+    "height": 3000,
+    "bytes": 938392
+  },
+  {
+    "url": "/images/hotel/facade.webp",
+    "folder": "hotel",
+    "filename": "facade.webp",
+    "width": 2000,
+    "height": 1334,
+    "bytes": 156644
+  },
+  {
+    "url": "/images/hotel/lobby.webp",
+    "folder": "hotel",
+    "filename": "lobby.webp",
+    "width": 2000,
+    "height": 1126,
+    "bytes": 186888
+  },
+  {
+    "url": "/images/hotel/pool.webp",
+    "folder": "hotel",
+    "filename": "pool.webp",
+    "width": 2000,
+    "height": 1334,
+    "bytes": 126682
+  },
+  {
+    "url": "/images/hotel/spa.webp",
+    "folder": "hotel",
+    "filename": "spa.webp",
+    "width": 2000,
+    "height": 1334,
+    "bytes": 113806
+  },
+  {
+    "url": "/images/panoramas/hotel.webp",
+    "folder": "panoramas",
+    "filename": "hotel.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 619312
+  },
+  {
+    "url": "/images/panoramas/lobby.webp",
+    "folder": "panoramas",
+    "filename": "lobby.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 763220
+  },
+  {
+    "url": "/images/panoramas/pool.webp",
+    "folder": "panoramas",
+    "filename": "pool.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 577560
+  },
+  {
+    "url": "/images/panoramas/room.webp",
+    "folder": "panoramas",
+    "filename": "room.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 278114
+  },
+  {
+    "url": "/images/panoramas/spa.webp",
+    "folder": "panoramas",
+    "filename": "spa.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 337200
+  },
+  {
+    "url": "/images/panoramas/suite.webp",
+    "folder": "panoramas",
+    "filename": "suite.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 416046
+  },
+  {
+    "url": "/images/panoramas/terrace.webp",
+    "folder": "panoramas",
+    "filename": "terrace.webp",
+    "width": 4096,
+    "height": 2048,
+    "bytes": 620452
+  },
+  {
+    "url": "/images/rooms/asteria-penthouse/bathroom.webp",
+    "folder": "rooms/asteria-penthouse",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 165454
+  },
+  {
+    "url": "/images/rooms/asteria-penthouse/bedroom.webp",
+    "folder": "rooms/asteria-penthouse",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1200,
+    "bytes": 123244
+  },
+  {
+    "url": "/images/rooms/asteria-penthouse/living.webp",
+    "folder": "rooms/asteria-penthouse",
+    "filename": "living.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 60252
+  },
+  {
+    "url": "/images/rooms/asteria-penthouse/terrace.webp",
+    "folder": "rooms/asteria-penthouse",
+    "filename": "terrace.webp",
+    "width": 1600,
+    "height": 889,
+    "bytes": 162152
+  },
+  {
+    "url": "/images/rooms/coastal-twin/balcony.webp",
+    "folder": "rooms/coastal-twin",
+    "filename": "balcony.webp",
+    "width": 1600,
+    "height": 1387,
+    "bytes": 68612
+  },
+  {
+    "url": "/images/rooms/coastal-twin/bathroom.webp",
+    "folder": "rooms/coastal-twin",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 1496,
+    "bytes": 62162
+  },
+  {
+    "url": "/images/rooms/coastal-twin/bedroom.webp",
+    "folder": "rooms/coastal-twin",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 62000
+  },
+  {
+    "url": "/images/rooms/deluxe-sea/balcony.webp",
+    "folder": "rooms/deluxe-sea",
+    "filename": "balcony.webp",
+    "width": 1600,
+    "height": 2134,
+    "bytes": 178070
+  },
+  {
+    "url": "/images/rooms/deluxe-sea/bathroom.webp",
+    "folder": "rooms/deluxe-sea",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 1496,
+    "bytes": 62162
+  },
+  {
+    "url": "/images/rooms/deluxe-sea/bedroom.webp",
+    "folder": "rooms/deluxe-sea",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 50890
+  },
+  {
+    "url": "/images/rooms/family-residence/bathroom.webp",
+    "folder": "rooms/family-residence",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 66248
+  },
+  {
+    "url": "/images/rooms/family-residence/bedroom.webp",
+    "folder": "rooms/family-residence",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 122302
+  },
+  {
+    "url": "/images/rooms/family-residence/living.webp",
+    "folder": "rooms/family-residence",
+    "filename": "living.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 66386
+  },
+  {
+    "url": "/images/rooms/family-residence/second-bedroom.webp",
+    "folder": "rooms/family-residence",
+    "filename": "second-bedroom.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 146700
+  },
+  {
+    "url": "/images/rooms/garden-studio/bathroom.webp",
+    "folder": "rooms/garden-studio",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 66248
+  },
+  {
+    "url": "/images/rooms/garden-studio/bedroom.webp",
+    "folder": "rooms/garden-studio",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 98332
+  },
+  {
+    "url": "/images/rooms/garden-studio/terrace.webp",
+    "folder": "rooms/garden-studio",
+    "filename": "terrace.webp",
+    "width": 1600,
+    "height": 2845,
+    "bytes": 184636
+  },
+  {
+    "url": "/images/rooms/panorama-suite/bathroom.webp",
+    "folder": "rooms/panorama-suite",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 1496,
+    "bytes": 62162
+  },
+  {
+    "url": "/images/rooms/panorama-suite/bedroom.webp",
+    "folder": "rooms/panorama-suite",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 73438
+  },
+  {
+    "url": "/images/rooms/panorama-suite/living.webp",
+    "folder": "rooms/panorama-suite",
+    "filename": "living.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 68888
+  },
+  {
+    "url": "/images/rooms/panorama-suite/terrace.webp",
+    "folder": "rooms/panorama-suite",
+    "filename": "terrace.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 171892
+  },
+  {
+    "url": "/images/rooms/pool-terrace/bathroom.webp",
+    "folder": "rooms/pool-terrace",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 66248
+  },
+  {
+    "url": "/images/rooms/pool-terrace/bedroom.webp",
+    "folder": "rooms/pool-terrace",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 76158
+  },
+  {
+    "url": "/images/rooms/pool-terrace/terrace.webp",
+    "folder": "rooms/pool-terrace",
+    "filename": "terrace.webp",
+    "width": 1600,
+    "height": 1064,
+    "bytes": 189896
+  },
+  {
+    "url": "/images/rooms/skyline-loft/bathroom.webp",
+    "folder": "rooms/skyline-loft",
+    "filename": "bathroom.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 66248
+  },
+  {
+    "url": "/images/rooms/skyline-loft/bedroom.webp",
+    "folder": "rooms/skyline-loft",
+    "filename": "bedroom.webp",
+    "width": 1600,
+    "height": 1065,
+    "bytes": 40932
+  },
+  {
+    "url": "/images/rooms/skyline-loft/living.webp",
+    "folder": "rooms/skyline-loft",
+    "filename": "living.webp",
+    "width": 1600,
+    "height": 1067,
+    "bytes": 77090
+  },
+  {
+    "url": "/images/rooms/skyline-loft/window.webp",
+    "folder": "rooms/skyline-loft",
+    "filename": "window.webp",
+    "width": 1600,
+    "height": 2400,
+    "bytes": 206558
+  }
+]

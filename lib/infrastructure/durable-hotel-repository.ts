@@ -1,6 +1,9 @@
-import type { DemoControlPort, HotelRepository } from '../domain/ports';
+import { mergeCatalog } from '../domain/catalog-overlay';
+import type { CatalogEntryRecord, DemoControlPort, HotelRepository } from '../domain/ports';
+import type { AddOn, Hotel, RatePlan, RoomType } from '../domain/schemas';
 import { getDemoDatabase } from './cloudflare-env';
 import * as d1 from './d1-hotel-repository';
+import { durableCatalogContentPort } from './durable-catalog-content';
 import { mockDemoControlPort, mockHotelRepository } from './mock-hotel-repository';
 
 /**
@@ -10,19 +13,57 @@ import { mockDemoControlPort, mockHotelRepository } from './mock-hotel-repositor
  * reads through D1 when one is configured, falling back to the in-memory
  * mock otherwise (no hosting.json d1 binding, or running outside workerd).
  *
- * getHotel/listRooms/listRatePlans never touch either backend's state: the
- * room/rate catalog is static seed data that no guest or admin action
- * mutates, so there's nothing to persist for it.
+ * getHotel/listRooms/listRatePlans/listAddOns read the static seed
+ * (mock-data.ts) and merge the CMS overlay (`durableCatalogContentPort`,
+ * itself D1-or-in-memory the same way) on top — see
+ * `lib/domain/catalog-overlay.ts`. Nothing else in this file's booking state
+ * is affected: only what `/admin/content` can edit is overlaid.
  */
 export const durableHotelRepository: HotelRepository = {
-  getHotel: (slug) => mockHotelRepository.getHotel(slug),
-  listRooms: (hotelId) => mockHotelRepository.listRooms(hotelId),
-  listRatePlans: (roomTypeId) => mockHotelRepository.listRatePlans(roomTypeId),
-
-  listAddOns(hotelId) {
-    const db = getDemoDatabase();
-    return db ? d1.listAddOns(db, hotelId) : mockHotelRepository.listAddOns(hotelId);
+  async getHotel(slug) {
+    const seed = await mockHotelRepository.getHotel(slug);
+    if (!seed) return null;
+    const overlay = (await durableCatalogContentPort.listEntries(
+      'hotel',
+      seed.id,
+    )) as CatalogEntryRecord<Hotel>[];
+    return mergeCatalog([seed], overlay)[0] ?? seed;
   },
+
+  async listRooms(hotelId) {
+    const seed = await mockHotelRepository.listRooms(hotelId);
+    const overlay = (await durableCatalogContentPort.listEntries(
+      'room',
+      hotelId,
+    )) as CatalogEntryRecord<RoomType>[];
+    return mergeCatalog(seed, overlay);
+  },
+
+  async listRatePlans(roomTypeId) {
+    const seed = await mockHotelRepository.listRatePlans(roomTypeId);
+    // Rate overlay rows are keyed to the one demo hotel, then narrowed to
+    // this room type — there is no per-room-type overlay listing, and one
+    // hotel is all v1 supports (see CLAUDE.md's roadmap).
+    const hotel = await mockHotelRepository.getHotel('asteria-cove');
+    const overlay = hotel
+      ? ((await durableCatalogContentPort.listEntries(
+          'rate',
+          hotel.id,
+        )) as CatalogEntryRecord<RatePlan>[])
+      : [];
+    const relevant = overlay.filter((entry) => entry.data.roomTypeId === roomTypeId);
+    return mergeCatalog(seed, relevant);
+  },
+
+  async listAddOns(hotelId) {
+    const seed = await mockHotelRepository.listAddOns(hotelId);
+    const overlay = (await durableCatalogContentPort.listEntries(
+      'addon',
+      hotelId,
+    )) as CatalogEntryRecord<AddOn>[];
+    return mergeCatalog(seed, overlay);
+  },
+
   getAvailability(roomTypeId, from, to) {
     const db = getDemoDatabase();
     return db
@@ -69,10 +110,6 @@ export const durableDemoControlPort: DemoControlPort = {
   getRoomStatusOverride(roomTypeId) {
     const db = getDemoDatabase();
     return db ? d1.getRoomStatusOverride(db, roomTypeId) : mockDemoControlPort.getRoomStatusOverride(roomTypeId);
-  },
-  setAddOnEnabled(addOnId, enabled) {
-    const db = getDemoDatabase();
-    return db ? d1.setAddOnEnabled(db, addOnId, enabled) : mockDemoControlPort.setAddOnEnabled(addOnId, enabled);
   },
   listIntegrationStatuses: () => mockDemoControlPort.listIntegrationStatuses(),
   reset() {

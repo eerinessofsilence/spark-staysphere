@@ -7,11 +7,12 @@ import { fieldClass, pill } from '@/lib/ui';
 import { resetDemoState, setAddOnEnabled, setRoomStatus } from '@/app/admin/actions';
 import type { RoomStatus } from '@/lib/domain/schemas';
 import { statusLabels } from '@/lib/formatting';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 const overrideOptions: { value: RoomStatus | 'auto'; label: string }[] = [
-  { value: 'auto', label: 'Auto (simulated demand)' },
+  { value: 'auto', label: 'Auto (simulated)' },
   { value: 'available', label: statusLabels.available },
   { value: 'limited', label: statusLabels.limited },
   { value: 'last_room', label: statusLabels.last_room },
@@ -37,27 +38,35 @@ export function RoomStatusControl({
       <label htmlFor={id} className="sr-only">
         Availability override for {roomName}
       </label>
-      <select
-        id={id}
+      <Select
+        items={overrideOptions}
         value={value}
         disabled={pending}
-        onChange={async (event) => {
+        onValueChange={async (next) => {
           setPending(true);
           await setRoomStatus({
             roomTypeId,
-            status: event.target.value as RoomStatus | 'auto',
+            status: (next ?? 'auto') as RoomStatus | 'auto',
           });
           router.refresh();
           setPending(false);
         }}
-        className={cn(fieldClass, "disabled:opacity-60")}
       >
-        {overrideOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger id={id} className={cn(fieldClass, 'justify-between gap-2 py-0 disabled:opacity-60')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+          {overrideOptions.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {pending ? (
         <ArrowPathIcon className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
       ) : null}
@@ -82,6 +91,7 @@ export function AddOnToggle({
     <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
       <Switch
         id={id}
+        aria-label={addOnName}
         checked={enabled}
         disabled={pending}
         onCheckedChange={async (checked) => {

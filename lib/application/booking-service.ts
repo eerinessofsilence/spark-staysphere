@@ -225,6 +225,20 @@ export class BookingService {
     return { outcome: 'cancelled', trip: this.summarize(cancelled, room) };
   }
 
+  async findByIdempotencyKey(key: string): Promise<Booking | null> {
+    return this.repository.findBookingByIdempotencyKey(key);
+  }
+
+  /** The hotel cancelling: no email check, but a stay already under way is still the desk's call. */
+  async cancelAsHotel(reference: string): Promise<{ outcome: CancelOutcome; booking?: Booking }> {
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
+    if (!booking) return { outcome: 'not_found' };
+    if (booking.status === 'cancelled') return { outcome: 'already_cancelled', booking };
+    if (!isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
+    const cancelled = await this.repository.cancelBooking(booking.reference);
+    return cancelled ? { outcome: 'cancelled', booking: cancelled } : { outcome: 'not_found' };
+  }
+
   private summarize(booking: Booking, room: RoomType | null): TripSummary {
     const photo = room?.media.find((item) => item.type === 'image') ?? null;
     return {
@@ -338,6 +352,7 @@ export class BookingService {
       children: input.children,
       guest: input.guest,
       addOnIds: quote.addOnIds,
+      unitNumber: input.unitNumber,
       total: quote.price.total,
       currency: quote.price.currency,
       status: 'confirmed',

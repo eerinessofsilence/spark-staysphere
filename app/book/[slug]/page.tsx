@@ -1,10 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Warning } from '@phosphor-icons/react/dist/ssr';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { RoomNotFoundError } from '@/lib/application/catalog-service';
-import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
-import { buildQuery, parseAddOnIds, parseCriteria, toIsoDate } from '@/lib/application/search-params';
+import { catalogService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
+import {
+  buildQuery,
+  parseAddOnIds,
+  parseCriteria,
+  parseRoomNumber,
+  toIsoDate,
+} from '@/lib/application/search-params';
 import { BookingFlow } from '@/components/booking/booking-flow';
 import { pill } from '@/lib/ui';
 import { SiteFooter } from '@/components/site/site-footer';
@@ -28,6 +35,17 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
     });
 
   const stayQuery = buildQuery({ criteria, addOnIds: detail.quote.addOnIds });
+  const requestedRoom = parseRoomNumber(query);
+  const roomIsFree = requestedRoom
+    ? await inventoryService.isUnitFreeForStay(
+        DEMO_HOTEL_SLUG,
+        detail.offer.room.id,
+        requestedRoom,
+        criteria.checkIn,
+        criteria.checkOut,
+      )
+    : false;
+  const roomNumber = requestedRoom && roomIsFree ? requestedRoom : null;
 
   return (
     <>
@@ -48,6 +66,28 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
           </p>
         </header>
 
+        {requestedRoom && !roomNumber ? (
+          <div
+            role="status"
+            className="mb-6 flex items-start gap-3 rounded-3xl border border-warning/30 bg-warning/10 p-4 text-sm"
+          >
+            <Warning weight="fill" className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
+            <p>
+              <span className="font-medium">
+                Room {requestedRoom} is no longer free for these dates.
+              </span>{' '}
+              We&apos;ll book any {detail.offer.room.name} instead, or{' '}
+              <Link
+                href={`/rooms?${buildQuery({ criteria, layout: 'plan' })}`}
+                className="font-medium underline underline-offset-2"
+              >
+                pick another room on the floor plan
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
+
         <BookingFlow
           hotel={detail.hotel}
           room={detail.offer.room}
@@ -57,6 +97,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
           initialQuote={detail.quote}
           initialAddOnIds={detail.quote.addOnIds}
           minDate={toIsoDate(new Date())}
+          roomNumber={roomNumber}
         />
       </main>
       <SiteFooter stayQuery={stayQuery} />

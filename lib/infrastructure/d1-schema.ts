@@ -1,13 +1,14 @@
 /**
- * Durable demo state: confirmed bookings, payment attempts, and the admin
- * overrides that need to survive a restart. Applied once per Worker isolate
- * with `CREATE TABLE IF NOT EXISTS` — this project has no migration runner,
- * and idempotent DDL is cheap enough to run on first use rather than
- * requiring a separate `wrangler d1 migrations` step.
+ * Durable demo state: confirmed bookings, payment attempts, the admin
+ * overrides that need to survive a restart, and the CMS content overlay.
+ * Applied once per Worker isolate with `CREATE TABLE IF NOT EXISTS` — this
+ * project has no migration runner, and idempotent DDL is cheap enough to run
+ * on first use rather than requiring a separate `wrangler d1 migrations` step.
  *
- * The room/rate/add-on catalog itself is NOT here: it stays static seed data
- * in mock-data.ts, exactly as before. Only the state a guest or the admin
- * panel actually mutates lives in D1.
+ * The room/rate/add-on catalog's *baseline* is NOT here: it stays static seed
+ * data in mock-data.ts. `catalog_entries` holds only what a hotel team has
+ * edited through `/admin/content` — see `lib/domain/catalog-overlay.ts` for
+ * how a row there replaces or extends a seed entity.
  *
  * Each statement is a single line with no embedded newlines: `D1Database.exec`
  * splits its input on `\n`, not `;`, so a multi-line `CREATE TABLE` silently
@@ -19,8 +20,10 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS payment_attempts (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, provider TEXT NOT NULL, status TEXT NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_payment_attempts_booking ON payment_attempts (booking_id)`,
   `CREATE TABLE IF NOT EXISTS room_status_overrides (room_type_id TEXT PRIMARY KEY, status TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS addon_toggles (addon_id TEXT PRIMARY KEY, enabled INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS inventory_holds (room_type_id TEXT NOT NULL, date TEXT NOT NULL, held INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (room_type_id, date))`,
+  `CREATE TABLE IF NOT EXISTS catalog_entries (kind TEXT NOT NULL, id TEXT NOT NULL, hotel_id TEXT NOT NULL, data TEXT NOT NULL, version INTEGER NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (kind, id))`,
+  `CREATE INDEX IF NOT EXISTS idx_catalog_entries_hotel ON catalog_entries (hotel_id, kind)`,
+  `CREATE TABLE IF NOT EXISTS booking_units (booking_id TEXT PRIMARY KEY, unit_number TEXT NOT NULL)`,
 ];
 
 const ready = new WeakMap<D1Database, Promise<void>>();

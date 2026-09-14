@@ -151,14 +151,56 @@ test('resetting demo state clears bookings and availability overrides', async ({
     () => expect(page.getByText('No bookings yet')).toBeVisible({ timeout: 5_000 }),
   );
 
-  await expect(
-    page.getByRole('row').filter({ hasText: 'Coastal Twin' }).getByRole('combobox'),
-  ).toHaveValue('auto');
+  // Overrides live with the rates now, not on the overview.
+  await page.goto('/admin/rates');
+  await expect(page.getByRole('combobox', { name: 'Availability override for Coastal Twin' })).toHaveValue(
+    'auto',
+  );
 });
 
-test('no route overflows the phone viewport', async ({ page }, testInfo) => {
+test('no route overflows the phone viewport', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Only meaningful at the phone width');
-  for (const path of ['/', `/rooms?${stayQuery}`, `/rooms/deluxe-sea?${stayQuery}`, `/book/deluxe-sea?${stayQuery}`, '/admin']) {
+
+  // The reset left no bookings, and a booking's own page is one of the widest screens.
+  // Demo inventory is finite, so take the first room type that still has a room.
+  let reference = '';
+  for (const roomSlug of ['deluxe-sea', 'coastal-twin', 'sea-view-room', 'city-view-room', 'garden-studio']) {
+    const stay = { roomSlug, checkIn, checkOut, adults: 2, children: 0, addOnIds: [] };
+    const quoted = await (await request.post('/api/quotes', { data: stay })).json();
+    const booked = await request.post('/api/bookings', {
+      headers: { 'Idempotency-Key': `overflow-${roomSlug}-${Date.now()}` },
+      data: {
+        ...stay,
+        guest: { firstName: 'Ada', lastName: 'Lindqvist', email: 'ada@example.com', phone: '91 555 0117' },
+        expectedTotal: (quoted.quote ?? quoted).price.total,
+      },
+    });
+    if (booked.status() === 409) continue;
+    expect(booked.status(), await booked.text()).toBe(201);
+    reference = (await booked.json()).booking.reference;
+    break;
+  }
+  expect(reference, 'No room type had a room free for the test stay').not.toBe('');
+
+  for (const path of [
+    '/',
+    `/rooms?${stayQuery}`,
+    `/rooms?layout=plan&${stayQuery}`,
+    `/rooms/deluxe-sea?${stayQuery}`,
+    `/book/deluxe-sea?${stayQuery}`,
+    `/booking/${reference}`,
+    '/admin',
+    '/admin/chessboard',
+    '/admin/bookings',
+    `/admin/bookings/${reference}`,
+    '/admin/rates',
+    '/admin/content',
+    '/admin/content/hotel',
+    '/admin/content/rooms/room_deluxe-sea',
+    '/admin/content/rooms/new',
+    '/admin/content/add-ons/addon_late',
+    '/admin/content/add-ons/new',
+  ]) {
     await page.goto(path);
     // Android Chrome widens the layout viewport to any overflow, which shows up here.
     expect(await page.evaluate(() => window.innerWidth), path).toBe(390);
@@ -349,6 +391,8 @@ test('the catalog filters, sorts, and recovers from an empty result', async ({ p
 
   const results = page.getByRole('region', { name: 'Search results' });
   const cards = results.locator('article');
+  // `count()` doesn't wait: on a cold server it would count the loading screen.
+  await expect(cards.first()).toBeVisible();
   const initialCount = await cards.count();
   expect(initialCount).toBeGreaterThan(3);
 
@@ -432,8 +476,15 @@ test('adding a service leaves the guest where they were on the page', async ({ p
     if (url.searchParams.has('_rsc') && url.pathname.startsWith('/rooms/')) rerenders.push(url.href);
   });
 
-  await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
-  await expect(page).toHaveURL(/addOn=addon_transfer/);
+  // A click before hydration is lost, and a second click would take the service
+  // off again, so retry only while the button still offers to add it.
+  const add = page.getByRole('button', { name: 'Add Airport transfer to your stay' });
+  await actUntil(
+    async () => {
+      if (await add.isVisible()) await add.click();
+    },
+    () => expect(page).toHaveURL(/addOn=addon_transfer/, { timeout: 3_000 }),
+  );
   await expect(
     page.getByRole('complementary', { name: 'Your stay' }).getByText('Airport transfer'),
   ).toBeVisible();
@@ -580,20 +631,20 @@ test('a trip is claimed by reference and the email it was booked with', async ({
 });
 
 test('an admin sell-out immediately blocks that room for guests', async ({ page }) => {
-  await page.goto('/admin');
+  await page.goto('/admin/rates');
 
-  const row = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
+  const override = page.getByRole('combobox', { name: 'Availability override for Coastal Twin' });
   // Reload before asserting, and assert on the override the server sent back:
   // a pre-hydration selectOption changes the DOM without ever reaching the
-  // server action, and a reload is what tells the two apart. The status column
-  // beside it cannot: it shows plain availability for the admin's own demo
-  // stay, which already reads "Fully booked" here whatever the override says.
+  // server action, and a reload is what tells the two apart. The nightly
+  // counts beside it cannot: they show simulated availability, which can
+  // already read 0 whatever the override says.
   await actUntil(
     async () => {
-      await row.getByRole('combobox').selectOption('sold_out');
+      await override.selectOption('sold_out');
       await page.reload();
     },
-    () => expect(row.getByRole('combobox')).toHaveValue('sold_out', { timeout: 3_000 }),
+    () => expect(override).toHaveValue('sold_out', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
@@ -606,42 +657,41 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   ).toHaveCount(0);
 
   // Restore, so the suite leaves the demo as it found it.
-  await page.goto('/admin');
-  const restored = page.getByRole('row').filter({ hasText: 'Coastal Twin' });
+  await page.goto('/admin/rates');
   await actUntil(
     async () => {
-      await restored.getByRole('combobox').selectOption('auto');
+      await override.selectOption('auto');
       await page.reload();
     },
-    () => expect(restored.getByRole('combobox')).toHaveValue('auto', { timeout: 3_000 }),
+    () => expect(override).toHaveValue('auto', { timeout: 3_000 }),
   );
 });
 
 test('withdrawing an add-on removes it from the guest flow', async ({ page }) => {
-  await page.goto('/admin');
+  // Selling an add-on is content, so its switch sits in the CMS list.
+  await page.goto('/admin/content');
 
-  const card = page.locator('div').filter({ hasText: /^Late check-out/ }).last();
+  const toggle = page.getByRole('switch', { name: 'Late check-out' });
   await actUntil(
     async () => {
-      if ((await card.getByRole('switch').getAttribute('aria-checked')) !== 'false') {
-        await card.getByRole('switch').click();
-      }
+      if ((await toggle.getAttribute('aria-checked')) !== 'false') await toggle.click();
     },
-    () => expect(card.getByText('Withdrawn')).toBeVisible({ timeout: 3_000 }),
+    () => expect(toggle).toHaveAttribute('aria-checked', 'false', { timeout: 3_000 }),
   );
+  // The switch flips before the round trip lands; a reload shows what the server kept.
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
 
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
   await expect(page.getByText('Late check-out')).toHaveCount(0);
 
-  await page.goto('/admin');
-  const restore = page.locator('div').filter({ hasText: /^Late check-out/ }).last();
+  await page.goto('/admin/content');
   await actUntil(
     async () => {
-      if ((await restore.getByRole('switch').getAttribute('aria-checked')) !== 'true') {
-        await restore.getByRole('switch').click();
-      }
+      if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click();
+      await page.reload();
     },
-    () => expect(restore.getByText('On sale')).toBeVisible({ timeout: 3_000 }),
+    () => expect(toggle).toHaveAttribute('aria-checked', 'true', { timeout: 3_000 }),
   );
 });
 

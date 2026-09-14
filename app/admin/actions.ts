@@ -1,14 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { demoControl } from '@/lib/application/container';
+import { contentService, demoControl } from '@/lib/application/container';
 import { roomStatusSchema } from '@/lib/domain/schemas';
 import { z } from 'zod';
 
 /**
- * Demo inventory controls. These write to the in-memory DemoControlPort only;
- * a production admin writes through the PMS adapter and never touches
- * availability directly.
+ * Demo inventory controls. `setRoomStatus`/`resetDemoState` write to the
+ * DemoControlPort only; a production admin writes through the PMS adapter
+ * and never touches availability directly. `setAddOnEnabled` writes through
+ * `contentService` — the same path `/admin/content`'s add-on form uses, so
+ * this quick switch and the CMS can never disagree about which value won.
  */
 
 const overrideSchema = z.object({
@@ -20,6 +22,10 @@ const addOnSchema = z.object({ addOnId: z.string().min(1), enabled: z.boolean() 
 
 function refresh() {
   revalidatePath('/admin');
+  revalidatePath('/admin/content');
+  revalidatePath('/admin/rates');
+  revalidatePath('/admin/bookings');
+  revalidatePath('/admin/chessboard');
   revalidatePath('/rooms');
   revalidatePath('/');
 }
@@ -35,11 +41,12 @@ export async function setRoomStatus(input: z.infer<typeof overrideSchema>): Prom
 
 export async function setAddOnEnabled(input: z.infer<typeof addOnSchema>): Promise<void> {
   const parsed = addOnSchema.parse(input);
-  await demoControl.setAddOnEnabled(parsed.addOnId, parsed.enabled);
+  await contentService.setAddOnEnabled(parsed.addOnId, parsed.enabled);
   refresh();
 }
 
 export async function resetDemoState(): Promise<void> {
   await demoControl.reset();
+  await contentService.resetContent();
   refresh();
 }

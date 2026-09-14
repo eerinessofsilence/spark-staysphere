@@ -15,6 +15,7 @@ import {
   formatMoney,
   formatNights,
   formatPricingUnit,
+  formatRoomNumber,
   paymentMethodLabels,
   viewLabels,
 } from '@/lib/formatting';
@@ -113,6 +114,9 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
               </Detail>
               <Detail icon={MapPinIcon} label="Room">
                 {room?.name ?? booking.roomTypeId}
+                {booking.unitNumber ? (
+                  <span className="block">{formatRoomNumber(booking.unitNumber)}</span>
+                ) : null}
                 {room ? (
                   <span className="block text-muted-foreground">
                     {room.areaM2} m² · {viewLabels[room.view]}

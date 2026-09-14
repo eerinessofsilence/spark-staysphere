@@ -4,7 +4,8 @@ import { format, parseISO } from 'date-fns';
 // describe the same filter object with one vocabulary.
 import type { RoomFilters } from './application/catalog-service';
 import type { RoomCategory } from './domain/room-attributes';
-import type { AddOn, Currency, PaymentMethod, RoomStatus, RoomType, StayCriteria } from './domain/schemas';
+import type { Facade } from './domain/room-units';
+import type { AddOn, Booking, Currency, PaymentMethod, RoomStatus, RoomType, StayCriteria } from './domain/schemas';
 
 /** Fixed locale on purpose: server and client must format identically or React rehydrates wrong. */
 const MONEY_LOCALE = 'en-GB';
@@ -106,6 +107,22 @@ export function formatRoomLine(
   if (!facts) return null;
   return `${formatFloor(facts.floor)} · from ${formatMoney(facts.nightlyPrice, facts.currency)}`;
 }
+
+export const facadeLabels: Record<Facade, string> = {
+  sea: 'Sea side',
+  town: 'Town side',
+};
+
+export function formatRoomNumber(number: string): string {
+  return `Room ${number}`;
+}
+
+export const bookingStatusLabels: Record<Booking['status'], string> = {
+  draft: 'Not finished',
+  held: 'Held',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
+};
 
 export function formatFloor(floor: number): string {
   if (floor === 0) return 'Ground floor';

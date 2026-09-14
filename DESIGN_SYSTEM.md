@@ -228,6 +228,43 @@ free-hand a `text-*xl` that happens to look right on one screen.
   compositor layer. The fill is the warm white of the ink pills, not plain white, which over a
   blue sea would read as grey. The dark counterpart is the same class under `.dark`, so a panel
   can never be frosted white on a dark page.
+- **CMS forms** (`/admin/content`, `components/admin/content/`): the one place the product has a
+  data-entry form of any size, so it gets its own small set of shared pieces rather than each page
+  composing `fieldClass` by hand. `ContentForm` is the shell — `useActionState`, the field-error
+  context every `Field` reads its own error from (by the server action's Zod key, not the DOM
+  `id`), the conflict/rule-violation banner, a `role="status"` success message, the save button's
+  own pending state, and a `beforeunload` warning once something has changed. A reorderable list
+  (`amenities`, a rate's included services, a room's photos) is rows with up/down/remove
+  `iconButton`s and one hidden JSON input, never a drag-and-drop library. The media picker is the
+  shared `Modal`, listing the committed manifest with a folder filter — no free-text URL field
+  exists anywhere in the CMS. A field whose value is derived elsewhere in the product (a room's
+  catalog category from its name, an add-on's card mark from its name) shows that derived value or
+  mark right beside the field, live as it's typed, rather than leaving it invisible until the page
+  is saved and reloaded.
+- **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
+  shell rather than the guest header — a 28px card sidebar on a desk (brand, the property,
+  navigation grouped as Operations, Content and Settings, the guest-site link, the signed-in
+  account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
+  current page takes the primary fill, the way the catalog's layout segment marks its active
+  option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
+  `AdminPage` and `AdminPageHeader`. Anything a screen shows without real data behind it carries a
+  visible demo label — a `tag()` in the page header's actions, never only a footnote.
+  - **Tables** sit in `TableCard` (`components/admin/operations/table.tsx`): a 28px card that
+    scrolls sideways inside itself, so the page never does at 390px. Columns get a `min-w-*` on the
+    table rather than squeezing. Headers are muted sentence case; the row's key (a reference, a
+    room type) is the link.
+  - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
+    icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
+    on the overview are a baseline-aligned row of number + words between two rules, not tiles.
+  - **The chessboard** (`components/admin/chessboard/`) is one row per door, grouped by room type,
+    one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
+    when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
+    tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is
+    a button whose label reads the whole booking.
+  - **The floor plan** (`components/rooms/floor-plan/`, guest-facing but the same model) is floors
+    × doors, sea side and town side. A cell's surface says its state for the stay being searched —
+    sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
+    it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
 
 ## Motion
 

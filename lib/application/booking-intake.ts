@@ -1,5 +1,6 @@
 import { BookingError } from './booking-service';
-import { bookingService, catalogService, DEMO_HOTEL_SLUG } from './container';
+import { bookingService, catalogService, DEMO_HOTEL_SLUG, inventoryService } from './container';
+import { ROOM_NUMBER } from '../domain/room-units';
 import { paymentMethodSchema, stayCriteriaSchema } from '../domain/schemas';
 import type { Booking, Quote, StayCriteria } from '../domain/schemas';
 import { z } from 'zod';
@@ -29,6 +30,7 @@ export const bookingRequestBodySchema = quoteRequestBodySchema.extend({
   expectedTotal: z.number().nonnegative(),
   /** Defaulted, not required: `POST /api/bookings` shipped before this field. */
   paymentMethod: paymentMethodSchema.default('card'),
+  unitNumber: z.string().regex(ROOM_NUMBER).optional(),
 });
 
 export type QuoteRequestBody = z.infer<typeof quoteRequestBodySchema>;
@@ -70,6 +72,23 @@ export async function confirmForSlug(
     body.addOnIds,
   );
 
+  // A replayed key already holds its room; checking again would find it taken by itself.
+  if (body.unitNumber && !(await bookingService.findByIdempotencyKey(idempotencyKey))) {
+    const free = await inventoryService.isUnitFreeForStay(
+      DEMO_HOTEL_SLUG,
+      detail.offer.room.id,
+      body.unitNumber,
+      criteria.checkIn,
+      criteria.checkOut,
+    );
+    if (!free) {
+      throw new BookingError(
+        'unavailable',
+        `Room ${body.unitNumber} is no longer free for those dates. Pick another room on the floor plan, or book this room type without choosing one.`,
+      );
+    }
+  }
+
   return bookingService.confirm({
     idempotencyKey,
     hotelId: hotel.id,
@@ -83,5 +102,6 @@ export async function confirmForSlug(
     addOnIds: detail.quote.addOnIds,
     expectedTotal: body.expectedTotal,
     paymentMethod: body.paymentMethod,
+    unitNumber: body.unitNumber,
   });
 }
