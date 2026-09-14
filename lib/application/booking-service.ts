@@ -120,7 +120,7 @@ export class BookingService {
   }
 
   async getByReference(reference: string): Promise<Booking> {
-    const booking = await this.repository.getBookingByReference(reference);
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) throw new BookingError('not_found', `No booking found for ${reference}.`);
     return booking;
   }
