@@ -19,7 +19,7 @@ export default function GlobalError({
   return (
     <main
       id="main"
-      className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-4 py-20 text-center"
+      className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-gutter py-20 text-center"
     >
       <span className="grid size-12 place-items-center rounded-full bg-danger/10 text-danger">
         <Warning weight="fill" className="size-6" aria-hidden="true" />

@@ -39,7 +39,7 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
  * second wait confirms the pending state has cleared again.
  */
 async function resetDemoState(page: Page) {
-  await page.goto('/admin');
+  await page.goto('/admin/reset');
   const button = page.getByRole('button', { name: 'Reset demo state' });
   await actUntil(
     () => button.click(),
@@ -180,6 +180,58 @@ test('a negative price and a duplicate slug are both rejected, and nothing is sa
   await expect(page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice')).toHaveValue('499');
 });
 
+test("a row's menu deletes a CMS add-on after confirming, and won't delete a seed one", async ({ page }) => {
+  await page.goto('/admin/content/add-ons');
+
+  const kayak = page.getByRole('button', { name: 'Actions for Sunset Kayak Tour' });
+  const deleteItem = page.getByRole('menuitem', { name: /^Delete/ });
+  await actUntil(
+    () => kayak.click(),
+    () => expect(deleteItem).toBeVisible({ timeout: 3_000 }),
+  );
+  await expect(page.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
+    'href',
+    '/admin/content/add-ons/addon_sunset-kayak-tour',
+  );
+  await deleteItem.click();
+  const dialog = page.getByRole('dialog', { name: 'Remove Sunset Kayak Tour' });
+  await dialog.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(kayak).toHaveCount(0);
+
+  await actUntil(
+    () => page.getByRole('button', { name: 'Actions for Late check-out' }).click(),
+    () => expect(deleteItem).toBeVisible({ timeout: 3_000 }),
+  );
+  await expect(deleteItem).toHaveAttribute('aria-disabled', 'true');
+});
+
+test('a room is added under its room type, shows on the Property Desk, and can be removed', async ({ page }) => {
+  await page.goto('/admin/content/units/new?type=room_deluxe-sea');
+  const number = page.locator('#unit-number');
+  await expect(number).not.toHaveValue('');
+
+  await number.fill('401');
+  await page.getByRole('button', { name: 'Create room' }).click();
+  await expect(page.getByText('Room 401 already exists.')).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/content\/units\/new/);
+
+  await number.fill('499');
+  await page.getByRole('button', { name: 'Create room' }).click();
+  await expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 10_000 });
+  await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toBeVisible();
+
+  await page.goto('/admin/chessboard?type=room_deluxe-sea');
+  await expect(page.getByRole('group', { name: 'Room 499' })).toBeVisible();
+
+  await page.goto('/admin/content/units/unit_499');
+  page.on('dialog', (dialog) => dialog.accept());
+  await actUntil(
+    () => page.getByRole('button', { name: 'Remove Room 499' }).click(),
+    () => expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 5_000 }),
+  );
+  await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toHaveCount(0);
+});
+
 test('resetting content restores the seed catalog', async ({ page }) => {
   await resetDemoState(page);
 
@@ -189,6 +241,6 @@ test('resetting content restores the seed catalog', async ({ page }) => {
   await page.goto('/admin/content/rooms/room_deluxe-sea');
   await expect(page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice')).toHaveValue('348');
 
-  await page.goto('/admin/content');
+  await page.goto('/admin/content/add-ons');
   await expect(page.getByText('Sunset Kayak Tour')).toHaveCount(0);
 });

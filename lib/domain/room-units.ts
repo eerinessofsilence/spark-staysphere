@@ -1,5 +1,5 @@
-import { demoHash, nightsInRange, unitsFor } from './availability';
-import type { RoomType } from './schemas';
+import { demoHash, nightsInRange } from './availability';
+import type { PhysicalRoom, RoomType } from './schemas';
 
 export type Facade = 'sea' | 'town';
 
@@ -10,10 +10,27 @@ export function facadeOf(view: RoomType['view']): Facade {
   return view === 'sea' || view === 'pool' ? 'sea' : 'town';
 }
 
-export const ROOM_NUMBER = /^(?:G|[1-9]\d?)\d{2}$/;
-
 export function roomNumber(floor: number, position: number): string {
   return `${floor === 0 ? 'G' : floor}${String(position).padStart(2, '0')}`;
+}
+
+/** The floor a room number names: `305` is on the 3rd floor, `G04` on the ground floor. */
+export function floorOf(number: string): number {
+  return number.startsWith('G') ? 0 : Number(number.slice(0, -2));
+}
+
+export function byRoomNumber(a: { number: string }, b: { number: string }): number {
+  return a.number.localeCompare(b.number, 'en', { numeric: true });
+}
+
+/** The first free number on a floor, counting up from position 01. */
+export function nextRoomNumber(floor: number, rooms: Array<Pick<PhysicalRoom, 'number'>>): string {
+  const taken = new Set(rooms.map((room) => room.number));
+  for (let position = 1; position < 100; position += 1) {
+    const candidate = roomNumber(floor, position);
+    if (!taken.has(candidate)) return candidate;
+  }
+  return roomNumber(floor, 99);
 }
 
 export interface RoomUnit {
@@ -26,35 +43,54 @@ export interface RoomUnit {
 }
 
 /**
- * Every physical room, derived from the same unit counts availability sells.
- * Always build from all room types, hidden ones included, so numbers stay stable.
+ * Lays rooms out floor by floor, sea facade first, numbering each floor from
+ * 01 — how the demo building's seed rooms were numbered. A hotel's rooms are
+ * stored, not derived; this only builds the seed in `mock-data.ts`.
  */
-export function buildRoomUnits(rooms: RoomType[]): RoomUnit[] {
+export function layOutRooms(
+  roomTypes: RoomType[],
+  countFor: (roomTypeId: string) => number,
+): Array<Pick<PhysicalRoom, 'number' | 'roomTypeId' | 'floor'>> {
   const byFloor = new Map<number, RoomType[]>();
-  for (const room of rooms) byFloor.set(room.floor, [...(byFloor.get(room.floor) ?? []), room]);
+  for (const type of roomTypes) byFloor.set(type.floor, [...(byFloor.get(type.floor) ?? []), type]);
 
-  const units: RoomUnit[] = [];
-  for (const [floor, floorRooms] of [...byFloor.entries()].sort((a, b) => a[0] - b[0])) {
-    const ordered = [...floorRooms].sort(
+  const laidOut: Array<Pick<PhysicalRoom, 'number' | 'roomTypeId' | 'floor'>> = [];
+  for (const [floor, floorTypes] of [...byFloor.entries()].sort((a, b) => a[0] - b[0])) {
+    const ordered = [...floorTypes].sort(
       (a, b) => facades.indexOf(facadeOf(a.view)) - facades.indexOf(facadeOf(b.view)),
     );
     let position = 0;
-    for (const room of ordered) {
-      const count = unitsFor(room.id);
-      const fillOrder = Array.from({ length: count }, (_, index) => index).sort(
-        (a, b) => demoHash(`${room.id}#${a}`) - demoHash(`${room.id}#${b}`) || a - b,
-      );
-      for (let index = 0; index < count; index += 1) {
+    for (const type of ordered) {
+      for (let index = 0; index < countFor(type.id); index += 1) {
         position += 1;
-        units.push({
-          number: roomNumber(floor, position),
-          roomTypeId: room.id,
-          floor,
-          facade: facadeOf(room.view),
-          rank: fillOrder.indexOf(index),
-        });
+        laidOut.push({ number: roomNumber(floor, position), roomTypeId: type.id, floor });
       }
     }
+  }
+  return laidOut;
+}
+
+/**
+ * Every stored room as the allocator sees it. Pass every room type, hidden
+ * ones included: a room's facade follows its type's view, and its fill rank
+ * is hashed within its type so occupied doors scatter.
+ */
+export function buildRoomUnits(roomTypes: RoomType[], rooms: PhysicalRoom[]): RoomUnit[] {
+  const units: RoomUnit[] = [];
+  for (const type of roomTypes) {
+    const own = rooms.filter((room) => room.roomTypeId === type.id).sort(byRoomNumber);
+    const fillOrder = own
+      .map((_, index) => index)
+      .sort((a, b) => demoHash(`${type.id}#${a}`) - demoHash(`${type.id}#${b}`) || a - b);
+    own.forEach((room, index) => {
+      units.push({
+        number: room.number,
+        roomTypeId: type.id,
+        floor: room.floor,
+        facade: facadeOf(type.view),
+        rank: fillOrder.indexOf(index),
+      });
+    });
   }
   return units;
 }

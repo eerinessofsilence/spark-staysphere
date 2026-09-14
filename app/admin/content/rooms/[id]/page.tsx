@@ -4,13 +4,13 @@ import { notFound } from 'next/navigation';
 import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
+  KeyIcon,
   PlusIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircle, EyeSlash } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { coverPhoto } from '@/lib/domain/room-attributes';
-import { buildRoomUnits } from '@/lib/domain/room-units';
 import { bedLabels, formatMoney, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
@@ -33,33 +33,33 @@ import {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const room = await contentService.getRoomContent(id);
-  return { title: `${room?.name ?? id} — Rooms & add-ons | SPARK StaySphere 360` };
+  return { title: `${room?.name ?? id} — Room types | SPARK StaySphere 360` };
 }
 
 export const dynamic = 'force-dynamic';
 
 export default async function RoomContentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [room, rates, { hotel }, assets, rooms] = await Promise.all([
+  const [room, rates, { hotel }, assets, physicalRooms] = await Promise.all([
     contentService.getRoomContent(id),
     contentService.listRatesContent(id),
     contentService.getHotelContent(),
     Promise.resolve(contentService.listMedia()),
-    contentService.listRoomsContent(),
+    contentService.listPhysicalRoomsContent(),
   ]);
   if (!room) notFound();
 
   const boundUpdateRoom = updateRoomAction.bind(null, id);
   const cover = coverPhoto(room);
   const cheapest = [...rates].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
-  const roomCount = buildRoomUnits(rooms).filter((unit) => unit.roomTypeId === room.id).length;
+  const roomCount = physicalRooms.filter((unit) => unit.roomTypeId === room.id).length;
 
   return (
     <AdminPage>
       <nav aria-label="Breadcrumb" className="mb-6 text-sm">
         <Link href="/admin/content" className={pill('secondary')}>
           <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms & add-ons
+          Room types
         </Link>
       </nav>
 
@@ -82,8 +82,8 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
         }
       />
 
-      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-12">
+      <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-sidebar">
+        <div className="grid min-w-0 grid-cols-1 gap-12">
           {/* A card from `sm` up. On a phone its padding would squeeze the photo rows past the screen edge. */}
           <section
             aria-labelledby="room-form-heading"
@@ -92,7 +92,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
             <h2 id="room-form-heading" className="text-display text-2xl">
               The room
             </h2>
-            <ContentForm action={boundUpdateRoom} initialVersion={room.version} submitLabel="Save room">
+            <ContentForm action={boundUpdateRoom} initialVersion={room.version} submitLabel="Save room" dock>
               <div className="mt-6 grid gap-8">
                 <div role="group" aria-labelledby="room-details-heading">
                   <h3 id="room-details-heading" className="text-base font-medium">
@@ -275,7 +275,14 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
               className="inline-flex min-h-11 items-center gap-2 font-medium hover:text-accent-strong"
             >
               <TableCellsIcon className="size-4" aria-hidden="true" />
-              See them on the chessboard
+              See them on the Property Desk
+            </Link>
+            <Link
+              href={`/admin/content/units#type-${room.id}`}
+              className="inline-flex min-h-11 items-center gap-2 font-medium hover:text-accent-strong"
+            >
+              <KeyIcon className="size-4" aria-hidden="true" />
+              {roomCount === 0 ? 'Add its first room' : 'Manage its rooms'}
             </Link>
             <p className="text-xs text-muted-foreground">The card shows what is saved and updates with each save.</p>
           </div>

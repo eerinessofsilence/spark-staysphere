@@ -13,8 +13,8 @@ export function AdminPage({
     <main
       id="main"
       className={cn(
-        'mx-auto w-full px-4 pt-4 pb-16 sm:px-8 lg:pt-10',
-        width === 'wide' ? 'max-w-[1400px]' : 'max-w-[900px]',
+        width === 'wide' ? 'container-page' : 'container-form',
+        'pt-4 pb-16 lg:pt-10',
       )}
     >
       {children}
@@ -27,12 +27,30 @@ export function AdminPageHeader({
   label,
   description,
   actions,
+  compact = false,
 }: {
   title: string;
   label?: string;
   description?: ReactNode;
   actions?: ReactNode;
+  /**
+   * The sidebar nav already names the section a guest is on, so a section
+   * landing page doesn't repeat it at display size — the "Compact heading"
+   * token (`DESIGN_SYSTEM.md`'s type scale) instead, level with its actions.
+   * Detail pages (a booking reference, a room name) keep the full title:
+   * that text is the record, not a repeat of the nav.
+   */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-display text-2xl">{title}</h1>
+        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
+      </header>
+    );
+  }
+
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0 max-w-3xl">

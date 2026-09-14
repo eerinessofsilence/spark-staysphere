@@ -12,10 +12,12 @@ interface DeleteEntityButtonProps {
   confirmMessage: string;
   action: (id: string) => Promise<ContentFormState>;
   onDeleted?: () => void;
+  /** Where to go once removed, for a button on the removed entity's own page. */
+  redirectTo?: string;
 }
 
 /** A hard delete, gated by `content-service.ts` (CMS-created, no bookings) and a confirm here. */
-export function DeleteEntityButton({ id, label, confirmMessage, action, onDeleted }: DeleteEntityButtonProps) {
+export function DeleteEntityButton({ id, label, confirmMessage, action, onDeleted, redirectTo }: DeleteEntityButtonProps) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -32,7 +34,8 @@ export function DeleteEntityButton({ id, label, confirmMessage, action, onDelete
           setError('');
           const result = await action(id);
           if (result.status === 'success') {
-            router.refresh();
+            if (redirectTo) router.push(redirectTo);
+            else router.refresh();
             onDeleted?.();
           } else {
             setError(result.message);

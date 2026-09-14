@@ -34,7 +34,7 @@ export default async function BrandSettingsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Brand & domain"
-        description="How the booking site looks, where it lives, and who guest emails come from."
+        compact
         actions={<span className={tag()}>Preview — changes aren't saved in this demo</span>}
       />
       <BrandSettings

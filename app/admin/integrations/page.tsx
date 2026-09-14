@@ -55,7 +55,7 @@ export default async function IntegrationsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Integrations"
-        description="The systems this site reads inventory from and writes bookings to."
+        compact
         actions={<span className={tag()}>Mock adapters — nothing is connected to a real system</span>}
       />
 

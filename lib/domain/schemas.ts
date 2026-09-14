@@ -192,6 +192,7 @@ export const hotelSchema = z.object({
   name: z.string(),
   tagline: z.string(),
   location: z.string(),
+  starRating: z.number().int().min(1).max(5),
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),
@@ -310,6 +311,23 @@ export const paymentAttemptSchema = z.object({
   amount: z.number().nonnegative(),
   currency: currencySchema,
 });
+
+/** A floor then a two-digit position: `305`, or `G04` on the ground floor. */
+export const ROOM_NUMBER = /^(?:G|[1-9]\d?)\d{2}$/;
+
+/**
+ * One door in the building. The catalog sells room types; these are what a
+ * type's availability counts and what the floor plan and the Property Desk draw.
+ */
+export const physicalRoomSchema = z.object({
+  id: z.string(),
+  hotelId: z.string(),
+  roomTypeId: z.string(),
+  number: z.string().regex(ROOM_NUMBER),
+  floor: z.number().int().nonnegative(),
+});
+
+export type PhysicalRoom = z.infer<typeof physicalRoomSchema>;
 
 export const bookingSchema = z.object({
   id: z.string(),

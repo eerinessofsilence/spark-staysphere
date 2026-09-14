@@ -1,4 +1,5 @@
-import type { AddOn, Hotel, HotelArea, RatePlan, RoomType, SpinnerHotspot } from '../domain/schemas';
+import { layOutRooms } from '../domain/room-units';
+import type { AddOn, Hotel, HotelArea, PhysicalRoom, RatePlan, RoomType, SpinnerHotspot } from '../domain/schemas';
 import { trackedOutlines } from './spinner-outlines';
 
 /**
@@ -317,6 +318,7 @@ export const demoHotel: Hotel = {
   name: 'Asteria Cove',
   tagline: 'See the stay. Book the room.',
   location: 'Limassol, Cyprus',
+  starRating: 5,
   currency: 'EUR',
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,
@@ -896,6 +898,40 @@ export const demoRooms: RoomType[] = roomSeed.map((seed) => ({
       : []),
   ],
 }));
+
+/** How many doors each seed room type has. Rarer rooms sell out more often in the demo. */
+const seedRoomCounts: Record<string, number> = {
+  'room_deluxe-sea': 8,
+  'room_garden-studio': 7,
+  'room_panorama-suite': 4,
+  'room_pool-terrace': 6,
+  'room_family-residence': 4,
+  'room_skyline-loft': 5,
+  'room_coastal-twin': 8,
+  'room_asteria-penthouse': 2,
+  'room_sea-view-room': 10,
+  'room_cove-studio': 6,
+  'room_garden-terrace-room': 7,
+  'room_city-view-room': 9,
+  'room_poolside-suite': 3,
+  'room_terrace-suite': 3,
+  'room_corner-suite': 2,
+  'room_family-loft': 4,
+  'room_garden-residence': 2,
+  'room_two-bedroom-residence': 3,
+  'room_signature-suite': 2,
+  'room_sky-terrace-suite': 1,
+};
+
+/**
+ * The demo building's rooms, numbered floor by floor, sea facade first — the
+ * same numbers the floor plan and the Property Desk showed before rooms were
+ * stored, so existing bookings that chose a room still find it.
+ */
+export const demoPhysicalRooms: PhysicalRoom[] = layOutRooms(
+  demoRooms,
+  (roomTypeId) => seedRoomCounts[roomTypeId] ?? 5,
+).map((room) => ({ id: `unit_${room.number}`, hotelId: demoHotel.id, ...room }));
 
 export const demoRates: RatePlan[] = roomSeed.map((seed) => ({
   id: `rate_${seed.slug}_flex`,

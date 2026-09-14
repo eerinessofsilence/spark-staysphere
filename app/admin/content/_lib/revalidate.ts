@@ -12,8 +12,13 @@ export function revalidateContent(): void {
   revalidatePath('/rooms/[slug]', 'page');
   revalidatePath('/book/[slug]', 'page');
   revalidatePath('/admin');
+  revalidatePath('/admin/chessboard');
+  revalidatePath('/admin/rates');
   revalidatePath('/admin/content');
   revalidatePath('/admin/content/hotel');
+  revalidatePath('/admin/content/units');
+  revalidatePath('/admin/content/add-ons');
+  revalidatePath('/admin/content/units/[id]', 'page');
   revalidatePath('/admin/content/rooms/[id]', 'page');
   revalidatePath('/admin/content/add-ons/[id]', 'page');
 }

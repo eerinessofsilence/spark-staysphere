@@ -24,6 +24,15 @@ interface ContentFormProps {
   onSuccess?: (state: ContentFormState) => void;
   /** A delete button or a secondary link, shown beside Save. */
   extraActions?: React.ReactNode;
+  /**
+   * Docks the action row to the bottom edge of the viewport, centred, on a
+   * frosted strip (`.glass-bar`, the page-level cousin of `.glass`). Only for
+   * a page's one primary form: a room type page's own
+   * `ContentForm` docks, but the rate `ContentForm` repeated once per rate
+   * beneath it does not, or every rate on the page would float its own
+   * "Save" pill stacked on top of the last.
+   */
+  dock?: boolean;
 }
 
 /**
@@ -39,6 +48,7 @@ export function ContentForm({
   submitLabel = 'Save changes',
   onSuccess,
   extraActions,
+  dock = false,
 }: ContentFormProps) {
   const [state, formAction, isPending] = useActionState(action, idleFormState);
   const [version, setVersion] = React.useState(initialVersion);
@@ -81,16 +91,35 @@ export function ContentForm({
 
         {children}
 
-        <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
-          <button type="submit" disabled={isPending} className={pill('primary')}>
-            {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {submitLabel}
-          </button>
-          {extraActions}
-          <p role="status" aria-live="polite" className="text-sm font-medium text-success">
-            {state.status === 'success' ? state.message : ''}
-          </p>
-        </div>
+        {dock ? (
+          <>
+            {/* Reserves the strip's own height so the last field never rides under it. */}
+            <div aria-hidden="true" className="h-24" />
+            <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
+              <div className="glass-bar flex w-full max-w-2xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full px-5 py-3">
+                <button type="submit" disabled={isPending} className={pill('primary')}>
+                  {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+                  {submitLabel}
+                </button>
+                {extraActions}
+                <p role="status" aria-live="polite" className="text-sm font-medium text-success">
+                  {state.status === 'success' ? state.message : ''}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
+            <button type="submit" disabled={isPending} className={pill('primary')}>
+              {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+              {submitLabel}
+            </button>
+            {extraActions}
+            <p role="status" aria-live="polite" className="text-sm font-medium text-success">
+              {state.status === 'success' ? state.message : ''}
+            </p>
+          </div>
+        )}
       </form>
     </FieldErrorsContext.Provider>
   );

@@ -141,15 +141,22 @@ async function addExtra(page: Page, name: RegExp, extras: RegExp[] = []) {
 /**
  * Runs first on purpose. Demo state is process-local and accumulates across runs
  * — bookings hold inventory and overrides persist — so the suite starts by
- * clearing it, which also covers the admin reset control itself.
+ * clearing it, which also covers the admin reset control itself. That control
+ * isn't in the sidebar (a hotel team shouldn't stumble onto a button that
+ * wipes every demo booking) — `/admin/reset` is reachable by URL, not by nav.
  */
 test('resetting demo state clears bookings and availability overrides', async ({ page }) => {
-  await page.goto('/admin');
+  await page.goto('/admin/reset');
 
+  const button = page.getByRole('button', { name: 'Reset demo state' });
   await actUntil(
-    () => page.getByRole('button', { name: 'Reset demo state' }).click(),
-    () => expect(page.getByText('No bookings yet')).toBeVisible({ timeout: 5_000 }),
+    () => button.click(),
+    () => expect(button).toBeDisabled({ timeout: 2_000 }),
   );
+  await expect(button).toBeEnabled({ timeout: 15_000 });
+
+  await page.goto('/admin');
+  await expect(page.getByText('No bookings yet')).toBeVisible();
 
   // Overrides live with the rates now, not on the overview.
   await page.goto('/admin/rates');
@@ -195,7 +202,11 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     `/admin/bookings/${reference}`,
     '/admin/rates',
     '/admin/content',
+    '/admin/content/add-ons',
     '/admin/content/hotel',
+    '/admin/content/units',
+    '/admin/content/units/new',
+    '/admin/content/units/unit_401',
     '/admin/content/rooms/room_deluxe-sea',
     '/admin/content/rooms/new',
     '/admin/content/add-ons/addon_late',
@@ -669,7 +680,7 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
 
 test('withdrawing an add-on removes it from the guest flow', async ({ page }) => {
   // Selling an add-on is content, so its switch sits in the CMS list.
-  await page.goto('/admin/content');
+  await page.goto('/admin/content/add-ons');
 
   const toggle = page.getByRole('switch', { name: 'Late check-out' });
   await actUntil(
@@ -685,7 +696,7 @@ test('withdrawing an add-on removes it from the guest flow', async ({ page }) =>
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
   await expect(page.getByText('Late check-out')).toHaveCount(0);
 
-  await page.goto('/admin/content');
+  await page.goto('/admin/content/add-ons');
   await actUntil(
     async () => {
       if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click();

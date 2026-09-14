@@ -301,7 +301,7 @@ export function BookingFlow({
     .filter(([, items]) => items.some((addOn) => !addOn.parentId));
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
+    <div className="grid grid-cols-1 gap-y-8 gap-x-gutter lg:grid-cols-sidebar">
       <div className="min-w-0">
         <StepRail steps={steps} current={stepIndex} onSelect={setStepIndex} className="mb-8" />
 

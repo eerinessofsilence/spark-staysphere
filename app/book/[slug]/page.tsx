@@ -50,7 +50,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
   return (
     <>
       <SiteHeader stayQuery={buildQuery({ criteria })} />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="container-page py-8 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-5 text-sm">
           <Link href={`/rooms/${detail.offer.room.slug}?${stayQuery}`} className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />

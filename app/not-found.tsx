@@ -9,7 +9,7 @@ export default function NotFound() {
       <SiteHeader />
       <main
         id="main"
-        className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-20 text-center"
+        className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-gutter py-20 text-center"
       >
         <p className="text-display text-6xl text-muted-foreground/50">404</p>
         <h1 className="text-display mt-4 text-4xl sm:text-5xl">We could not find that page</h1>

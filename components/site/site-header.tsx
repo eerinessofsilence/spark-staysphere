@@ -24,19 +24,19 @@ export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
   const suffix = stayQuery ? `?${stayQuery}` : '';
 
   return (
-    <header className={cn('sticky top-0 z-40 mx-auto max-w-[1400px] px-3 pt-3 sm:px-6 sm:pt-4', className)}>
+    <header className={cn('container-page sticky top-0 z-40 pt-3 sm:pt-4', className)}>
       <div className="glass flex h-14 items-center gap-2 rounded-full pr-2 pl-4 shadow-soft sm:h-16 sm:pl-6">
         <Link href={`/${suffix}`} className="flex min-h-11 items-center gap-2 rounded-full">
           {/* Two artworks rather than one recoloured: the mark is white by
               night and ink by day, and swapping them in CSS keeps the right
               one painted from the first frame, before any script runs. */}
           <img
-            src="/brand/spark-logo-on-light.svg"
-            alt="Spark"
+            src="/brand/staysphere-logo-on-light.svg"
+            alt="StaySphere"
             className="h-6 w-auto sm:h-7 dark:hidden"
           />
           <img
-            src="/brand/spark-logo.svg"
+            src="/brand/staysphere-logo.svg"
             alt=""
             aria-hidden="true"
             className="hidden h-6 w-auto sm:h-7 dark:block"

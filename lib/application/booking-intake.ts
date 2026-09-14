@@ -1,7 +1,6 @@
 import { BookingError } from './booking-service';
 import { bookingService, catalogService, DEMO_HOTEL_SLUG, inventoryService } from './container';
-import { ROOM_NUMBER } from '../domain/room-units';
-import { paymentMethodSchema, stayCriteriaSchema } from '../domain/schemas';
+import { paymentMethodSchema, ROOM_NUMBER, stayCriteriaSchema } from '../domain/schemas';
 import type { Booking, Quote, StayCriteria } from '../domain/schemas';
 import { z } from 'zod';
 

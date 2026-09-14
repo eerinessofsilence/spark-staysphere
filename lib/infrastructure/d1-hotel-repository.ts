@@ -294,9 +294,11 @@ export async function setRoomStatusOverride(
     .run();
 }
 
+/** `units` is the number of stored rooms of the type, counted by the caller. */
 export async function getAvailability(
   db: D1Database,
   roomTypeId: string,
+  units: number,
   from: string,
   to: string,
 ): Promise<Availability[]> {
@@ -319,7 +321,7 @@ export async function getAvailability(
   const held = new Map(heldRows.results.map((row) => [row.date, row.held]));
 
   return nights.map((date): Availability => {
-    const remaining = resolveRemaining(roomTypeId, date, override, held.get(date) ?? 0);
+    const remaining = resolveRemaining(roomTypeId, units, date, override, held.get(date) ?? 0);
     return { roomTypeId, date, remaining, status: statusForRemaining(remaining) };
   });
 }

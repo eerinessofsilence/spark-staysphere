@@ -5,12 +5,12 @@ export default function BookLoading() {
     <div
       role="status"
       aria-live="polite"
-      className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10"
+      className="container-page py-8 lg:py-12"
     >
       <span className="sr-only">Preparing your booking…</span>
       <Skeleton className="h-4 w-44" />
       <Skeleton className="mt-6 h-12 w-96 max-w-full" />
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
+      <div className="mt-8 grid gap-8 lg:grid-cols-sidebar lg:gap-10">
         <div>
           <div className="flex flex-wrap gap-2">
             {[0, 1, 2, 3, 4, 5].map((index) => (

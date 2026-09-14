@@ -1,12 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  AdminBrand,
-  AdminMobileMenu,
-  AdminNav,
-  DemoAccount,
-  PropertyCard,
-  ViewSiteLink,
-} from './admin-nav';
+import { AdminBrand, AdminMobileMenu, AdminNav, DemoAccount, PropertyCard } from './admin-nav';
 
 interface AdminShellProps {
   hotelName: string;
@@ -16,7 +9,7 @@ interface AdminShellProps {
 
 export function AdminShell({ hotelName, location, children }: AdminShellProps) {
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-shell">
       <aside aria-label="Hotel admin" className="sticky top-0 hidden h-dvh p-3 lg:block">
         <div className="flex h-full flex-col rounded-[28px] bg-card p-3 shadow-soft">
           <AdminBrand />
@@ -27,7 +20,6 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
             <AdminNav />
           </div>
           <div className="mt-3 grid gap-1 border-t border-border pt-3">
-            <ViewSiteLink />
             <DemoAccount />
           </div>
         </div>

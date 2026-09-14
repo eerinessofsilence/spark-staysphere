@@ -1,6 +1,6 @@
 import { addDays, format, isValid, parseISO } from 'date-fns';
 import { roomCategories, type RoomCategory } from '../domain/room-attributes';
-import { ROOM_NUMBER } from '../domain/room-units';
+import { ROOM_NUMBER } from '../domain/schemas';
 import type { RoomType, StayCriteria } from '../domain/schemas';
 import { defaultRoomFilters, type RoomFilters, type SortOrder } from './catalog-service';
 

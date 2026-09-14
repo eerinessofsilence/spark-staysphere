@@ -12,7 +12,7 @@ import { OrderedStringList } from '@/components/admin/content/ordered-string-lis
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { createRoomAction } from './actions';
 
-export const metadata: Metadata = { title: 'New room type — Rooms & add-ons | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'New room type — Room types | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 export default async function NewRoomPage() {
@@ -23,17 +23,17 @@ export default async function NewRoomPage() {
       <nav aria-label="Breadcrumb" className="mb-6 text-sm">
         <Link href="/admin/content" className={pill('secondary')}>
           <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms & add-ons
+          Room types
         </Link>
       </nav>
 
       <AdminPageHeader
         title="New room type"
-        description="A new room starts hidden from the site. Once it has at least one rate and one photo, show it from its own page."
+        description="A new room type starts hidden from the site. Add its rooms under Rooms, give it a rate and a photo, then show it from its own page."
       />
 
       <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
-        <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type">
+        <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type" dock>
           <div className="grid gap-6">
             <div role="group" aria-labelledby="identity-heading">
               <h2 id="identity-heading" className="text-base font-medium">

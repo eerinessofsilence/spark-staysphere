@@ -25,7 +25,7 @@ import { PaymentSummary } from '@/components/admin/operations/payment-state';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Bookings — Hotel admin | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'Reservations — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 type Filter = 'all' | StayBucket;
@@ -86,13 +86,10 @@ export default async function BookingsPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader
-        title="Bookings"
-        description="Every reservation at the property, with the guest, the room, and what was paid."
-      />
+      <AdminPageHeader title="Reservations" compact />
 
-      <div className="mt-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <nav aria-label="Filter bookings by stay" className="-mx-1 flex flex-wrap gap-2 px-1">
+      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <nav aria-label="Filter reservations by stay" className="-mx-1 flex flex-wrap gap-2 px-1">
           {filters.map((option) => {
             const current = option === filter;
             return (
@@ -164,7 +161,7 @@ export default async function BookingsPage({
             }
           />
         ) : (
-          <TableCard caption="Bookings matching the current search and filter" className="min-w-[62rem]">
+          <TableCard caption="Reservations matching the current search and filter" className="min-w-[62rem]">
             <thead>
               <tr className="border-b border-border">
                 <Th>Reference</Th>

@@ -56,17 +56,9 @@ export default async function RatesPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader
-        title="Rates & availability"
-        description="The base price of each room type, how many of its rooms are left over the next seven nights, and a manual override for when a type has to close."
-      />
-      <p className="mt-4 max-w-3xl text-sm text-muted-foreground">
-        In production, rates and availability come from the PMS or channel manager and this page reads
-        them back; seasonal and date-based pricing arrive with that integration. Here, a saved rate reprices
-        the guest site immediately, and an override forces a room type&apos;s status for every night.
-      </p>
+      <AdminPageHeader title="Rates & availability" compact />
 
-      <section aria-label="Rates and availability by room type" className="mt-8 rounded-[28px] bg-card shadow-soft">
+      <section aria-label="Rates and availability by room type" className="mt-6 rounded-[28px] bg-card shadow-soft">
         <div
           aria-hidden="true"
           className={cn('hidden gap-4 border-b border-border px-5 py-3 text-sm text-muted-foreground lg:grid', columns)}

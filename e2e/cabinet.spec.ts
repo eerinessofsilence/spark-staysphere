@@ -82,12 +82,12 @@ test.describe.configure({ mode: 'serial' });
 
 test('the chessboard lays out every room and filters by room type', async ({ page }) => {
   await page.goto('/admin/chessboard');
-  await expect(page.getByRole('heading', { level: 1, name: 'Chessboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Property Desk' })).toBeVisible();
 
-  const summary = page.getByText(/^Tonight \d+ of \d+ rooms are occupied/);
-  await expect(summary).toBeVisible();
-  const total = Number((await summary.innerText()).match(/of (\d+) rooms/)![1]);
-  await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(total);
+  const rows = page.getByRole('group', { name: roomLabel });
+  await expect(rows.first()).toBeVisible();
+  const total = await rows.count();
+  expect(total).toBeGreaterThan(8);
 
   await page.goto('/admin/chessboard?type=room_deluxe-sea');
   await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(8);
@@ -184,9 +184,11 @@ test('the desk finds a booking, sees its room, and cancelling puts the room back
   await expect(row.getByText('(chosen by the guest)')).toBeAttached();
 
   await row.getByRole('link', { name: reference }).click();
-  await expect(page.getByRole('heading', { level: 1, name: reference })).toBeVisible();
-  await expect(page.getByText(`Room ${room}`, { exact: true })).toBeVisible();
-  await expect(page.getByText('Chosen by the guest', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Booking details' })).toBeVisible();
+  const details = page.getByRole('region', { name: 'Booking', exact: true });
+  await expect(details.getByText(reference)).toBeVisible();
+  await expect(details.getByText(`Room ${room}`)).toBeVisible();
+  await expect(details.getByText('Chosen by the guest', { exact: true })).toBeVisible();
 
   const dialog = page.getByRole('dialog', { name: 'Cancel booking' });
   await actUntil(

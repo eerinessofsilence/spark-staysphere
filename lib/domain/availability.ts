@@ -6,35 +6,11 @@ import type { RoomStatus } from './schemas';
  * backend (in-memory and D1). Keeping this in one place means a booking made
  * against one backend and a quote read from another can never disagree about
  * the baseline occupancy — only the durable override/hold state differs.
+ *
+ * `units` is always the number of stored physical rooms of the type (see
+ * `HotelRepository.listPhysicalRooms`), so the rooms the CMS lists and the
+ * rooms availability sells are the same count.
  */
-
-/** Physical units per room type. Rarer rooms sell out more often in the demo. */
-const baseUnits: Record<string, number> = {
-  'room_deluxe-sea': 8,
-  'room_garden-studio': 7,
-  'room_panorama-suite': 4,
-  'room_pool-terrace': 6,
-  'room_family-residence': 4,
-  'room_skyline-loft': 5,
-  'room_coastal-twin': 8,
-  'room_asteria-penthouse': 2,
-  'room_sea-view-room': 10,
-  'room_cove-studio': 6,
-  'room_garden-terrace-room': 7,
-  'room_city-view-room': 9,
-  'room_poolside-suite': 3,
-  'room_terrace-suite': 3,
-  'room_corner-suite': 2,
-  'room_family-loft': 4,
-  'room_garden-residence': 2,
-  'room_two-bedroom-residence': 3,
-  'room_signature-suite': 2,
-  'room_sky-terrace-suite': 1,
-};
-
-export function unitsFor(roomTypeId: string): number {
-  return baseUnits[roomTypeId] ?? 5;
-}
 
 /** Stable 32-bit hash so availability is identical on server render and reload. */
 export function demoHash(input: string): number {
@@ -69,13 +45,12 @@ export function nightsInRange(from: string, to: string): string[] {
 }
 
 /**
- * Simulated baseline demand for one room on one night, before any admin
- * override or real confirmed-booking hold is applied. Cubed load skews
- * occupancy low, so most nights are sellable and scarcity stays rare enough
- * to be a demonstration rather than a dead end.
+ * Simulated baseline demand for a room type with `units` rooms on one night,
+ * before any admin override or real confirmed-booking hold is applied. Cubed
+ * load skews occupancy low, so most nights are sellable and scarcity stays
+ * rare enough to be a demonstration rather than a dead end.
  */
-export function baseRemaining(roomTypeId: string, date: string): number {
-  const units = unitsFor(roomTypeId);
+export function baseRemaining(roomTypeId: string, units: number, date: string): number {
   const load = (demoHash(`${roomTypeId}|${date}`) % 100) / 100;
   const taken = Math.round(units * load ** 3);
   return Math.max(0, units - taken);
@@ -90,14 +65,15 @@ export function baseRemaining(roomTypeId: string, date: string): number {
  */
 export function resolveRemaining(
   roomTypeId: string,
+  units: number,
   date: string,
   override: RoomStatus | null,
   held: number,
 ): number {
-  const units = unitsFor(roomTypeId);
+  if (units <= 0) return 0;
   if (override === 'sold_out') return 0;
   if (override === 'last_room') return 1;
   if (override === 'limited') return Math.min(units, 2);
   if (override === 'available') return units;
-  return Math.max(0, baseRemaining(roomTypeId, date) - held);
+  return Math.max(0, baseRemaining(roomTypeId, units, date) - held);
 }

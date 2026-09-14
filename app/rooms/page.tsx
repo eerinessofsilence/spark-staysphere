@@ -58,7 +58,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           />
         }
       />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="container-page py-8 lg:py-12">
         <header className="max-w-2xl">
           <h1 className="text-display text-5xl sm:text-6xl">Choose your room</h1>
           <p className="mt-3 text-base text-muted-foreground">
@@ -73,7 +73,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/rooms'>) {
           <StaySearchBar criteria={criteria} filters={filters} minDate={today} submitLabel="Update stay" />
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-8">
+        <div className="mt-8 grid gap-y-6 gap-x-gutter lg:grid-cols-sidebar-start">
           <RoomFiltersPanel
             criteria={criteria}
             filters={filters}

@@ -69,7 +69,7 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
   const gridProps = { units, floors, selected, onSelect: toggle, guests };
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+    <div className="grid grid-cols-1 gap-y-6 gap-x-gutter xl:grid-cols-sidebar">
       <div className="min-w-0">
         <ul aria-label="Legend" className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
           {legend.map((item) => (

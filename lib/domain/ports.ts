@@ -6,6 +6,7 @@ import type {
   Hotel,
   IntegrationStatus,
   PaymentAttempt,
+  PhysicalRoom,
   Quote,
   RatePlan,
   RoomStatus,
@@ -22,6 +23,8 @@ import type { CatalogFacets, RoomFilters } from '../application/catalog-service'
 export interface HotelRepository {
   getHotel(slug: string): Promise<Hotel | null>;
   listRooms(hotelId: string): Promise<RoomType[]>;
+  /** Every door in the building, hidden room types' included. `getAvailability` counts these. */
+  listPhysicalRooms(hotelId: string): Promise<PhysicalRoom[]>;
   listRatePlans(roomTypeId: string): Promise<RatePlan[]>;
   listAddOns(hotelId: string): Promise<AddOn[]>;
   getAvailability(roomTypeId: string, from: string, to: string): Promise<Availability[]>;
@@ -149,8 +152,8 @@ export interface MediaLibraryPort {
   find(url: string): MediaAsset | undefined;
 }
 
-/** The four kinds of catalog entity the CMS can overlay onto seed data. */
-export type CatalogEntryKind = 'hotel' | 'room' | 'rate' | 'addon';
+/** The kinds of catalog entity the CMS can overlay onto seed data. `room` is a room type; `unit` is one physical room. */
+export type CatalogEntryKind = 'hotel' | 'room' | 'unit' | 'rate' | 'addon';
 
 /**
  * One overlay row: a full entity that either replaces a seed entity of the

@@ -158,7 +158,7 @@ export class InventoryService {
     ]);
     const { hotel } = everything;
     const rooms = await this.repository.listRooms(hotel.id);
-    const units = buildRoomUnits(rooms);
+    const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(hotel.id));
     const bookings = this.confirmedByRoomType(await this.repository.listBookings());
     const offers = new Map(everything.offers.map((offer) => [offer.room.id, offer]));
     const matchingIds = new Set(matching.offers.map((offer) => offer.room.id));
@@ -211,7 +211,9 @@ export class InventoryService {
     const room = rooms.find((candidate) => candidate.id === roomTypeId && !candidate.hidden);
     if (!room) return false;
 
-    const units = buildRoomUnits(rooms).filter((unit) => unit.roomTypeId === room.id);
+    const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(room.hotelId)).filter(
+      (unit) => unit.roomTypeId === room.id,
+    );
     if (!units.some((unit) => unit.number === unitNumber)) return false;
 
     const bookings = this.confirmedByRoomType(await this.repository.listBookings()).get(room.id) ?? [];
@@ -225,7 +227,7 @@ export class InventoryService {
   async getChessboard(hotelSlug: string, from: string, days: number): Promise<Chessboard> {
     const hotel = await this.catalog.getHotel(hotelSlug);
     const rooms = await this.repository.listRooms(hotel.id);
-    const units = buildRoomUnits(rooms);
+    const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(hotel.id));
     const allBookings = await this.repository.listBookings();
     const confirmed = allBookings.filter((booking) => booking.status === 'confirmed');
     const bookingsByType = this.confirmedByRoomType(allBookings);
@@ -277,7 +279,9 @@ export class InventoryService {
     const room = rooms.find((candidate) => candidate.id === booking.roomTypeId);
     if (!room) return null;
 
-    const units = buildRoomUnits(rooms).filter((unit) => unit.roomTypeId === room.id);
+    const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(room.hotelId)).filter(
+      (unit) => unit.roomTypeId === room.id,
+    );
     const bookings = this.confirmedByRoomType(await this.repository.listBookings()).get(room.id) ?? [];
     const { assignments } = await this.allocate(
       room,

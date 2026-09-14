@@ -175,6 +175,33 @@ free-hand a `text-*xl` that happens to look right on one screen.
 - Elevation is `.shadow-soft` or `.shadow-soft-lg`, nothing stronger. Reach for a hairline first.
 - Frosted panels over photography use `.glass` (light) or `.glass-dark`.
 
+## Layout grid
+
+Defined once in `app/globals.css` as Tailwind theme tokens. Pages compose them; they never
+free-hand a width or a column track.
+
+- **Page width.** `container-page` (1400px) for every guest page, the header, the footer and the
+  admin screens; `container-reading` (1000px) for single-column reading pages — the confirmation
+  and trips; `container-form` (900px) for admin editors. Each centres itself and carries the
+  gutter. When only the width is wanted — the full-bleed phone hero — use `max-w-page`.
+- **Gutter.** `--gutter` is 16px on a phone, 24px from `sm`, 32px from `lg`. It is the side
+  margin (`px-gutter`), the bleed of an edge-to-edge rail (`-mx-gutter px-gutter
+  scroll-pl-gutter`), and the gap between a guest page's main column and its rail
+  (`gap-x-gutter`). The header pill, the page and the footer card therefore share both edges.
+- **Columns.** A page split is a named template: `grid-cols-sidebar` (content, then a 22rem rail
+  on the right — room page, booking flow, floor plan, editors), `grid-cols-sidebar-start` (a
+  22rem rail on the left — catalog filters, a list card's photo), `grid-cols-media` (a 16rem
+  photo beside its details), `grid-cols-main-aside` (8 of 12 beside 4 — the dashboard chart and
+  its list), `grid-cols-shell` (the admin sidebar). Anything that doesn't fit one of those uses
+  the twelve-column grid (`grid-cols-12` with `col-span-*`), and a collection of cards uses a
+  plain count (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). One stacked column is
+  `grid-cols-1` — it already is `minmax(0, 1fr)`.
+- **Arbitrary tracks** (`grid-cols-[…]`) are for a component's own row alignment only — a rates
+  row, the search bar's fields, a list row with a trailing button — never for a page layout. A
+  new page split is a new named template here first.
+- A loading skeleton uses exactly the container and template of the page it stands in for, so
+  nothing moves when the page arrives.
+
 ## Photography
 
 - Hero areas are `HotelArea` records with a photo, a caption, and hotspots stored as fractions
@@ -255,7 +282,9 @@ free-hand a `text-*xl` that happens to look right on one screen.
     room type) is the link.
   - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
     icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
-    on the overview are a baseline-aligned row of number + words between two rules, not tiles.
+    on the dashboard are four cards on the same 28px surface as the chart beside them: a short
+    label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
+    admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
   - **The chessboard** (`components/admin/chessboard/`) is one row per door, grouped by room type,
     one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
     when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger

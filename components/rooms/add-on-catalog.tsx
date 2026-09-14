@@ -460,7 +460,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
   if (photos.length === 0) return words;
 
   return (
-    <div className="relative grid lg:min-h-[32rem] lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+    <div className="relative grid lg:min-h-[32rem] lg:grid-cols-2">
       <div className="relative">
         <PhotoSlider
           photos={photos}

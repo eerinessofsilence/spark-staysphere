@@ -73,7 +73,7 @@ export default async function MediaLibraryPage({
     <AdminPage>
       <AdminPageHeader
         title="Media library"
-        description={`${assets.length} photographs and 360° captures that rooms, areas and add-ons can use.`}
+        compact
         actions={
           <button type="button" disabled className={pill('secondary')}>
             <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
@@ -81,7 +81,7 @@ export default async function MediaLibraryPage({
           </button>
         }
       />
-      <p className="mt-3 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Uploads arrive with media storage. For now the library is the photography committed to the site.
       </p>
 

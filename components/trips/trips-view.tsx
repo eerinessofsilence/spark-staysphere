@@ -174,7 +174,7 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
     <article
       className={cn(
         'group relative grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
-        'sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]',
+        'sm:grid-cols-media',
         cancelled && 'opacity-90',
       )}
     >
