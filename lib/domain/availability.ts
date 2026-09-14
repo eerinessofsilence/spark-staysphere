@@ -96,8 +96,11 @@ export function resolveRemaining(
 ): number {
   const units = unitsFor(roomTypeId);
   if (override === 'sold_out') return 0;
-  if (override === 'last_room') return 1;
-  if (override === 'limited') return Math.min(units, 2);
-  if (override === 'available') return units;
+  // An override sets a ceiling, not a fixed count: it must still come down as
+  // real confirmed bookings take rooms, or a room already sold out under the
+  // override would go on reporting availability forever.
+  if (override === 'last_room') return Math.max(0, 1 - held);
+  if (override === 'limited') return Math.max(0, Math.min(units, 2) - held);
+  if (override === 'available') return Math.max(0, units - held);
   return Math.max(0, baseRemaining(roomTypeId, date) - held);
 }
