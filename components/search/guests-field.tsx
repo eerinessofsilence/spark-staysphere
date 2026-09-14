@@ -95,7 +95,11 @@ export function GuestsField({
   }, [open]);
 
   // Hold the scroll lock through the close, so the page behind cannot jump
-  // while the sheet is still on its way out.
+  // while the sheet is still on its way out. Keyed on `rendered`, not `open`:
+  // `rendered` is still false the instant the sheet opens (before its own
+  // transition has mounted it) and still true for the beat after it closes,
+  // so locking on `open` instead unlocked while still visible and locked for
+  // good after the panel was gone.
   React.useEffect(() => {
     if (!rendered) return;
     const previous = document.body.style.overflow;
@@ -103,7 +107,7 @@ export function GuestsField({
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, [rendered]);
 
   const summary = `${adults} adult${adults === 1 ? '' : 's'}${
     children > 0 ? ` · ${children} child${children === 1 ? '' : 'ren'}` : ''
