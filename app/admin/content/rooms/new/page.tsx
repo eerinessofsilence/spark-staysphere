@@ -9,32 +9,32 @@ import { Field, Select, TextArea, TextInput } from '@/components/admin/content/f
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
 import { OrderedStringList } from '@/components/admin/content/ordered-string-list';
+import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { createRoomAction } from './actions';
 
-export const metadata: Metadata = { title: 'New room type — Content | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'New room type — Rooms & add-ons | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 export default async function NewRoomPage() {
   const assets = contentService.listMedia();
 
   return (
-    <>
-      <main id="main" className="mx-auto w-full max-w-[900px] px-4 pt-4 pb-16 sm:px-8 lg:pt-10">
-        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-          <Link href="/admin/content" className={pill('secondary')}>
-            <ArrowLeftIcon className="size-4" aria-hidden="true" />
-            Content
-          </Link>
-        </nav>
+    <AdminPage width="narrow">
+      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+        <Link href="/admin/content" className={pill('secondary')}>
+          <ArrowLeftIcon className="size-4" aria-hidden="true" />
+          Rooms & add-ons
+        </Link>
+      </nav>
 
-        <h1 className="text-display text-5xl sm:text-6xl">New room type</h1>
-        <p className="mt-4 max-w-2xl text-base text-muted-foreground">
-          A new room starts hidden from the site. Once it has at least one rate and one photo, show
-          it from its own page.
-        </p>
+      <AdminPageHeader
+        title="New room type"
+        description="A new room starts hidden from the site. Once it has at least one rate and one photo, show it from its own page."
+      />
 
+      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type">
-          <div className="mt-8 grid gap-6">
+          <div className="grid gap-6">
             <div role="group" aria-labelledby="identity-heading">
               <h2 id="identity-heading" className="text-base font-medium">
                 Identity
@@ -103,7 +103,7 @@ export default async function NewRoomPage() {
             </div>
           </div>
         </ContentForm>
-      </main>
-    </>
+      </div>
+    </AdminPage>
   );
 }
