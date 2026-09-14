@@ -129,14 +129,46 @@ urls against; `MediaStoragePort` is declared alongside them for a future upload 
 implemented.
 
 `/admin/content`'s forms are server actions with Zod validation, driven by `useActionState`
-through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm` —
-the field-error banner, the `role="status"` success message, the save button's pending state, and
-a `beforeunload` warning once a field has changed. `Field` (`components/admin/content/fields.tsx`)
-reads its own error out of that wrapper's context by the Zod field-error key (`name`, not always
-the same as its DOM `id`). Reorderable lists (`amenities`, a rate's `includedServices`, a room's
+through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm`.
+It dispatches from its own submit handler rather than `<form action>`: React resets every
+uncontrolled field once a form action finishes, which after a failed save wiped what had been
+typed and refilled the invalid field under its own error. The wrapper owns, for every form:
+
+- **Unsaved changes, measured.** The form's `FormData` is compared with the last saved snapshot,
+  so reordering a list, a Select or a switch counts as much as typing. While anything differs the
+  sticky button bar says "Unsaved changes", `beforeunload` warns, and
+  `components/admin/shell/unsaved-changes.tsx`'s guard (mounted once in the admin shell) catches
+  in-admin link clicks — which never fire `beforeunload` — and asks in the product `Modal`.
+- **Where the result is.** The button bar sticks to the bottom of the screen while its form is on
+  it. A failed save says so there ("Not saved — 1 field needs attention"), opens any `<details>`
+  around the first error, scrolls it to the middle and focuses its control; `Field` marks its error
+  with `data-field-error`, and the list editors show `media.1.label`-style errors on their own row.
+- **Versions shared on the page.** `version-channel.ts` lets controls that write the same entity
+  (a room's form and its "Hide from the site" button; an add-on's form and its on-sale switch)
+  announce each step they save (`from` → `to`); another control still holding `from` steps along,
+  so a person's own click is never reported back to them as someone else's edit. A genuine
+  conflict keeps the edits in the form and offers "Save my version" or "Discard mine and load
+  theirs".
+
+Actions that flip one flag — "Hide from the site", an add-on's on-sale switch, in the list or on its
+own page — act at once and offer Undo for a few seconds; everything else waits for Save. Deletes
+are offered only where `ContentService.rateRemoval`/`addOnRemoval` allow one (otherwise the reason
+is shown instead), confirmed in the product `Modal`, and a deleted add-on's page sends the person
+back to the list with a notice rather than to a 404. Room numbers follow a type's floor and view
+(`buildRoomUnits`), so `updateRoom` and `createRoom` refuse a change that would renumber a room a
+guest picked for an upcoming stay, and the editor says which rooms are held.
+
+`Field` (`components/admin/content/fields.tsx`) reads its own error out of the wrapper's context by
+its error key (`name`, not always the same as its DOM `id`; the hotel form's are id-based paths like
+`areas.pool.hotspots.bar.cta`). Reorderable lists (`amenities`, a rate's `includedServices`, a room's
 `media`, an add-on's `photos`) have no drag-and-drop library — up/down/remove buttons, with state
-serialized into one hidden JSON input the server action reads back with `parseJsonList`. The media
-picker is the shared product `Modal`, listing the manifest with a folder filter.
+serialized into one hidden JSON input the server action reads back with `parseJsonList`; text still
+in an "add" field is saved with the list. A gallery item's type follows from the file picked
+(`mediaTypeOf`: panoramas are 360° views) and its label is required, prefilled from the file name,
+because the room page shows it as the name of that view. The media picker is the shared product
+`Modal`: it opens on the room's own folder when that folder has photos not yet in the gallery,
+searches by name, and marks photos already added. The content list searches by name and filters to
+room types, add-ons, or only what is hidden or withdrawn.
 
 ## Physical rooms, the floor plan and the tape chart
 

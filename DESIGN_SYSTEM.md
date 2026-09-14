@@ -209,7 +209,7 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   is saved and reloaded.
 - **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
   shell rather than the guest header — a 28px card sidebar on a desk (brand, the property,
-  navigation grouped as Operations, Content and Settings, the guest-site link, the signed-in
+  navigation grouped as Operations and Content, the guest-site link, the signed-in
   account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
   current page takes the primary fill, the way the catalog's layout segment marks its active
   option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
@@ -231,6 +231,16 @@ Titles and body differ by size and weight, not by typeface — the way the platf
     × doors, sea side and town side. A cell's surface says its state for the stay being searched —
     sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
     it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
+  - **CMS forms** (`components/admin/content/`) keep their button bar in view: a 28px-radius bar
+    that sticks to the bottom of the screen while its form is on it, holding the primary Save pill
+    and one status line — "Unsaved changes" with an accent dot, "Not saved — 1 field needs
+    attention" with a "Show me" that jumps to it, or the success message until the next edit. A flag
+    that flips one thing (hide a room, withdraw an add-on) is a switch or pill that acts at once and
+    offers Undo beside its message; it never sits inside a form that waits for Save. A delete is an
+    icon button shown only where a delete is allowed — otherwise the reason, in muted text — and it
+    asks in the product `Modal`, never the browser's `confirm`. List controls are 44px on a phone.
+    A hidden room shows a short numbered checklist of what it still needs before it can go on the
+    site.
 
 ## Motion
 
