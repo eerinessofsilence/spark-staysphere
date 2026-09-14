@@ -203,6 +203,37 @@ export class ContentService {
     return entry?.version ?? 0;
   }
 
+  /**
+   * Every mutator ends by upserting the overlay row and turning the port's
+   * result into a `ContentResult` — this is that one step. A caller that
+   * needs to add fields to a successful result (`createRoom`/`createRate`/
+   * `createAddOn` all also return the new `id`) checks `.ok` and builds its
+   * own `ok(...)` from `.value.version`; every other mutator just returns
+   * this directly.
+   */
+  private async save(
+    kind: CatalogEntryKind,
+    id: string,
+    hotelId: string,
+    data: unknown,
+    expectedVersion: number,
+  ): Promise<ContentResult<Versioned>> {
+    const result = await this.content.upsertEntry({ kind, id, hotelId, data, expectedVersion });
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok({ version: result.version });
+  }
+
+  /** `save`'s counterpart for `deleteRate`/`deleteAddOn`. */
+  private async remove(
+    kind: CatalogEntryKind,
+    id: string,
+    expectedVersion: number,
+  ): Promise<ContentResult<null>> {
+    const result = await this.content.deleteEntry(kind, id, expectedVersion);
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok(null);
+  }
+
   private isSeed(kind: CatalogEntryKind, id: string): boolean {
     return this.seedIds[kind].has(id);
   }
@@ -334,15 +365,7 @@ export class ContentService {
       areas: nextAreas,
     } satisfies Hotel);
 
-    const result = await this.content.upsertEntry({
-      kind: 'hotel',
-      id: current.id,
-      hotelId: current.id,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('hotel', current.id, current.id, next, expectedVersion);
   }
 
   // ----------------------------------------------------------------- Rooms
@@ -419,9 +442,9 @@ export class ContentService {
       );
     }
 
-    const result = await this.content.upsertEntry({ kind: 'room', id, hotelId: hotel.id, data: room, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('room', id, hotel.id, room, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateRoom(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -467,15 +490,7 @@ export class ContentService {
       media: media.media,
     } satisfies RoomType);
 
-    const result = await this.content.upsertEntry({
-      kind: 'room',
-      id,
-      hotelId: next.hotelId,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('room', id, next.hotelId, next, expectedVersion);
   }
 
   async setRoomHidden(id: string, hidden: boolean, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -493,15 +508,7 @@ export class ContentService {
 
     const { version: _version, ...rest } = current;
     const next = roomTypeSchema.parse({ ...rest, hidden } satisfies RoomType);
-    const result = await this.content.upsertEntry({
-      kind: 'room',
-      id,
-      hotelId: next.hotelId,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('room', id, next.hotelId, next, expectedVersion);
   }
 
   // ----------------------------------------------------------------- Rates
@@ -548,9 +555,9 @@ export class ContentService {
       otaComparisonPrice: input.otaComparisonPrice,
     } satisfies RatePlan);
 
-    const result = await this.content.upsertEntry({ kind: 'rate', id, hotelId: hotel.id, data: rate, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('rate', id, hotel.id, rate, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateRate(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -574,9 +581,7 @@ export class ContentService {
     } satisfies RatePlan);
 
     const hotel = await this.hotel();
-    const result = await this.content.upsertEntry({ kind: 'rate', id, hotelId: hotel.id, data: next, expectedVersion });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('rate', id, hotel.id, next, expectedVersion);
   }
 
   async rateRemoval(id: string): Promise<Removal> {
@@ -604,9 +609,7 @@ export class ContentService {
     if (!current) return fail({ kind: 'not_found' });
     const removal = await this.rateRemoval(id);
     if (!removal.allowed) return ruleError(removal.reason);
-    const result = await this.content.deleteEntry('rate', id, expectedVersion);
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok(null);
+    return this.remove('rate', id, expectedVersion);
   }
 
   // --------------------------------------------------------------- Add-ons
@@ -663,9 +666,9 @@ export class ContentService {
       enabled: input.enabled ?? true,
     } satisfies AddOn);
 
-    const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: addOn, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('addon', id, hotel.id, addOn, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateAddOn(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -701,9 +704,7 @@ export class ContentService {
       enabled: input.enabled ?? current.enabled,
     } satisfies AddOn);
 
-    const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: next, expectedVersion });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('addon', id, hotel.id, next, expectedVersion);
   }
 
   /**
@@ -720,14 +721,8 @@ export class ContentService {
       const { version, ...rest } = current;
       const next = addOnSchema.parse({ ...rest, enabled } satisfies AddOn);
       const hotel = await this.hotel();
-      const result = await this.content.upsertEntry({
-        kind: 'addon',
-        id,
-        hotelId: hotel.id,
-        data: next,
-        expectedVersion: version,
-      });
-      if (result.ok) return ok({ version: result.version, previousVersion: version });
+      const saved = await this.save('addon', id, hotel.id, next, version);
+      if (saved.ok) return ok({ version: saved.value.version, previousVersion: version });
     }
     return fail({ kind: 'conflict', currentVersion: await this.versionOf('addon', id) });
   }
@@ -755,9 +750,7 @@ export class ContentService {
     if (!current) return fail({ kind: 'not_found' });
     const removal = await this.addOnRemoval(id);
     if (!removal.allowed) return ruleError(removal.reason);
-    const result = await this.content.deleteEntry('addon', id, expectedVersion);
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok(null);
+    return this.remove('addon', id, expectedVersion);
   }
 
   // ----------------------------------------------------------------- Reset
