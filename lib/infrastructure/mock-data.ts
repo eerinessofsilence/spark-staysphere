@@ -321,47 +321,6 @@ export const demoHotel: Hotel = {
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,
   spinner: buildingSpinner,
-  // The massing behind the facade photo: a tower at the back of the site
-  // carrying every floor, two terraced blocks stepping down toward the sea in
-  // front of it — each one's roof the terrace of the floor above — the low spa
-  // wing to the west, and the pool on the plinth's edge above the cove.
-  model: {
-    floorHeight: 3.2,
-    blocks: [
-      {
-        id: 'slab',
-        x: 0,
-        z: 0,
-        width: 62,
-        depth: 17,
-        bow: 6,
-        fromFloor: 1,
-        toFloor: 8,
-        balconies: ['front'],
-        glazedFloors: [1],
-        roofTerrace: true,
-      },
-      {
-        id: 'corner',
-        x: 34,
-        z: -7,
-        width: 16,
-        depth: 15,
-        bow: 1.5,
-        fromFloor: 1,
-        toFloor: 6,
-        balconies: ['front'],
-        glazedFloors: [1],
-        roofTerrace: true,
-      },
-    ],
-    grounds: {
-      width: 108,
-      depth: 68,
-      height: 3,
-    },
-    view: { azimuth: 24, elevation: 17 },
-  },
 };
 
 interface RoomSeed {

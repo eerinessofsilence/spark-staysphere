@@ -326,24 +326,22 @@ through the same `object-fit: cover` maths the browser applies, so markers stay 
 viewports. Room galleries come from `RoomType.media`, where each image carries a `label` that
 becomes its tab.
 
-The building itself is a model a guest can turn: `Hotel.model` describes the property as a
-handful of `blocks` (a tower, a terraced front, a wing — each a footprint, a floor range, which
-faces carry balconies, which floors are glazed) plus the grounds, and
-`components/hotel/hotel-model-scene.ts` builds it with three.js: floor plates and piers, sliding
-doors in dark frames, glass balustrades on a handrail, a glazed arcade at the base, on a headland
-that falls to the sea with maquis and cypresses behind. It is lit by a real sky — an HDRI, one
-per scheme — and surfaced with scanned plaster, concrete and ground, all Poly Haven CC0 assets at
-1K stored locally (`public/hdri`, `public/textures`, ~12 MB, credited in
-`public/images/CREDITS.md`) and loaded only when the model is; the night sky lights most of the
-rooms and the pool. A property that owns a GLB sets `model.url` instead and the massing
-is skipped; a mesh named `floor-3` in it is picked as the third floor. Either way the floors are
-the way into the catalog — a tap on one, or on the rail beside the stage, lists the room types on
-that floor at the catalog's own price. three.js (~150 KB gzipped) is a lazy import behind an
-`IntersectionObserver`, so it only ships once the stage is near the viewport; the scene renders
-on demand (only while on screen, only when something moved), one finger turns it and two pinch,
-and `prefers-reduced-motion` disables the idle turn. The React side, `components/hotel/hotel-model.tsx`,
-owns all the UI and follows the `.dark` class on `<html>` through a `MutationObserver`, reading
-the scene's colours off the page's own tokens.
+The building itself is a model a guest can turn: `Hotel.spinner` (`BuildingSpinnerData`) is a
+baked 160-frame orbit around the exterior — `frames` (one image per angle, all sharing one
+framing so hotspot fractions project through a single size), `keyAngles` (the stops the prev/next
+arrows jump between, since stepping 160 frames one at a time is unusable), and `hotspots`, each
+carrying `keyframes` for the sub-range of frames where it actually faces the camera.
+`components/hotel/building-spinner.tsx` draws the current frame to a single `<canvas>` rather than
+mounting elements — 160 full-size images left in the DOM after one full turn would be
+unreasonable — loads frames in batches around whatever's current and fills in the rest in the
+background, and animates between `keyAngles` stops on an arrow press or drag release with a
+spring, not a dead stop. One finger drags it and it flicks on release; `prefers-reduced-motion`
+disables the idle turn. A tap on a hotspot, or on the rail beside the stage, lists the room types
+on that floor at the catalog's own price. See `SPINNER_SPEC.md`'s decision log (2026-09-06) for the frame-count, hotspot, and
+baked-vs-live-WebGL reasoning behind path A, a baked frame sequence over a live scene. A same-day
+detour into a live three.js model built from procedural block massing (`Hotel.model`) was tried
+and replaced by this spinner hours later; its files and the `Hotel.model` schema were removed as
+dead code once the spinner took over.
 
 ## Current limitations
 

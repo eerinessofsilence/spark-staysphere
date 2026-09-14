@@ -32,11 +32,11 @@ These are enforced in review and, where possible, by lint.
 4. **No schematic or procedural illustration.** Rooms and the property are shown with
    photography only. Stock stands in for the property's own until launch; every file is local
    (`public/images`) and credited in `public/images/CREDITS.md`. Nothing loads from an external
-   image host at runtime. The one exception is the building model (`HotelModel`): a turnable
-   3D model of the property is the product's own promise, and it is built from the property's
-   real massing (`Hotel.model`) or its own GLB — never a decorative render. It sits in its own
-   section below the arrival photograph, never in place of it, and its floors link into the
-   catalog; the model's colours are the page's tokens, and the accent lights the picked floor.
+   image host at runtime. The one exception is the building spinner (`BuildingSpinner`, rendered
+   from `Hotel.spinner`'s baked frames — never procedural primitive geometry, see
+   `SPINNER_SPEC.md`): a draggable turn around the property is the product's own promise. It
+   replaces the arrival stage's facade/roof/cove photo in place, not a section added below it,
+   and its hotspots link into the catalog.
 5. **Two icon sets, split by job.** *Interface* marks — calendar, guests, search, chevrons,
    close, check, plus/minus, fullscreen, spinner — are **Heroicons outline**
    (`@heroicons/react/24/outline`), stroked and legible down to 14px, where a filled glyph
