@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useFieldErrors } from './content-form';
 import { TextInput } from './fields';
 import { MediaPicker } from './media-picker';
+import { useOrderedList } from './use-ordered-list';
 
 export interface MediaItemDraft {
   type: 'image' | '360';
@@ -36,34 +37,14 @@ export function MediaListEditor({
   assets: MediaAsset[];
   suggestedFolder?: string;
 }) {
-  const initialJson = JSON.stringify(initial);
-  const [items, setItems] = React.useState(initial);
+  const { rows, values: items, move, remove, add, update: updateRow } = useOrderedList(initial);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
   const errors = useFieldErrors();
   const listError = errors[name]?.[0];
 
-  // A save hands the saved gallery back down; take it, so the next save starts from what is stored.
-  React.useEffect(() => {
-    setItems(JSON.parse(initialJson) as MediaItemDraft[]);
-  }, [initialJson]);
-
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= items.length) return;
-    const next = [...items];
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    setItems(next);
-  }
-
   function update(index: number, patch: Partial<MediaItemDraft>) {
-    const next = [...items];
-    next[index] = { ...next[index]!, ...patch };
-    setItems(next);
-  }
-
-  function remove(index: number) {
-    setItems(items.filter((_, candidate) => candidate !== index));
+    updateRow(index, { ...items[index]!, ...patch });
   }
 
   return (
@@ -74,14 +55,14 @@ export function MediaListEditor({
         <p className="text-sm text-muted-foreground">No photos yet. The first one you add becomes the cover.</p>
       ) : (
         <ul className="grid gap-3">
-          {items.map((item, index) => {
+          {rows.map(({ id, value: item }, index) => {
             const asset = byUrl.get(item.url);
             const labelId = `${name}-${index}-label`;
             const rowError = errors[`${name}.${index}.label`]?.[0] ?? errors[`${name}.${index}.url`]?.[0];
             const title = item.label?.trim() ? `“${item.label.trim()}”` : `photo ${index + 1}`;
             return (
               <li
-                key={`${item.url}-${index}`}
+                key={id}
                 className={cn('grid gap-2 rounded-2xl border p-3', rowError ? 'border-danger/60' : 'border-border')}
               >
                 <div className="flex flex-wrap items-center gap-3">
@@ -171,10 +152,7 @@ export function MediaListEditor({
         suggestedFolder={suggestedFolder}
         onPick={(asset) => {
           const type = mediaTypeOf(asset);
-          setItems([
-            ...items,
-            { type, url: asset.url, label: type === '360' ? '360° view' : labelFromFilename(asset.filename) },
-          ]);
+          add({ type, url: asset.url, label: type === '360' ? '360° view' : labelFromFilename(asset.filename) });
         }}
       />
     </div>

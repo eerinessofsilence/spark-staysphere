@@ -7,6 +7,7 @@ import type { MediaAsset } from '@/lib/domain/ports';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { useFieldErrors } from './content-form';
 import { MediaPicker } from './media-picker';
+import { useOrderedList } from './use-ordered-list';
 
 /**
  * An add-on's photos: unlabelled — just a picked set from the media library,
@@ -14,28 +15,10 @@ import { MediaPicker } from './media-picker';
  * as `MediaListEditor` without the labels a room's gallery needs.
  */
 export function PhotoListEditor({ name, initial, assets }: { name: string; initial: string[]; assets: MediaAsset[] }) {
-  const initialJson = JSON.stringify(initial);
-  const [urls, setUrls] = React.useState(initial);
+  const { rows, values: urls, move, remove, add } = useOrderedList(initial);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
   const errors = useFieldErrors();
-
-  // A save hands the saved photos back down; take them, so the next save starts from what is stored.
-  React.useEffect(() => {
-    setUrls(JSON.parse(initialJson) as string[]);
-  }, [initialJson]);
-
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= urls.length) return;
-    const next = [...urls];
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    setUrls(next);
-  }
-
-  function remove(index: number) {
-    setUrls(urls.filter((_, candidate) => candidate !== index));
-  }
 
   return (
     <div className="grid gap-3">
@@ -45,11 +28,11 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
         <p className="text-sm text-muted-foreground">No photos yet.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-          {urls.map((url, index) => {
+          {rows.map(({ id, value: url }, index) => {
             const asset = byUrl.get(url);
             const error = errors[`${name}.${index}`]?.[0];
             return (
-              <li key={`${url}-${index}`} className="grid min-w-0 gap-1.5 sm:w-32">
+              <li key={id} className="grid min-w-0 gap-1.5 sm:w-32">
                 <span className="relative block aspect-square overflow-hidden rounded-2xl bg-stone">
                   {asset ? (
                     // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
@@ -111,7 +94,7 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
         assets={assets}
         usedUrls={urls}
         suggestedFolder="dining"
-        onPick={(asset) => setUrls([...urls, asset.url])}
+        onPick={(asset) => add(asset.url)}
       />
     </div>
   );
