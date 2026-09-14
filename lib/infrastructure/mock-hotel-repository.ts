@@ -54,7 +54,9 @@ export const mockHotelRepository: HotelRepository = {
     return demoAddOns.map((addOn) => ({ ...addOn }));
   },
   async getAvailability(roomTypeId, from, to) {
-    if (!demoRooms.some((room) => room.id === roomTypeId)) return [];
+    // No seed-id guard here: `resolveRemaining` (via `unitsFor`) already
+    // defaults unknown room types to 5 units, so a room type created in the
+    // CMS overlay is bookable on this backend too, matching D1's behaviour.
     return nightsInRange(from, to).map((date): Availability => {
       const remaining = remainingOn(roomTypeId, date);
       return { roomTypeId, date, remaining, status: statusForRemaining(remaining) };
