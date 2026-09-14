@@ -74,6 +74,10 @@ export function RoomStatusControl({
   );
 }
 
+/**
+ * The on-sale switch in the add-on list. It acts the moment it is flipped — a long list on a phone
+ * is easy to brush while scrolling — so for a few seconds afterwards it offers to put it back.
+ */
 export function AddOnToggle({
   addOnId,
   addOnName,
@@ -85,31 +89,51 @@ export function AddOnToggle({
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
+  const [undoTo, setUndoTo] = React.useState<boolean | null>(null);
   const id = `addon-toggle-${addOnId}`;
 
+  React.useEffect(() => {
+    if (undoTo === null) return;
+    const timer = window.setTimeout(() => setUndoTo(null), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [undoTo]);
+
+  const change = async (checked: boolean, offerUndo: boolean) => {
+    setPending(true);
+    await setAddOnEnabled({ addOnId, enabled: checked });
+    setUndoTo(offerUndo ? !checked : null);
+    router.refresh();
+    setPending(false);
+  };
+
   return (
-    <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
-      <Switch
-        id={id}
-        aria-label={addOnName}
-        checked={enabled}
-        disabled={pending}
-        onCheckedChange={async (checked) => {
-          setPending(true);
-          await setAddOnEnabled({ addOnId, enabled: checked });
-          router.refresh();
-          setPending(false);
-        }}
-        className="shrink-0"
-      />
-      <span className={cn('font-medium', !enabled && 'text-muted-foreground')}>
-        {enabled ? 'On sale' : 'Withdrawn'}
-        <span className="sr-only"> — {addOnName}</span>
-      </span>
+    <div className="flex min-h-11 items-center gap-3 text-sm">
+      <label htmlFor={id} className="flex cursor-pointer items-center gap-3">
+        <Switch
+          id={id}
+          aria-label={addOnName}
+          checked={enabled}
+          disabled={pending}
+          onCheckedChange={(checked) => change(checked, true)}
+          className="shrink-0"
+        />
+        <span className={cn('font-medium', !enabled && 'text-muted-foreground')}>
+          {enabled ? 'On sale' : 'Withdrawn'}
+          <span className="sr-only"> — {addOnName}</span>
+        </span>
+      </label>
       {pending ? (
         <ArrowPathIcon className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+      ) : undoTo !== null ? (
+        <button
+          type="button"
+          onClick={() => change(undoTo, false)}
+          className="cursor-pointer font-medium underline underline-offset-2"
+        >
+          Undo<span className="sr-only"> for {addOnName}</span>
+        </button>
       ) : null}
-    </label>
+    </div>
   );
 }
 

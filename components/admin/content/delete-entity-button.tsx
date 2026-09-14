@@ -3,7 +3,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { iconButton } from '@/lib/ui';
+import { Modal } from '@/components/site/modal';
+import { discardUnsavedChanges } from '@/components/admin/shell/unsaved-changes';
+import { iconButton, pill } from '@/lib/ui';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 
 interface DeleteEntityButtonProps {
@@ -11,49 +13,78 @@ interface DeleteEntityButtonProps {
   /** The version this delete is conditioned on — same optimistic-concurrency guard as a save. */
   version: number;
   label: string;
-  confirmMessage: string;
+  /** What is being removed, in the dialog's words: "rate", "add-on". */
+  noun: string;
   action: (id: string, expectedVersion: number) => Promise<ContentFormState>;
-  onDeleted?: () => void;
+  /** Where to go once the thing this page is about no longer exists. Without it the page refreshes in place. */
+  afterDeleteHref?: string;
 }
 
-/** A hard delete, gated by `content-service.ts` (CMS-created, no bookings) and a confirm here. */
-export function DeleteEntityButton({ id, version, label, confirmMessage, action, onDeleted }: DeleteEntityButtonProps) {
+/**
+ * A hard delete. The page only offers it where `content-service.ts` allows one (CMS-created, no
+ * bookings), and asks in the product's own dialog — the same as cancelling a booking — rather
+ * than the browser's `confirm`.
+ */
+export function DeleteEntityButton({ id, version, label, noun, action, afterDeleteHref }: DeleteEntityButtonProps) {
   const router = useRouter();
+  const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState('');
+  const close = React.useCallback(() => {
+    if (!pending) setOpen(false);
+  }, [pending]);
+
+  const remove = async () => {
+    setPending(true);
+    setError('');
+    const result = await action(id, version);
+    if (result.status === 'success') {
+      if (afterDeleteHref) {
+        discardUnsavedChanges();
+        router.replace(afterDeleteHref);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } else {
+      setError(result.message);
+    }
+    setPending(false);
+  };
 
   return (
-    <div className="flex items-center gap-2">
+    <>
       <button
         type="button"
-        disabled={pending}
         aria-label={`Remove ${label}`}
-        onClick={async () => {
-          if (!window.confirm(confirmMessage)) return;
-          setPending(true);
+        onClick={() => {
           setError('');
-          const result = await action(id, version);
-          if (result.status === 'success') {
-            router.refresh();
-            onDeleted?.();
-          } else {
-            setError(result.message);
-          }
-          setPending(false);
+          setOpen(true);
         }}
-        className={iconButton('light', 'size-9')}
+        className={iconButton('light', 'size-11 sm:size-9')}
       >
-        {pending ? (
-          <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
-        ) : (
-          <TrashIcon className="size-4" aria-hidden="true" />
-        )}
+        <TrashIcon className="size-4" aria-hidden="true" />
       </button>
-      {error ? (
-        <p role="alert" className="text-xs text-danger">
-          {error}
+
+      <Modal open={open} onClose={close} title={`Remove ${label}?`}>
+        <p className="text-sm">
+          The {noun} comes off the site and out of this admin. It can&apos;t be brought back.
         </p>
-      ) : null}
-    </div>
+        {error ? (
+          <p role="alert" className="mt-3 text-sm font-medium text-danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={remove} disabled={pending} className={pill('primary')}>
+            {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+            Remove {noun}
+          </button>
+          <button type="button" onClick={close} disabled={pending} className={pill('secondary')}>
+            Keep it
+          </button>
+        </div>
+      </Modal>
+    </>
   );
 }

@@ -27,5 +27,5 @@ export async function createAddOnAction(
   if (!result.ok) return formStateFromError(result.error);
 
   revalidateContent();
-  redirect(`/admin/content/add-ons/${result.value.id}`);
+  redirect(`/admin/content/add-ons/${result.value.id}?created=1`);
 }

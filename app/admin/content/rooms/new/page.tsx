@@ -89,7 +89,7 @@ export default async function NewRoomPage() {
                 Amenities
               </h2>
               <div className="mt-4">
-                <OrderedStringList name="amenities" initial={[]} addPlaceholder="Add an amenity" />
+                <OrderedStringList name="amenities" initial={[]} addPlaceholder="Add an amenity" itemNoun="amenity" />
               </div>
             </div>
 

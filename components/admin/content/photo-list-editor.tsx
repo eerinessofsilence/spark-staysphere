@@ -1,22 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
-import { iconButton, pill } from '@/lib/ui';
+import { iconButton, pill, tag } from '@/lib/ui';
+import { useFieldErrors } from './content-form';
 import { MediaPicker } from './media-picker';
 
 /**
- * An add-on's photos: unlabelled, unordered-by-type — just a picked set from
- * the media library, in the order they'll appear in the card and the panel's
- * slider. Same shape as `MediaListEditor` without the label/type fields a
- * room's gallery needs.
+ * An add-on's photos: unlabelled — just a picked set from the media library,
+ * in the order they'll appear in the card and the panel's slider. Same shape
+ * as `MediaListEditor` without the labels a room's gallery needs.
  */
 export function PhotoListEditor({ name, initial, assets }: { name: string; initial: string[]; assets: MediaAsset[] }) {
+  const initialJson = JSON.stringify(initial);
   const [urls, setUrls] = React.useState(initial);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
+  const errors = useFieldErrors();
+
+  // A save hands the saved photos back down; take them, so the next save starts from what is stored.
+  React.useEffect(() => {
+    setUrls(JSON.parse(initialJson) as string[]);
+  }, [initialJson]);
 
   function move(index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -37,12 +44,13 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
       {urls.length === 0 ? (
         <p className="text-sm text-muted-foreground">No photos yet.</p>
       ) : (
-        <ul className="flex flex-wrap gap-3">
+        <ul className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           {urls.map((url, index) => {
             const asset = byUrl.get(url);
+            const error = errors[`${name}.${index}`]?.[0];
             return (
-              <li key={`${url}-${index}`} className="grid w-28 gap-1.5">
-                <span className="block aspect-square overflow-hidden rounded-2xl bg-stone">
+              <li key={`${url}-${index}`} className="grid min-w-0 gap-1.5 sm:w-32">
+                <span className="relative block aspect-square overflow-hidden rounded-2xl bg-stone">
                   {asset ? (
                     // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
                     <img src={asset.url} alt="" className="size-full object-cover" />
@@ -51,35 +59,41 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
                       <Image weight="fill" className="size-5" aria-hidden="true" />
                     </span>
                   )}
+                  {index === 0 ? <span className={tag('absolute top-2 left-2 bg-card/90 py-0.5')}>Cover</span> : null}
                 </span>
                 <div className="flex items-center justify-center gap-1">
                   <button
                     type="button"
                     onClick={() => move(index, -1)}
                     disabled={index === 0}
-                    aria-label="Move up"
-                    className={iconButton('light', 'size-8')}
+                    aria-label={`Show photo ${index + 1} earlier`}
+                    className={iconButton('light', 'size-11 sm:size-9')}
                   >
-                    <ChevronUpIcon className="size-3.5" aria-hidden="true" />
+                    <ChevronLeftIcon className="size-4" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => move(index, 1)}
                     disabled={index === urls.length - 1}
-                    aria-label="Move down"
-                    className={iconButton('light', 'size-8')}
+                    aria-label={`Show photo ${index + 1} later`}
+                    className={iconButton('light', 'size-11 sm:size-9')}
                   >
-                    <ChevronDownIcon className="size-3.5" aria-hidden="true" />
+                    <ChevronRightIcon className="size-4" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => remove(index)}
                     aria-label={`Remove photo ${index + 1}`}
-                    className={iconButton('light', 'size-8')}
+                    className={iconButton('light', 'size-11 sm:size-9')}
                   >
-                    <XMarkIcon className="size-3.5" aria-hidden="true" />
+                    <XMarkIcon className="size-4" aria-hidden="true" />
                   </button>
                 </div>
+                {error ? (
+                  <p role="alert" data-field-error="" tabIndex={-1} className="text-xs font-medium text-danger outline-none">
+                    {error}
+                  </p>
+                ) : null}
               </li>
             );
           })}
@@ -95,6 +109,8 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         assets={assets}
+        usedUrls={urls}
+        suggestedFolder="dining"
         onPick={(asset) => setUrls([...urls, asset.url])}
       />
     </div>

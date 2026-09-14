@@ -27,5 +27,5 @@ export async function createRoomAction(
   if (!result.ok) return formStateFromError(result.error);
 
   revalidateContent();
-  redirect(`/admin/content/rooms/${result.value.id}`);
+  redirect(`/admin/content/rooms/${result.value.id}?created=1`);
 }

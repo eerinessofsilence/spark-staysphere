@@ -15,9 +15,9 @@ const CATEGORY_LABELS: Record<ReturnType<typeof roomCategory>, string> = {
 };
 
 /**
- * Name and slug together: the slug suggests itself from the name until the
- * user edits it directly, then stops following. The slug becomes the room's
- * URL and cannot change after this form is saved — `content-service.ts`
+ * Name and page address together: the address suggests itself from the name
+ * until the user edits it directly, then stops following. It becomes the
+ * room's URL and cannot change after this form is saved — `content-service.ts`
  * enforces that server-side; this just says so.
  */
 export function NewRoomIdentityFields() {
@@ -35,11 +35,16 @@ export function NewRoomIdentityFields() {
         id="room-name"
         name="name"
         label="Name"
-        hint={`Filed on the site as: ${CATEGORY_LABELS[roomCategory({ name })]}`}
+        hint={`Listed in the catalog under ${CATEGORY_LABELS[roomCategory({ name })]} — it follows the name.`}
       >
         <TextInput id="room-name" name="name" value={name} onChange={(event) => setName(event.target.value)} required />
       </Field>
-      <Field id="room-slug" name="slug" label="URL slug" hint="This becomes the room's page and cannot be changed later.">
+      <Field
+        id="room-slug"
+        name="slug"
+        label="Page address"
+        hint={`The room's page will be /rooms/${slug || '…'} — it can't be changed later.`}
+      >
         <TextInput
           id="room-slug"
           name="slug"

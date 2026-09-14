@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isEquirectangular, isPanorama } from '../domain/media';
+import { buildRoomUnits } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
 import type {
   CatalogContentPort,
@@ -48,6 +49,14 @@ function uniqueId(base: string, taken: ReadonlySet<string>): string {
   return `${base}-${n}`;
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function byRoomNumber(a: string, b: string): number {
+  return a.localeCompare(b, 'en', { numeric: true });
+}
+
 export type ContentError =
   | { kind: 'validation'; fieldErrors: Record<string, string[]> }
   | { kind: 'conflict'; currentVersion: number }
@@ -55,6 +64,9 @@ export type ContentError =
   | { kind: 'rule'; field?: string; message: string };
 
 export type ContentResult<T> = { ok: true; value: T } | { ok: false; error: ContentError };
+
+/** Whether a delete is allowed, and if not, why — asked before offering the button, not after it is pressed. */
+export type Removal = { allowed: true } | { allowed: false; reason: string };
 
 function ok<T>(value: T): ContentResult<T> {
   return { ok: true, value };
@@ -69,6 +81,33 @@ function fieldErrorsOf(error: z.ZodError): Record<string, string[]> {
   return z.flattenError(error).fieldErrors as Record<string, string[]>;
 }
 
+/**
+ * The hotel form edits areas and hotspots by id, so its errors are keyed by id too
+ * (`areas.pool.description`, `areas.pool.hotspots.bar.cta`) — a flattened `areas` key could not
+ * say which of a dozen fields to point at.
+ */
+function hotelFieldErrors(error: z.ZodError, raw: unknown): Record<string, string[]> {
+  const input = (raw ?? {}) as { areas?: Array<{ id?: string; hotspots?: Array<{ id?: string }> }> };
+  const errors: Record<string, string[]> = {};
+  for (const issue of error.issues) {
+    const [top, areaIndex, field, hotspotIndex, hotspotField] = issue.path;
+    let key = String(top ?? 'hotel');
+    if (top === 'areas' && typeof areaIndex === 'number') {
+      const area = input.areas?.[areaIndex];
+      key =
+        field === 'hotspots' && typeof hotspotIndex === 'number'
+          ? `areas.${area?.id}.hotspots.${area?.hotspots?.[hotspotIndex]?.id}.${String(hotspotField)}`
+          : `areas.${area?.id}.${String(field)}`;
+    }
+    (errors[key] ??= []).push(issue.message);
+  }
+  return errors;
+}
+
+function roomsPhrase(numbers: string[]): string {
+  return numbers.length === 1 ? `A guest picked room ${numbers[0]}` : `Guests picked rooms ${numbers.join(', ')}`;
+}
+
 const mediaItemSchema = z.object({
   type: z.enum(['image', '360']),
   url: z.string().min(1),
@@ -79,13 +118,13 @@ const hotelAreaInputSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Enter a name.'),
   description: z.string().min(1, 'Enter a description.'),
-  photoAlt: z.string().min(1, 'Enter alt text.'),
+  photoAlt: z.string().min(1, 'Describe the photo for screen readers.'),
   hotspots: z.array(
     z.object({
       id: z.string(),
       label: z.string().min(1, 'Enter a label.'),
       description: z.string().min(1, 'Enter a description.'),
-      cta: z.string().min(1, 'Enter a call to action.'),
+      cta: z.string().min(1, 'Enter the button text.'),
     }),
   ),
 });
@@ -112,7 +151,7 @@ const roomFieldsSchema = z.object({
 export type RoomFieldsInput = z.infer<typeof roomFieldsSchema>;
 
 const createRoomSchema = roomFieldsSchema.extend({
-  slug: z.string().min(1, 'Enter a slug.').regex(KEBAB_CASE, KEBAB_MESSAGE),
+  slug: z.string().min(1, 'Enter a page address.').regex(KEBAB_CASE, KEBAB_MESSAGE),
 });
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
@@ -135,7 +174,8 @@ const addOnFieldsSchema = z.object({
   photos: z.array(z.string().min(1)).optional(),
   price: z.number().positive('Enter a price greater than 0.'),
   pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),
-  enabled: z.boolean(),
+  /** Set when an add-on is created. An existing one goes on and off sale through `setAddOnEnabled`. */
+  enabled: z.boolean().optional(),
 });
 export type AddOnFieldsInput = z.infer<typeof addOnFieldsSchema>;
 
@@ -182,7 +222,8 @@ export class ContentService {
    * Resolves a media item's `url` against the library and fills in the
    * dimensions from there — a client never gets to assert its own width or
    * height. Returns a field error path (e.g. `media.1.url`) on the first
-   * problem found.
+   * problem found. Every item needs a label: the room page shows it as the
+   * name of that view.
    */
   private resolveMedia(
     items: z.infer<typeof mediaItemSchema>[],
@@ -199,7 +240,14 @@ export class ContentService {
           fieldErrors: { [path]: ['A 360° view must be an equirectangular (2:1) panorama.'] },
         };
       }
-      media.push({ type: item.type, url: item.url, label: item.label, width: asset.width, height: asset.height });
+      const label = item.label?.trim();
+      if (!label) {
+        return {
+          ok: false,
+          fieldErrors: { [`${fieldPrefix}.${index}.label`]: ['Add a label — guests see it as the name of this view.'] },
+        };
+      }
+      media.push({ type: item.type, url: item.url, label, width: asset.width, height: asset.height });
     }
     return { ok: true, media };
   }
@@ -219,6 +267,26 @@ export class ContentService {
     return { ok: true, photos };
   }
 
+  /**
+   * Room numbers are derived from each type's floor and view (`buildRoomUnits`), so moving a type
+   * — or adding one to a floor — renumbers rooms. Returns the guest-picked rooms of upcoming stays
+   * that would stop pointing at the room the guest chose.
+   */
+  private async renumberedPicks(before: RoomType[], after: RoomType[]): Promise<string[]> {
+    const today = todayIso();
+    const picks = (await this.repository.listBookings()).filter(
+      (booking) => booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
+    );
+    if (picks.length === 0) return [];
+    const owners = (rooms: RoomType[]) => new Map(buildRoomUnits(rooms).map((unit) => [unit.number, unit.roomTypeId]));
+    const was = owners(before);
+    const will = owners(after);
+    const lost = picks
+      .filter((booking) => was.get(booking.unitNumber!) === booking.roomTypeId && will.get(booking.unitNumber!) !== booking.roomTypeId)
+      .map((booking) => booking.unitNumber!);
+    return [...new Set(lost)].sort(byRoomNumber);
+  }
+
   /** Everything the media picker can offer — see `lib/infrastructure/media-library.ts`. */
   listMedia() {
     return this.media.list();
@@ -234,7 +302,7 @@ export class ContentService {
   async updateHotel(rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
     assertCanEditContent();
     const parsed = hotelContentInputSchema.safeParse(rawInput);
-    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
+    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: hotelFieldErrors(parsed.error, rawInput) });
     const input = parsed.data;
 
     const current = await this.hotel();
@@ -293,6 +361,19 @@ export class ContentService {
     return { ...room, version: await this.versionOf('room', id) };
   }
 
+  /** Rooms of this type a guest picked on the floor plan for a stay that hasn't ended. */
+  async pickedRoomNumbers(roomTypeId: string): Promise<string[]> {
+    const today = todayIso();
+    const bookings = await this.repository.listBookings();
+    const numbers = bookings
+      .filter(
+        (booking) =>
+          booking.roomTypeId === roomTypeId && booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
+      )
+      .map((booking) => booking.unitNumber!);
+    return [...new Set(numbers)].sort(byRoomNumber);
+  }
+
   /** New rooms start hidden: `content-service` never lets a room go visible without a rate and a photo (see `setRoomHidden`), and a room cannot carry either at the moment it's created. */
   async createRoom(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
     assertCanEditContent();
@@ -308,7 +389,7 @@ export class ContentService {
     const hotel = await this.hotel();
     const rooms = await this.repository.listRooms(hotel.id);
     if (rooms.some((room) => room.slug === slug)) {
-      return fail({ kind: 'validation', fieldErrors: { slug: ['That slug is already in use.'] } });
+      return fail({ kind: 'validation', fieldErrors: { slug: ['That page address is already in use.'] } });
     }
 
     const media = this.resolveMedia(input.media, 'media');
@@ -331,6 +412,14 @@ export class ContentService {
       hidden: true,
     } satisfies RoomType);
 
+    const lost = await this.renumberedPicks(rooms, [...rooms, room]);
+    if (lost.length > 0) {
+      return ruleError(
+        `${roomsPhrase(lost)} for upcoming stays, and a new room type on floor ${input.floor} would renumber them. Pick another floor while those bookings stand.`,
+        'floor',
+      );
+    }
+
     const result = await this.content.upsertEntry({ kind: 'room', id, hotelId: hotel.id, data: room, expectedVersion: 0 });
     if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
     return ok({ id, version: result.version });
@@ -350,6 +439,19 @@ export class ContentService {
 
     if (!current.hidden && !media.media.some((item) => item.type === 'image')) {
       return ruleError('This room is on sale, so it needs at least one photo. Add one, or hide the room first.', 'media');
+    }
+
+    if (input.floor !== current.floor || input.view !== current.view) {
+      const rooms = await this.repository.listRooms(current.hotelId);
+      const moved = rooms.map((room) => (room.id === id ? { ...room, floor: input.floor, view: input.view } : room));
+      const lost = await this.renumberedPicks(rooms, moved);
+      if (lost.length > 0) {
+        const field = input.floor !== current.floor ? 'floor' : 'view';
+        return ruleError(
+          `${roomsPhrase(lost)} for upcoming stays, and changing the ${field} would renumber ${lost.length === 1 ? 'it' : 'them'}. Keep the ${field} as it is while ${lost.length === 1 ? 'that booking stands' : 'those bookings stand'}.`,
+          field,
+        );
+      }
     }
 
     const { version: _version, ...rest } = current;
@@ -478,23 +580,31 @@ export class ContentService {
     return ok({ version: result.version });
   }
 
-  async deleteRate(id: string, expectedVersion: number): Promise<ContentResult<null>> {
-    assertCanEditContent();
+  async rateRemoval(id: string): Promise<Removal> {
     const current = await this.findRate(id);
-    if (!current) return fail({ kind: 'not_found' });
+    if (!current) return { allowed: false, reason: 'This rate no longer exists.' };
     if (this.isSeed('rate', id)) {
-      return ruleError('This rate came with the demo catalog and can only be edited, not removed.');
+      return { allowed: false, reason: 'Came with the demo catalog — it can be edited, not removed.' };
     }
     if (await this.referencedByBooking('rate', id)) {
-      return ruleError('This rate has a booking against it and cannot be removed.');
+      return { allowed: false, reason: 'A booking uses this rate, so it stays.' };
     }
     const room = await this.getRoomContent(current.roomTypeId);
     if (room && !room.hidden) {
       const rates = await this.repository.listRatePlans(current.roomTypeId);
       if (rates.length <= 1) {
-        return ruleError('This is the only rate on a room that is on sale. Hide the room first, or add another rate.');
+        return { allowed: false, reason: 'The only rate on a room that is on the site — hide the room or add another rate first.' };
       }
     }
+    return { allowed: true };
+  }
+
+  async deleteRate(id: string, expectedVersion: number): Promise<ContentResult<null>> {
+    assertCanEditContent();
+    const current = await this.findRate(id);
+    if (!current) return fail({ kind: 'not_found' });
+    const removal = await this.rateRemoval(id);
+    if (!removal.allowed) return ruleError(removal.reason);
     const result = await this.content.deleteEntry('rate', id, expectedVersion);
     if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
     return ok(null);
@@ -519,10 +629,10 @@ export class ContentService {
     addOns: AddOn[],
   ): Promise<string | null> {
     if (!parentId) return null;
-    if (parentId === ownId) return 'An add-on cannot be its own parent.';
+    if (parentId === ownId) return 'An add-on cannot be offered inside itself.';
     const parent = addOns.find((addOn) => addOn.id === parentId);
-    if (!parent) return 'Pick an existing add-on as the parent.';
-    if (parent.parentId) return 'The parent must itself be a top-level add-on — nesting only goes one level.';
+    if (!parent) return 'Pick an existing add-on to offer it inside.';
+    if (parent.parentId) return 'That add-on is itself an extra — extras only go one level deep.';
     return null;
   }
 
@@ -551,7 +661,7 @@ export class ContentService {
       price: input.price,
       currency: hotel.currency,
       pricingUnit: input.pricingUnit,
-      enabled: input.enabled,
+      enabled: input.enabled ?? true,
     } satisfies AddOn);
 
     const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: addOn, expectedVersion: 0 });
@@ -573,7 +683,7 @@ export class ContentService {
     const parentError = await this.validateParent(input.parentId, id, addOns);
     if (parentError) return fail({ kind: 'validation', fieldErrors: { parentId: [parentError] } });
     if (addOns.some((addOn) => addOn.parentId === id) && input.parentId) {
-      return ruleError('This add-on has extras of its own, so it cannot also become an extra. Nesting only goes one level.', 'parentId');
+      return ruleError('This add-on has extras of its own, so it cannot also be offered inside another. Extras only go one level deep.', 'parentId');
     }
 
     const photos = this.resolvePhotos(input.photos);
@@ -589,7 +699,7 @@ export class ContentService {
       photos: photos.photos,
       price: input.price,
       pricingUnit: input.pricingUnit,
-      enabled: input.enabled,
+      enabled: input.enabled ?? current.enabled,
     } satisfies AddOn);
 
     const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: next, expectedVersion });
@@ -598,11 +708,12 @@ export class ContentService {
   }
 
   /**
-   * The quick on/off switch shared by `/admin` and the CMS — no version
-   * field on that control, so this reads the current version itself and
-   * retries once if a concurrent edit landed in between.
+   * The quick on/off switch shared by the add-on list and an add-on's own page — no version field
+   * on that control, so this reads the current version itself and retries once if a concurrent
+   * edit landed in between. It returns the version it stepped from, so the form on the same page
+   * can step along with it.
    */
-  async setAddOnEnabled(id: string, enabled: boolean): Promise<ContentResult<Versioned>> {
+  async setAddOnEnabled(id: string, enabled: boolean): Promise<ContentResult<Versioned & { previousVersion: number }>> {
     assertCanEditContent();
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const current = await this.getAddOnContent(id);
@@ -617,26 +728,34 @@ export class ContentService {
         data: next,
         expectedVersion: version,
       });
-      if (result.ok) return ok({ version: result.version });
+      if (result.ok) return ok({ version: result.version, previousVersion: version });
     }
     return fail({ kind: 'conflict', currentVersion: await this.versionOf('addon', id) });
+  }
+
+  async addOnRemoval(id: string): Promise<Removal> {
+    const current = await this.getAddOnContent(id);
+    if (!current) return { allowed: false, reason: 'This add-on no longer exists.' };
+    if (this.isSeed('addon', id)) {
+      return { allowed: false, reason: 'Came with the demo catalog — withdraw it from sale instead of removing it.' };
+    }
+    if (await this.referencedByBooking('addon', id)) {
+      return { allowed: false, reason: 'A booking includes it — withdraw it from sale instead.' };
+    }
+    const hotel = await this.hotel();
+    const addOns = await this.repository.listAddOns(hotel.id);
+    if (addOns.some((addOn) => addOn.parentId === id)) {
+      return { allowed: false, reason: 'Remove the extras offered inside it first.' };
+    }
+    return { allowed: true };
   }
 
   async deleteAddOn(id: string, expectedVersion: number): Promise<ContentResult<null>> {
     assertCanEditContent();
     const current = await this.getAddOnContent(id);
     if (!current) return fail({ kind: 'not_found' });
-    if (this.isSeed('addon', id)) {
-      return ruleError('This add-on came with the demo catalog and can only be edited or withdrawn, not removed.');
-    }
-    if (await this.referencedByBooking('addon', id)) {
-      return ruleError('This add-on has a booking against it and cannot be removed. Withdraw it instead.');
-    }
-    const hotel = await this.hotel();
-    const addOns = await this.repository.listAddOns(hotel.id);
-    if (addOns.some((addOn) => addOn.parentId === id)) {
-      return ruleError('This add-on still has extras under it. Remove those first.');
-    }
+    const removal = await this.addOnRemoval(id);
+    if (!removal.allowed) return ruleError(removal.reason);
     const result = await this.content.deleteEntry('addon', id, expectedVersion);
     if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
     return ok(null);
