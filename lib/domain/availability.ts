@@ -53,6 +53,25 @@ export function statusForRemaining(remaining: number): RoomStatus {
   return 'available';
 }
 
+export type StayBucket = 'upcoming' | 'in_house' | 'past' | 'cancelled';
+
+/**
+ * Where a stay sits relative to today, for both the guest trips list and the
+ * back office's booking list — one rule so the two screens never disagree
+ * about whether a stay is still "upcoming". Consistent with `nightsInRange`
+ * treating `to` as exclusive: the checkout date itself is not a stay night,
+ * so a stay is already `past` once `checkOut <= today`.
+ */
+export function stayBucket(
+  stay: { checkIn: string; checkOut: string; status: string },
+  today: string,
+): StayBucket {
+  if (stay.status === 'cancelled') return 'cancelled';
+  if (stay.checkOut <= today) return 'past';
+  if (stay.checkIn <= today) return 'in_house';
+  return 'upcoming';
+}
+
 /** Every calendar date in `[from, to)`, capped so a bad range can't loop forever. */
 export function nightsInRange(from: string, to: string): string[] {
   const start = parseISO(from);
