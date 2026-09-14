@@ -276,14 +276,35 @@ export const integrationStatusSchema = z.object({
  */
 export const MAX_STAY_NIGHTS = 60;
 
+/**
+ * Party-size limits. One source: `stayCriteriaSchema` below is the canonical
+ * shape, reused by `quoteRequestBodySchema`/`bookingRequestBodySchema`
+ * (`booking-intake.ts`) and the assistant's search body schema, so a change
+ * to how many guests a stay can hold is a change in one place. The numeric
+ * constants exist for `search-params.ts`'s clamp functions, which clamp a
+ * raw number rather than parse one through Zod.
+ */
+export const MIN_ADULTS = 1;
+export const MAX_ADULTS = 8;
+export const MIN_CHILDREN = 0;
+export const MAX_CHILDREN = 6;
+
+/**
+ * The base shape, kept separate from the `.refine()` below (which wraps it in
+ * a `ZodEffects` that no longer exposes `.shape`) so other schemas that need
+ * these same fields — `quoteRequestBodySchema` in `booking-intake.ts`, the
+ * assistant's search body — can reuse `stayCriteriaFieldsSchema.shape.adults`
+ * etc. instead of retyping the same `.min().max()`.
+ */
+export const stayCriteriaFieldsSchema = z.object({
+  checkIn: z.string().date(),
+  checkOut: z.string().date(),
+  adults: z.number().int().min(MIN_ADULTS).max(MAX_ADULTS),
+  children: z.number().int().min(MIN_CHILDREN).max(MAX_CHILDREN),
+});
+
 /** What the guest is shopping for. Every price in the app is derived from this. */
-export const stayCriteriaSchema = z
-  .object({
-    checkIn: z.string().date(),
-    checkOut: z.string().date(),
-    adults: z.number().int().min(1).max(8),
-    children: z.number().int().min(0).max(6),
-  })
+export const stayCriteriaSchema = stayCriteriaFieldsSchema
   .refine((value) => value.checkOut > value.checkIn, {
     message: 'Check-out must be after check-in.',
     path: ['checkOut'],

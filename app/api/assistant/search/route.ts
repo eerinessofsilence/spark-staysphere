@@ -5,7 +5,7 @@ import { defaultRoomFilters, type RoomFilters } from '@/lib/application/catalog-
 import { assistantInterpreterSource, assistantService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { defaultCriteria } from '@/lib/application/search-params';
 import { roomCategories } from '@/lib/domain/room-attributes';
-import { roomTypeSchema, stayCriteriaSchema } from '@/lib/domain/schemas';
+import { roomTypeSchema, stayCriteriaFieldsSchema, stayCriteriaSchema } from '@/lib/domain/schemas';
 
 /**
  * The guest's own words plus the stay/filters already in the URL — the
@@ -17,8 +17,8 @@ const assistantSearchBodySchema = z.object({
   utterance: z.string().max(400).default(''),
   checkIn: z.string().date().optional(),
   checkOut: z.string().date().optional(),
-  adults: z.number().int().min(1).max(8).optional(),
-  children: z.number().int().min(0).max(6).optional(),
+  adults: stayCriteriaFieldsSchema.shape.adults.optional(),
+  children: stayCriteriaFieldsSchema.shape.children.optional(),
   minPrice: z.number().nonnegative().optional(),
   maxPrice: z.number().nonnegative().optional(),
   views: z.array(roomTypeSchema.shape.view).optional(),

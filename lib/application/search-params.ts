@@ -1,6 +1,7 @@
 import { addDays, format, isValid, parseISO } from 'date-fns';
 import { roomCategories, type RoomCategory } from '../domain/room-attributes';
 import { ROOM_NUMBER } from '../domain/room-units';
+import { MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, MIN_CHILDREN } from '../domain/schemas';
 import type { RoomType, StayCriteria } from '../domain/schemas';
 import { defaultRoomFilters, type RoomFilters, type SortOrder } from './catalog-service';
 
@@ -68,12 +69,12 @@ export function isIsoDate(value: string | undefined | null): value is string {
 
 /** The one adults clamp, shared by URL parsing and the assistant's sanitiser. */
 export function clampAdults(value: number): number {
-  return Math.min(8, Math.max(1, Math.round(value)));
+  return Math.min(MAX_ADULTS, Math.max(MIN_ADULTS, Math.round(value)));
 }
 
 /** The one children clamp, shared by URL parsing and the assistant's sanitiser. */
 export function clampChildren(value: number): number {
-  return Math.min(6, Math.max(0, Math.round(value)));
+  return Math.min(MAX_CHILDREN, Math.max(MIN_CHILDREN, Math.round(value)));
 }
 
 export function toIsoDate(date: Date): string {
