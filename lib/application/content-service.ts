@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isEquirectangular, isPanorama } from '../domain/media';
-import { buildRoomUnits } from '../domain/room-units';
+import { buildRoomUnits, compareRoomNumbers } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
 import type {
   CatalogContentPort,
@@ -51,10 +51,6 @@ function uniqueId(base: string, taken: ReadonlySet<string>): string {
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function byRoomNumber(a: string, b: string): number {
-  return a.localeCompare(b, 'en', { numeric: true });
 }
 
 export type ContentError =
@@ -284,7 +280,7 @@ export class ContentService {
     const lost = picks
       .filter((booking) => was.get(booking.unitNumber!) === booking.roomTypeId && will.get(booking.unitNumber!) !== booking.roomTypeId)
       .map((booking) => booking.unitNumber!);
-    return [...new Set(lost)].sort(byRoomNumber);
+    return [...new Set(lost)].sort(compareRoomNumbers);
   }
 
   /** Everything the media picker can offer — see `lib/infrastructure/media-library.ts`. */
@@ -371,7 +367,7 @@ export class ContentService {
           booking.roomTypeId === roomTypeId && booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
       )
       .map((booking) => booking.unitNumber!);
-    return [...new Set(numbers)].sort(byRoomNumber);
+    return [...new Set(numbers)].sort(compareRoomNumbers);
   }
 
   /** New rooms start hidden: `content-service` never lets a room go visible without a rate and a photo (see `setRoomHidden`), and a room cannot carry either at the moment it's created. */

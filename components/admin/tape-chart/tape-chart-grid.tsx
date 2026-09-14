@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { addDays, format, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
 import type {
   TapeChartDay,
@@ -10,6 +10,7 @@ import type {
   TapeChartRoom,
   TapeChartSegment,
 } from '@/lib/application/inventory-service';
+import { addIsoDays } from '@/lib/domain/dates';
 import { nightsBetween } from '@/lib/domain/pricing';
 import {
   facadeLabels,
@@ -40,13 +41,9 @@ interface Selection {
 const LABEL_WIDTH = '9rem';
 const NIGHT_WIDTH = '2.75rem';
 
-function isoPlus(iso: string, days: number): string {
-  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd');
-}
-
 function segmentRange(segment: TapeChartSegment, dates: string[]): { from: string; to: string } {
   if (segment.kind === 'booking') return { from: segment.checkIn, to: segment.checkOut };
-  return { from: dates[segment.start]!, to: isoPlus(dates[segment.start]!, segment.span) };
+  return { from: dates[segment.start]!, to: addIsoDays(dates[segment.start]!, segment.span) };
 }
 
 function segmentLabel(segment: TapeChartSegment, dates: string[], roomNumber: string): string {

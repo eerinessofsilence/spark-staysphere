@@ -1,5 +1,6 @@
 import { BookingError } from '@/lib/application/booking-service';
 import { bookingService } from '@/lib/application/container';
+import { matchesGuestEmail } from '@/lib/domain/booking';
 
 /**
  * GET /api/bookings/:reference?email=… — a booking from the current process.
@@ -25,7 +26,7 @@ export async function GET(
 
   try {
     const booking = await bookingService.getByReference(reference);
-    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) return notFound();
+    if (!matchesGuestEmail(booking.guest.email, email)) return notFound();
     return Response.json({ booking });
   } catch (error) {
     if (error instanceof BookingError && error.code === 'not_found') return notFound();

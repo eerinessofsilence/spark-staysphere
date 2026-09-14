@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { addDays, format, parseISO } from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
+import { addIsoDays } from '@/lib/domain/dates';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
@@ -24,10 +24,6 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function shift(iso: string, days: number): string {
-  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd');
 }
 
 function counted(count: number, word: string): string {
@@ -77,7 +73,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Link
-            href={tapeChartHref({ from: shift(from, -days), days, type })}
+            href={tapeChartHref({ from: addIsoDays(from, -days), days, type })}
             aria-label={`Previous ${days} nights`}
             className={iconButton('light')}
           >
@@ -91,7 +87,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
             Today
           </Link>
           <Link
-            href={tapeChartHref({ from: shift(from, days), days, type })}
+            href={tapeChartHref({ from: addIsoDays(from, days), days, type })}
             aria-label={`Next ${days} nights`}
             className={iconButton('light')}
           >

@@ -16,6 +16,16 @@ export function roomNumber(floor: number, position: number): string {
   return `${floor === 0 ? 'G' : floor}${String(position).padStart(2, '0')}`;
 }
 
+/**
+ * Room numbers in the order a hotel team reads them (G07 before 101, 2 before
+ * 12), not alphabetically ('12' before '2'). Shared by the tape chart, the
+ * floor plan, and the CMS's renumbering rules — see `inventory-service.ts`
+ * and `content-service.ts`.
+ */
+export function compareRoomNumbers(a: string, b: string): number {
+  return a.localeCompare(b, 'en', { numeric: true });
+}
+
 export interface RoomUnit {
   number: string;
   roomTypeId: string;

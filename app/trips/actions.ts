@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import type { TripSummary } from '@/lib/application/booking-service';
 import { bookingService } from '@/lib/application/container';
+import { BOOKING_REFERENCE_PATTERN } from '@/lib/domain/booking';
 
 /**
  * "My trips" reads bookings the browser remembers, and claims ones it does
@@ -13,7 +14,7 @@ import { bookingService } from '@/lib/application/container';
 const referenceSchema = z
   .string()
   .trim()
-  .regex(/^AC-[A-Za-z0-9]{6}$/, 'A reference looks like AC-3F7K2P.');
+  .regex(BOOKING_REFERENCE_PATTERN, 'A reference looks like AC-3F7K2P.');
 
 const claimSchema = z.object({
   reference: referenceSchema,

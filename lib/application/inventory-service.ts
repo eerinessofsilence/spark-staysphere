@@ -1,10 +1,11 @@
-import { addDays, format, parseISO } from 'date-fns';
 import { demoHash, nightsInRange } from '../domain/availability';
+import { addIsoDays } from '../domain/dates';
 import type { DemoControlPort, HotelRepository } from '../domain/ports';
 import { roomCategory, type RoomCategory } from '../domain/room-attributes';
 import {
   allocateRoomType,
   buildRoomUnits,
+  compareRoomNumbers,
   type Facade,
   type NightOccupant,
   type RoomUnit,
@@ -101,12 +102,8 @@ export interface BookingRoom {
   chosenByGuest: boolean;
 }
 
-function addDaysIso(iso: string, days: number): string {
-  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd');
-}
-
 function byRoomNumber(a: { number: string }, b: { number: string }): number {
-  return a.number.localeCompare(b.number, 'en', { numeric: true });
+  return compareRoomNumbers(a.number, b.number);
 }
 
 export class InventoryService {
@@ -128,7 +125,7 @@ export class InventoryService {
   private async allocate(room: RoomType, units: RoomUnit[], bookings: Booking[], nights: string[]) {
     const [availability, override] = await Promise.all([
       nights.length > 0
-        ? this.repository.getAvailability(room.id, nights[0]!, addDaysIso(nights.at(-1)!, 1))
+        ? this.repository.getAvailability(room.id, nights[0]!, addIsoDays(nights.at(-1)!, 1))
         : Promise.resolve([]),
       this.demoControl.getRoomStatusOverride(room.id),
     ]);
@@ -230,7 +227,7 @@ export class InventoryService {
     const confirmed = allBookings.filter((booking) => booking.status === 'confirmed');
     const bookingsByType = this.confirmedByRoomType(allBookings);
     const byReference = new Map(allBookings.map((booking) => [booking.reference, booking]));
-    const dates = Array.from({ length: days }, (_, index) => addDaysIso(from, index));
+    const dates = Array.from({ length: days }, (_, index) => addIsoDays(from, index));
 
     const groups: TapeChartGroup[] = await Promise.all(
       rooms.map(async (room) => {
@@ -325,7 +322,7 @@ function toSegments(
   unitNumber: string,
 ): TapeChartSegment[] {
   const segments: TapeChartSegment[] = [];
-  const windowEnd = addDaysIso(dates.at(-1)!, 1);
+  const windowEnd = addIsoDays(dates.at(-1)!, 1);
   let index = 0;
 
   while (index < dates.length) {

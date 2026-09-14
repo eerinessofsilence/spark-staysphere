@@ -3,6 +3,7 @@ import type { RoomType } from './schemas';
 import {
   allocateRoomType,
   buildRoomUnits,
+  compareRoomNumbers,
   facadeOf,
   ROOM_NUMBER,
   roomNumber,
@@ -52,6 +53,16 @@ describe('roomNumber', () => {
   it('produces numbers that match ROOM_NUMBER', () => {
     expect(roomNumber(0, 3)).toMatch(ROOM_NUMBER);
     expect(roomNumber(5, 12)).toMatch(ROOM_NUMBER);
+  });
+});
+
+describe('compareRoomNumbers', () => {
+  it('sorts numerically within a floor, not alphabetically', () => {
+    expect(['110', '12', '2', '101'].sort(compareRoomNumbers)).toEqual(['2', '12', '101', '110']);
+  });
+
+  it('sorts G-prefixed room numbers numerically among themselves', () => {
+    expect(['G10', 'G01', 'G02'].sort(compareRoomNumbers)).toEqual(['G01', 'G02', 'G10']);
   });
 });
 

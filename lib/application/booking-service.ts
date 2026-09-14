@@ -19,7 +19,9 @@ import type {
   RoomType,
 } from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
+import { matchesGuestEmail } from '../domain/booking';
 import { nightsBetween } from '../domain/pricing';
+import { coverPhoto } from '../domain/room-attributes';
 
 export type BookingErrorCode =
   | 'invalid_request'
@@ -185,7 +187,7 @@ export class BookingService {
   async findTrip(reference: string, email: string): Promise<TripSummary | null> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return null;
-    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) return null;
+    if (!matchesGuestEmail(booking.guest.email, email)) return null;
 
     const rooms = await this.repository.listRooms(booking.hotelId);
     return this.summarize(booking, rooms.find((room) => room.id === booking.roomTypeId) ?? null);
@@ -206,7 +208,7 @@ export class BookingService {
   ): Promise<{ outcome: CancelOutcome; trip?: TripSummary }> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
-    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+    if (!matchesGuestEmail(booking.guest.email, email)) {
       return { outcome: 'not_found' };
     }
 
@@ -240,7 +242,7 @@ export class BookingService {
   }
 
   private summarize(booking: Booking, room: RoomType | null): TripSummary {
-    const photo = room?.media.find((item) => item.type === 'image') ?? null;
+    const photo = room ? (coverPhoto(room) ?? null) : null;
     return {
       reference: booking.reference,
       roomName: room?.name ?? 'Your room',
