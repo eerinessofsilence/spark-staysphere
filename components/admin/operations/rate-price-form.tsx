@@ -59,7 +59,7 @@ export function RatePriceForm({
           className={inputClass}
         />
         <label htmlFor={`${idPrefix}-ota`} className="sr-only">
-          OTA comparison price ({currency}) for {roomName}
+          Booking-site price ({currency}) for {roomName}
         </label>
         <input
           id={`${idPrefix}-ota`}
