@@ -147,9 +147,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               )}
             </Row>
           </dl>
-          <Link href={`/admin/chessboard?from=${booking.checkIn}`} className={pill('secondary', 'mt-4')}>
+          <Link href={`/admin/tape-chart?from=${booking.checkIn}`} className={pill('secondary', 'mt-4')}>
             <TableCellsIcon className="size-4" aria-hidden="true" />
-            Show on chessboard
+            Show on tape chart
           </Link>
         </Card>
 

@@ -28,7 +28,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { href: '/admin', label: 'Overview', icon: HomeIcon },
-      { href: '/admin/chessboard', label: 'Chessboard', icon: TableCellsIcon },
+      { href: '/admin/tape-chart', label: 'Tape chart', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Bookings', icon: CalendarDaysIcon },
       { href: '/admin/rates', label: 'Rates & availability', icon: TagIcon },
     ],

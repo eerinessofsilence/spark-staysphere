@@ -138,9 +138,9 @@ the same as its DOM `id`). Reorderable lists (`amenities`, a rate's `includedSer
 serialized into one hidden JSON input the server action reads back with `parseJsonList`. The media
 picker is the shared product `Modal`, listing the manifest with a folder filter.
 
-## Physical rooms, the floor plan and the chessboard
+## Physical rooms, the floor plan and the tape chart
 
-The catalog sells room types; a floor plan and a PMS chessboard need doors. `lib/domain/room-units.ts`
+The catalog sells room types; a floor plan and a PMS tape chart need doors. `lib/domain/room-units.ts`
 derives every physical room from the same unit counts availability already sells (`unitsFor`), so
 the catalog, the guest floor plan and the back office can never report a different number of rooms.
 Rooms are numbered floor by floor (`305`), sea facade first, and a room's facade follows from its view
@@ -153,9 +153,9 @@ lowest-ranked room free for their whole stay (a stay never changes rooms mid-way
 availability still counts as taken fills the lowest-ranked free rooms as simulated demand, or as
 closed when an admin override is behind it. Ranks are hashed per room type so occupied doors scatter.
 `InventoryService` (`lib/application/inventory-service.ts`) exposes it as `getFloorPlan` (one stay,
-guest-facing, hidden types left out), `getChessboard` (every room across a window of nights, with
+guest-facing, hidden types left out), `getTapeChart` (every room across a window of nights, with
 bookings, demand, closures and daily arrivals and departures) and `getBookingRoom`. Simulated demand
-is cut into 2–5-night blocks only so the chessboard reads like a PMS, and is labelled as simulated
+is cut into 2–5-night blocks only so the tape chart reads like a PMS, and is labelled as simulated
 wherever it appears.
 
 A booking may carry `unitNumber`, the room the guest picked. `booking-intake.ts` checks that room is
@@ -174,8 +174,8 @@ screens. What reads and writes real demo data, and what is a labelled mock-up of
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
-| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status, "Reset demo state" | `InventoryService.getChessboard`, `HotelRepository.listBookings`, `DemoControlPort` — live |
-| `/admin/chessboard` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getChessboard` — live; demand is simulated and says so |
+| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status, "Reset demo state" | `InventoryService.getTapeChart`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin/tape-chart` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getTapeChart` — live; demand is simulated and says so |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; guest, room, money, payment attempts, activity; cancel | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
 | `/admin/content` and its editors | Room types with cover, price and room count; add-ons by category with the on-sale switch; room, rate, add-on and hotel editors | `ContentService` — live |
@@ -186,7 +186,7 @@ team roles, integration credentials and media uploads are left out until they ca
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
 `stay_started` rules as the guest's, without the email check, since the desk is trusted (until
 auth, anyone who can open `/admin` is). A cancelled booking releases its nights and its room at
-once, because both the floor plan and the chessboard recompute `allocateRoomType` on read. The rates
+once, because both the floor plan and the tape chart recompute `allocateRoomType` on read. The rates
 screen saves through `ContentService.updateRate` with the rate's `version`, so it and the CMS rate
 form share one concurrency check and one overlay row. Every write revalidates the admin screens
 that show it and the guest routes it reprices.

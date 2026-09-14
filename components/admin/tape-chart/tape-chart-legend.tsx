@@ -1,7 +1,7 @@
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { demandPattern } from './chessboard-shared';
+import { demandPattern } from './tape-chart-shared';
 
-export function ChessboardLegend() {
+export function TapeChartLegend() {
   return (
     <ul
       aria-label="Legend"

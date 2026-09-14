@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { format, parseISO } from 'date-fns';
-import type { ChessboardDay } from '@/lib/application/inventory-service';
+import type { TapeChartDay } from '@/lib/application/inventory-service';
 import { cn } from '@/lib/utils';
 
 const ticks = [0, 25, 50, 75, 100];
@@ -11,13 +11,13 @@ function share(occupied: number, totalRooms: number): number {
   return totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
 }
 
-function describe(day: ChessboardDay, totalRooms: number, tonight: boolean): string {
+function describe(day: TapeChartDay, totalRooms: number, tonight: boolean): string {
   const when = tonight ? `Tonight, ${format(parseISO(day.date), 'EEE d MMM')}` : format(parseISO(day.date), 'EEE d MMM');
   return `${when}: ${day.occupied} of ${totalRooms} rooms occupied (${share(day.occupied, totalRooms)}%), ${day.arrivals} arriving, ${day.departures} leaving`;
 }
 
 /** Tonight carries the accent as the active day; the rest stay in the neutral stone ink. */
-export function OccupancyChart({ days, totalRooms }: { days: ChessboardDay[]; totalRooms: number }) {
+export function OccupancyChart({ days, totalRooms }: { days: TapeChartDay[]; totalRooms: number }) {
   const [active, setActive] = React.useState<number | null>(null);
   const peak = days.reduce((best, day, index) => (day.occupied > (days[best]?.occupied ?? -1) ? index : best), 0);
   const shown = active === null ? undefined : days[active];

@@ -12,6 +12,8 @@ export function revalidateContent(): void {
   revalidatePath('/rooms/[slug]', 'page');
   revalidatePath('/book/[slug]', 'page');
   revalidatePath('/admin');
+  revalidatePath('/admin/rates');
+  revalidatePath('/admin/tape-chart');
   revalidatePath('/admin/content');
   revalidatePath('/admin/content/hotel');
   revalidatePath('/admin/content/rooms/[id]', 'page');

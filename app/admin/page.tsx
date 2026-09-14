@@ -5,7 +5,7 @@ import { addDays, parseISO } from 'date-fns';
 import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { DEMO_HOTEL_SLUG, hotelRepository, inventoryService } from '@/lib/application/container';
-import type { ChessboardDay } from '@/lib/application/inventory-service';
+import type { TapeChartDay } from '@/lib/application/inventory-service';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
@@ -27,7 +27,7 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-function tonightSentence(day: ChessboardDay | undefined, totalRooms: number): string {
+function tonightSentence(day: TapeChartDay | undefined, totalRooms: number): string {
   if (!day) return '';
   const share = totalRooms > 0 ? Math.round((day.occupied / totalRooms) * 100) : 0;
   const movement = [
@@ -42,7 +42,7 @@ function tonightSentence(day: ChessboardDay | undefined, totalRooms: number): st
 export default async function AdminOverviewPage() {
   const today = toIsoDate(new Date());
   const [board, bookings] = await Promise.all([
-    inventoryService.getChessboard(DEMO_HOTEL_SLUG, today, 14),
+    inventoryService.getTapeChart(DEMO_HOTEL_SLUG, today, 14),
     hotelRepository.listBookings(),
   ]);
   const { hotel } = board;
@@ -70,8 +70,8 @@ export default async function AdminOverviewPage() {
         actions={
           <>
             <ResetDemoButton />
-            <Link href="/admin/chessboard" className={pill('primary')}>
-              Open chessboard
+            <Link href="/admin/tape-chart" className={pill('primary')}>
+              Open tape chart
             </Link>
           </>
         }
@@ -130,7 +130,7 @@ export default async function AdminOverviewPage() {
             <div>
               <h3 className="text-display text-2xl">No bookings yet</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Complete a demo booking on the guest site and it appears here, on the chessboard, and in
+                Complete a demo booking on the guest site and it appears here, on the tape chart, and in
                 Bookings.
               </p>
             </div>

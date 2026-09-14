@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { addDays, format, parseISO } from 'date-fns';
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
 import type {
-  ChessboardDay,
-  ChessboardGroup,
-  ChessboardRoom,
-  ChessboardSegment,
+  TapeChartDay,
+  TapeChartGroup,
+  TapeChartRoom,
+  TapeChartSegment,
 } from '@/lib/application/inventory-service';
 import { nightsBetween } from '@/lib/domain/pricing';
 import {
@@ -21,18 +21,18 @@ import {
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
-import { demandPattern } from './chessboard-shared';
+import { demandPattern } from './tape-chart-shared';
 
-interface ChessboardGridProps {
+interface TapeChartGridProps {
   dates: string[];
-  days: ChessboardDay[];
-  groups: ChessboardGroup[];
+  days: TapeChartDay[];
+  groups: TapeChartGroup[];
   totalRooms: number;
   today: string;
 }
 
 interface Selection {
-  segment: ChessboardSegment;
+  segment: TapeChartSegment;
   roomNumber: string;
   roomName: string;
 }
@@ -44,12 +44,12 @@ function isoPlus(iso: string, days: number): string {
   return format(addDays(parseISO(iso), days), 'yyyy-MM-dd');
 }
 
-function segmentRange(segment: ChessboardSegment, dates: string[]): { from: string; to: string } {
+function segmentRange(segment: TapeChartSegment, dates: string[]): { from: string; to: string } {
   if (segment.kind === 'booking') return { from: segment.checkIn, to: segment.checkOut };
   return { from: dates[segment.start]!, to: isoPlus(dates[segment.start]!, segment.span) };
 }
 
-function segmentLabel(segment: ChessboardSegment, dates: string[], roomNumber: string): string {
+function segmentLabel(segment: TapeChartSegment, dates: string[], roomNumber: string): string {
   if (segment.kind === 'booking') {
     return `Booking ${segment.reference}, ${segment.guestName}, ${formatDateRange(segment.checkIn, segment.checkOut)}, ${
       segment.chosenByGuest ? 'room chosen by guest' : 'room assigned automatically'
@@ -60,7 +60,7 @@ function segmentLabel(segment: ChessboardSegment, dates: string[], roomNumber: s
   return `${what}, room ${roomNumber}, ${formatDateRange(from, to)}`;
 }
 
-export function ChessboardGrid({ dates, days, groups, totalRooms, today }: ChessboardGridProps) {
+export function TapeChartGrid({ dates, days, groups, totalRooms, today }: TapeChartGridProps) {
   const [selection, setSelection] = React.useState<Selection | null>(null);
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
@@ -72,7 +72,7 @@ export function ChessboardGrid({ dates, days, groups, totalRooms, today }: Chess
     [dates],
   );
 
-  const select = (segment: ChessboardSegment, room: ChessboardRoom, roomName: string) => {
+  const select = (segment: TapeChartSegment, room: TapeChartRoom, roomName: string) => {
     setSelection({ segment, roomNumber: room.number, roomName });
     setOpen(true);
   };
@@ -219,7 +219,7 @@ function SegmentBar({
   label,
   onSelect,
 }: {
-  segment: ChessboardSegment;
+  segment: TapeChartSegment;
   label: string;
   onSelect: () => void;
 }) {

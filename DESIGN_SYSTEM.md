@@ -222,7 +222,7 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
     icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
     on the overview are a baseline-aligned row of number + words between two rules, not tiles.
-  - **The chessboard** (`components/admin/chessboard/`) is one row per door, grouped by room type,
+  - **The tape chart** (`components/admin/tape-chart/`) is one row per door, grouped by room type,
     one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
     when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
     tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is

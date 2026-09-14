@@ -47,7 +47,7 @@ export interface FloorPlan {
   availableCount: number;
 }
 
-export type ChessboardSegment =
+export type TapeChartSegment =
   | {
       kind: 'booking';
       start: number;
@@ -66,34 +66,34 @@ export type ChessboardSegment =
     }
   | { kind: 'demand' | 'closed'; start: number; span: number };
 
-export interface ChessboardRoom {
+export interface TapeChartRoom {
   number: string;
   floor: number;
   facade: Facade;
-  segments: ChessboardSegment[];
+  segments: TapeChartSegment[];
 }
 
-export interface ChessboardGroup {
+export interface TapeChartGroup {
   roomTypeId: string;
   roomName: string;
   roomSlug: string;
   hidden: boolean;
-  rooms: ChessboardRoom[];
+  rooms: TapeChartRoom[];
 }
 
-export interface ChessboardDay {
+export interface TapeChartDay {
   date: string;
   occupied: number;
   arrivals: number;
   departures: number;
 }
 
-export interface Chessboard {
+export interface TapeChart {
   hotel: Hotel;
   dates: string[];
   totalRooms: number;
-  groups: ChessboardGroup[];
-  days: ChessboardDay[];
+  groups: TapeChartGroup[];
+  days: TapeChartDay[];
 }
 
 export interface BookingRoom {
@@ -222,7 +222,7 @@ export class InventoryService {
   }
 
   /** The PMS view: every room, including hidden room types, across a window of nights. */
-  async getChessboard(hotelSlug: string, from: string, days: number): Promise<Chessboard> {
+  async getTapeChart(hotelSlug: string, from: string, days: number): Promise<TapeChart> {
     const hotel = await this.catalog.getHotel(hotelSlug);
     const rooms = await this.repository.listRooms(hotel.id);
     const units = buildRoomUnits(rooms);
@@ -232,7 +232,7 @@ export class InventoryService {
     const byReference = new Map(allBookings.map((booking) => [booking.reference, booking]));
     const dates = Array.from({ length: days }, (_, index) => addDaysIso(from, index));
 
-    const groups: ChessboardGroup[] = await Promise.all(
+    const groups: TapeChartGroup[] = await Promise.all(
       rooms.map(async (room) => {
         const roomUnits = units.filter((unit) => unit.roomTypeId === room.id).sort(byRoomNumber);
         const { occupancy } = await this.allocate(room, roomUnits, bookingsByType.get(room.id) ?? [], dates);
@@ -251,7 +251,7 @@ export class InventoryService {
       }),
     );
 
-    const summary: ChessboardDay[] = dates.map((date, index) => ({
+    const summary: TapeChartDay[] = dates.map((date, index) => ({
       date,
       occupied: groups.reduce(
         (sum, group) =>
@@ -323,8 +323,8 @@ function toSegments(
   dates: string[],
   bookings: Map<string, Booking>,
   unitNumber: string,
-): ChessboardSegment[] {
-  const segments: ChessboardSegment[] = [];
+): TapeChartSegment[] {
+  const segments: TapeChartSegment[] = [];
   const windowEnd = addDaysIso(dates.at(-1)!, 1);
   let index = 0;
 
