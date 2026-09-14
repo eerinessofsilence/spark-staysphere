@@ -35,6 +35,9 @@ const EXAMPLE_UTTERANCES = [
   'A quiet garden room next weekend',
 ];
 
+/** Three across: a tile narrower than that drops its name to two lines and stops reading at a glance. */
+const SHOWN_CARDS = 3;
+
 const PHASE_LABEL: Partial<Record<AssistantPhase, string>> = {
   idle: 'Tell me what you are looking for, or use the mic.',
   listening: 'Listening — tap the mic again to stop.',
@@ -212,6 +215,20 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     void runSearch('', next, nextCriteria);
   };
 
+  // "None of these" — drops the answer and hands the guest back the input,
+  // not just a cleared form: the stay may as well go back to what it was
+  // before this utterance touched it.
+  const startNewSearch = React.useCallback(() => {
+    setResult(null);
+    setErrorMessage(null);
+    setPhase('idle');
+    setInputValue('');
+    setCriteria(baseCriteria);
+    setFilters(baseFilters);
+    // After the swap has had time to play, not mid-transition.
+    window.setTimeout(() => inputRef.current?.focus(), OVERLAY_TRANSITION_MS);
+  }, [baseCriteria, baseFilters]);
+
   const chips: FilterChip[] = [
     ...(criteria.checkIn !== baseCriteria.checkIn || criteria.checkOut !== baseCriteria.checkOut
       ? [
@@ -269,21 +286,24 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           ? Math.min(...result.offers.map((offer) => offer.price.nightlyPrice))
           : null,
       })
-    : '';
+    : null;
 
   if (!rendered || !mounted) return null;
 
   const statusLabel =
-    phase === 'results'
-      ? summary
-      : phase === 'empty'
-        ? `No rooms match that combination for ${formatDateRange(criteria.checkIn, criteria.checkOut)}.`
-        : phase === 'error'
-          ? (errorMessage ?? 'Something went wrong.')
-          : (PHASE_LABEL[phase] ?? '');
+    phase === 'empty'
+      ? `No rooms match that combination for ${formatDateRange(criteria.checkIn, criteria.checkOut)}.`
+      : phase === 'error'
+        ? (errorMessage ?? 'Something went wrong.')
+        : (PHASE_LABEL[phase] ?? '');
+  // A re-search from a chip keeps the last answer on screen, dimmed, so the
+  // cards do not blink out and back for the round trip.
+  const hasOffers = result !== null && result.offers.length > 0;
+  const showingResults = hasOffers && (phase === 'results' || phase === 'thinking');
+  const refreshing = showingResults && phase === 'thinking';
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:justify-end sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:p-6">
       <button
         type="button"
         tabIndex={-1}
@@ -301,14 +321,20 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         aria-modal="true"
         aria-label="Find a room by voice or description"
         tabIndex={-1}
-        style={{ transformOrigin: 'bottom right' }}
+        style={{ transformOrigin: 'bottom center' }}
         className={cn(
-          'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
-          'max-h-[85dvh] sm:max-h-[36rem] sm:max-w-md',
-          mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-24' : 'sm:mb-24',
+          // `will-change` because the panel is frosted: without a layer of its
+          // own the browser re-runs the backdrop blur against the page on every
+          // frame of the open, and the arrival comes in steps.
+          'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
+          // Tall enough that a full result — the answer, chips, three tiles and
+          // the handoff link — lands without an inner scroll, and still bounded
+          // by the window so a short desktop one does not push the CTA off.
+          'max-h-[85dvh] sm:max-h-[min(42rem,85dvh)] sm:max-w-3xl',
+          mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-10' : 'sm:mb-10',
           visible
             ? 'translate-y-0 opacity-100 sm:scale-100'
-            : 'translate-y-8 opacity-0 sm:translate-y-0 sm:scale-95',
+            : 'translate-y-4 opacity-0 sm:translate-y-0 sm:scale-[0.98]',
         )}
       >
         <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
@@ -322,15 +348,18 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <p role="status" aria-live="polite" className="text-base leading-relaxed text-foreground">
-            {statusLabel}
-          </p>
+          <div role="status" aria-live="polite">
+            {phase === 'results' && summary ? (
+              <>
+                <p className="text-display text-xl leading-tight sm:text-2xl">{summary.lead}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{summary.detail}</p>
+              </>
+            ) : (
+              <p className="text-base leading-relaxed text-foreground">{statusLabel}</p>
+            )}
+          </div>
 
-          {phase === 'results' && result?.interpretedBy === 'keyword' ? (
-            <p className="mt-1.5 text-xs text-muted-foreground">Matching on keywords — no AI key is configured for this demo.</p>
-          ) : null}
-
-          {chips.length > 0 && (phase === 'results' || phase === 'empty') ? (
+          {chips.length > 0 && (phase === 'results' || phase === 'empty' || refreshing) ? (
             <ul className="mt-3 flex flex-wrap gap-1.5">
               {chips.map((chip) => (
                 <li key={chip.key}>
@@ -343,18 +372,19 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
             </ul>
           ) : null}
 
-          {phase === 'results' && result ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {result.offers.slice(0, 4).map((offer) => (
-                <RoomCard key={offer.room.id} offer={offer} stayQuery={result.query} layout="tile" />
-              ))}
+          {showingResults && result ? (
+            <div aria-busy={refreshing} className={cn('transition-opacity duration-200', refreshing && 'opacity-50')}>
+              {/* A phone gets the rail the room page uses — three tiles side by
+                  side would be too narrow to read, and two-then-one strands a
+                  card on its own row. From `sm` the three sit in a grid. */}
+              <ul className="no-scrollbar -mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 scroll-pl-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+                {result.offers.slice(0, SHOWN_CARDS).map((offer) => (
+                  <li key={offer.room.id} className="w-[70%] shrink-0 snap-start sm:w-auto">
+                    <RoomCard offer={offer} stayQuery={result.query} layout="tile" />
+                  </li>
+                ))}
+              </ul>
             </div>
-          ) : null}
-
-          {phase === 'results' && result ? (
-            <Link href={`/rooms?${result.query}`} className={pill('primary', 'mt-4 w-full')}>
-              See all {result.totalRooms} rooms
-            </Link>
           ) : null}
 
           {phase === 'results' && result && result.unresolved.length > 0 ? (
@@ -400,49 +430,97 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           ) : null}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border/60 p-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value.slice(0, 400))}
-            placeholder="A quiet sea-view suite for two, under €400…"
-            aria-label="Describe the room you want"
-            maxLength={400}
-            disabled={phase === 'listening' || phase === 'transcribing'}
-            className={fieldClass}
-          />
+        {/*
+         * The input row and the results actions share one footer cell and
+         * cross-fade between each other rather than one replacing the other
+         * outright — both stay mounted (so focus/measurement never glitches),
+         * the inactive one drops out of the tab order and stops taking clicks,
+         * and neither is ever seen mid-fade at the other's z-index because
+         * they occupy the same grid cell.
+         */}
+        <div className="relative grid border-t border-border/60">
+          <form
+            onSubmit={handleSubmit}
+            aria-hidden={showingResults}
+            className={cn(
+              'col-start-1 row-start-1 flex items-center gap-2 p-3 transition-[opacity,translate] duration-200 ease-out',
+              showingResults ? 'pointer-events-none translate-y-1 opacity-0' : 'translate-y-0 opacity-100',
+            )}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value.slice(0, 400))}
+              placeholder="A quiet sea-view suite for two, under €400…"
+              aria-label="Describe the room you want"
+              maxLength={400}
+              tabIndex={showingResults ? -1 : undefined}
+              disabled={showingResults || phase === 'listening' || phase === 'transcribing'}
+              className={fieldClass}
+            />
 
-          {!micHidden ? (
+            {!micHidden ? (
+              <button
+                type="button"
+                tabIndex={showingResults ? -1 : undefined}
+                onClick={() => {
+                  if (voice.status === 'listening') voice.stop();
+                  else {
+                    voice.reset();
+                    void voice.start();
+                  }
+                }}
+                aria-label={voice.status === 'listening' ? 'Stop recording' : 'Speak your search'}
+                className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
+              >
+                {voice.status === 'listening' ? (
+                  <StopCircleIcon className="size-5" aria-hidden="true" />
+                ) : (
+                  <MicrophoneIcon className="size-5" aria-hidden="true" />
+                )}
+              </button>
+            ) : null}
+
+            <button
+              type="submit"
+              aria-label="Search"
+              tabIndex={showingResults ? -1 : undefined}
+              disabled={
+                showingResults || !inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'
+              }
+              className={iconButton('dark')}
+            >
+              <PaperAirplaneIcon className="size-4" aria-hidden="true" />
+            </button>
+          </form>
+
+          <div
+            aria-hidden={!showingResults}
+            className={cn(
+              'col-start-1 row-start-1 flex items-center gap-2 p-3 transition-[opacity,translate] duration-200 ease-out',
+              showingResults ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0',
+            )}
+          >
             <button
               type="button"
-              onClick={() => {
-                if (voice.status === 'listening') voice.stop();
-                else {
-                  voice.reset();
-                  void voice.start();
-                }
-              }}
-              aria-label={voice.status === 'listening' ? 'Stop recording' : 'Speak your search'}
-              className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
+              tabIndex={showingResults ? undefined : -1}
+              onClick={startNewSearch}
+              className={pill('secondary')}
             >
-              {voice.status === 'listening' ? (
-                <StopCircleIcon className="size-5" aria-hidden="true" />
-              ) : (
-                <MicrophoneIcon className="size-5" aria-hidden="true" />
-              )}
+              New search
             </button>
-          ) : null}
-
-          <button
-            type="submit"
-            aria-label="Search"
-            disabled={!inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'}
-            className={iconButton('dark')}
-          >
-            <PaperAirplaneIcon className="size-4" aria-hidden="true" />
-          </button>
-        </form>
+            <Link
+              href={result ? `/rooms?${result.query}` : '#'}
+              tabIndex={showingResults ? undefined : -1}
+              className={pill('primary', 'flex-1 justify-center')}
+            >
+              {result && result.offers.length > SHOWN_CARDS
+                ? `See all ${result.offers.length} rooms`
+                : 'Compare in the catalog'}
+            </Link>
+          </div>
+        </div>
 
         {phase === 'listening' ? (
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
