@@ -289,7 +289,9 @@ Implemented as route handlers in this app; there is no separate API service.
   attempt instead of an authorization.
   An optional `unitNumber` (e.g. `"402"`) books that exact room; it must belong to the room type and
   be free for the whole stay, or the request gets 409 `unavailable`.
-- `GET /api/bookings/:reference` — reads a booking from the current process.
+- `GET /api/bookings/:reference?email=…` — reads a booking from the current process. The
+  reference alone opens nothing: `email` must match the guest's own, the same rule
+  `findTrip`/`cancelTrip` enforce for "My trips", since a reference is guessable in bulk.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather
 than fetching these routes. The back office is server actions only: overrides and the demo reset
