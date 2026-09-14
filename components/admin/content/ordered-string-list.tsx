@@ -39,7 +39,15 @@ export function OrderedStringList({
   itemNoun?: string;
 }) {
   const initialJson = JSON.stringify(initial);
-  const [items, setItems] = React.useState(initial);
+  // Rows carry an id of their own, stable across a reorder, because the list
+  // is keyed by it below. Keyed by index instead, a swap left the DOM node —
+  // and the browser's focus on whichever button was just pressed — sitting
+  // at the same position while the item under it changed: pressing "Move up"
+  // twice in a row moved the row that had swapped in, undoing the first move
+  // rather than repeating it.
+  const nextId = React.useRef(0);
+  const toRows = (values: string[]) => values.map((value) => ({ id: nextId.current++, value }));
+  const [rows, setRows] = React.useState(() => toRows(initial));
   const [draft, setDraft] = React.useState('');
   const errors = useFieldErrors();
   const errorKey = Object.keys(errors).find((key) => key === name || key.startsWith(`${name}.`));
@@ -48,55 +56,57 @@ export function OrderedStringList({
 
   // A save hands the saved list back down; take it (and let go of the draft it now includes).
   React.useEffect(() => {
-    setItems(JSON.parse(initialJson) as string[]);
+    setRows(toRows(JSON.parse(initialJson) as string[]));
     setDraft('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialJson]);
 
   function move(index: number, direction: -1 | 1) {
     const target = index + direction;
-    if (target < 0 || target >= items.length) return;
-    const next = [...items];
+    if (target < 0 || target >= rows.length) return;
+    const next = [...rows];
     [next[index], next[target]] = [next[target]!, next[index]!];
-    setItems(next);
+    setRows(next);
   }
 
   function remove(index: number) {
-    setItems(items.filter((_, candidate) => candidate !== index));
+    setRows(rows.filter((_, candidate) => candidate !== index));
   }
 
   function add() {
     const value = draft.trim();
     if (!value) return;
-    setItems([...items, value]);
+    setRows([...rows, { id: nextId.current++, value }]);
     setDraft('');
   }
 
+  const items = rows.map((row) => row.value);
   const pending = draft.trim();
   const saved = pending ? [...items, pending] : items;
 
   return (
     <div className="grid gap-2">
       <input type="hidden" name={name} value={JSON.stringify(saved)} />
-      {items.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing here yet.</p>
       ) : (
         <ul className="grid gap-2">
-          {items.map((item, index) => {
-            const RowIcon = showIcon ? featureIcon(item) : null;
-            const title = item.trim() ? `“${item.trim()}”` : `${itemNoun} ${index + 1}`;
+          {rows.map((row, index) => {
+            const RowIcon = showIcon ? featureIcon(row.value) : null;
+            const title = row.value.trim() ? `“${row.value.trim()}”` : `${itemNoun} ${index + 1}`;
             return (
-              <li key={index} className="flex items-center gap-2">
+              <li key={row.id} className="flex items-center gap-2">
                 {RowIcon ? (
                   <span className="hidden size-9 shrink-0 place-items-center rounded-full bg-stone text-foreground sm:grid">
                     <RowIcon className="size-4" weight="fill" aria-hidden={true} />
                   </span>
                 ) : null}
                 <TextInput
-                  value={item}
+                  value={row.value}
                   onChange={(event) => {
-                    const next = [...items];
-                    next[index] = event.target.value;
-                    setItems(next);
+                    const next = [...rows];
+                    next[index] = { ...next[index]!, value: event.target.value };
+                    setRows(next);
                   }}
                   aria-label={`${noun} ${index + 1}`}
                   className="min-w-0 flex-1"
@@ -113,7 +123,7 @@ export function OrderedStringList({
                 <button
                   type="button"
                   onClick={() => move(index, 1)}
-                  disabled={index === items.length - 1}
+                  disabled={index === rows.length - 1}
                   aria-label={`Move ${title} down`}
                   className={iconButton('light', 'size-11 sm:size-9')}
                 >
