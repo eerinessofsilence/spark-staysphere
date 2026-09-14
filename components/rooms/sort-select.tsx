@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { RoomFilters, SortOrder } from '@/lib/application/catalog-service';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const options: { value: SortOrder; label: string }[] = [
   { value: 'recommended', label: 'Recommended' },
@@ -32,33 +32,33 @@ export function SortSelect({
       <label htmlFor="room-sort" className="text-sm whitespace-nowrap text-muted-foreground">
         Sort by
       </label>
-      <div className="relative">
-        <select
-          id="room-sort"
-          value={filters.sort}
-          onChange={(event) => {
-            const query = buildQuery({
-              criteria,
-              filters: { ...filters, sort: event.target.value as SortOrder },
-              layout,
-            });
-            startTransition(() => router.replace(`/rooms?${query}`, { scroll: false }));
-          }}
-          // The browser's own arrow sits at its own padding and size, not ours —
-          // drawn off, drop it and place a matching one ourselves.
-          className="min-h-11 appearance-none rounded-full border border-border bg-card py-1 pr-9 pl-4 text-sm font-medium"
-        >
+      <Select
+        items={options}
+        value={filters.sort}
+        onValueChange={(next) => {
+          const query = buildQuery({
+            criteria,
+            filters: { ...filters, sort: (next ?? 'recommended') as SortOrder },
+            layout,
+          });
+          startTransition(() => router.replace(`/rooms?${query}`, { scroll: false }));
+        }}
+      >
+        <SelectTrigger id="room-sort" className="min-h-11 rounded-full border border-border bg-card py-1 pr-3 pl-4 text-sm font-medium">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
               {option.label}
-            </option>
+            </SelectItem>
           ))}
-        </select>
-        <ChevronDownIcon
-          className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-      </div>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

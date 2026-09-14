@@ -5,6 +5,8 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, EnvelopeSimple } from '@phosphor-icons/react/dist/ssr';
 import { Modal } from '@/components/site/modal';
 import { fieldClass, pill } from '@/lib/ui';
+import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { demoMembers, initialsOf, teamRoles, type TeamMember, type TeamRole } from './team-data';
 
 export function TeamMembers() {
@@ -144,18 +146,26 @@ export function TeamMembers() {
             <label htmlFor="invite-role" className="mb-1.5 block text-sm text-muted-foreground">
               Role
             </label>
-            <select
-              id="invite-role"
+            <Select
+              items={teamRoles.map((option) => ({ value: option, label: option }))}
               value={role}
-              onChange={(event) => setRole(event.target.value as TeamRole)}
-              className={fieldClass}
+              onValueChange={(next) => setRole((next ?? teamRoles[0]) as TeamRole)}
             >
-              {teamRoles.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="invite-role" className={cn(fieldClass, 'justify-between gap-2 py-0')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+                {teamRoles.map((option) => (
+                  <SelectItem
+                    key={option}
+                    value={option}
+                    className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+                  >
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="submit" className={pill('primary')}>

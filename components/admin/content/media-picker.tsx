@@ -31,7 +31,7 @@ export function MediaPicker({ open, onClose, assets, onPick }: MediaPickerProps)
         <label htmlFor="media-picker-folder" className="sr-only">
           Folder
         </label>
-        <Select id="media-picker-folder" value={folder} onChange={(event) => setFolder(event.target.value)}>
+        <Select id="media-picker-folder" value={folder} onChange={setFolder}>
           <option value="all">All folders</option>
           {folders.map((name) => (
             <option key={name} value={name}>

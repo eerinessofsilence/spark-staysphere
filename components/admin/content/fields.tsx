@@ -3,6 +3,13 @@
 import * as React from 'react';
 import { fieldClass } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import {
+  Select as BaseSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFieldError } from './content-form';
 
 /**
@@ -63,6 +70,80 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
   );
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cn(fieldClass, props.className)} />;
+interface SelectProps {
+  id?: string;
+  name?: string;
+  value?: string;
+  defaultValue?: string;
+  required?: boolean;
+  disabled?: boolean;
+  className?: string;
+  'aria-label'?: string;
+  /** `<option>` elements, the same shape a native `<select>` takes. */
+  children: React.ReactNode;
+  onChange?: (value: string) => void;
+}
+
+/**
+ * The CMS's `<select>`, built on the branded `components/ui/select.tsx`
+ * (Base UI) rather than the browser's own control — so it can carry the
+ * product's chrome and stay a pill-cornered, focus-ringed field like every
+ * other input, not the OS's native dropdown. Options are still authored as
+ * `<option>` children so call sites read like a native select; this reads
+ * them back into the `items` the trigger needs to show the selected label.
+ */
+export function Select({
+  id,
+  name,
+  value,
+  defaultValue,
+  required,
+  disabled,
+  className,
+  'aria-label': ariaLabel,
+  children,
+  onChange,
+}: SelectProps) {
+  const options = React.Children.toArray(children).flatMap((child) => {
+    if (!React.isValidElement<React.OptionHTMLAttributes<HTMLOptionElement>>(child)) return [];
+    return [
+      {
+        value: String(child.props.value),
+        label: child.props.children,
+        disabled: child.props.disabled,
+      },
+    ];
+  });
+
+  return (
+    <BaseSelect
+      items={options}
+      name={name}
+      value={value}
+      defaultValue={defaultValue}
+      required={required}
+      disabled={disabled}
+      onValueChange={onChange ? (next) => onChange(next ?? '') : undefined}
+    >
+      <SelectTrigger
+        id={id}
+        aria-label={ariaLabel}
+        className={cn(fieldClass, 'justify-between gap-2 py-0', className)}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+        {options.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+            className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </BaseSelect>
+  );
 }

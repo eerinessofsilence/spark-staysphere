@@ -82,7 +82,7 @@ export function MediaListEditor({
                   />
                   <Select
                     value={item.type}
-                    onChange={(event) => update(index, { type: event.target.value as MediaItemDraft['type'] })}
+                    onChange={(value) => update(index, { type: value as MediaItemDraft['type'] })}
                     aria-label={`Type for photo ${index + 1}`}
                   >
                     <option value="image">Photo</option>
