@@ -53,6 +53,30 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
 }
 
 /**
+ * The branded `Select` (`components/ui/select.tsx`) is a button + popup, not a
+ * native `<select>` — `selectOption`/`toHaveValue` don't apply. Its options
+ * portal to `document.body`, so they're found from `page`, not the trigger.
+ * Base UI ignores a mouseup on any item for ~400ms after the popup opens, so
+ * a click right under the trigger can't double as an accidental selection —
+ * the option click has to land after that window, not right after `click()`.
+ * Selecting awaits a server action before the trigger's label updates, so
+ * this waits for that label before returning — a caller that reloads right
+ * after the click would otherwise abort that in-flight request.
+ */
+async function chooseOption(page: Page, combobox: Locator, optionName: string) {
+  // The first click on a server-rendered island can be lost before React
+  // attaches its listeners (see `actUntil`) — fail fast on each step so the
+  // caller's `actUntil` retries the whole open-then-pick sequence, rather
+  // than hanging on this attempt's default ~30s action timeout.
+  await combobox.click();
+  const option = page.getByRole('option', { name: optionName });
+  await option.waitFor({ state: 'visible', timeout: 3_000 });
+  await page.waitForTimeout(450);
+  await option.click();
+  await expect(combobox).toContainText(optionName, { timeout: 3_000 });
+}
+
+/**
  * Filter chips and add-on checkboxes settle only after the server re-renders,
  * so a blind retry would toggle them straight back. Guard on the current state.
  */
@@ -153,8 +177,8 @@ test('resetting demo state clears bookings and availability overrides', async ({
 
   // Overrides live with the rates now, not on the overview.
   await page.goto('/admin/rates');
-  await expect(page.getByRole('combobox', { name: 'Availability override for Coastal Twin' })).toHaveValue(
-    'auto',
+  await expect(page.getByRole('combobox', { name: 'Availability override for Coastal Twin' })).toContainText(
+    'Auto (simulated)',
   );
 });
 
@@ -190,7 +214,7 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     `/book/deluxe-sea?${stayQuery}`,
     `/booking/${reference}`,
     '/admin',
-    '/admin/chessboard',
+    '/admin/tape-chart',
     '/admin/bookings',
     `/admin/bookings/${reference}`,
     '/admin/rates',
@@ -609,16 +633,16 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
 
   const override = page.getByRole('combobox', { name: 'Availability override for Coastal Twin' });
   // Reload before asserting, and assert on the override the server sent back:
-  // a pre-hydration selectOption changes the DOM without ever reaching the
+  // a pre-hydration selection changes the DOM without ever reaching the
   // server action, and a reload is what tells the two apart. The nightly
   // counts beside it cannot: they show simulated availability, which can
   // already read 0 whatever the override says.
   await actUntil(
     async () => {
-      await override.selectOption('sold_out');
+      await chooseOption(page, override, 'Fully booked');
       await page.reload();
     },
-    () => expect(override).toHaveValue('sold_out', { timeout: 3_000 }),
+    () => expect(override).toContainText('Fully booked', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
@@ -634,10 +658,10 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin/rates');
   await actUntil(
     async () => {
-      await override.selectOption('auto');
+      await chooseOption(page, override, 'Auto (simulated)');
       await page.reload();
     },
-    () => expect(override).toHaveValue('auto', { timeout: 3_000 }),
+    () => expect(override).toContainText('Auto (simulated)', { timeout: 3_000 }),
   );
 });
 
