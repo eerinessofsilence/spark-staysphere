@@ -200,10 +200,6 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     '/admin/content/rooms/new',
     '/admin/content/add-ons/addon_late',
     '/admin/content/add-ons/new',
-    '/admin/media',
-    '/admin/settings',
-    '/admin/settings/team',
-    '/admin/integrations',
   ]) {
     await page.goto(path);
     // Android Chrome widens the layout viewport to any overflow, which shows up here.

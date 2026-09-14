@@ -2,14 +2,9 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { addDays, parseISO } from 'date-fns';
-import { CalendarBlank, CheckCircle, MinusCircle } from '@phosphor-icons/react/dist/ssr';
+import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import {
-  demoControl,
-  DEMO_HOTEL_SLUG,
-  hotelRepository,
-  inventoryService,
-} from '@/lib/application/container';
+import { DEMO_HOTEL_SLUG, hotelRepository, inventoryService } from '@/lib/application/container';
 import type { ChessboardDay } from '@/lib/application/inventory-service';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
@@ -18,7 +13,6 @@ import { formatDateRange, formatDateShort, formatGuests, formatMoney, formatNigh
 import { pill } from '@/lib/ui';
 import { ResetDemoButton } from '@/components/admin/room-controls';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
-import { adapterLabels } from '@/components/admin/operations/labels';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -47,10 +41,9 @@ function tonightSentence(day: ChessboardDay | undefined, totalRooms: number): st
 
 export default async function AdminOverviewPage() {
   const today = toIsoDate(new Date());
-  const [board, bookings, integrations] = await Promise.all([
+  const [board, bookings] = await Promise.all([
     inventoryService.getChessboard(DEMO_HOTEL_SLUG, today, 14),
     hotelRepository.listBookings(),
-    demoControl.listIntegrationStatuses(),
   ]);
   const { hotel } = board;
   const rooms = await hotelRepository.listRooms(hotel.id);
@@ -195,43 +188,6 @@ export default async function AdminOverviewPage() {
         )}
       </section>
 
-      <section aria-labelledby="integrations-heading" className="mt-12">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="integrations-heading" className="text-display text-3xl">
-            Integrations
-          </h2>
-          <Link href="/admin/integrations" className={pill('secondary')}>
-            Manage integrations
-            <ArrowRightIcon className="size-4" aria-hidden="true" />
-          </Link>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Every adapter runs a mock implementation in this demo — none is connected to a real system.
-        </p>
-        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[28px] bg-card shadow-soft">
-          {integrations.map((integration) => (
-            <li
-              key={integration.adapter}
-              className="flex min-h-14 flex-col items-start justify-center gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-            >
-              <span className="font-medium">{adapterLabels[integration.adapter]}</span>
-              <span className="inline-flex items-center gap-1.5 text-sm">
-                {integration.connected ? (
-                  <>
-                    <CheckCircle weight="fill" className="size-4 text-success" aria-hidden="true" />
-                    Connected · mock adapter
-                  </>
-                ) : (
-                  <>
-                    <MinusCircle weight="fill" className="size-4 text-muted-foreground" aria-hidden="true" />
-                    Not connected
-                  </>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
     </AdminPage>
   );
 }

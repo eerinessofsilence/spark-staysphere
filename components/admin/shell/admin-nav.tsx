@@ -10,12 +10,8 @@ import {
   CalendarDaysIcon,
   DocumentTextIcon,
   HomeIcon,
-  PhotoIcon,
-  PuzzlePieceIcon,
-  SwatchIcon,
   TableCellsIcon,
   TagIcon,
-  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/site/modal';
 import { iconButton } from '@/lib/ui';
@@ -42,15 +38,6 @@ const groups: { heading: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/content', label: 'Rooms & add-ons', icon: DocumentTextIcon },
       { href: '/admin/content/hotel', label: 'Hotel & areas', icon: BuildingOffice2Icon },
-      { href: '/admin/media', label: 'Media library', icon: PhotoIcon },
-    ],
-  },
-  {
-    heading: 'Settings',
-    items: [
-      { href: '/admin/settings', label: 'Brand & domain', icon: SwatchIcon },
-      { href: '/admin/settings/team', label: 'Team & roles', icon: UsersIcon },
-      { href: '/admin/integrations', label: 'Integrations', icon: PuzzlePieceIcon },
     ],
   },
 ];

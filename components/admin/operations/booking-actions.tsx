@@ -39,13 +39,6 @@ export function BookingActions({
             Cancel booking
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => setMessage('Demo — no email was sent.')}
-          className={pill('secondary')}
-        >
-          Resend confirmation
-        </button>
         <a href={`/booking/${reference}`} target="_blank" rel="noreferrer" className={pill('ghost')}>
           Guest&apos;s confirmation page
           <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
