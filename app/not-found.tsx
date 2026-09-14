@@ -14,8 +14,7 @@ export default function NotFound() {
         <p className="text-display text-6xl text-muted-foreground/50">404</p>
         <h1 className="text-display mt-4 text-4xl sm:text-5xl">We could not find that page</h1>
         <p className="mt-4 text-muted-foreground">
-          The room or booking you followed does not exist. Demo bookings are held in memory and are
-          lost when the server restarts.
+          The room or booking you followed does not exist, or this demo's data was recently reset.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/rooms" className={pill('primary')}>
