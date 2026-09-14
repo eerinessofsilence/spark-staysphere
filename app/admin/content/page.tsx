@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { AddOnToggle } from '@/components/admin/room-controls';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { setAddOnOnSaleAction } from './add-ons/[id]/actions';
 
 export const metadata: Metadata = {
   title: 'Rooms & add-ons — Hotel admin | SPARK StaySphere 360',
@@ -354,7 +355,12 @@ export default async function ContentOverviewPage({
                           <Td className="align-middle">
                             {/* The 44px switch target sits on the row's text line, not below it. */}
                             <div className="-my-2.5">
-                              <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
+                              <AddOnToggle
+                                addOnId={addOn.id}
+                                addOnName={addOn.name}
+                                enabled={addOn.enabled}
+                                action={setAddOnOnSaleAction}
+                              />
                             </div>
                           </Td>
                           <Td className={cn(deskOnly, 'align-middle text-right')}>
