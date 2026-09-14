@@ -126,6 +126,14 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     }
   }, [voice.status]);
 
+  // The panel stays mounted while closed (only its own render returns null),
+  // so nothing else stops a live recording when the guest presses Escape or
+  // taps away — the mic would stay on, and what it caught would still be
+  // uploaded for transcription. `cancel` discards rather than transcribing.
+  React.useEffect(() => {
+    if (!open) voice.cancel();
+  }, [open, voice.cancel]);
+
   React.useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
