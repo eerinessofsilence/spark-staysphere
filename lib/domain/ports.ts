@@ -208,3 +208,15 @@ export interface CatalogContentPort {
   /** Clears every overlay row for the hotel; the catalog reverts to seed. */
   reset(hotelId: string): Promise<void>;
 }
+
+/**
+ * The current instant, behind an interface so a service that needs "now" —
+ * `BookingService`'s cancellation eligibility, `ContentService`'s "upcoming"
+ * filters — can be tested against a fixed date instead of the real clock.
+ * `systemClock` (`lib/domain/clock.ts`) is the only implementation actually
+ * wired (see each service's constructor default); nothing here changes what
+ * "today" is computed as, only where the `Date` it starts from comes from.
+ */
+export interface Clock {
+  now(): Date;
+}

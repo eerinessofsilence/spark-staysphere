@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { isEquirectangular, isPanorama } from '../domain/media';
 import { buildRoomUnits, compareRoomNumbers } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
+import { systemClock } from '../domain/clock';
 import type {
   CatalogContentPort,
   CatalogEntryKind,
+  Clock,
   HotelRepository,
   MediaLibraryPort,
 } from '../domain/ports';
@@ -47,10 +49,6 @@ function uniqueId(base: string, taken: ReadonlySet<string>): string {
   let n = 2;
   while (taken.has(`${base}-${n}`)) n += 1;
   return `${base}-${n}`;
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export type ContentError =
@@ -187,7 +185,12 @@ export class ContentService {
     private readonly hotelSlug: string,
     /** Which ids came from `mock-data.ts` — the only entities a hard delete is refused for. */
     private readonly seedIds: Record<CatalogEntryKind, ReadonlySet<string>>,
+    private readonly clock: Clock = systemClock,
   ) {}
+
+  private todayIso(): string {
+    return this.clock.now().toISOString().slice(0, 10);
+  }
 
   private async hotel(): Promise<Hotel> {
     const hotel = await this.repository.getHotel(this.hotelSlug);
@@ -269,7 +272,7 @@ export class ContentService {
    * that would stop pointing at the room the guest chose.
    */
   private async renumberedPicks(before: RoomType[], after: RoomType[]): Promise<string[]> {
-    const today = todayIso();
+    const today = this.todayIso();
     const picks = (await this.repository.listBookings()).filter(
       (booking) => booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
     );
@@ -359,7 +362,7 @@ export class ContentService {
 
   /** Rooms of this type a guest picked on the floor plan for a stay that hasn't ended. */
   async pickedRoomNumbers(roomTypeId: string): Promise<string[]> {
-    const today = todayIso();
+    const today = this.todayIso();
     const bookings = await this.repository.listBookings();
     const numbers = bookings
       .filter(

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   BookingEngineAdapter,
+  Clock,
   CrmAdapter,
   HotelRepository,
   PaymentProvider,
@@ -20,6 +21,7 @@ import type {
 } from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
 import { matchesGuestEmail } from '../domain/booking';
+import { systemClock } from '../domain/clock';
 import { nightsBetween } from '../domain/pricing';
 import { coverPhoto } from '../domain/room-attributes';
 
@@ -82,17 +84,6 @@ const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google
 /** A browser can remember a long history; a page does not need to load all of it. */
 const MAX_TRIPS = 40;
 
-/**
- * Whether the stay is still ahead. Compared as calendar dates, in the
- * server's own day: a guest arriving today is checking in, not booking, and
- * either way this is a demo whose property sits in one timezone.
- */
-function isBeforeCheckIn(checkIn: string): boolean {
-  const today = new Date();
-  const offset = today.getTimezoneOffset();
-  return checkIn > new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
-}
-
 /** References are shown and typed in upper case, whatever the keyboard did. */
 function normalizeReference(reference: string): string {
   return reference.trim().toUpperCase();
@@ -114,7 +105,19 @@ export class BookingService {
     private readonly paymentProvider: PaymentProvider,
     private readonly crm?: CrmAdapter,
     private readonly pms?: PmsAdapter,
+    private readonly clock: Clock = systemClock,
   ) {}
+
+  /**
+   * Whether the stay is still ahead. Compared as calendar dates, in the
+   * server's own day: a guest arriving today is checking in, not booking, and
+   * either way this is a demo whose property sits in one timezone.
+   */
+  private isBeforeCheckIn(checkIn: string): boolean {
+    const today = this.clock.now();
+    const offset = today.getTimezoneOffset();
+    return checkIn > new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
+  }
 
   /** Server-authoritative price and availability. The UI never computes a total itself. */
   async quote(request: QuoteRequest): Promise<Quote> {
@@ -218,7 +221,7 @@ export class BookingService {
     if (booking.status === 'cancelled') {
       return { outcome: 'already_cancelled', trip: this.summarize(booking, room) };
     }
-    if (!isBeforeCheckIn(booking.checkIn)) {
+    if (!this.isBeforeCheckIn(booking.checkIn)) {
       return { outcome: 'stay_started', trip: this.summarize(booking, room) };
     }
 
@@ -236,7 +239,7 @@ export class BookingService {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
     if (booking.status === 'cancelled') return { outcome: 'already_cancelled', booking };
-    if (!isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
+    if (!this.isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
     const cancelled = await this.repository.cancelBooking(booking.reference);
     return cancelled ? { outcome: 'cancelled', booking: cancelled } : { outcome: 'not_found' };
   }
@@ -257,7 +260,7 @@ export class BookingService {
       total: booking.total,
       currency: booking.currency,
       status: booking.status,
-      canCancel: booking.status !== 'cancelled' && isBeforeCheckIn(booking.checkIn),
+      canCancel: booking.status !== 'cancelled' && this.isBeforeCheckIn(booking.checkIn),
       createdAt: booking.createdAt,
     };
   }
