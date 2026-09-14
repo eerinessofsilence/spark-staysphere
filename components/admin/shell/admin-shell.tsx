@@ -7,6 +7,7 @@ import {
   PropertyCard,
   ViewSiteLink,
 } from './admin-nav';
+import { UnsavedChangesGuard } from './unsaved-changes';
 
 interface AdminShellProps {
   hotelName: string;
@@ -43,6 +44,7 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
         </div>
         {children}
       </div>
+      <UnsavedChangesGuard />
     </div>
   );
 }

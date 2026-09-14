@@ -49,7 +49,8 @@ export function Field({
       {children}
       {hint ? <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p> : null}
       {error && error.trim() ? (
-        <p role="alert" className="mt-1.5 text-xs font-medium text-danger">
+        // `data-field-error` names the control, so a failed save can bring this field into view and focus it.
+        <p role="alert" data-field-error={id} className="mt-1.5 text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}
