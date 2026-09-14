@@ -129,7 +129,19 @@ export async function deleteEntry(
   if (currentVersion !== expectedVersion) {
     return { ok: false, conflict: true, currentVersion };
   }
-  await db.prepare('DELETE FROM catalog_entries WHERE kind = ? AND id = ?').bind(kind, id).run();
+  // Guard the delete itself by version too: a save landing between the SELECT
+  // above and this statement must not be silently destroyed.
+  const result = await db
+    .prepare('DELETE FROM catalog_entries WHERE kind = ? AND id = ? AND version = ?')
+    .bind(kind, id, expectedVersion)
+    .run();
+  if (result.meta.changes === 0) {
+    const after = await db
+      .prepare('SELECT version FROM catalog_entries WHERE kind = ? AND id = ?')
+      .bind(kind, id)
+      .first<{ version: number }>();
+    return { ok: false, conflict: true, currentVersion: after?.version ?? 0 };
+  }
   return { ok: true };
 }
 
