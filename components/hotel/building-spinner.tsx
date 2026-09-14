@@ -672,7 +672,10 @@ export function BuildingSpinner({
       tabIndex={active ? 0 : -1}
       aria-roledescription="carousel"
       aria-label={`${title}, drag or use the arrow keys to spin around the building`}
-      className={cn('relative size-full touch-none outline-none select-none', className)}
+      // `pan-y`, not `none`: the drag only ever reads horizontal movement, so
+      // a vertical swipe is free to scroll the page past the stage instead of
+      // being swallowed by it — the same trap `HotelSpin` already avoids.
+      className={cn('relative size-full touch-pan-y outline-none select-none', className)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
