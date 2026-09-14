@@ -73,13 +73,16 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
         </div>
 
         <div className="mt-10 border-t border-white/15 pt-6">
-          <p className="max-w-4xl text-xs leading-relaxed text-white/45">
+          {/* /45 and /35 measured under 4.5:1 against this band's near-black
+              fill in both schemes (3.25:1 for the copyright line) — under
+              WCAG AA for 12px text. /50 on both clears it with room. */}
+          <p className="max-w-4xl text-xs leading-relaxed text-white/50">
             Asteria Cove is a fictional property. Rates, availability, comparison prices, and
             payments are simulated — no card data is collected and no reservation is made anywhere.
             Photographs and 360° captures are licensed stand-ins for the property's own, credited
             in <code className="text-white/60">public/images/CREDITS.md</code>.
           </p>
-          <p className="mt-4 text-xs text-white/35">
+          <p className="mt-4 text-xs text-white/50">
             © {new Date().getFullYear()} Spark StaySphere — demo build.
           </p>
         </div>

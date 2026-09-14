@@ -350,7 +350,12 @@ function CancelDialog({
             <button
               type="submit"
               disabled={pending}
-              className={pill('primary', 'min-h-11 bg-danger text-white hover:bg-danger/90')}
+              // `text-primary-foreground`, not a literal `text-white`: the
+              // night scheme's `--danger` is a light coral meant for text on
+              // a dark surface, not a solid fill behind white — that paired
+              // to 2.3:1. The paired foreground token reads as ink there and
+              // warm white by day, matching every other solid pill.
+              className={pill('primary', 'min-h-11 bg-danger text-primary-foreground hover:bg-danger/90')}
             >
               {pending ? 'Cancelling…' : 'Cancel booking'}
             </button>
