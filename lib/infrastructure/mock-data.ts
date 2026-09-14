@@ -248,14 +248,12 @@ const buildingSpinner: NonNullable<Hotel['spinner']> = {
   /** Front, side, back, side — picked by hand from the full capture, not an
       even quarter-turn: the property's own footprint doesn't sit on a clean
       rectangle, so the four faces that actually front, side and back the
-      building land on these frames rather than N/4 apart.
-      23, not the 25 it was re-picked at: `trackedOutlines['sea-view']` (see
-      spinner-outlines.ts) is hand-anchored to end exactly at frame 23, and a
-      keyAngle is where the guest lands with no interaction — landing 2
-      frames past that arc drops the sea-view hotspot, the arrival page's
-      first way into the catalog, off the opening view. 23 and 25 are ~4.5°
-      apart, under the frame step's own resolution to the eye. */
-  keyAngles: [23, 55, 95, 140],
+      building land on these frames rather than N/4 apart. 25 and 55 both
+      land past where their hotspot's tracked arc originally stopped
+      (`trackedOutlines['sea-view']`/`['city-view']` in spinner-outlines.ts) —
+      extended by two frames each rather than moved, so a keyAngle stays a
+      place the guest can land with its hotspot still showing. */
+  keyAngles: [25, 55, 95, 140],
   frames: Array.from({ length: SPIN_FRAME_COUNT }, (_, index) => ({
     index,
     imageUrl: `/images/hotel/spin/frame-${String(index).padStart(3, '0')}.webp`,
