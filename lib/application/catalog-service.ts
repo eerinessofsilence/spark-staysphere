@@ -1,4 +1,4 @@
-import type { BookingEngineAdapter, HotelRepository } from '../domain/ports';
+import type { AvailabilityReader, BookingEngineAdapter, CatalogReader } from '../domain/ports';
 import { buildPriceBreakdown, nightsBetween } from '../domain/pricing';
 import { roomCategory, type RoomCategory } from '../domain/room-attributes';
 import type { AddOn, Hotel, Quote, RoomOffer, RoomType, StayCriteria } from '../domain/schemas';
@@ -77,7 +77,7 @@ export class RoomNotFoundError extends Error {
 
 export class CatalogService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: CatalogReader & AvailabilityReader,
     private readonly bookingEngine: BookingEngineAdapter,
   ) {}
 

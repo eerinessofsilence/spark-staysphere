@@ -4,10 +4,11 @@ import { buildRoomUnits, compareRoomNumbers } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
 import { systemClock } from '../domain/clock';
 import type {
+  BookingStore,
   CatalogContentPort,
   CatalogEntryKind,
+  CatalogReader,
   Clock,
-  HotelRepository,
   MediaLibraryPort,
 } from '../domain/ports';
 import {
@@ -179,7 +180,7 @@ export interface Versioned {
 
 export class ContentService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: CatalogReader & Pick<BookingStore, 'listBookings'>,
     private readonly content: CatalogContentPort,
     private readonly media: MediaLibraryPort,
     private readonly hotelSlug: string,

@@ -1,6 +1,6 @@
 import { demoHash, nightsInRange } from '../domain/availability';
 import { addIsoDays } from '../domain/dates';
-import type { DemoControlPort, HotelRepository } from '../domain/ports';
+import type { AvailabilityReader, BookingStore, CatalogReader, DemoControlPort } from '../domain/ports';
 import { roomCategory, type RoomCategory } from '../domain/room-attributes';
 import {
   allocateRoomType,
@@ -108,7 +108,9 @@ function byRoomNumber(a: { number: string }, b: { number: string }): number {
 
 export class InventoryService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: AvailabilityReader &
+      Pick<CatalogReader, 'listRooms'> &
+      Pick<BookingStore, 'listBookings'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
   ) {}

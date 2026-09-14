@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import type {
   BookingEngineAdapter,
+  BookingStore,
+  CatalogReader,
   Clock,
   CrmAdapter,
-  HotelRepository,
+  PaymentAttemptStore,
   PaymentProvider,
   PmsAdapter,
   QuoteRequest,
@@ -100,7 +102,9 @@ function createReference(): string {
 
 export class BookingService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: Pick<CatalogReader, 'listAddOns' | 'listRatePlans' | 'listRooms'> &
+      BookingStore &
+      PaymentAttemptStore,
     private readonly bookingEngine: BookingEngineAdapter,
     private readonly paymentProvider: PaymentProvider,
     private readonly crm?: CrmAdapter,
