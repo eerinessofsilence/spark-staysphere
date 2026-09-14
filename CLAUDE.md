@@ -14,13 +14,10 @@ where a guest picks the exact room), room detail (`/rooms/[slug]`), a six-step d
 server actions and as `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bookings/:reference`;
 the back office is server actions only, no new API routes.
 
-The hotel's back office (`/admin`) has its own shell and three groups of screens. Operations: an
-overview, a rooms × nights chessboard, bookings with detail and cancel, and rates & availability.
-Content: the CMS at `/admin/content` (hotel copy, room types, rates, add-ons — see TECH.md's
-"Content management (CMS)") and a media library. Settings: brand & domain, team & roles, and
-integrations. Screens with demo data behind them are live; brand, team and integration credentials
-are clearly labelled mock-ups of what a client will manage. TECH.md's "Back office" table says which
-is which.
+The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
+live on demo data. Operations: an overview, a rooms × nights chessboard, bookings with detail and
+cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, rates and
+add-ons, and the hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. Below the arrival photograph the building is a
@@ -78,13 +75,12 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 6. ~~Basic CMS in `/admin/content` for the hotel copy, room types, rates, and add-ons, with a D1
    overlay on the seed catalog.~~ Done.
 7. ~~Back office for the demo: shell, overview, chessboard, bookings with cancel, rates &
-   availability, media library, and brand/team/integrations mock-ups; physical rooms and the guest
-   floor plan.~~ Done.
+   availability, and the CMS in the same shell; physical rooms and the guest floor plan.~~ Done.
 8. Replace stock photography with the property's own, add real 360 tiles if the property has them,
    and its own GLB in place of the block massing (`Hotel.model.url`).
 9. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
-   one gate to wire it into), with the roles already drawn on `/admin/settings/team`; then the first
-   real PMS or channel-manager adapter behind the existing ports. A production PMS/channel-manager
+   one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
+   behind the existing ports. A production PMS/channel-manager
    also becomes the owner of prices, rates and room assignment, which the CMS and rates screen
    document inline but do not enforce.
 10. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.

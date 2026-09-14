@@ -176,13 +176,12 @@ screens. What reads and writes real demo data, and what is a labelled mock-up of
 | --- | --- | --- |
 | `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status, "Reset demo state" | `InventoryService.getChessboard`, `HotelRepository.listBookings`, `DemoControlPort` — live |
 | `/admin/chessboard` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getChessboard` — live; demand is simulated and says so |
-| `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; guest, room, money, payment attempts, activity; cancel | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom` — live. "Resend confirmation" is demo-only |
+| `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; guest, room, money, payment attempts, activity; cancel | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
-| `/admin/content/**` | The CMS, plus the add-on on-sale switch | `ContentService` — live |
-| `/admin/media` | The media manifest with where each file is used | `ContentService.listMedia` — live, read-only; upload is disabled |
-| `/admin/settings` | Identity (live, read from the CMS), accent preview, domain, languages, guest emails | Mock-up — nothing is saved |
-| `/admin/settings/team` | Members, invite, roles × permissions | Mock-up — the invite adds a row in this browser only |
-| `/admin/integrations` | Adapter status per port, connect dialog | Live mock statuses; credential fields disabled |
+| `/admin/content` and its editors | Room types with cover, price and room count; add-ons by category with the on-sale switch; room, rate, add-on and hotel editors | `ContentService` — live |
+
+Every screen here reads or writes real demo data; there are no mock-up screens. Brand settings,
+team roles, integration credentials and media uploads are left out until they can actually save.
 
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
 `stay_started` rules as the guest's, without the email check, since the desk is trusted (until
@@ -317,8 +316,7 @@ the scene's colours off the page's own tokens.
 Without a D1 binding, demo state (including the CMS overlay) is process-local and resets with the
 worker isolate. There is no auth on `/admin` or `/admin/content` — `assertCanEditContent()` in
 `content-service.ts` is a no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
-channel manager, or OTA connection. The back office's team and roles screen is a mock-up of that
-future auth, brand settings save nothing, and integration credentials cannot be entered. Downstream CRM/PMS delivery is best-effort and swallowed on
+channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
 failure; production needs a queue with retries. The photographs are licensed stock standing in for
 the property's own and must be replaced before any real launch; the CMS has no upload path to do
 that with yet (`MediaStoragePort` is declared, not implemented — see "Content management (CMS)").

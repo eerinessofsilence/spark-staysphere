@@ -47,9 +47,8 @@ npm run test:e2e     # Playwright golden path; needs `npx playwright install chr
   CMS's form shell (`ContentForm`, `Field`), the reorderable-list and media-picker editors, and the
   derived-value fields (`RoomNameField`, `AddOnNameField`) that surface
   `roomCategory`/`featureIcon`/`addOnIcon` live next to the field they're derived from;
-  `admin/chessboard/`, `admin/operations/` — tables, status badges, the occupancy chart, the rate
-  form and booking actions — and `admin/settings/` — brand, team, integrations and media screens,
-  mock-ups where there is no data behind them).
+  `admin/chessboard/` and `admin/operations/` — tables, status badges, the occupancy chart, the
+  rate form and booking actions).
 - `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`,
   `inventory.spec.ts` for booking an exact room over the API, and `cabinet.spec.ts` for the floor
   plan, the chessboard and the bookings desk.
