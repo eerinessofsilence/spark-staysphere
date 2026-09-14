@@ -360,12 +360,15 @@ function toSegments(
     } else if (occupant.kind === 'closed') {
       segments.push({ kind: 'closed', start: index, span: end - index });
     } else {
-      // Simulated demand is one long run per room; cut it into stay-sized blocks so it reads like a PMS.
+      // Simulated demand is one long run per room; cut it into stay-sized blocks so it reads like a
+      // PMS. A block breaks on nights the hash picks from the room and the date alone, so paging the
+      // window never redraws the same nights as different stays.
       let cursor = index;
-      while (cursor < end) {
-        const length = Math.min(end - cursor, 2 + (demoHash(`${unitNumber}|${dates[cursor]}`) % 4));
-        segments.push({ kind: 'demand', start: cursor, span: length });
-        cursor += length;
+      for (let night = index + 1; night <= end; night += 1) {
+        if (night === end || demoHash(`${unitNumber}|${dates[night]}`) % 3 === 0) {
+          segments.push({ kind: 'demand', start: cursor, span: night - cursor });
+          cursor = night;
+        }
       }
     }
     index = end;
