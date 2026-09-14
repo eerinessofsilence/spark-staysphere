@@ -144,7 +144,7 @@ breakpoints.
 
 | Role | Mobile → `sm:` | Class | Where |
 |---|---|---|---|
-| Hero name | `clamp(3.25rem, 10vw, 8rem)` | `.text-display` inline style | Arrival hero property name |
+| Hero name | 36px → 48px | `text-4xl sm:text-5xl` | Arrival: the property name above the building, with its stars and location beneath |
 | Page title | 48px → 60px | `text-5xl sm:text-6xl` | Main flow pages: rooms, trips, book, admin, confirmation |
 | Page title, compact | 36px → 48px | `text-4xl sm:text-5xl` | Utility pages: error, not-found |
 | Page title, minimal | 24px → 30px | `text-2xl sm:text-3xl` | Room detail — the name sits directly above the gallery, so it doesn't compete with the photo the way a standalone page title can |

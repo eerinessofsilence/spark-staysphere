@@ -317,6 +317,7 @@ export const demoHotel: Hotel = {
   name: 'Asteria Cove',
   tagline: 'See the stay. Book the room.',
   location: 'Limassol, Cyprus',
+  stars: 5,
   currency: 'EUR',
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,

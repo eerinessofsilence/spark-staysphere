@@ -192,6 +192,8 @@ export const hotelSchema = z.object({
   name: z.string(),
   tagline: z.string(),
   location: z.string(),
+  /** The official star classification, 1–5. Absent for an unclassified property. */
+  stars: z.number().int().min(1).max(5).optional(),
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),
