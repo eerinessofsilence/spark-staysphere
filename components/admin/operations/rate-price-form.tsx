@@ -27,7 +27,7 @@ export function RatePriceForm({
   nightlyPrice,
   otaComparisonPrice,
 }: RatePriceFormProps) {
-  const [state, formAction, pending] = useActionState(action, idleFormState);
+  const [state, dispatch, pending] = useActionState(action, idleFormState);
   const [currentVersion, setCurrentVersion] = React.useState(version);
 
   React.useEffect(() => {
@@ -39,8 +39,17 @@ export function RatePriceForm({
   const formError = state.status === 'error' && !priceError && !otaError ? state.message : null;
   const inputClass = cn(fieldClass, 'w-20 px-3 tabular-nums');
 
+  // `onSubmit`, not `<form action>`: React resets every uncontrolled field
+  // once a form action finishes, which after a rejected price put the old
+  // number back under the new error. `ContentForm` documents and avoids the
+  // same reset the same way.
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    React.startTransition(() => dispatch(new FormData(event.currentTarget)));
+  };
+
   return (
-    <form action={formAction} noValidate className="grid gap-1">
+    <form onSubmit={onSubmit} noValidate className="grid gap-1">
       <input type="hidden" name="version" value={currentVersion} />
       <div className="flex items-center gap-2">
         <label htmlFor={`${idPrefix}-price`} className="sr-only">
