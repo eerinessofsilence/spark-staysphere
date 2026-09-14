@@ -24,6 +24,7 @@ import { iconButton, fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RoomCard } from '@/components/rooms/room-card';
 import { OVERLAY_TRANSITION_MS, useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { ThinkingOrbs, type AssistantPhase } from './thinking-orbs';
 import { useVoiceCapture } from './use-voice-capture';
 
@@ -147,14 +148,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     };
   }, [open, onClose]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [rendered]);
+  useScrollLock(rendered);
 
   const runSearch = React.useCallback(
     async (utterance: string, filtersOverride?: RoomFilters, criteriaOverride?: StayCriteria) => {

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { CheckIcon, ChevronDownIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { iconButton } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { cn } from '@/lib/utils';
 
 export interface Country {
@@ -168,14 +169,7 @@ export function PhoneField({
     };
   }, [open]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open, rendered]);
+  useScrollLock(rendered);
 
   const choose = (iso: string) => {
     onCountryChange(iso);

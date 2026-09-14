@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { iconButton } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { cn } from '@/lib/utils';
 
 /**
@@ -96,17 +97,7 @@ export function Modal({ open, onClose, title, children, className, chrome = true
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    // The page behind the sheet must not scroll under it — held
-    // through the close transition too, or the page flashes into view a beat
-    // before the sheet has finished sliding off it.
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [rendered]);
+  useScrollLock(rendered);
 
   if (!rendered || !mounted) return null;
 
