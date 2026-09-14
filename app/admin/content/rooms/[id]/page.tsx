@@ -16,6 +16,7 @@ import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { DeleteEntityButton } from '@/components/admin/content/delete-entity-button';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
+import { labelOptions } from '@/components/admin/content/label-options';
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { OrderedStringList } from '@/components/admin/content/ordered-string-list';
 import { RateForm } from '@/components/admin/content/rate-form';
@@ -171,11 +172,7 @@ export default async function RoomContentPage({
                       </Field>
                       <Field id="room-bedType" name="bedType" label="Bed">
                         <Select id="room-bedType" name="bedType" defaultValue={room.bedType} required>
-                          {Object.entries(bedLabels).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
+                          {labelOptions(bedLabels)}
                         </Select>
                       </Field>
                     </div>
@@ -194,11 +191,7 @@ export default async function RoomContentPage({
                       </Field>
                       <Field id="room-view" name="view" label="View" hint="Sea and pool views face the sea side of the building.">
                         <Select id="room-view" name="view" defaultValue={room.view} required>
-                          {Object.entries(viewLabels).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
+                          {labelOptions(viewLabels)}
                         </Select>
                       </Field>
                     </div>
