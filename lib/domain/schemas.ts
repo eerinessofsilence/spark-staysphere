@@ -338,6 +338,14 @@ export const integrationStatusSchema = z.object({
   lastSyncAt: z.string().datetime().nullable(),
 });
 
+/**
+ * A stay longer than this both overruns `nightsInRange`'s own cap (silently
+ * dropping availability checks and holds for the nights past it) and would
+ * still be priced and charged in full by `nightsBetween`, which has no cap
+ * of its own — see `lib/domain/availability.ts`.
+ */
+export const MAX_STAY_NIGHTS = 60;
+
 /** What the guest is shopping for. Every price in the app is derived from this. */
 export const stayCriteriaSchema = z
   .object({
@@ -349,7 +357,16 @@ export const stayCriteriaSchema = z
   .refine((value) => value.checkOut > value.checkIn, {
     message: 'Check-out must be after check-in.',
     path: ['checkOut'],
-  });
+  })
+  .refine(
+    (value) => {
+      const nights = Math.round(
+        (Date.parse(value.checkOut) - Date.parse(value.checkIn)) / 86_400_000,
+      );
+      return nights <= MAX_STAY_NIGHTS;
+    },
+    { message: `Stays are limited to ${MAX_STAY_NIGHTS} nights.`, path: ['checkOut'] },
+  );
 
 export const addOnLineSchema = z.object({
   addOnId: z.string(),
