@@ -1,5 +1,6 @@
 import type {
   CatalogContentPort,
+  CatalogDeleteResult,
   CatalogEntryKind,
   CatalogEntryRecord,
   CatalogUpsertResult,
@@ -39,8 +40,15 @@ export const mockCatalogContentPort: CatalogContentPort = {
     map.set(id, { kind, id, hotelId, data, version, updatedAt: new Date().toISOString() });
     return { ok: true, version };
   },
-  async deleteEntry(kind, id) {
-    bucket(kind).delete(id);
+  async deleteEntry(kind, id, expectedVersion): Promise<CatalogDeleteResult> {
+    const map = bucket(kind);
+    const existing = map.get(id);
+    const currentVersion = existing?.version ?? 0;
+    if (currentVersion !== expectedVersion) {
+      return { ok: false, conflict: true, currentVersion };
+    }
+    map.delete(id);
+    return { ok: true };
   },
   async reset(hotelId) {
     for (const map of store.values()) {

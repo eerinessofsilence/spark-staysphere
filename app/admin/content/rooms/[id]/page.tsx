@@ -178,6 +178,7 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
                     </h3>
                     <DeleteEntityButton
                       id={rate.id}
+                      version={rate.version}
                       label={rate.name}
                       confirmMessage={`Remove the rate "${rate.name}"? This cannot be undone.`}
                       action={deleteRateAction}
@@ -271,11 +272,11 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
               {roomCount === 1 ? '1 room' : `${roomCount} rooms`} of this type in the building.
             </p>
             <Link
-              href={`/admin/chessboard?type=${room.id}`}
+              href={`/admin/tape-chart?type=${room.id}`}
               className="inline-flex min-h-11 items-center gap-2 font-medium hover:text-accent-strong"
             >
               <TableCellsIcon className="size-4" aria-hidden="true" />
-              See them on the chessboard
+              See them on the tape chart
             </Link>
             <p className="text-xs text-muted-foreground">The card shows what is saved and updates with each save.</p>
           </div>

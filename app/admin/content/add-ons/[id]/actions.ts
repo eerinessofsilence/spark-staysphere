@@ -29,8 +29,8 @@ export async function updateAddOnAction(
   return formStateFromResult(result, 'Add-on saved.');
 }
 
-export async function deleteAddOnAction(id: string): Promise<ContentFormState> {
-  const result = await contentService.deleteAddOn(id);
+export async function deleteAddOnAction(id: string, expectedVersion: number): Promise<ContentFormState> {
+  const result = await contentService.deleteAddOn(id, expectedVersion);
   if (!result.ok) return formStateFromError(result.error);
   revalidateContent();
   return { status: 'success', message: 'Add-on removed.' };

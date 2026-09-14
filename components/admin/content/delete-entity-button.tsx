@@ -8,14 +8,16 @@ import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 
 interface DeleteEntityButtonProps {
   id: string;
+  /** The version this delete is conditioned on — same optimistic-concurrency guard as a save. */
+  version: number;
   label: string;
   confirmMessage: string;
-  action: (id: string) => Promise<ContentFormState>;
+  action: (id: string, expectedVersion: number) => Promise<ContentFormState>;
   onDeleted?: () => void;
 }
 
 /** A hard delete, gated by `content-service.ts` (CMS-created, no bookings) and a confirm here. */
-export function DeleteEntityButton({ id, label, confirmMessage, action, onDeleted }: DeleteEntityButtonProps) {
+export function DeleteEntityButton({ id, version, label, confirmMessage, action, onDeleted }: DeleteEntityButtonProps) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -30,7 +32,7 @@ export function DeleteEntityButton({ id, label, confirmMessage, action, onDelete
           if (!window.confirm(confirmMessage)) return;
           setPending(true);
           setError('');
-          const result = await action(id);
+          const result = await action(id, version);
           if (result.status === 'success') {
             router.refresh();
             onDeleted?.();

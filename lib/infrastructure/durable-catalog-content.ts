@@ -23,9 +23,11 @@ export const durableCatalogContentPort: CatalogContentPort = {
     const db = getDemoDatabase();
     return db ? d1.upsertEntry(db, input) : mockCatalogContentPort.upsertEntry(input);
   },
-  deleteEntry(kind, id) {
+  deleteEntry(kind, id, expectedVersion) {
     const db = getDemoDatabase();
-    return db ? d1.deleteEntry(db, kind, id) : mockCatalogContentPort.deleteEntry(kind, id);
+    return db
+      ? d1.deleteEntry(db, kind, id, expectedVersion)
+      : mockCatalogContentPort.deleteEntry(kind, id, expectedVersion);
   },
   reset(hotelId) {
     const db = getDemoDatabase();

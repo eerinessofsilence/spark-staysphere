@@ -71,6 +71,7 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
           extraActions={
             <DeleteEntityButton
               id={addOn.id}
+              version={addOn.version}
               label={addOn.name}
               confirmMessage={`Remove the add-on "${addOn.name}"? This cannot be undone.`}
               action={deleteAddOnAction}

@@ -118,7 +118,7 @@ export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
 const rateFieldsSchema = z.object({
   name: z.string().min(1, 'Enter a name.'),
-  nightlyPrice: z.number().nonnegative('Enter a price of 0 or higher.'),
+  nightlyPrice: z.number().positive('Enter a price greater than 0.'),
   otaComparisonPrice: z.number().nonnegative().optional(),
   breakfastIncluded: z.boolean(),
   includedServices: z.array(z.string().min(1)),
@@ -133,7 +133,7 @@ const addOnFieldsSchema = z.object({
   parentId: z.string().optional(),
   /** Urls only — width/height are resolved from the media library, never trusted from the client. */
   photos: z.array(z.string().min(1)).optional(),
-  price: z.number().nonnegative('Enter a price of 0 or higher.'),
+  price: z.number().positive('Enter a price greater than 0.'),
   pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),
   enabled: z.boolean(),
 });
@@ -478,7 +478,7 @@ export class ContentService {
     return ok({ version: result.version });
   }
 
-  async deleteRate(id: string): Promise<ContentResult<null>> {
+  async deleteRate(id: string, expectedVersion: number): Promise<ContentResult<null>> {
     assertCanEditContent();
     const current = await this.findRate(id);
     if (!current) return fail({ kind: 'not_found' });
@@ -495,7 +495,8 @@ export class ContentService {
         return ruleError('This is the only rate on a room that is on sale. Hide the room first, or add another rate.');
       }
     }
-    await this.content.deleteEntry('rate', id);
+    const result = await this.content.deleteEntry('rate', id, expectedVersion);
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
     return ok(null);
   }
 
@@ -621,7 +622,7 @@ export class ContentService {
     return fail({ kind: 'conflict', currentVersion: await this.versionOf('addon', id) });
   }
 
-  async deleteAddOn(id: string): Promise<ContentResult<null>> {
+  async deleteAddOn(id: string, expectedVersion: number): Promise<ContentResult<null>> {
     assertCanEditContent();
     const current = await this.getAddOnContent(id);
     if (!current) return fail({ kind: 'not_found' });
@@ -636,7 +637,8 @@ export class ContentService {
     if (addOns.some((addOn) => addOn.parentId === id)) {
       return ruleError('This add-on still has extras under it. Remove those first.');
     }
-    await this.content.deleteEntry('addon', id);
+    const result = await this.content.deleteEntry('addon', id, expectedVersion);
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
     return ok(null);
   }
 

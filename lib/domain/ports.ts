@@ -172,6 +172,8 @@ export type CatalogUpsertResult =
   | { ok: true; version: number }
   | { ok: false; conflict: true; currentVersion: number };
 
+export type CatalogDeleteResult = { ok: true } | { ok: false; conflict: true; currentVersion: number };
+
 /**
  * The CMS's storage boundary. Seed data (`lib/infrastructure/mock-data.ts`)
  * is never mutated — this port only ever holds overlay rows, one per
@@ -196,8 +198,13 @@ export interface CatalogContentPort {
     data: unknown;
     expectedVersion: number;
   }): Promise<CatalogUpsertResult>;
-  /** Removes the overlay row only — never the seed entity underneath it. */
-  deleteEntry(kind: CatalogEntryKind, id: string): Promise<void>;
+  /**
+   * Removes the overlay row only — never the seed entity underneath it.
+   * Guarded by `expectedVersion` the same way `upsertEntry` is: a mismatch
+   * returns `{ ok: false, conflict: true, currentVersion }` and deletes
+   * nothing.
+   */
+  deleteEntry(kind: CatalogEntryKind, id: string, expectedVersion: number): Promise<CatalogDeleteResult>;
   /** Clears every overlay row for the hotel; the catalog reverts to seed. */
   reset(hotelId: string): Promise<void>;
 }

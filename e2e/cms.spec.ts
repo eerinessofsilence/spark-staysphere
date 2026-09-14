@@ -173,7 +173,7 @@ test('a negative price and a duplicate slug are both rejected, and nothing is sa
   const priceField = page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice');
   await priceField.fill('-10');
   await page.getByRole('button', { name: 'Save rate' }).click();
-  await expect(page.getByText('Enter a price of 0 or higher.')).toBeVisible();
+  await expect(page.getByText('Enter a price greater than 0.')).toBeVisible();
 
   // Reload and check the server-rendered value, not the field the failed submit left behind.
   await page.reload();

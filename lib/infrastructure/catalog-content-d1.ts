@@ -1,4 +1,4 @@
-import type { CatalogEntryKind, CatalogEntryRecord, CatalogUpsertResult } from '../domain/ports';
+import type { CatalogDeleteResult, CatalogEntryKind, CatalogEntryRecord, CatalogUpsertResult } from '../domain/ports';
 import { ensureSchema } from './d1-schema';
 
 /**
@@ -114,9 +114,23 @@ export async function upsertEntry(
   return { ok: true, version: newVersion };
 }
 
-export async function deleteEntry(db: D1Database, kind: CatalogEntryKind, id: string): Promise<void> {
+export async function deleteEntry(
+  db: D1Database,
+  kind: CatalogEntryKind,
+  id: string,
+  expectedVersion: number,
+): Promise<CatalogDeleteResult> {
   await ensureSchema(db);
+  const existing = await db
+    .prepare('SELECT version FROM catalog_entries WHERE kind = ? AND id = ?')
+    .bind(kind, id)
+    .first<{ version: number }>();
+  const currentVersion = existing?.version ?? 0;
+  if (currentVersion !== expectedVersion) {
+    return { ok: false, conflict: true, currentVersion };
+  }
   await db.prepare('DELETE FROM catalog_entries WHERE kind = ? AND id = ?').bind(kind, id).run();
+  return { ok: true };
 }
 
 export async function reset(db: D1Database, hotelId: string): Promise<void> {
