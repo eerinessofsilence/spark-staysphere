@@ -170,10 +170,15 @@ async function addExtra(page: Page, name: RegExp, extras: RegExp[] = []) {
 test('resetting demo state clears bookings and availability overrides', async ({ page }) => {
   await page.goto('/admin');
 
+  // "No bookings yet" can already be true before the reset has finished — after a suite that made no
+  // bookings — so wait on the button's own disabled → enabled round trip, which only the reset resolves.
+  const reset = page.getByRole('button', { name: 'Reset demo state' });
   await actUntil(
-    () => page.getByRole('button', { name: 'Reset demo state' }).click(),
-    () => expect(page.getByText('No bookings yet')).toBeVisible({ timeout: 5_000 }),
+    () => reset.click(),
+    () => expect(reset).toBeDisabled({ timeout: 2_000 }),
   );
+  await expect(reset).toBeEnabled({ timeout: 15_000 });
+  await expect(page.getByText('No bookings yet')).toBeVisible();
 
   // Overrides live with the rates now, not on the overview.
   await page.goto('/admin/rates');
