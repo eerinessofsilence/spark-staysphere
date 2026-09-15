@@ -102,9 +102,9 @@ async function bookAStay(page: Page): Promise<string> {
   await toggle(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }), 'true');
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Confirm demo booking' }).click();
-  await expect(page).toHaveURL(/\/booking\/AC-/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
 
-  return (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
+  return (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
 }
 
 /** The header menu is a hydrated island: a click before React attaches is lost. */
@@ -597,14 +597,14 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   await expect(page.getByText('ada@example.com').first()).toBeVisible();
   await page.getByRole('button', { name: 'Confirm demo booking' }).click();
 
-  await expect(page).toHaveURL(/\/booking\/AC-/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
   await expect(page.getByRole('heading', { level: 1, name: 'You are booked in' })).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Services added' }).getByText('Airport transfer'),
   ).toBeVisible();
 
-  const reference = (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
-  expect(reference).toMatch(/^AC-[A-Z0-9]{6}$/);
+  const reference = (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
+  expect(reference).toMatch(/^[A-Z0-9]{6}$/);
 
   // The stay is now one of this browser's trips, without an account.
   await page.goto('/trips');

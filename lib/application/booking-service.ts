@@ -98,11 +98,17 @@ function normalizeReference(reference: string): string {
 
 const REFERENCE_ALPHABET = 'ACDEFGHJKLMNPQRTUVWXY3456789';
 
+/**
+ * A 6-character code, not the AC-prefixed one this product used to hand
+ * out: a guest already treats a booking reference like an airline PNR, and
+ * the shorter one reads as one glance rather than something to copy
+ * carefully.
+ */
 export function createReference(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   let reference = '';
   for (const byte of bytes) reference += REFERENCE_ALPHABET[byte % REFERENCE_ALPHABET.length];
-  return `AC-${reference}`;
+  return reference;
 }
 
 export class BookingService {

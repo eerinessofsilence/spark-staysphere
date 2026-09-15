@@ -407,7 +407,7 @@ function ClaimForm({
             required
             autoComplete="off"
             spellCheck={false}
-            placeholder="AC-3F7K2P"
+            placeholder="3F7K2P"
             onChange={(event) => setReference(event.target.value.toUpperCase())}
             className={cn(fieldClass, 'tracking-wide')}
           />

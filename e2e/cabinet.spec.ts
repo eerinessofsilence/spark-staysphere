@@ -159,9 +159,9 @@ test('a guest picks a room on the floor plan, books it, and the back office sees
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Confirm demo booking' }).click();
 
-  await expect(page).toHaveURL(/\/booking\/AC-/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
   await expect(page.getByText(`Room ${room}`)).toBeVisible();
-  const reference = (await page.getByText(/^AC-[A-Z0-9]{6}$/).first().innerText()).trim();
+  const reference = (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
 
   await page.goto(`/admin/chessboard?from=${checkIn}&type=room_${slug}`);
   await expect(
