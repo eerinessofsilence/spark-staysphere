@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vinext typegen && tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt",
     "test": "vitest run",
