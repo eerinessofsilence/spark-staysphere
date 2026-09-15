@@ -5,7 +5,6 @@ import { contentService } from '@/lib/application/container';
 import { formatMoney, formatPricingUnit } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
 import { AddOnToggle } from '@/components/admin/room-controls';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -13,7 +12,7 @@ import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page'
 import { deleteAddOnAction } from './[id]/actions';
 
 export const metadata: Metadata = {
-  title: 'Add-ons — Hotel admin | SPARK StaySphere 360',
+  title: 'Services — Hotel admin | SPARK StaySphere 360',
 };
 
 export const dynamic = 'force-dynamic';
@@ -22,12 +21,13 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export default async function AddOnsPage() {
-  const [rooms, addOns, physicalRooms] = await Promise.all([
-    contentService.listRoomsContent(),
-    contentService.listAddOnsContent(),
-    contentService.listPhysicalRoomsContent(),
-  ]);
+/**
+ * Everything a guest can add to a stay — services and the kitchen's dishes —
+ * as its own sidebar item rather than a third tab under Rooms. The route stays
+ * `/admin/content/add-ons`: the entity is still an add-on everywhere below.
+ */
+export default async function ServicesPage() {
+  const addOns = await contentService.listAddOnsContent();
   const onSale = addOns.filter((addOn) => addOn.enabled).length;
   const topLevel = addOns.filter((addOn) => !addOn.parentId);
   const categories = [...new Set(topLevel.map((addOn) => addOn.category))];
@@ -35,18 +35,13 @@ export default async function AddOnsPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Rooms & add‑ons"
+        title="Services"
         actions={
           <Link href="/admin/content/add-ons/new" className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
             New add-on
           </Link>
         }
-      />
-
-      <CatalogTabs
-        current="addons"
-        counts={{ types: rooms.length, rooms: physicalRooms.length, addons: addOns.length }}
       />
 
       {addOns.length === 0 ? (

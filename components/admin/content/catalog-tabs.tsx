@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+/** Services have their own sidebar item now, so the Rooms section is just its two kinds of room. */
 const tabs = [
   { key: 'types', href: '/admin/content', label: 'Room types' },
   { key: 'rooms', href: '/admin/content/units', label: 'Rooms' },
-  { key: 'addons', href: '/admin/content/add-ons', label: 'Add-ons' },
 ] as const;
 
 export type CatalogTab = (typeof tabs)[number]['key'];
@@ -12,8 +12,8 @@ export type CatalogTab = (typeof tabs)[number]['key'];
 /** Room types come first on purpose: a room can only be added under a type that already exists. */
 export function CatalogTabs({ current, counts }: { current: CatalogTab; counts: Record<CatalogTab, number> }) {
   return (
-    <nav aria-label="Rooms & add-ons" className="mt-6">
-      {/* A phone splits the width three ways and drops the counts, so no tab ever scrolls out of view. */}
+    <nav aria-label="Rooms" className="mt-6">
+      {/* A phone splits the width between the two and drops the counts, so no tab ever scrolls out of view. */}
       <ul className="flex w-full items-center gap-1 rounded-full border border-border bg-card p-1 sm:w-max">
         {tabs.map((tab) => {
           const active = tab.key === current;

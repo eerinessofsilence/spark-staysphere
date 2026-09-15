@@ -201,6 +201,7 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     '/admin/bookings',
     `/admin/bookings/${reference}`,
     '/admin/rates',
+    '/admin/accounting',
     '/admin/content',
     '/admin/content/add-ons',
     '/admin/content/hotel',

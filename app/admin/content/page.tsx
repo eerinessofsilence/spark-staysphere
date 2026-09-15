@@ -28,9 +28,8 @@ function capitalize(value: string): string {
 const deskOnly = 'hidden sm:table-cell';
 
 export default async function RoomTypesPage() {
-  const [rooms, addOns, physicalRooms] = await Promise.all([
+  const [rooms, physicalRooms] = await Promise.all([
     contentService.listRoomsContent(),
-    contentService.listAddOnsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
   const rates = await Promise.all(rooms.map((room) => contentService.listRatesContent(room.id)));
@@ -39,8 +38,7 @@ export default async function RoomTypesPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        // A non-breaking hyphen: at phone size the title otherwise breaks inside "add-ons".
-        title="Rooms & add‑ons"
+        title="Rooms"
         actions={
           <>
             <a href="/rooms" target="_blank" rel="noreferrer" className={pill('secondary')}>
@@ -57,7 +55,7 @@ export default async function RoomTypesPage() {
 
       <CatalogTabs
         current="types"
-        counts={{ types: rooms.length, rooms: physicalRooms.length, addons: addOns.length }}
+        counts={{ types: rooms.length, rooms: physicalRooms.length }}
       />
 
       {rooms.length === 0 ? (

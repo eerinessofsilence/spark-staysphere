@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  BanknotesIcon,
   Bars3Icon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
@@ -12,6 +13,7 @@ import {
   DocumentTextIcon,
   HomeIcon,
   MagnifyingGlassIcon,
+  ShoppingBagIcon,
   TableCellsIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
@@ -33,12 +35,14 @@ const groups: { heading: string; items: NavItem[] }[] = [
       { href: '/admin/chessboard', label: 'Property Desk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Reservations', icon: CalendarDaysIcon },
       { href: '/admin/rates', label: 'Rates & availability', icon: TagIcon },
+      { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },
     ],
   },
   {
     heading: 'Content',
     items: [
       { href: '/admin/content', label: 'Rooms', icon: DocumentTextIcon },
+      { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/content/hotel', label: 'Hotel Settings', icon: BuildingOffice2Icon },
     ],
   },

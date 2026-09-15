@@ -13,16 +13,15 @@ export const metadata: Metadata = { title: 'Rooms — Hotel admin | SPARK StaySp
 export const dynamic = 'force-dynamic';
 
 export default async function PhysicalRoomsPage() {
-  const [types, rooms, addOns] = await Promise.all([
+  const [types, rooms] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
-    contentService.listAddOnsContent(),
   ]);
 
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Rooms & add‑ons"
+        title="Rooms"
         actions={
           types.length > 0 ? (
             <Link href="/admin/content/units/new" className={pill('primary')}>
@@ -33,7 +32,7 @@ export default async function PhysicalRoomsPage() {
         }
       />
 
-      <CatalogTabs current="rooms" counts={{ types: types.length, rooms: rooms.length, addons: addOns.length }} />
+      <CatalogTabs current="rooms" counts={{ types: types.length, rooms: rooms.length }} />
 
       {types.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-4 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">

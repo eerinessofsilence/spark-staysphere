@@ -13,6 +13,7 @@ import { formatDateRange, formatDateShort, formatGuests, formatMoney, formatNigh
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
+import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -200,29 +201,6 @@ export default async function AdminOverviewPage() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  detail,
-  chart,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  chart?: ReactNode;
-}) {
-  return (
-    <div className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
-      <dt className="text-sm font-medium">{label}</dt>
-      <dd className="mt-3">
-        <span className="text-display block text-2xl tabular-nums sm:text-4xl">{value}</span>
-        <span className="mt-1.5 block text-sm text-muted-foreground">{detail}</span>
-      </dd>
-      {chart}
-    </div>
-  );
-}
-
 /** 14-point trend, tonight in the accent and the rest in the de-emphasis hue — same marks as `OccupancyChart` below it. */
 function Sparkline({ days, totalRooms }: { days: ChessboardDay[]; totalRooms: number }) {
   return (
@@ -237,18 +215,6 @@ function Sparkline({ days, totalRooms }: { days: ChessboardDay[]; totalRooms: nu
           />
         );
       })}
-    </div>
-  );
-}
-
-/** A ratio against its own total — fill in the accent, track a lighter step of the same ramp. */
-function Meter({ share }: { share: number }) {
-  return (
-    <div aria-hidden="true" className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-accent-soft">
-      <div
-        className="h-full rounded-full bg-accent"
-        style={{ width: `${Math.round(Math.max(0, Math.min(1, share)) * 100)}%` }}
-      />
     </div>
   );
 }

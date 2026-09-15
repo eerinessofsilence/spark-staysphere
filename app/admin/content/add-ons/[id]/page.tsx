@@ -13,7 +13,7 @@ import { deleteAddOnAction, updateAddOnAction } from './actions';
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const addOn = await contentService.getAddOnContent(id);
-  return { title: `${addOn?.name ?? id} — Add-ons | SPARK StaySphere 360` };
+  return { title: `${addOn?.name ?? id} — Services | SPARK StaySphere 360` };
 }
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,7 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
   return (
     <AdminPage width="narrow">
       <AdminPageHeader
-        breadcrumbs={[{ label: 'Content' }, { label: 'Add-ons', href: '/admin/content/add-ons' }]}
+        breadcrumbs={[{ label: 'Content' }, { label: 'Services', href: '/admin/content/add-ons' }]}
         title={addOn.name}
         actions={
           <>
