@@ -232,6 +232,35 @@ test('a room is added under its room type, shows on the Property Desk, and can b
   await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toHaveCount(0);
 });
 
+test('a facility added under Hotel Settings shows on the arrival page', async ({ page }) => {
+  await page.goto('/admin/content/hotel');
+  const tab = page.getByRole('tab', { name: 'Facilities' });
+  await actUntil(
+    () => tab.click(),
+    () => expect(page.getByRole('tabpanel', { name: 'Facilities' })).toBeVisible({ timeout: 2_000 }),
+  );
+
+  // Picking an icon suggests the name; typing over it keeps the icon.
+  await page.getByRole('button', { name: /^New facility icon/ }).click();
+  await page.getByRole('option', { name: 'Cinema' }).click();
+  const draft = page.getByRole('textbox', { name: 'Add a facility' });
+  await expect(draft).toHaveValue('Cinema');
+  await draft.fill('Open-air cinema');
+  await page.getByRole('button', { name: 'Add facility' }).click();
+  await expect(page.getByRole('button', { name: /^Icon for Open-air cinema/ })).toBeVisible();
+
+  await actUntil(
+    () => page.getByRole('button', { name: 'Save hotel details' }).click(),
+    () => expect(page.getByText('Hotel details saved.')).toBeVisible({ timeout: 5_000 }),
+  );
+
+  await page.goto('/');
+  const facilities = page.getByRole('list', { name: 'Facilities' });
+  await expect(facilities.getByText('Open-air cinema')).toBeVisible();
+  // The seed's own facilities are still there, ahead of the new one.
+  await expect(facilities.getByText('25-metre infinity pool')).toBeVisible();
+});
+
 test('resetting content restores the seed catalog', async ({ page }) => {
   await resetDemoState(page);
 

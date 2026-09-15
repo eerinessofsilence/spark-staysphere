@@ -198,6 +198,57 @@ export const hotelModelSchema = z.object({
     .optional(),
 });
 
+/**
+ * The marks a hotel facility can wear — a fixed vocabulary rather than a free
+ * icon name, so the CMS offers a grid to pick from and the guest site never
+ * meets a key it has no drawing for. `components/hotel/facility-icon.ts`
+ * maps each to its Phosphor glyph and label.
+ */
+export const facilityIconSchema = z.enum([
+  'pool',
+  'spa',
+  'gym',
+  'restaurant',
+  'bar',
+  'coffee',
+  'wifi',
+  'parking',
+  'ev-charging',
+  'shuttle',
+  'taxi',
+  'beach',
+  'marina',
+  'garden',
+  'terrace',
+  'concierge',
+  'reception',
+  'laundry',
+  'kids',
+  'pets',
+  'accessible',
+  'elevator',
+  'air-conditioning',
+  'safe',
+  'security',
+  'business',
+  'library',
+  'games',
+  'cinema',
+  'music',
+  'bicycles',
+  'tennis',
+  'golf',
+  'first-aid',
+]);
+export type FacilityIcon = z.infer<typeof facilityIconSchema>;
+
+/** One thing the property offers as a whole — the pool, the spa — as opposed to a room's own amenities. */
+export const hotelFacilitySchema = z.object({
+  icon: facilityIconSchema,
+  name: z.string(),
+});
+export type HotelFacility = z.infer<typeof hotelFacilitySchema>;
+
 export const hotelSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -209,6 +260,12 @@ export const hotelSchema = z.object({
   description: z.string(),
   /** The photograph beside that paragraph. */
   aboutPhoto: simplePhotoSchema,
+  /**
+   * Shown under that paragraph, in the order the hotel team set. Optional
+   * for the same reason `spinner` and `model` are — an overlay row saved
+   * before this field existed still parses — and read as an empty list.
+   */
+  facilities: z.array(hotelFacilitySchema).optional(),
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),

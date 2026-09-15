@@ -80,6 +80,12 @@ deploy — but the seed in `mock-data.ts` is never mutated. Every edit is a row 
 an id the seed already has *replaces* that entity wholesale; a new id is a new entity. "Reset demo
 state" on `/admin` clears the whole table for the hotel, so the catalog falls back to seed.
 
+The `hotel` entry also carries the property's facilities — `Hotel.facilities`, an icon key from
+`facilityIconSchema` plus a name each — edited on the Facilities tab of Hotel Settings
+(`/admin/content/hotel`) and shown as chips under the arrival page's About paragraph. The icon
+vocabulary is fixed in the schema and drawn by `components/hotel/facility-icon.ts`, so the guest
+site never meets a key it cannot render.
+
 ```text
 Seed (mock-data.ts)  ──┐
                         ├─▶ mergeCatalog (lib/domain/catalog-overlay.ts) ─▶ HotelRepository read

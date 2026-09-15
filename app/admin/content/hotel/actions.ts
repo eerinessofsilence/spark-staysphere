@@ -1,7 +1,8 @@
 'use server';
 
 import { contentService } from '@/lib/application/container';
-import { formStateFromResult, type ContentFormState } from '../_lib/form-state';
+import type { HotelFacility } from '@/lib/domain/schemas';
+import { formStateFromResult, parseJsonList, type ContentFormState } from '../_lib/form-state';
 import { revalidateContent } from '../_lib/revalidate';
 
 export async function updateHotelAction(
@@ -15,6 +16,7 @@ export async function updateHotelAction(
     starRating: Number(formData.get('starRating')),
     description: String(formData.get('description') ?? ''),
     aboutPhoto: String(formData.get('aboutPhoto') ?? ''),
+    facilities: parseJsonList<HotelFacility>(formData, 'facilities'),
     // Areas/hotspots have no fields on this form — an empty list leaves
     // every area exactly as it is (see `updateHotel`'s per-area patch match).
     areas: [],

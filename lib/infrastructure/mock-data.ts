@@ -322,6 +322,17 @@ export const demoHotel: Hotel = {
   description:
     "Eight floors of white balconies curving above the town, the upper ones looking clear over the rooftops to the Mediterranean, with a 25-metre infinity pool and a cliffside spa on site, and the bay's marina and beach clubs ten minutes downhill.",
   aboutPhoto: { url: '/images/hotel/cove.webp', width: 2000, height: 3000 },
+  facilities: [
+    { icon: 'pool', name: '25-metre infinity pool' },
+    { icon: 'spa', name: 'Cliffside spa' },
+    { icon: 'restaurant', name: 'Two restaurants' },
+    { icon: 'bar', name: 'Rooftop bar' },
+    { icon: 'gym', name: 'Fitness studio' },
+    { icon: 'beach', name: 'Beach club shuttle' },
+    { icon: 'parking', name: 'Valet parking' },
+    { icon: 'wifi', name: 'Free Wi-Fi' },
+    { icon: 'concierge', name: 'Concierge' },
+  ],
   currency: 'EUR',
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,

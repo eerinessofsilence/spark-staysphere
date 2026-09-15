@@ -12,6 +12,7 @@ import type {
 } from '../domain/ports';
 import {
   addOnSchema,
+  facilityIconSchema,
   hotelSchema,
   physicalRoomSchema,
   ratePlanSchema,
@@ -121,6 +122,12 @@ export const hotelContentInputSchema = z.object({
   starRating: z.number().int().min(1, 'Pick a star rating.').max(5, 'Pick a star rating.'),
   description: z.string().min(1, 'Enter a description.'),
   aboutPhoto: z.string().min(1, 'Pick a photo.'),
+  facilities: z.array(
+    z.object({
+      icon: facilityIconSchema,
+      name: z.string().trim().min(1, 'Give every facility a name.'),
+    }),
+  ),
   /** Never edited from `/admin/content/hotel` — areas keep their current copy unless something else patches them. */
   areas: z.array(hotelAreaInputSchema),
 });
@@ -329,6 +336,7 @@ export class ContentService {
       starRating: input.starRating,
       description: input.description,
       aboutPhoto: aboutPhoto.photo,
+      facilities: input.facilities,
       areas: nextAreas,
     } satisfies Hotel);
 

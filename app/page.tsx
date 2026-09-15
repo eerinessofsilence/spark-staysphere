@@ -5,8 +5,9 @@ import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildQuery, parseCriteria, toIsoDate } from '@/lib/application/search-params';
-import { pill } from '@/lib/ui';
+import { pill, tag } from '@/lib/ui';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
+import { facilityIcon } from '@/components/hotel/facility-icon';
 import { HotelScene } from '@/components/hotel/hotel-scene';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomStrip } from '@/components/rooms/room-strip';
@@ -33,6 +34,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   // left goes to the rail on the way out.
   const highlights = offers.slice(0, 8);
   const rest = offers.slice(8);
+  const facilities = hotel.facilities ?? [];
 
   // Deep link into the building spinner: `?frame=N` turns it directly;
   // `?unit=<roomSlug or hotspot id>` turns it to wherever that hotspot is visible.
@@ -144,6 +146,19 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
                 {hotel.location}
               </p>
+              {facilities.length > 0 ? (
+                <ul aria-label="Facilities" className="mt-6 flex flex-wrap gap-2">
+                  {facilities.map((facility, index) => {
+                    const Icon = facilityIcon(facility.icon);
+                    return (
+                      <li key={`${facility.icon}-${index}`} className={tag('py-1.5 pl-2.5 text-sm')}>
+                        <Icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
+                        {facility.name}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
             </Reveal>
             <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[28px]">
               <img
