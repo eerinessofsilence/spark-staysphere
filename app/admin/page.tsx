@@ -153,7 +153,7 @@ export default async function AdminOverviewPage() {
             <TableCard caption="The five most recent demo bookings" className="min-w-[50rem]">
               <thead>
                 <tr className="border-b border-border">
-                  <Th>Reference</Th>
+                  <Th>Booking number</Th>
                   <Th>Guest</Th>
                   <Th>Room</Th>
                   <Th>Stay</Th>

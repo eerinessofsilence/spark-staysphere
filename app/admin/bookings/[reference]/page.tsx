@@ -316,7 +316,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             <thead>
               <tr className="border-b border-border">
                 <Th>Room</Th>
-                <Th>Reference</Th>
+                <Th>Booking number</Th>
                 <Th>Booked</Th>
                 <Th>Check-in</Th>
                 <Th>Check-out</Th>

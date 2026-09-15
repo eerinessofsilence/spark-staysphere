@@ -13,7 +13,7 @@ import { bookingService } from '@/lib/application/container';
 const referenceSchema = z
   .string()
   .trim()
-  .regex(/^[A-Za-z0-9]{6}$/, 'A reference looks like 3F7K2P.');
+  .regex(/^[A-Za-z0-9]{6}$/, 'A booking number looks like 3F7K2P.');
 
 const claimSchema = z.object({
   reference: referenceSchema,

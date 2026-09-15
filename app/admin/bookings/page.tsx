@@ -140,7 +140,7 @@ export default async function BookingsPage({
           {range ? <input type="hidden" name="from" value={range.from} /> : null}
           {range ? <input type="hidden" name="to" value={range.to} /> : null}
           <label htmlFor="bookings-search" className="sr-only">
-            Search by reference, guest, or email
+            Search by booking number, guest, or email
           </label>
           <div className="relative min-w-0 flex-1 lg:w-56 lg:flex-none">
             <MagnifyingGlassIcon
@@ -152,7 +152,7 @@ export default async function BookingsPage({
               name="q"
               type="search"
               defaultValue={query}
-              placeholder="Reference, guest, or email"
+              placeholder="Booking number, guest, or email"
               className={cn(fieldClass, 'pl-10')}
             />
           </div>
@@ -198,7 +198,7 @@ export default async function BookingsPage({
           <TableCard caption="Reservations matching the current search and filter" className="min-w-[62rem]">
             <thead>
               <tr className="border-b border-border">
-                <Th>Reference</Th>
+                <Th>Booking number</Th>
                 <Th>Guest</Th>
                 <Th>Room</Th>
                 <Th>Stay</Th>

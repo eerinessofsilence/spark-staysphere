@@ -626,7 +626,7 @@ test('a trip is claimed by reference and the email it was booked with', async ({
   await page.reload();
   await expect(page.getByRole('heading', { name: 'No trips yet' })).toBeVisible();
 
-  await page.getByLabel('Reference').fill(reference);
+  await page.getByLabel('Booking number').fill(reference);
   await page.getByLabel('Email').fill('someone.else@example.com');
   await page.getByRole('button', { name: 'Find booking' }).click();
   await expect(page.getByText(/No booking matches that reference and email/)).toBeVisible();

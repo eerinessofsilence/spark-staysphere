@@ -139,7 +139,7 @@ export default async function AccountingPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <Th>Booked</Th>
-                    <Th>Reference</Th>
+                    <Th>Booking number</Th>
                     <Th>Guest</Th>
                     <Th>Method</Th>
                     <Th>Status</Th>

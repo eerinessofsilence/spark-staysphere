@@ -91,7 +91,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
           <h2 className="text-display text-2xl sm:text-3xl">No trips yet</h2>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
             Bookings you make here are listed on this page. Booked on another device? Find it with
-            your reference below.
+            your booking number below.
           </p>
           <Link href={`/rooms?${stayQuery}`} className={pill('primary', 'mt-6')}>
             Browse rooms
@@ -210,7 +210,7 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
               </Link>
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Reference{' '}
+              Booking number{' '}
               <span className="font-semibold tracking-wide text-foreground">{trip.reference}</span>
             </p>
           </div>
@@ -392,14 +392,14 @@ function ClaimForm({
         Find a booking
       </h2>
       <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-        Booked on another device? Enter the reference from your confirmation and the email you
+        Booked on another device? Enter the booking number from your confirmation and the email you
         booked with, and the stay joins this list.
       </p>
 
       <form onSubmit={onSubmit} className="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <label htmlFor="claim-reference" className="mb-1.5 block text-sm text-muted-foreground">
-            Reference
+            Booking number
           </label>
           <input
             id="claim-reference"
