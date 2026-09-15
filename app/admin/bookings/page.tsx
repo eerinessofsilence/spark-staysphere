@@ -215,11 +215,18 @@ export default async function BookingsPage({
                 const cancelBlockedReason =
                   booking.status === 'cancelled' ? 'Already cancelled' : !canCancel ? 'Stay has begun' : undefined;
                 return (
-                <tr key={booking.id} className="border-b border-border last:border-b-0">
+                <tr
+                  key={booking.id}
+                  className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                >
                   <Td className="whitespace-nowrap">
+                    {/* Stretched: the row opens the booking's own page from
+                        anywhere in it, not only these six characters — the
+                        row menu below sits at a higher stacking level so its
+                        own click still reaches it instead of this. */}
                     <Link
                       href={`/admin/bookings/${booking.reference}`}
-                      className="text-display text-base hover:text-accent-strong"
+                      className="text-display text-base hover:text-accent-strong before:absolute before:inset-0"
                     >
                       {booking.reference}
                     </Link>
@@ -261,7 +268,7 @@ export default async function BookingsPage({
                   <Td>
                     <BookingStatusBadge status={booking.status} />
                   </Td>
-                  <Td className="text-right">
+                  <Td className="relative z-10 text-right">
                     <BookingRowActions
                       reference={booking.reference}
                       canCancel={canCancel}
