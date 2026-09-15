@@ -193,7 +193,7 @@ export const hotelSchema = z.object({
   /** The photograph beside that paragraph. */
   aboutPhoto: simplePhotoSchema,
   /**
-   * Shown under that paragraph, in the order the hotel team set. Optional
+   * Shown on every room's page, in the order the hotel team set. Optional
    * for the same reason `spinner` and `model` are — an overlay row saved
    * before this field existed still parses — and read as an empty list.
    */

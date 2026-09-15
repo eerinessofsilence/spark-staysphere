@@ -312,7 +312,7 @@ test('a room is added under its room type, shows on the tape chart, and can be r
   await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toHaveCount(0);
 });
 
-test('a facility added under Hotel Settings shows on the arrival page', async ({ page }) => {
+test('a facility added under Hotel Settings shows on every room page', async ({ page }) => {
   await page.goto('/admin/content/hotel');
   const tab = page.getByRole('tab', { name: 'Facilities' });
   await actUntil(
@@ -334,7 +334,7 @@ test('a facility added under Hotel Settings shows on the arrival page', async ({
     () => expect(page.getByText('Hotel details saved.')).toBeVisible({ timeout: 5_000 }),
   );
 
-  await page.goto('/');
+  await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
   const facilities = page.getByRole('list', { name: 'Facilities' });
   await expect(facilities.getByText('Open-air cinema')).toBeVisible();
   // The seed's own facilities are still there, ahead of the new one.

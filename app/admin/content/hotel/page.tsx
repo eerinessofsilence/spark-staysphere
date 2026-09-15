@@ -250,8 +250,8 @@ export default async function HotelContentPage() {
                       Facilities
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      What the property offers as a whole — the pool, the spa, parking. Shown on the arrival page
-                      under the description, in this order. A room&apos;s own amenities live on the room type.
+                      What the property offers as a whole — the pool, the spa, parking. Shown on every room&apos;s page,
+                      after what is in the room, in this order. A room&apos;s own amenities live on the room type.
                     </p>
                     <div className="mt-4">
                       <FacilitiesEditor name="facilities" initial={hotel.facilities ?? []} />

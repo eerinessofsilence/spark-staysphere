@@ -102,7 +102,7 @@ state" on `/admin` clears the whole table for the hotel, so the catalog falls ba
 
 The `hotel` entry also carries the property's facilities — `Hotel.facilities`, an icon key from
 `facilityIconSchema` plus a name each — edited on the Facilities tab of Hotel Settings
-(`/admin/content/hotel`) and shown as chips under the arrival page's About paragraph. The icon
+(`/admin/content/hotel`) and shown as chips on every room page, after the room's own amenities. The icon
 vocabulary is fixed in the schema and drawn by `components/hotel/facility-icon.ts`, so the guest
 site never meets a key it cannot render.
 

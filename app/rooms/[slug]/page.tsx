@@ -21,6 +21,7 @@ import { buildQuery, parseAddOnIds, parseCriteria } from '@/lib/application/sear
 import { bedLabels, formatFloor, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
+import { facilityIcon } from '@/components/hotel/facility-icon';
 import { AddOnPicker } from '@/components/rooms/add-on-picker';
 import { MobileBookBar } from '@/components/rooms/mobile-book-bar';
 import { RoomPricing } from '@/components/rooms/room-pricing';
@@ -42,14 +43,16 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   const criteria = parseCriteria(query);
   const addOnIds = parseAddOnIds(query);
 
-  const detail = await catalogService
-    .getRoomDetail(DEMO_HOTEL_SLUG, slug, criteria, addOnIds)
-    .catch((error: unknown) => {
+  const [detail, hotel] = await Promise.all([
+    catalogService.getRoomDetail(DEMO_HOTEL_SLUG, slug, criteria, addOnIds).catch((error: unknown) => {
       if (error instanceof RoomNotFoundError) notFound();
       throw error;
-    });
+    }),
+    catalogService.getHotel(DEMO_HOTEL_SLUG),
+  ]);
 
   const { offer, addOns, quote } = detail;
+  const facilities = hotel.facilities ?? [];
   const { room, ratePlan } = offer;
   const soldOut = offer.status === 'sold_out';
   const stayQuery = buildQuery({ criteria });
@@ -155,6 +158,28 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                 })}
               </ul>
             </section>
+
+            {facilities.length > 0 ? (
+              <section aria-labelledby="facilities-heading" className="mt-20">
+                <h2 id="facilities-heading" className="text-display text-2xl sm:text-3xl">
+                  At the hotel
+                </h2>
+                {/* Chips, not the amenity rail above: these are the property's
+                    own — the same list on every room's page — so they sit
+                    lighter than what this particular room has in it. */}
+                <ul aria-label="Facilities" className="mt-5 flex flex-wrap gap-2">
+                  {facilities.map((facility, index) => {
+                    const Icon = facilityIcon(facility.icon);
+                    return (
+                      <li key={`${facility.icon}-${index}`} className={tag('py-1.5 pl-2.5 text-sm')}>
+                        <Icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
+                        {facility.name}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
 
             <section aria-labelledby="rate-heading" className="mt-20">
               <h2 id="rate-heading" className="text-display text-2xl sm:text-3xl">
