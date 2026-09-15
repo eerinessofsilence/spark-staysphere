@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 export function AdminPage({
@@ -30,35 +31,49 @@ export interface AdminCrumb {
 }
 
 /**
- * The way back, as a trail rather than a lone "← Room types" pill: the
- * sidebar group, then the list the record lives in. The record itself is not
- * repeated — it is the title directly below, and saying it twice reads as a
- * mistake. Links are 14px text, so each carries an invisible overlay to reach
- * a finger-sized target without making the row any taller.
+ * The way back: a round arrow button — the same shape every other back
+ * control in the product uses — plus the trail behind it, the sidebar group
+ * then the list the record lives in. The trail's own links still work; the
+ * arrow is for the thumb that just wants out, to wherever it came from,
+ * without reading the words first. Both go to the same place: the nearest
+ * link in the trail, i.e. the list the record lives in.
+ *
+ * The record itself is not repeated in the trail — it is the title directly
+ * below, and saying it twice reads as a mistake. Trail links are 14px text,
+ * so each carries an invisible overlay to reach a finger-sized target
+ * without making the row any taller.
  */
 function AdminBreadcrumbs({ items }: { items: AdminCrumb[] }) {
+  const back = [...items].reverse().find((item) => item.href);
   return (
-    <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
-        {items.map((item, index) => (
-          <li key={`${item.label}-${index}`} className="flex items-center gap-1.5">
-            {index > 0 ? (
-              <ChevronRightIcon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-            ) : null}
-            {item.href ? (
-              <Link
-                href={item.href}
-                className="relative font-medium text-foreground transition-colors after:absolute after:-inset-x-1.5 after:-inset-y-3 after:content-[''] hover:text-accent-strong"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span>{item.label}</span>
-            )}
-          </li>
-        ))}
-      </ol>
-    </nav>
+    <div className="flex items-center gap-3">
+      {back ? (
+        <Link href={back.href!} aria-label={`Back to ${back.label}`} className={iconButton('light', 'size-8 shrink-0')}>
+          <ArrowLeftIcon className="size-4" aria-hidden="true" />
+        </Link>
+      ) : null}
+      <nav aria-label="Breadcrumb">
+        <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+          {items.map((item, index) => (
+            <li key={`${item.label}-${index}`} className="flex items-center gap-1.5">
+              {index > 0 ? (
+                <ChevronRightIcon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+              ) : null}
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="relative font-medium text-foreground transition-colors after:absolute after:-inset-x-1.5 after:-inset-y-3 after:content-[''] hover:text-accent-strong"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <span>{item.label}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </div>
   );
 }
 
