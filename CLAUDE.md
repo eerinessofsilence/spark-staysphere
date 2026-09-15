@@ -64,7 +64,7 @@ integrations.
 
 ## Commit conventions
 
-Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message. Format: `type(scope): summary` in the imperative mood, e.g. `feat(booking): add idempotent hold confirmation`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff. This applies to every commit in this repository, not just feature work.
+Always write [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood — `type(scope): summary`, e.g. `feat(booking): add idempotent hold confirmation`. Never a bare, generic message; this applies to every commit, not just feature work. See CONTRIBUTING.md for the full convention and AGENTS.md for working rules.
 
 ## Next implementation order
 

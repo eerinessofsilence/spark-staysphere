@@ -21,7 +21,7 @@ Build a white-label interactive hotel discovery and direct-booking product. The 
 
 ## Commit conventions
 
-Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message like "update files" or "fix stuff". Format: `type(scope): summary` in the imperative mood, e.g. `fix(booking-service): recheck price before confirming`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff.
+Always write [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood — `type(scope): summary`, e.g. `fix(booking-service): recheck price before confirming`. Never a bare, generic message. See CONTRIBUTING.md for the full convention, the branch naming pattern, and the pre-PR checklist.
 
 ## Commands
 
