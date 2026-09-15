@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { addDays, format, parseISO } from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
+import { contentService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { AddPropertyButton } from '@/components/admin/operations/add-property-button';
+import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-button';
 import { ChessboardGrid } from '@/components/admin/chessboard/chessboard-grid';
 import { ChessboardLegend } from '@/components/admin/chessboard/chessboard-legend';
 import {
@@ -45,10 +45,11 @@ export default async function ChessboardPage({ searchParams }: { searchParams: P
   const groups = type ? board.groups.filter((group) => group.roomTypeId === type) : board.groups;
 
   const lastNight = board.dates.at(-1) ?? from;
+  const assets = contentService.listMedia();
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Property Desk" actions={<AddPropertyButton />} />
+      <AdminPageHeader title="Property Desk" actions={<AddRoomTypeButton assets={assets} />} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
