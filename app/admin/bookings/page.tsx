@@ -18,8 +18,10 @@ import {
   stayBucket,
   stayBucketLabels,
   stayBuckets,
+  staysOverlap,
   type StayBucket,
 } from '@/components/admin/operations/booking-buckets';
+import { BookingDatesFilter } from '@/components/admin/operations/booking-dates-filter';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { PaymentSummary } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
@@ -42,10 +44,29 @@ function matches(booking: Booking, query: string): boolean {
   );
 }
 
-function hrefFor(filter: Filter, query: string): string {
+interface DayRange {
+  from: string;
+  to: string;
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** `?from=&to=` as an inclusive range of days: a lone `from` is that one day, a reversed pair is put right. */
+function parseRange(fromParam: string | string[] | undefined, toParam: string | string[] | undefined): DayRange | null {
+  const from = typeof fromParam === 'string' && ISO_DAY.test(fromParam) ? fromParam : null;
+  if (!from) return null;
+  const to = typeof toParam === 'string' && ISO_DAY.test(toParam) ? toParam : from;
+  return from <= to ? { from, to } : { from: to, to: from };
+}
+
+function hrefFor(filter: Filter, query: string, range: DayRange | null): string {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
   if (filter !== 'all') params.set('status', filter);
+  if (range) {
+    params.set('from', range.from);
+    params.set('to', range.to);
+  }
   const search = params.toString();
   return search ? `/admin/bookings?${search}` : '/admin/bookings';
 }
@@ -58,6 +79,7 @@ export default async function BookingsPage({
   const params = await searchParams;
   const query = typeof params.q === 'string' ? params.q.trim() : '';
   const filter = parseFilter(params.status);
+  const range = parseRange(params.from, params.to);
   const today = toIsoDate(new Date());
 
   const [hotel, bookings] = await Promise.all([
@@ -68,7 +90,10 @@ export default async function BookingsPage({
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
 
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const searched = query ? sorted.filter((booking) => matches(booking, query)) : sorted;
+  // Search and dates narrow the list first; the status pills then count within what is left.
+  const searched = sorted
+    .filter((booking) => !query || matches(booking, query))
+    .filter((booking) => !range || staysOverlap(booking, range.from, range.to));
   const counts: Record<Filter, number> = { all: searched.length, upcoming: 0, in_house: 0, past: 0, cancelled: 0 };
   for (const booking of searched) counts[stayBucket(booking, today)] += 1;
   const visible = filter === 'all' ? searched : searched.filter((booking) => stayBucket(booking, today) === filter);
@@ -96,7 +121,7 @@ export default async function BookingsPage({
             return (
               <Link
                 key={option}
-                href={hrefFor(option, query)}
+                href={hrefFor(option, query, range)}
                 aria-current={current ? 'page' : undefined}
                 className={cn(
                   'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors',
@@ -114,12 +139,16 @@ export default async function BookingsPage({
           })}
         </nav>
 
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap">
+        <BookingDatesFilter from={range?.from ?? null} to={range?.to ?? null} />
         <form role="search" action="/admin/bookings" method="get" className="flex w-full gap-2 lg:w-auto">
           {filter !== 'all' ? <input type="hidden" name="status" value={filter} /> : null}
+          {range ? <input type="hidden" name="from" value={range.from} /> : null}
+          {range ? <input type="hidden" name="to" value={range.to} /> : null}
           <label htmlFor="bookings-search" className="sr-only">
             Search by reference, guest, or email
           </label>
-          <div className="relative min-w-0 flex-1 lg:w-80 lg:flex-none">
+          <div className="relative min-w-0 flex-1 lg:w-56 lg:flex-none">
             <MagnifyingGlassIcon
               className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -137,6 +166,7 @@ export default async function BookingsPage({
             Search
           </button>
         </form>
+        </div>
       </div>
 
       <div className="mt-6">
@@ -157,7 +187,13 @@ export default async function BookingsPage({
           <EmptyState
             search
             title="No bookings match"
-            body={query ? `Nothing matches “${query}” in this view.` : 'There are no bookings in this view.'}
+            body={
+              query
+                ? `Nothing matches “${query}” in this view.`
+                : range
+                  ? 'No stay has a night on those dates in this view.'
+                  : 'There are no bookings in this view.'
+            }
             action={
               <Link href="/admin/bookings" className={pill('secondary')}>
                 Clear search and filters

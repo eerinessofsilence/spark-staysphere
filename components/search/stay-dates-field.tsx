@@ -86,7 +86,31 @@ function CalendarDayButton({
   );
 }
 
-const CALENDAR_COMPONENTS = { Chevron: CalendarChevron, DayButton: CalendarDayButton };
+/** Shared with the back office's stay-dates filter, so both calendars are one control. */
+export const CALENDAR_COMPONENTS = { Chevron: CalendarChevron, DayButton: CalendarDayButton };
+
+/** The range calendar's look — the stone band between two ink circles. */
+export const CALENDAR_CLASS_NAMES = {
+  root: 'relative w-full',
+  months: 'flex flex-col gap-6 sm:flex-row sm:gap-8',
+  month: 'w-full sm:w-[288px]',
+  nav: 'absolute inset-x-0 top-0 z-10 flex items-center justify-between',
+  button_previous: iconButton('light', 'size-9'),
+  button_next: iconButton('light', 'size-9'),
+  month_caption: 'flex h-9 items-center justify-center',
+  caption_label: 'text-display text-base',
+  month_grid: 'mt-3 w-full border-collapse',
+  weekdays: 'flex',
+  weekday: 'flex-1 pb-2 text-xs font-normal text-muted-foreground',
+  week: 'flex w-full',
+  // The circles already fade; without this the band behind them snaps.
+  day: 'relative flex-1 p-0 text-center transition-colors',
+  range_start: 'rounded-l-full bg-stone',
+  range_end: 'rounded-r-full bg-stone',
+  range_middle: 'bg-stone',
+  disabled: 'text-muted-foreground/45',
+  hidden: 'invisible',
+};
 
 export function StayDatesField({
   checkIn,
@@ -277,27 +301,7 @@ export function StayDatesField({
           preview_middle: 'bg-stone/55',
           preview_end: 'rounded-r-full bg-stone/55',
         }}
-        classNames={{
-          root: 'relative w-full',
-          months: 'flex flex-col gap-6 sm:flex-row sm:gap-8',
-          month: 'w-full sm:w-[288px]',
-          nav: 'absolute inset-x-0 top-0 z-10 flex items-center justify-between',
-          button_previous: iconButton('light', 'size-9'),
-          button_next: iconButton('light', 'size-9'),
-          month_caption: 'flex h-9 items-center justify-center',
-          caption_label: 'text-display text-base',
-          month_grid: 'mt-3 w-full border-collapse',
-          weekdays: 'flex',
-          weekday: 'flex-1 pb-2 text-xs font-normal text-muted-foreground',
-          week: 'flex w-full',
-          // The circles already fade; without this the band behind them snaps.
-          day: 'relative flex-1 p-0 text-center transition-colors',
-          range_start: 'rounded-l-full bg-stone',
-          range_end: 'rounded-r-full bg-stone',
-          range_middle: 'bg-stone',
-          disabled: 'text-muted-foreground/45',
-          hidden: 'invisible',
-        }}
+        classNames={CALENDAR_CLASS_NAMES}
         components={CALENDAR_COMPONENTS}
       />
 

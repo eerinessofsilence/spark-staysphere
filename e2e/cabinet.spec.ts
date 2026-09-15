@@ -213,3 +213,25 @@ test('the desk finds a booking, sees its room, and cancelling puts the room back
   );
   expect(rebooked.status(), await rebooked.text()).toBe(201);
 });
+
+test('reservations filter by stay dates, from the URL and from the toolbar calendar', async ({ page, request }, testInfo) => {
+  const { reference, stay } = await bookFreeDeluxeRoom(request, testInfo.project.name);
+  const row = page.getByRole('row').filter({ hasText: reference });
+
+  // Any night of the stay matches — here its first.
+  await page.goto(`/admin/bookings?from=${stay.checkIn}&to=${stay.checkIn}`);
+  await expect(row).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Stay dates:/ })).toBeVisible();
+
+  // The check-out day is not a night, so a range that starts there leaves the stay out.
+  await page.goto(`/admin/bookings?from=${stay.checkOut}&to=${stay.checkOut}`);
+  await expect(row).toHaveCount(0);
+
+  await page.goto('/admin/bookings');
+  const dialog = page.getByRole('dialog', { name: 'Filter by stay dates' });
+  await actUntil(
+    () => page.getByRole('button', { name: 'Filter by stay dates' }).click(),
+    () => expect(dialog).toBeVisible({ timeout: 3_000 }),
+  );
+  await expect(dialog.getByRole('button', { name: 'Show stays' })).toBeDisabled();
+});
