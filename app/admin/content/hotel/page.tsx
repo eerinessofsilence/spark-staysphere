@@ -31,7 +31,7 @@ export default async function HotelContentPage() {
         title="Hotel Settings"
         actions={
           <a href="/" target="_blank" rel="noreferrer" className={pill('secondary')}>
-            Open the arrival page
+            Preview
             <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
           </a>
         }
