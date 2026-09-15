@@ -263,9 +263,6 @@ export default async function BookingsPage({
                   </Td>
                   <Td>
                     <BookingStatusBadge status={booking.status} />
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {stayBucketLabels[stayBucket(booking, today)]}
-                    </span>
                   </Td>
                 </tr>
               ))}
