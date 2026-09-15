@@ -111,5 +111,20 @@ computes a price: every total on screen comes from a server quote.
   interpretation and transcription; unset, search still answers through a deterministic keyword
   interpreter and the mic is unavailable. See TECH.md's "AI concierge" section.
 
-See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for the design rules and
-tokens (read the Rules first), and `AGENTS.md` for contribution rules.
+## Documentation map
+
+New to this codebase? Start with `docs/ONBOARDING.md` — it's a five-minute path through the rest
+of this, including a guided trace of one booking through every layer.
+
+| Doc | For |
+|---|---|
+| `docs/ONBOARDING.md` | Day one: reading order, the mental model, a first change to make |
+| `docs/ARCHITECTURE.md` | The layers, the four rules, a "where does X live" table |
+| `docs/HOWTO.md` | Recipes: add a room type, a route, a rule with a test, an admin screen, an API route |
+| `docs/GLOSSARY.md` | Domain terms (tape chart, seed vs. overlay, stay bucket, hold, …) |
+| `docs/TESTING.md` | Unit vs. e2e, and the e2e suite's shared-state quirks |
+| `docs/TROUBLESHOOTING.md` | Traps this codebase has already hit |
+| `TECH.md` | The deep technical reference — persistence, the CMS's concurrency model, the AI concierge, production integration, all with the *why* |
+| `DESIGN_SYSTEM.md` | The design contract — read the **Rules** section before adding any UI |
+| `AGENTS.md` | Working rules (commit conventions, what never to touch) |
+| `CLAUDE.md` | Product intent and the implementation roadmap |

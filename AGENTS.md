@@ -75,42 +75,6 @@ Run typecheck, lint, build, and the e2e suite when a flow changed. Include loadi
 unavailable, and success states for new flows. Do not claim an integration is live when it is
 mocked.
 
-Traps this codebase has already hit, worth knowing before you add UI:
-
-- A controlled checkbox or select whose state only settles after a server round trip will thrash
-  under Playwright's `check()`/`selectOption()` retries. Assert on the server-rendered effect, not
-  on the control's own value.
-- Calling `setPointerCapture` on pointerdown inside an interactive stage retargets pointerup and
-  silently kills clicks on child buttons. Capture only once a drag threshold is crossed.
-- `<fieldset>`/`<legend>` renders the legend inside the border and broke the filter panel. Use
-  `role="group"` with a heading instead.
-- On Android Chrome the layout viewport widens to the document's overflow, so a page that
-  overflows by 17px renders zoomed out. Two causes seen here: a horizontally scrolling row whose
-  min-content inflated an `auto` grid column (fix: `grid-cols-[minmax(0,1fr)]` + `min-w-0`, and
-  `contain-inline-size` on the scroll row), and `sr-only` labels inside a table escaping their
-  `overflow-x-auto` wrapper because it was not positioned (fix: make the wrapper `relative`).
-  `e2e` measures `innerWidth` at 390px on every route to keep this from regressing.
-- A running `vinext dev` keeps Vite's dependency pre-bundle; after adding or removing a package
-  it 500s on the stale entry until restarted.
-- `D1Database.exec()` splits its input on `\n`, not `;` — a multi-line `CREATE TABLE` breaks
-  into unparsable fragments. Use `batch()` with one prepared statement per line instead.
-- `env` bindings from `cloudflare:workers` are only reliable once a request is in flight; resolve
-  them inside the function that needs them, never cache the result at module scope.
-- A Server Component can't pass a plain function to a Client Component — only a `'use server'`
-  action, or data. `<OrderedStringList iconFor={someHelper}>` throws "Functions cannot be passed
-  directly to Client Components" the moment the parent rendering it is a Server Component; the fix
-  is either to have the client component import the helper itself, or to only ever pass it from
-  another client component (a function prop crossing the RSC boundary the other way, client to
-  client, is fine).
-- In a Playwright test, waiting on page content that's already true before an action's server round
-  trip finishes (e.g. "No bookings yet" when the suite never creates one) lets `actUntil` return
-  before that round trip is actually done — a `page.goto` right after can then race or cancel it.
-  Wait on a signal that only becomes true once the action itself resolves (a button's own
-  disabled → enabled round trip, a `role="status"` message change), not on content the action
-  happens not to touch.
-- Every export of a `'use client'` file is a client reference, a plain helper function included —
-  not just its components. A Server Component that imports one and *calls* it directly (not as
-  JSX) throws "Unexpectedly client reference export '…' is called on server" at render time, which
-  neither `tsc` nor `oxlint` catches, only an actual page render does. If a plain function needs to
-  be shared with a Server Component, put it in a module with no `'use client'` at the top — it
-  needs one only if it uses hooks or a browser API.
+Before touching UI, skim `docs/TROUBLESHOOTING.md` — traps this codebase has already hit (pointer
+capture, the RSC client boundary, the Android viewport bug, D1's `exec()`/`batch()` quirks, and
+more), so you don't re-discover them. Add to it when you find a new one.

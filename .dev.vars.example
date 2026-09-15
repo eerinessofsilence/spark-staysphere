@@ -1,0 +1,8 @@
+# Local secrets for `vinext dev` / `wrangler dev`, read through the Cloudflare `env` binding
+# (lib/infrastructure/cloudflare-env.ts), not process.env — which is why this is a separate file
+# from .env.example. Copy to `.dev.vars` (gitignored) and fill in what you need; both are optional.
+
+# AI concierge — the room-search interpreter and voice transcription. Unset, search still answers
+# through a deterministic keyword interpreter, and the mic reports transcription as unavailable
+# rather than failing silently. See TECH.md's "AI concierge" section and README's Quick start.
+OPENAI_API_KEY=sk-...
