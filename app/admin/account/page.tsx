@@ -11,7 +11,6 @@ export default function AccountPage() {
     <AdminPage width="narrow">
       <AdminPageHeader
         title="Account"
-        compact
         actions={<span className={tag()}>Preview — changes aren't saved in this demo</span>}
       />
       <div className="mt-10">

@@ -25,7 +25,6 @@ export default async function HotelContentPage() {
     <AdminPage width="narrow">
       <AdminPageHeader
         title="Hotel Settings"
-        compact
         actions={
           <a href="/" target="_blank" rel="noreferrer" className={pill('secondary')}>
             Open the arrival page

@@ -55,7 +55,6 @@ export default async function AdminOverviewPage() {
     <AdminPage>
       <AdminPageHeader
         title="Dashboard"
-        compact
         actions={
           <Link href="/admin/chessboard" className={pill('primary')}>
             Open Property Desk

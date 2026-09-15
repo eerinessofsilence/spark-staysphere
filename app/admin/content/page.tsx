@@ -41,7 +41,6 @@ export default async function RoomTypesPage() {
       <AdminPageHeader
         // A non-breaking hyphen: at phone size the title otherwise breaks inside "add-ons".
         title="Rooms & add‑ons"
-        compact
         actions={
           <>
             <a href="/rooms" target="_blank" rel="noreferrer" className={pill('secondary')}>

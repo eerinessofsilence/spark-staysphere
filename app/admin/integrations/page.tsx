@@ -55,7 +55,6 @@ export default async function IntegrationsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Integrations"
-        compact
         actions={<span className={tag()}>Mock adapters — nothing is connected to a real system</span>}
       />
 

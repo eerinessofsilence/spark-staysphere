@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { SectionLabel } from '@/components/site/section-label';
 import { cn } from '@/lib/utils';
 
 export function AdminPage({
@@ -22,41 +21,29 @@ export function AdminPage({
   );
 }
 
+/**
+ * One size for every admin page's title, section landing or detail alike —
+ * the "Compact heading" token (`DESIGN_SYSTEM.md`'s type scale), level with
+ * its actions, the way `/admin`'s dashboard has always set it. A room's name
+ * or a booking reference used to run at display size on the theory that the
+ * text was "the record, not a repeat of the nav" — but next to every other
+ * page in the sidebar it just read as a heading that had forgotten which app
+ * it was in.
+ */
 export function AdminPageHeader({
   title,
-  label,
   description,
   actions,
-  compact = false,
 }: {
   title: string;
-  label?: string;
   description?: ReactNode;
   actions?: ReactNode;
-  /**
-   * The sidebar nav already names the section a guest is on, so a section
-   * landing page doesn't repeat it at display size — the "Compact heading"
-   * token (`DESIGN_SYSTEM.md`'s type scale) instead, level with its actions.
-   * Detail pages (a booking reference, a room name) keep the full title:
-   * that text is the record, not a repeat of the nav.
-   */
-  compact?: boolean;
 }) {
-  if (compact) {
-    return (
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display text-2xl">{title}</h1>
-        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
-      </header>
-    );
-  }
-
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0 max-w-3xl">
-        {label ? <SectionLabel>{label}</SectionLabel> : null}
-        <h1 className={cn('text-display text-5xl sm:text-6xl', label && 'mt-4')}>{title}</h1>
-        {description ? <p className="mt-4 text-base text-muted-foreground">{description}</p> : null}
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0">
+        <h1 className="text-display text-2xl">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
     </header>

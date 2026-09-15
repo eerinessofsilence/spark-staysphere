@@ -23,7 +23,6 @@ export default async function PhysicalRoomsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Rooms & add‑ons"
-        compact
         actions={
           types.length > 0 ? (
             <Link href="/admin/content/units/new" className={pill('primary')}>

@@ -56,7 +56,7 @@ export default async function RatesPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Rates & availability" compact />
+      <AdminPageHeader title="Rates & availability" />
 
       <section aria-label="Rates and availability by room type" className="mt-6 rounded-[28px] bg-card shadow-soft">
         <div

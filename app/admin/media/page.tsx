@@ -73,7 +73,6 @@ export default async function MediaLibraryPage({
     <AdminPage>
       <AdminPageHeader
         title="Media library"
-        compact
         actions={
           <button type="button" disabled className={pill('secondary')}>
             <ArrowUpTrayIcon className="size-4" aria-hidden="true" />

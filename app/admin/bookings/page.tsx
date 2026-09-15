@@ -86,7 +86,7 @@ export default async function BookingsPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Reservations" compact />
+      <AdminPageHeader title="Reservations" />
 
       <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <nav aria-label="Filter reservations by stay" className="-mx-1 flex flex-wrap gap-2 px-1">

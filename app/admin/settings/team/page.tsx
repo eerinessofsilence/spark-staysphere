@@ -12,7 +12,6 @@ export default function TeamPage() {
     <AdminPage>
       <AdminPageHeader
         title="Team & roles"
-        compact
         actions={<span className={tag()}>Demo — sign-in and roles arrive with admin auth</span>}
       />
       <div className="mt-10">

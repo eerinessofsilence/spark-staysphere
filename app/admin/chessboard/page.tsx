@@ -49,7 +49,6 @@ export default async function ChessboardPage({ searchParams }: { searchParams: P
     <AdminPage>
       <AdminPageHeader
         title="Property Desk"
-        compact
         actions={
           <Link href="/admin/bookings" className={pill('secondary')}>
             All reservations

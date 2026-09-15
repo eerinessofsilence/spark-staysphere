@@ -36,7 +36,6 @@ export default async function AddOnsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Rooms & add‑ons"
-        compact
         actions={
           <Link href="/admin/content/add-ons/new" className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />

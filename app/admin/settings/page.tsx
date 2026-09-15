@@ -34,7 +34,6 @@ export default async function BrandSettingsPage() {
     <AdminPage>
       <AdminPageHeader
         title="Brand & domain"
-        compact
         actions={<span className={tag()}>Preview — changes aren't saved in this demo</span>}
       />
       <BrandSettings
