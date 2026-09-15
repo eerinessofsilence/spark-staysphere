@@ -43,7 +43,7 @@ export async function updateBaseRateAction(
   if (result.ok) {
     revalidateContent();
     revalidatePath('/admin/rates');
-    revalidatePath('/admin/chessboard');
+    revalidatePath('/admin/tape-chart');
   }
   return formStateFromResult(result, 'Saved — live on the site.');
 }

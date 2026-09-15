@@ -21,7 +21,7 @@ Build a white-label interactive hotel discovery and direct-booking product. The 
 
 ## Commit conventions
 
-Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message like "update files" or "fix stuff". Format: `type(scope): summary` in the imperative mood, e.g. `fix(booking-service): recheck price before confirming`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff.
+Always write [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood — `type(scope): summary`, e.g. `fix(booking-service): recheck price before confirming`. Never a bare, generic message. See CONTRIBUTING.md for the full convention, the branch naming pattern, and the pre-PR checklist.
 
 ## Commands
 
@@ -29,10 +29,14 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 npm install
 npm run dev
 npm run typecheck
+npm run test         # vitest: lib/domain unit tests
 npm run lint
 npm run build
+npm run check:docs   # fails if a doc names a file that no longer exists
 npm run test:e2e     # Playwright golden path; needs `npx playwright install chromium` once
 ```
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request.
 
 ## Architecture
 
@@ -42,23 +46,25 @@ npm run test:e2e     # Playwright golden path; needs `npx playwright install chr
   `app/admin/content/`: the CMS — six routes (overview, hotel, room `[id]`/`new`, add-on
   `[id]`/`new`), each `export const dynamic = 'force-dynamic'` and its own `actions.ts`; `_lib/`
   holds the shared `revalidateContent()` helper and the `ContentResult` → form-state mapping.
+- `components/view-360/`: the building spinner and the panorama sphere — one module, imported only
+  from `@/components/view-360` (lint fails a deep import); its README.md is the working reference.
 - `components/`: reusable UI primitives (`ui/`) and product components (`hotel/`, `rooms/` —
   including `rooms/floor-plan/`, `booking/`, `search/`, `site/`, `admin/`, `admin/content/` — the
   CMS's form shell (`ContentForm`, `Field`), the reorderable-list and media-picker editors, and the
   derived-value fields (`RoomNameField`, `AddOnNameField`) that surface
   `roomCategory`/`featureIcon`/`addOnIcon` live next to the field they're derived from;
-  `admin/chessboard/` and `admin/operations/` — tables, status badges, the occupancy chart, the
+  `admin/tape-chart/` and `admin/operations/` — tables, status badges, the occupancy chart, the
   rate form and booking actions).
 - `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`,
   `inventory.spec.ts` for booking an exact room over the API, and `cabinet.spec.ts` for the floor
-  plan, the chessboard and the bookings desk.
+  plan, the tape chart and the bookings desk.
 - `lib/domain/`: Zod schemas, inferred types, and ports — including `CatalogContentPort` (the
   CMS's storage boundary), `MediaLibraryPort`, `catalog-overlay.ts`'s seed+overlay merge, and
   `media.ts`'s media-asset predicates, and `room-units.ts` — physical rooms derived from room types
   and `allocateRoomType`, the one rule for who is in which room each night.
 - `lib/application/`: use cases and business rules, including `content-service.ts` — every CMS
   business rule (slugs, references, currency, media, concurrency), never in a component or a
-  server action — and `inventory-service.ts`, the floor plan, the chessboard and a booking's room.
+  server action — and `inventory-service.ts`, the floor plan, the tape chart and a booking's room.
 - `lib/application/container.ts`: the composition root — the only module allowed to import
   `lib/infrastructure`.
 - `lib/infrastructure/`: mock data and adapter/repository implementations, including the CMS
@@ -74,36 +80,6 @@ Run typecheck, lint, build, and the e2e suite when a flow changed. Include loadi
 unavailable, and success states for new flows. Do not claim an integration is live when it is
 mocked.
 
-Two traps this codebase has already hit, worth knowing before you add UI:
-
-- A controlled checkbox or select whose state only settles after a server round trip will thrash
-  under Playwright's `check()`/`selectOption()` retries. Assert on the server-rendered effect, not
-  on the control's own value.
-- Calling `setPointerCapture` on pointerdown inside an interactive stage retargets pointerup and
-  silently kills clicks on child buttons. Capture only once a drag threshold is crossed.
-- `<fieldset>`/`<legend>` renders the legend inside the border and broke the filter panel. Use
-  `role="group"` with a heading instead.
-- On Android Chrome the layout viewport widens to the document's overflow, so a page that
-  overflows by 17px renders zoomed out. Two causes seen here: a horizontally scrolling row whose
-  min-content inflated an `auto` grid column (fix: `grid-cols-[minmax(0,1fr)]` + `min-w-0`, and
-  `contain-inline-size` on the scroll row), and `sr-only` labels inside a table escaping their
-  `overflow-x-auto` wrapper because it was not positioned (fix: make the wrapper `relative`).
-  `e2e` measures `innerWidth` at 390px on every route to keep this from regressing.
-- A running `vinext dev` keeps Vite's dependency pre-bundle; after adding or removing a package
-  it 500s on the stale entry until restarted.
-- `D1Database.exec()` splits its input on `\n`, not `;` — a multi-line `CREATE TABLE` breaks
-  into unparsable fragments. Use `batch()` with one prepared statement per line instead.
-- `env` bindings from `cloudflare:workers` are only reliable once a request is in flight; resolve
-  them inside the function that needs them, never cache the result at module scope.
-- A Server Component can't pass a plain function to a Client Component — only a `'use server'`
-  action, or data. `<OrderedStringList iconFor={someHelper}>` throws "Functions cannot be passed
-  directly to Client Components" the moment the parent rendering it is a Server Component; the fix
-  is either to have the client component import the helper itself, or to only ever pass it from
-  another client component (a function prop crossing the RSC boundary the other way, client to
-  client, is fine).
-- In a Playwright test, waiting on page content that's already true before an action's server round
-  trip finishes (e.g. "No bookings yet" when the suite never creates one) lets `actUntil` return
-  before that round trip is actually done — a `page.goto` right after can then race or cancel it.
-  Wait on a signal that only becomes true once the action itself resolves (a button's own
-  disabled → enabled round trip, a `role="status"` message change), not on content the action
-  happens not to touch.
+Before touching UI, skim `docs/TROUBLESHOOTING.md` — traps this codebase has already hit (pointer
+capture, the RSC client boundary, the Android viewport bug, D1's `exec()`/`batch()` quirks, and
+more), so you don't re-discover them. Add to it when you find a new one.

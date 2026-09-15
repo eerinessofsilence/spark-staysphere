@@ -58,7 +58,9 @@ test('a guest can book the exact room they picked', async ({ request }, testInfo
   }
   expect(chosenRoom, 'some Deluxe Sea View room should be free for the stay').not.toBe('');
 
-  const readBack = await request.get(`/api/bookings/${chosenReference}`);
+  const readBack = await request.get(
+    `/api/bookings/${chosenReference}?email=${encodeURIComponent(guest.email)}`,
+  );
   expect(readBack.ok()).toBeTruthy();
   const body = await readBack.json();
   expect((body.booking ?? body).unitNumber).toBe(chosenRoom);

@@ -216,8 +216,9 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Demo bookings live in the server process and disappear when it restarts. Keep this tab
-          open if you want to come back to {booking.reference}.
+          This is a demo booking, not a real one. There's no account yet — keep this page's link,
+          or the reference {booking.reference} and the email you booked with, if you want to find
+          it again.
         </p>
       </main>
       <SiteFooter />

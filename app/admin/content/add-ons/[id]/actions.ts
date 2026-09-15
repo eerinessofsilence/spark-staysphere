@@ -1,9 +1,11 @@
 'use server';
 
 import { contentService } from '@/lib/application/container';
+import type { SaleToggleResult } from '@/components/admin/content/add-on-sale-toggle';
 import { formStateFromError, formStateFromResult, parseJsonList, parseNumber, type ContentFormState } from '../../_lib/form-state';
 import { revalidateContent } from '../../_lib/revalidate';
 
+/** Saves the add-on's own fields. Whether it is on sale is not one of them — see `setAddOnOnSaleAction`. */
 export async function updateAddOnAction(
   id: string,
   _prevState: ContentFormState,
@@ -20,7 +22,6 @@ export async function updateAddOnAction(
     photos: photos.length > 0 ? photos : undefined,
     price: parseNumber(formData.get('price')),
     pricingUnit: String(formData.get('pricingUnit') ?? ''),
-    enabled: formData.get('enabled') === 'on',
   };
   const expectedVersion = Number(formData.get('version'));
 
@@ -29,8 +30,21 @@ export async function updateAddOnAction(
   return formStateFromResult(result, 'Add-on saved.');
 }
 
-export async function deleteAddOnAction(id: string): Promise<ContentFormState> {
-  const result = await contentService.deleteAddOn(id);
+/** The switch in the add-on page's header: acts at once, like the one in the add-on list. */
+export async function setAddOnOnSaleAction(id: string, enabled: boolean): Promise<SaleToggleResult> {
+  const result = await contentService.setAddOnEnabled(id, enabled);
+  if (!result.ok) return { ok: false, message: formStateFromError(result.error).message };
+  revalidateContent();
+  return {
+    ok: true,
+    message: enabled ? 'Back on sale.' : 'Withdrawn from sale.',
+    version: result.value.version,
+    previousVersion: result.value.previousVersion,
+  };
+}
+
+export async function deleteAddOnAction(id: string, expectedVersion: number): Promise<ContentFormState> {
+  const result = await contentService.deleteAddOn(id, expectedVersion);
   if (!result.ok) return formStateFromError(result.error);
   revalidateContent();
   return { status: 'success', message: 'Add-on removed.' };

@@ -9,8 +9,10 @@ export interface ContentFormState {
   status: 'idle' | 'success' | 'error';
   message: string;
   fieldErrors?: Record<string, string[]>;
-  /** The version now on the server — refreshes the form's hidden version field after a save or a conflict. */
+  /** The version now on the server — refreshes the form's version after a save or a conflict. */
   version?: number;
+  /** Someone else saved first: the form offers to keep these edits or load theirs. */
+  conflict?: boolean;
 }
 
 export const idleFormState: ContentFormState = { status: 'idle', message: '' };
@@ -34,9 +36,9 @@ export function formStateFromError(error: ContentError): ContentFormState {
     case 'conflict':
       return {
         status: 'error',
-        message:
-          'Someone else saved changes to this while you were editing. Reload the page to see the latest version, then save again.',
+        message: 'Someone else saved a newer version while you were editing. Your changes are still in the form.',
         version: error.currentVersion,
+        conflict: true,
       };
     case 'not_found':
       return { status: 'error', message: 'This no longer exists — it may have been removed or reset.' };

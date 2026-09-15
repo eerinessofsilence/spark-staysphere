@@ -14,13 +14,23 @@ export function roomNumber(floor: number, position: number): string {
   return `${floor === 0 ? 'G' : floor}${String(position).padStart(2, '0')}`;
 }
 
+/**
+ * Room numbers in the order a hotel team reads them (G07 before 101, 2 before
+ * 12), not alphabetically ('12' before '2'). Shared by the tape chart, the
+ * floor plan, and the CMS's renumbering rules — see `inventory-service.ts`
+ * and `content-service.ts`.
+ */
+export function compareRoomNumbers(a: string, b: string): number {
+  return a.localeCompare(b, 'en', { numeric: true });
+}
+
 /** The floor a room number names: `305` is on the 3rd floor, `G04` on the ground floor. */
 export function floorOf(number: string): number {
   return number.startsWith('G') ? 0 : Number(number.slice(0, -2));
 }
 
 export function byRoomNumber(a: { number: string }, b: { number: string }): number {
-  return a.number.localeCompare(b.number, 'en', { numeric: true });
+  return compareRoomNumbers(a.number, b.number);
 }
 
 /** The first free number on a floor, counting up from position 01. */

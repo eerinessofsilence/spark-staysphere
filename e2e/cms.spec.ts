@@ -48,6 +48,16 @@ async function resetDemoState(page: Page) {
   await expect(button).toBeEnabled({ timeout: 15_000 });
 }
 
+/** A form's Save button stays disabled until React has attached the form — the moment typing is safe. */
+async function formReady(page: Page, saveLabel: string) {
+  await expect(page.getByRole('button', { name: saveLabel })).toBeEnabled({ timeout: 20_000 });
+}
+
+/** A form with unsaved edits asks before a reload; these tests throw those edits away on purpose. */
+function acceptLeaving(page: Page) {
+  page.on('dialog', (dialog) => dialog.accept());
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('reset before the CMS suite starts', async ({ page }) => {
@@ -63,6 +73,7 @@ test('renaming a room and changing its rate shows up on /rooms, the room page, a
   const totalBefore = await summaryBefore.locator('.text-display').last().innerText();
 
   await page.goto('/admin/content/rooms/room_deluxe-sea');
+  await formReady(page, 'Save room');
   await page.locator('#room-name').fill('Seaside Deluxe Retreat');
   await actUntil(
     () => page.getByRole('button', { name: 'Save room' }).click(),
@@ -91,6 +102,47 @@ test('renaming a room and changing its rate shows up on /rooms, the room page, a
   expect(totalAfter).not.toEqual(totalBefore);
 });
 
+test('a failed save keeps what was typed and says so beside the button', async ({ page }) => {
+  acceptLeaving(page);
+  await page.goto('/admin/content/rooms/room_deluxe-sea');
+  await formReady(page, 'Save room');
+  const description = page.locator('#room-description');
+  await description.fill('Typed just before a save that fails.');
+  await page.locator('#room-areaM2').fill('');
+
+  await actUntil(
+    () => page.getByRole('button', { name: 'Save room' }).click(),
+    () => expect(page.getByText('Not saved — 1 field needs attention.')).toBeVisible({ timeout: 5_000 }),
+  );
+  await expect(page.getByText('Enter the room size in m².')).toBeInViewport();
+  await expect(page.locator('#room-areaM2')).toBeFocused();
+  // Nothing typed was thrown away, and the empty field was not refilled under its own error.
+  await expect(description).toHaveValue('Typed just before a save that fails.');
+  await expect(page.locator('#room-areaM2')).toHaveValue('');
+
+  await page.reload();
+  await expect(page.locator('#room-description')).not.toHaveValue('Typed just before a save that fails.');
+});
+
+test('leaving a form with unsaved changes asks first', async ({ page }) => {
+  await page.goto('/admin/content/rooms/room_deluxe-sea');
+  await formReady(page, 'Save room');
+  const description = page.locator('#room-description');
+  await description.fill('A change nobody saved.');
+  await expect(page.getByText('Unsaved changes')).toBeVisible();
+
+  const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link');
+  const dialog = page.getByRole('dialog', { name: 'Leave without saving?' });
+  await breadcrumb.click();
+  await dialog.getByRole('button', { name: 'Stay on this page' }).click();
+  await expect(page).toHaveURL(/\/admin\/content\/rooms\/room_deluxe-sea$/);
+  await expect(description).toHaveValue('A change nobody saved.');
+
+  await breadcrumb.click();
+  await dialog.getByRole('button', { name: 'Leave without saving' }).click();
+  await expect(page).toHaveURL(/\/admin\/content$/);
+});
+
 test('hiding a room removes it from the catalog and 404s its page; showing it restores both', async ({
   page,
 }) => {
@@ -99,6 +151,11 @@ test('hiding a room removes it from the catalog and 404s its page; showing it re
     () => page.getByRole('button', { name: 'Hide from the site' }).click(),
     () => expect(page.getByText('Room hidden from the site.')).toBeVisible({ timeout: 5_000 }),
   );
+
+  // The hide just moved the room's version on; saving the form next must not be read as someone else's edit.
+  await page.getByRole('button', { name: 'Save room' }).click();
+  await expect(page.getByText('Room saved.')).toBeVisible();
+  await expect(page.getByText(/Someone else saved/)).toHaveCount(0);
 
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
   await expect(
@@ -118,13 +175,17 @@ test('hiding a room removes it from the catalog and 404s its page; showing it re
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
 
-test('creating an add-on offers it in a room\'s picker; withdrawing it removes the offer', async ({ page }) => {
+test('creating an add-on offers it in a room\'s picker; withdrawing it removes the offer; removing it returns to the list', async ({
+  page,
+}) => {
   await page.goto('/admin/content/add-ons/new');
+  await formReady(page, 'Create add-on');
   await page.locator('#addon-name').fill('Sunset Kayak Tour');
   await page.locator('#addon-description').fill('A guided kayak tour at golden hour, back before dinner.');
   await page.locator('#addon-price').fill('55');
   await page.getByRole('button', { name: 'Create service' }).click();
-  await expect(page).toHaveURL(/\/admin\/content\/add-ons\/addon_sunset-kayak-tour/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/admin\/content\/add-ons\/addon_sunset-kayak-tour\?created=1/, { timeout: 10_000 });
+  await expect(page.getByText('Add-on created.')).toBeVisible();
 
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
   const card = page.getByRole('button', { name: /Open .*Sunset Kayak Tour/i });
@@ -142,38 +203,57 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
     page.getByRole('complementary', { name: 'Your stay' }).getByText('Sunset Kayak Tour'),
   ).toBeVisible();
 
+  // On sale is a switch that acts at once, the same on the add-on's page as in the list.
   await page.goto('/admin/content/add-ons/addon_sunset-kayak-tour');
-  const enabledSwitch = page.getByRole('switch', { name: 'On sale' });
+  const onSale = page.getByRole('switch', { name: 'On sale' });
   await actUntil(
-    () => enabledSwitch.click(),
-    () => expect(enabledSwitch).toHaveAttribute('aria-checked', 'false', { timeout: 3_000 }),
-  );
-  await actUntil(
-    () => page.getByRole('button', { name: 'Save add-on' }).click(),
-    () => expect(page.getByText('Add-on saved.')).toBeVisible({ timeout: 5_000 }),
+    async () => {
+      if ((await onSale.getAttribute('aria-checked')) !== 'false') await onSale.click();
+    },
+    () => expect(page.getByText('Withdrawn from sale.')).toBeVisible({ timeout: 5_000 }),
   );
 
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
   await expect(page.getByText('Sunset Kayak Tour')).toHaveCount(0);
+
+  // A demo add-on offers no delete at all; one made in the CMS is removed from its dialog.
+  await page.goto('/admin/content/add-ons/addon_late');
+  await expect(page.getByRole('button', { name: 'Remove Late check-out' })).toHaveCount(0);
+  await expect(page.getByText(/Came with the demo catalog/)).toBeVisible();
+
+  await page.goto('/admin/content/add-ons/addon_sunset-kayak-tour');
+  const removeDialog = page.getByRole('dialog', { name: 'Remove Sunset Kayak Tour?' });
+  await actUntil(
+    () => page.getByRole('button', { name: 'Remove Sunset Kayak Tour' }).click(),
+    () => expect(removeDialog).toBeVisible({ timeout: 3_000 }),
+  );
+  await removeDialog.getByRole('button', { name: 'Remove add-on' }).click();
+  await expect(page).toHaveURL(/\/admin\/content\?removed=/);
+  await expect(page.getByText('“Sunset Kayak Tour” was removed.')).toBeVisible();
 });
 
-test('a negative price and a duplicate slug are both rejected, and nothing is saved', async ({ page }) => {
+test('a negative price and a duplicate page address are both rejected, and nothing is saved', async ({ page }) => {
+  acceptLeaving(page);
   await page.goto('/admin/content/rooms/new');
+  await formReady(page, 'Create room type');
   await page.locator('#room-name').fill('Test Duplicate Room');
   await page.locator('#room-slug').fill('deluxe-sea');
-  await page.locator('#room-description').fill('A room used only to test slug uniqueness.');
+  await page.locator('#room-description').fill('A room used only to test address uniqueness.');
   await page.locator('#room-areaM2').fill('30');
   await page.locator('#room-floor').fill('2');
   await page.locator('#room-capacity').fill('2');
   await page.getByRole('button', { name: 'Create room type' }).click();
-  await expect(page.getByText('That slug is already in use.')).toBeVisible();
+  await expect(page.getByText('That page address is already in use.')).toBeVisible();
   await expect(page).toHaveURL(/\/admin\/content\/rooms\/new/);
+  // The failed create kept every field as it was typed.
+  await expect(page.locator('#room-description')).toHaveValue('A room used only to test address uniqueness.');
 
   await page.goto('/admin/content/rooms/room_deluxe-sea');
+  await formReady(page, 'Save rate');
   const priceField = page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice');
   await priceField.fill('-10');
   await page.getByRole('button', { name: 'Save rate' }).click();
-  await expect(page.getByText('Enter a price of 0 or higher.')).toBeVisible();
+  await expect(page.getByText('Enter a price greater than 0.')).toBeVisible();
 
   // Reload and check the server-rendered value, not the field the failed submit left behind.
   await page.reload();
@@ -205,7 +285,7 @@ test("a row's menu deletes a CMS add-on after confirming, and won't delete a see
   await expect(deleteItem).toHaveAttribute('aria-disabled', 'true');
 });
 
-test('a room is added under its room type, shows on the Property Desk, and can be removed', async ({ page }) => {
+test('a room is added under its room type, shows on the tape chart, and can be removed', async ({ page }) => {
   await page.goto('/admin/content/units/new?type=room_deluxe-sea');
   const number = page.locator('#unit-number');
   await expect(number).not.toHaveValue('');
@@ -220,7 +300,7 @@ test('a room is added under its room type, shows on the Property Desk, and can b
   await expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 10_000 });
   await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toBeVisible();
 
-  await page.goto('/admin/chessboard?type=room_deluxe-sea');
+  await page.goto('/admin/tape-chart?type=room_deluxe-sea');
   await expect(page.getByRole('group', { name: 'Room 499' })).toBeVisible();
 
   await page.goto('/admin/content/units/unit_499');
@@ -237,7 +317,7 @@ test('a facility added under Hotel Settings shows on the arrival page', async ({
   const tab = page.getByRole('tab', { name: 'Facilities' });
   await actUntil(
     () => tab.click(),
-    () => expect(page.getByRole('tabpanel', { name: 'Facilities' })).toBeVisible({ timeout: 2_000 }),
+    () => expect(page.getByRole('heading', { name: 'Facilities' })).toBeVisible({ timeout: 2_000 }),
   );
 
   // Picking an icon suggests the name; typing over it keeps the icon.

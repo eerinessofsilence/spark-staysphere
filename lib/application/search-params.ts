@@ -1,6 +1,6 @@
 import { addDays, format, isValid, parseISO } from 'date-fns';
 import { roomCategories, type RoomCategory } from '../domain/room-attributes';
-import { ROOM_NUMBER } from '../domain/schemas';
+import { MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, MIN_CHILDREN, ROOM_NUMBER } from '../domain/schemas';
 import type { RoomType, StayCriteria } from '../domain/schemas';
 import { defaultRoomFilters, type RoomFilters, type SortOrder } from './catalog-service';
 
@@ -62,18 +62,31 @@ function toInt(value: string | undefined, fallback: number | null): number | nul
 }
 
 /** Exported so callers outside a URL (the assistant's sanitiser) can reuse the one check. */
+/**
+ * `href` with the guest's stay carried along, so a link out of the arrival
+ * screen lands on the same dates. The stay's keys win over any the link
+ * already names; the link's own keys (`view=sea`, say) are kept.
+ */
+export function withStayQuery(href: string, stayQuery?: string): string {
+  const [path = '', query] = href.split('?');
+  const params = new URLSearchParams(query ?? '');
+  if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+}
+
 export function isIsoDate(value: string | undefined | null): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value));
 }
 
 /** The one adults clamp, shared by URL parsing and the assistant's sanitiser. */
 export function clampAdults(value: number): number {
-  return Math.min(8, Math.max(1, Math.round(value)));
+  return Math.min(MAX_ADULTS, Math.max(MIN_ADULTS, Math.round(value)));
 }
 
 /** The one children clamp, shared by URL parsing and the assistant's sanitiser. */
 export function clampChildren(value: number): number {
-  return Math.min(6, Math.max(0, Math.round(value)));
+  return Math.min(MAX_CHILDREN, Math.max(MIN_CHILDREN, Math.round(value)));
 }
 
 export function toIsoDate(date: Date): string {

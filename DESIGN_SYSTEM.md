@@ -8,11 +8,13 @@ second.
 
 ## Direction
 
-Photography-led, warm, and quiet by day; near-black with one electric lime by night — the
-whole product runs on the night scheme now, `.dark` set once on `<html>`, the same tokens
-under different values. Ink does the work by day, lime by night; large geometric display
-type; pill-shaped controls; frosted panels over photographs. The references are premium hotel
-and residential sites, not SaaS dashboards.
+Photography-led, warm, and quiet by day; near-black with one electric lime by night — the same
+tokens under different values, `.dark` set once on `<html>` for whichever scheme applies. Light is
+the default a first-time visitor gets (`lib/theme.ts`'s `DEFAULT_THEME`); the theme toggle
+(`components/site/theme-toggle.tsx`) offers light, dark, or the visitor's own OS preference, stored
+per browser. Ink does the work by day, lime by night; large geometric display type; pill-shaped
+controls; frosted panels over photographs. The references are premium hotel and residential sites,
+not SaaS dashboards.
 
 ## Rules
 
@@ -32,11 +34,11 @@ These are enforced in review and, where possible, by lint.
 4. **No schematic or procedural illustration.** Rooms and the property are shown with
    photography only. Stock stands in for the property's own until launch; every file is local
    (`public/images`) and credited in `public/images/CREDITS.md`. Nothing loads from an external
-   image host at runtime. The one exception is the building model (`HotelModel`): a turnable
-   3D model of the property is the product's own promise, and it is built from the property's
-   real massing (`Hotel.model`) or its own GLB — never a decorative render. It sits in its own
-   section below the arrival photograph, never in place of it, and its floors link into the
-   catalog; the model's colours are the page's tokens, and the accent lights the picked floor.
+   image host at runtime. The one exception is the building spinner (`BuildingSpinner`, rendered
+   from `Hotel.spinner`'s baked frames — never procedural primitive geometry, see
+   `SPINNER_SPEC.md`): a draggable turn around the property is the product's own promise. It
+   replaces the arrival stage's facade/roof/cove photo in place, not a section added below it,
+   and its hotspots link into the catalog.
 5. **Two icon sets, split by job.** *Interface* marks — calendar, guests, search, chevrons,
    close, check, plus/minus, fullscreen, spinner — are **Heroicons outline**
    (`@heroicons/react/24/outline`), stroked and legible down to 14px, where a filled glyph
@@ -77,10 +79,10 @@ CSS variables live in `app/globals.css`; components consume tokens, never near-d
 | Accent | `#B8603A` | `bg-accent`, `text-accent` | Section-label dot, focus ring, active marks |
 | Accent strong | `#9A4E2C` | `text-accent-strong` | Accent text on light surfaces, savings, italic phrase |
 | Accent soft | `#F4E6DD` | `bg-accent-soft` | Accent-tinted notice backgrounds |
-| Muted text | `#6B6B66` | `text-muted-foreground` | Secondary copy, labels |
+| Muted text | `#66665F` | `text-muted-foreground` | Secondary copy, labels |
 | Border | `#DDD9D0` | `border-border` | Hairlines and control borders |
 | Success | `#2E7D5B` | `text-success` | Available, confirmed |
-| Warning | `#B4711C` | `text-warning` | Limited inventory, price change |
+| Warning | `#965D0D` | `text-warning` | Limited inventory, price change |
 | Danger | `#C4473A` | `text-danger` | Fully booked, failed payment |
 | Primary hover | `#2B2B2B` | `hover:bg-primary-hover` | The primary pill's hover; lime `#C2EC2E` by night |
 | Raised surface | `#FFFFFF` | `.surface-raised` | The phone stay search — the one panel that stays light (`#F4F2EC`) by night, with `--surface-raised-foreground` for its text |
@@ -213,7 +215,12 @@ free-hand a width or a column track.
   around both, which on a phone was a grey ring around an ink dot. The pressed lens fills with
   ink. Tapping opens a frosted card with the description and one CTA.
 - Room galleries show one photograph at a time with pill tabs (thumbnail + label), paging
-  arrows, a `01 / 04` counter, and fullscreen.
+  arrows, and fullscreen — no counter, the tabs already name every view. A 360° capture is one
+  more tab (a globe instead of a thumbnail), also reachable from a glass "360° view" pill on the
+  photograph itself; over the sphere the paging hides, since it would swallow the drag.
+- The building spinner and the panorama sphere (`components/view-360/`) use the same marker and
+  card language as the flat photos: lens markers, a frosted card beside the marker from `sm`, the
+  product's sheet below it, and an ink turn-control pill — never the library's own chrome.
 - Photographs always carry `width`/`height` to avoid layout shift, and `loading="lazy"` unless
   they are the arrival hero.
 
@@ -270,7 +277,7 @@ free-hand a width or a column track.
   is saved and reloaded.
 - **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
   shell rather than the guest header — a 28px card sidebar on a desk (brand, the property,
-  navigation grouped as Operations, Content and Settings, the guest-site link, the signed-in
+  navigation grouped as Operations and Content, the guest-site link, the signed-in
   account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
   current page takes the primary fill, the way the catalog's layout segment marks its active
   option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
@@ -285,7 +292,7 @@ free-hand a width or a column track.
     on the dashboard are four cards on the same 28px surface as the chart beside them: a short
     label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
     admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
-  - **The chessboard** (`components/admin/chessboard/`) is one row per door, grouped by room type,
+  - **The tape chart** (`components/admin/tape-chart/`) is one row per door, grouped by room type,
     one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
     when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
     tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is
@@ -294,6 +301,16 @@ free-hand a width or a column track.
     × doors, sea side and town side. A cell's surface says its state for the stay being searched —
     sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
     it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
+  - **CMS forms** (`components/admin/content/`) keep their button bar in view: a 28px-radius bar
+    that sticks to the bottom of the screen while its form is on it, holding the primary Save pill
+    and one status line — "Unsaved changes" with an accent dot, "Not saved — 1 field needs
+    attention" with a "Show me" that jumps to it, or the success message until the next edit. A flag
+    that flips one thing (hide a room, withdraw an add-on) is a switch or pill that acts at once and
+    offers Undo beside its message; it never sits inside a form that waits for Save. A delete is an
+    icon button shown only where a delete is allowed — otherwise the reason, in muted text — and it
+    asks in the product `Modal`, never the browser's `confirm`. List controls are 44px on a phone.
+    A hidden room shows a short numbered checklist of what it still needs before it can go on the
+    site.
 
 ## Motion
 
@@ -304,19 +321,25 @@ free-hand a width or a column track.
   a desk's centred card fades in a touch smaller. Named properties only (`opacity`, `transform`),
   never `transition-all`: a panel's own class can change its width or radius at a breakpoint, and
   that has no business animating just because the dialog opened.
-- Nothing else animates. In particular: no reveal-on-scroll for headings or sections. That is the
-  same genre of template motion rule 3 already bans in cards — a staggered fade-up is exactly what
-  the first, generic pass of this product did, and the read is identical whether the cliché is a
-  visual one or a motion one.
-- **The one scoped exception**: the AI room finder's orbs (`components/assistant/thinking-orbs.tsx`)
+- Nothing else animates by default. A staggered fade-up on every card or section on scroll is the
+  same genre of template motion rule 3 already bans in cards — the read is identical whether the
+  cliché is a visual one or a motion one. There are two scoped, deliberate exceptions to "nothing
+  else animates", both below; a template-motion request that doesn't match one of them should
+  still be refused on rule 3's terms.
+- **Exception one — the arrival page's headings and sections** (`components/site/reveal.tsx`'s
+  `Reveal`). Unlike the banned pattern, this fires once per element, the first time it crosses into
+  view, not on every scroll pass, and the hidden state lives in CSS gated on the document being
+  scripted (a `.js` class the theme's own head script sets), so a page that cannot run the
+  `IntersectionObserver` never has its copy hidden in the first place. `prefers-reduced-motion`
+  skips straight to the shown state. Used only on `/`; a section elsewhere that wants the same
+  arrival feel reuses `Reveal` rather than hand-rolling a second observer.
+- **Exception two**: the AI room finder's orbs (`components/assistant/thinking-orbs.tsx`)
   animate continuously while listening, transcribing, or thinking. This is not decoration — it is
   the product's only channel for a machine state that has no other visible signal, and every state
   it represents also carries its own text in a `role="status"` region, so the animation is never
   the only thing saying what is happening. It stays inside the assistant panel, uses only
   `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
   the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
-  Nothing else in the product gets this exception; a template-motion request elsewhere should still
-  be refused on rule 3's terms.
 
 ## Accessibility
 

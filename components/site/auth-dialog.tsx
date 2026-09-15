@@ -46,11 +46,15 @@ export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
   const [email, setEmail] = React.useState('');
   const [submitted, setSubmitted] = React.useState(false);
 
-  const close = () => {
+  // Stable across renders — Modal's escape/Tab-trap listener re-subscribes
+  // whenever this identity changes, and typing in the email field below
+  // re-rendered this component (and so recreated a plain arrow function
+  // here) on every keystroke.
+  const close = React.useCallback(() => {
     setSubmitted(false);
     setEmail('');
     onClose();
-  };
+  }, [onClose]);
 
   const active = mode ? copy[mode] : null;
 

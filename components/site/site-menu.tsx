@@ -17,6 +17,7 @@ import {
 import { AuthDialog, type AuthMode } from '@/components/site/auth-dialog';
 import { ThemeToggle } from '@/components/site/theme-toggle';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -83,14 +84,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
     };
   }, [open]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open, rendered]);
+  useScrollLock(rendered);
 
   const startAuth = (mode: AuthMode) => {
     setOpen(false);

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { formatMoney, formatPricingUnit } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
@@ -9,7 +10,7 @@ import { RowActions } from '@/components/admin/content/row-actions';
 import { AddOnToggle } from '@/components/admin/room-controls';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { deleteAddOnAction } from './[id]/actions';
+import { deleteAddOnAction, setAddOnOnSaleAction } from './[id]/actions';
 
 export const metadata: Metadata = {
   title: 'Services — Hotel admin | SPARK StaySphere 360',
@@ -26,7 +27,13 @@ function capitalize(value: string): string {
  * as its own sidebar item rather than a third tab under Rooms. The route stays
  * `/admin/content/add-ons`: the entity is still an add-on everywhere below.
  */
-export default async function ServicesPage() {
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const removed = typeof params.removed === 'string' ? params.removed : null;
   const addOns = await contentService.listAddOnsContent();
   const onSale = addOns.filter((addOn) => addOn.enabled).length;
   const topLevel = addOns.filter((addOn) => !addOn.parentId);
@@ -43,6 +50,15 @@ export default async function ServicesPage() {
           </Link>
         }
       />
+
+      {removed ? (
+        <p role="status" className="mt-6 flex items-center gap-3 rounded-3xl border border-success/30 bg-success/10 px-4 py-3 text-sm">
+          <CheckCircle weight="fill" className="size-5 shrink-0 text-success" aria-hidden="true" />
+          <span>
+            <span className="font-medium">“{removed}”</span> was removed.
+          </span>
+        </p>
+      ) : null}
 
       {addOns.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">No add-ons yet.</p>
@@ -102,12 +118,13 @@ export default async function ServicesPage() {
                             <Td className="align-middle">
                               {/* The 44px switch target sits on the row's text line, not below it. */}
                               <div className="-my-2.5">
-                                <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} />
+                                <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
                               </div>
                             </Td>
                             <Td className="align-middle text-right">
                               <RowActions
                                 id={addOn.id}
+                                version={addOn.version}
                                 label={addOn.name}
                                 editHref={href}
                                 deleteAction={deleteAddOnAction}

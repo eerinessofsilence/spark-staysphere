@@ -97,9 +97,9 @@ export default async function PhysicalRoomPage({ params }: { params: Promise<{ i
         </ContentForm>
       </div>
 
-      <Link href={`/admin/chessboard?type=${room.roomTypeId}`} className={pill('ghost', 'mt-4')}>
+      <Link href={`/admin/tape-chart?type=${room.roomTypeId}`} className={pill('ghost', 'mt-4')}>
         <TableCellsIcon className="size-4" aria-hidden="true" />
-        See it on the Property Desk
+        See it on the tape chart
       </Link>
     </AdminPage>
   );

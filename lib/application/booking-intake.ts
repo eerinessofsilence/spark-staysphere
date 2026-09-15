@@ -1,6 +1,11 @@
 import { BookingError } from './booking-service';
 import { bookingService, catalogService, DEMO_HOTEL_SLUG, inventoryService } from './container';
-import { paymentMethodSchema, ROOM_NUMBER, stayCriteriaSchema } from '../domain/schemas';
+import {
+  paymentMethodSchema,
+  ROOM_NUMBER,
+  stayCriteriaFieldsSchema,
+  stayCriteriaSchema,
+} from '../domain/schemas';
 import type { Booking, Quote, StayCriteria } from '../domain/schemas';
 import { z } from 'zod';
 
@@ -12,10 +17,10 @@ import { z } from 'zod';
 
 export const quoteRequestBodySchema = z.object({
   roomSlug: z.string().min(1),
-  checkIn: z.string().date(),
-  checkOut: z.string().date(),
-  adults: z.number().int().min(1).max(8),
-  children: z.number().int().min(0).max(6),
+  checkIn: stayCriteriaFieldsSchema.shape.checkIn,
+  checkOut: stayCriteriaFieldsSchema.shape.checkOut,
+  adults: stayCriteriaFieldsSchema.shape.adults,
+  children: stayCriteriaFieldsSchema.shape.children,
   addOnIds: z.array(z.string()).default([]),
 });
 

@@ -6,9 +6,9 @@ import { Field, Select, TextArea, TextInput } from './fields';
 import { PhotoListEditor } from './photo-list-editor';
 
 const PRICING_UNIT_LABELS: Record<AddOn['pricingUnit'], string> = {
-  per_stay: 'Per stay',
-  per_night: 'Per night',
-  per_guest: 'Per guest',
+  per_stay: 'Stay',
+  per_night: 'Night',
+  per_guest: 'Guest',
 };
 
 export interface AddOnFormValues {
@@ -25,16 +25,20 @@ export interface AddOnFormValues {
 /**
  * The fields shared by "new add-on" and "edit add-on" — everything in
  * `addOnSchema` the CMS lets a team edit. `topLevelAddOns` excludes `ownId`
- * so an add-on can never be offered as its own parent.
+ * so an add-on can never be offered as its own parent. On an existing add-on
+ * "On sale" is not a field: it sits in the page header and acts at once, the
+ * same as the switch in the add-on list.
  */
 export function AddOnFields({
   initial,
   topLevelAddOns,
   assets,
+  showOnSale = true,
 }: {
   initial: AddOnFormValues;
   topLevelAddOns: AddOn[];
   assets: MediaAsset[];
+  showOnSale?: boolean;
 }) {
   return (
     <div className="grid gap-6">
@@ -48,15 +52,25 @@ export function AddOnFields({
             <TextArea id="addon-description" name="description" defaultValue={initial.description} required />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="addon-category" name="category" label="Category" hint="Which counter it's sold from.">
+            <Field
+              id="addon-category"
+              name="category"
+              label="Category"
+              hint="Services and dining are listed separately on the room page."
+            >
               <Select id="addon-category" name="category" defaultValue={initial.category} required>
                 <option value="service">Service</option>
                 <option value="dining">Dining</option>
               </Select>
             </Field>
-            <Field id="addon-parentId" name="parentId" label="Parent add-on" hint="Optional. Offered only inside its parent, one level deep.">
+            <Field
+              id="addon-parentId"
+              name="parentId"
+              label="Offered inside"
+              hint="For an extra, like a return leg inside Airport transfer."
+            >
               <Select id="addon-parentId" name="parentId" defaultValue={initial.parentId ?? ''}>
-                <option value="">None — a top-level add-on</option>
+                <option value="">Nothing — sold on its own</option>
                 {topLevelAddOns.map((addOn) => (
                   <option key={addOn.id} value={addOn.id}>
                     {addOn.name}
@@ -79,7 +93,7 @@ export function AddOnFields({
           <Field id="addon-price" name="price" label="Price">
             <TextInput id="addon-price" name="price" type="number" min={0} step="0.01" defaultValue={initial.price} required />
           </Field>
-          <Field id="addon-pricingUnit" name="pricingUnit" label="Charged">
+          <Field id="addon-pricingUnit" name="pricingUnit" label="Price per">
             <Select id="addon-pricingUnit" name="pricingUnit" defaultValue={initial.pricingUnit} required>
               {Object.entries(PRICING_UNIT_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -89,17 +103,19 @@ export function AddOnFields({
             </Select>
           </Field>
         </div>
-        <label htmlFor="addon-enabled" className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
-          <Switch id="addon-enabled" name="enabled" defaultChecked={initial.enabled} className="shrink-0" />
-          On sale
-        </label>
+        {showOnSale ? (
+          <label htmlFor="addon-enabled" className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+            <Switch id="addon-enabled" name="enabled" defaultChecked={initial.enabled} className="shrink-0" />
+            On sale as soon as it&apos;s created
+          </label>
+        ) : null}
       </div>
 
       <div role="group" aria-labelledby="addon-photos-heading">
         <h2 id="addon-photos-heading" className="text-base font-medium">
           Photos
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground">A dish is chosen by sight; a service is shown by name only.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Dishes sell by sight, so give dining a photo. A service can go without.</p>
         <div className="mt-4">
           <PhotoListEditor name="photos" initial={initial.photos} assets={assets} />
         </div>

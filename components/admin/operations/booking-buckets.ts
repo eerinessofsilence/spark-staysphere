@@ -1,6 +1,10 @@
+import type { StayBucket } from '@/lib/domain/availability';
 import type { Booking } from '@/lib/domain/schemas';
 
-export type StayBucket = 'upcoming' | 'in_house' | 'past' | 'cancelled';
+// The rule itself lives in lib/domain so the guest trips list (which folds
+// `in_house` into its own "upcoming" tab) can share it — see
+// components/trips/trips-view.tsx.
+export { stayBucket, type StayBucket } from '@/lib/domain/availability';
 
 export const stayBuckets: StayBucket[] = ['upcoming', 'in_house', 'past', 'cancelled'];
 
@@ -10,13 +14,6 @@ export const stayBucketLabels: Record<StayBucket, string> = {
   past: 'Past',
   cancelled: 'Cancelled',
 };
-
-export function stayBucket(booking: Booking, today: string): StayBucket {
-  if (booking.status === 'cancelled') return 'cancelled';
-  if (booking.checkOut <= today) return 'past';
-  if (booking.checkIn <= today) return 'in_house';
-  return 'upcoming';
-}
 
 /**
  * Whether any night of the stay falls on a day from `from` to `to`, both

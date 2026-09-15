@@ -815,8 +815,8 @@ export function BookingFlow({
           </div>
 
           <p className="mt-4 rounded-2xl bg-stone/60 p-3 text-xs leading-relaxed text-muted-foreground">
-            Demo booking. Payment is simulated, no card data is collected, and the reservation is
-            held in memory only.
+            Demo booking. Payment is simulated and no card data is collected — this reservation is
+            not a real one anywhere.
           </p>
           </div>
         </div>

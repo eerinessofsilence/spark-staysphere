@@ -15,15 +15,18 @@ server actions and as `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bo
 the back office is server actions only, no new API routes.
 
 The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
-live on demo data. Operations: an overview, a rooms × nights chessboard, bookings with detail and
+live on demo data. Operations: an overview, a rooms × nights tape chart, bookings with detail and
 cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
 rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, and the
 hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
-photography stored locally in `public/images`. Below the arrival photograph the building is a
-turnable 3D model (`Hotel.model`, three.js, lazy-loaded) whose floors open the rooms on them;
-a property describes itself as a few blocks or supplies its own GLB. Playwright covers the
+photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
+replaced by a draggable building spinner (`Hotel.spinner`, `BuildingSpinner`)
+— a baked 160-frame orbit drawn to a canvas, not a live 3D scene — whose hotspots open the rooms
+on each floor; see `SPINNER_SPEC.md` for why a baked sequence replaced an earlier, same-day
+three.js attempt. That spinner and the room gallery's panorama sphere (`PanoramaViewer`) are one
+module, `components/view-360/`, whose README.md is the handoff doc for both. Playwright covers the
 golden path at 1440px and 390px.
 
 Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
@@ -54,6 +57,9 @@ integrations.
   a component or a server action.
 - All money flows through `buildPriceBreakdown` in `lib/domain/pricing.ts`; components never
   compute a total.
+- The 360° views are imported only from `@/components/view-360` (lint-enforced); inside, pure
+  maths is a tested function, a hook owns one side effect, a component only composes — see
+  `components/view-360/README.md` and `docs/decisions/0005-view-360-module.md`.
 - `lib/application/container.ts` is the only module that may import `lib/infrastructure`.
 - UI follows `DESIGN_SYSTEM.md › Rules` — they exist because the first pass looked generic. Ink
   pills, clay accent, Phosphor filled icons, photography, no eyebrows, no stat tiles, no icon
@@ -68,7 +74,7 @@ integrations.
 
 ## Commit conventions
 
-Always write [Conventional Commits](https://www.conventionalcommits.org/) — never a bare, generic message. Format: `type(scope): summary` in the imperative mood, e.g. `feat(booking): add idempotent hold confirmation`. Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`. Add a body when the *why* isn't obvious from the diff. This applies to every commit in this repository, not just feature work.
+Always write [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood — `type(scope): summary`, e.g. `feat(booking): add idempotent hold confirmation`. Never a bare, generic message; this applies to every commit, not just feature work. See CONTRIBUTING.md for the full convention and AGENTS.md for working rules.
 
 ## Next implementation order
 
@@ -79,10 +85,10 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 5. ~~Persist demo state (D1) so bookings survive a restart and are shared across isolates.~~ Done.
 6. ~~Basic CMS in `/admin/content` for the hotel copy, room types, rates, and add-ons, with a D1
    overlay on the seed catalog.~~ Done.
-7. ~~Back office for the demo: shell, overview, chessboard, bookings with cancel, rates &
+7. ~~Back office for the demo: shell, overview, tape chart, bookings with cancel, rates &
    availability, and the CMS in the same shell; physical rooms and the guest floor plan.~~ Done.
 8. Replace stock photography with the property's own, add real 360 tiles if the property has them,
-   and its own GLB in place of the block massing (`Hotel.model.url`).
+   and the property's own rendered orbit frames in place of the demo `Hotel.spinner` sequence.
 9. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
    one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
    behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,

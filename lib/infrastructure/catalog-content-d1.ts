@@ -1,4 +1,4 @@
-import type { CatalogEntryKind, CatalogEntryRecord, CatalogUpsertResult } from '../domain/ports';
+import type { CatalogDeleteResult, CatalogEntryKind, CatalogEntryRecord, CatalogUpsertResult } from '../domain/ports';
 import { ensureSchema } from './d1-schema';
 
 /**
@@ -114,9 +114,35 @@ export async function upsertEntry(
   return { ok: true, version: newVersion };
 }
 
-export async function deleteEntry(db: D1Database, kind: CatalogEntryKind, id: string): Promise<void> {
+export async function deleteEntry(
+  db: D1Database,
+  kind: CatalogEntryKind,
+  id: string,
+  expectedVersion: number,
+): Promise<CatalogDeleteResult> {
   await ensureSchema(db);
-  await db.prepare('DELETE FROM catalog_entries WHERE kind = ? AND id = ?').bind(kind, id).run();
+  const existing = await db
+    .prepare('SELECT version FROM catalog_entries WHERE kind = ? AND id = ?')
+    .bind(kind, id)
+    .first<{ version: number }>();
+  const currentVersion = existing?.version ?? 0;
+  if (currentVersion !== expectedVersion) {
+    return { ok: false, conflict: true, currentVersion };
+  }
+  // Guard the delete itself by version too: a save landing between the SELECT
+  // above and this statement must not be silently destroyed.
+  const result = await db
+    .prepare('DELETE FROM catalog_entries WHERE kind = ? AND id = ? AND version = ?')
+    .bind(kind, id, expectedVersion)
+    .run();
+  if (result.meta.changes === 0) {
+    const after = await db
+      .prepare('SELECT version FROM catalog_entries WHERE kind = ? AND id = ?')
+      .bind(kind, id)
+      .first<{ version: number }>();
+    return { ok: false, conflict: true, currentVersion: after?.version ?? 0 };
+  }
+  return { ok: true };
 }
 
 export async function reset(db: D1Database, hotelId: string): Promise<void> {

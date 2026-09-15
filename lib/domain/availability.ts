@@ -29,6 +29,25 @@ export function statusForRemaining(remaining: number): RoomStatus {
   return 'available';
 }
 
+export type StayBucket = 'upcoming' | 'in_house' | 'past' | 'cancelled';
+
+/**
+ * Where a stay sits relative to today, for both the guest trips list and the
+ * back office's booking list — one rule so the two screens never disagree
+ * about whether a stay is still "upcoming". Consistent with `nightsInRange`
+ * treating `to` as exclusive: the checkout date itself is not a stay night,
+ * so a stay is already `past` once `checkOut <= today`.
+ */
+export function stayBucket(
+  stay: { checkIn: string; checkOut: string; status: string },
+  today: string,
+): StayBucket {
+  if (stay.status === 'cancelled') return 'cancelled';
+  if (stay.checkOut <= today) return 'past';
+  if (stay.checkIn <= today) return 'in_house';
+  return 'upcoming';
+}
+
 /** Every calendar date in `[from, to)`, capped so a bad range can't loop forever. */
 export function nightsInRange(from: string, to: string): string[] {
   const start = parseISO(from);
@@ -72,8 +91,11 @@ export function resolveRemaining(
 ): number {
   if (units <= 0) return 0;
   if (override === 'sold_out') return 0;
-  if (override === 'last_room') return 1;
-  if (override === 'limited') return Math.min(units, 2);
-  if (override === 'available') return units;
+  // An override sets a ceiling, not a fixed count: it must still come down as
+  // real confirmed bookings take rooms, or a room already sold out under the
+  // override would go on reporting availability forever.
+  if (override === 'last_room') return Math.max(0, 1 - held);
+  if (override === 'limited') return Math.max(0, Math.min(units, 2) - held);
+  if (override === 'available') return Math.max(0, units - held);
   return Math.max(0, baseRemaining(roomTypeId, units, date) - held);
 }

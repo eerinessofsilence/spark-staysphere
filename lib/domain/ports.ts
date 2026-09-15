@@ -20,14 +20,33 @@ import type {
 // import would.
 import type { CatalogFacets, RoomFilters } from '../application/catalog-service';
 
-export interface HotelRepository {
+/**
+ * `HotelRepository` below is still the full read/write surface every backend
+ * (in-memory, D1, the durable overlay wrapper) implements in one object —
+ * splitting *that* would mean juggling four separate bindings for what is
+ * really one durable store. What was worth splitting is the *dependency*: a
+ * service constructor can declare just the slice it actually calls, instead
+ * of `HotelRepository` in full, so a narrower catalog-only service (
+ * `CatalogService`) can't accidentally reach for `saveBooking`, and the
+ * constructor signature itself documents what the service touches. Every
+ * concrete repository still satisfies all four structurally, so nothing here
+ * changes what's passed to `new CatalogService(...)` etc. in container.ts —
+ * only the declared parameter type each one asks for.
+ */
+export interface CatalogReader {
   getHotel(slug: string): Promise<Hotel | null>;
   listRooms(hotelId: string): Promise<RoomType[]>;
   /** Every door in the building, hidden room types' included. `getAvailability` counts these. */
   listPhysicalRooms(hotelId: string): Promise<PhysicalRoom[]>;
   listRatePlans(roomTypeId: string): Promise<RatePlan[]>;
   listAddOns(hotelId: string): Promise<AddOn[]>;
+}
+
+export interface AvailabilityReader {
   getAvailability(roomTypeId: string, from: string, to: string): Promise<Availability[]>;
+}
+
+export interface BookingStore {
   findBookingByIdempotencyKey(key: string): Promise<Booking | null>;
   saveBooking(booking: Booking): Promise<Booking>;
   getBookingByReference(reference: string): Promise<Booking | null>;
@@ -38,9 +57,18 @@ export interface HotelRepository {
    */
   cancelBooking(reference: string): Promise<Booking | null>;
   listBookings(): Promise<Booking[]>;
+}
+
+export interface PaymentAttemptStore {
   savePaymentAttempt(attempt: PaymentAttempt): Promise<PaymentAttempt>;
   listPaymentAttempts(bookingId: string): Promise<PaymentAttempt[]>;
 }
+
+export interface HotelRepository
+  extends CatalogReader,
+    AvailabilityReader,
+    BookingStore,
+    PaymentAttemptStore {}
 
 /**
  * Demo-only inventory controls backing `/admin`. Production replaces this with
@@ -175,6 +203,8 @@ export type CatalogUpsertResult =
   | { ok: true; version: number }
   | { ok: false; conflict: true; currentVersion: number };
 
+export type CatalogDeleteResult = { ok: true } | { ok: false; conflict: true; currentVersion: number };
+
 /**
  * The CMS's storage boundary. Seed data (`lib/infrastructure/mock-data.ts`)
  * is never mutated — this port only ever holds overlay rows, one per
@@ -199,8 +229,25 @@ export interface CatalogContentPort {
     data: unknown;
     expectedVersion: number;
   }): Promise<CatalogUpsertResult>;
-  /** Removes the overlay row only — never the seed entity underneath it. */
-  deleteEntry(kind: CatalogEntryKind, id: string): Promise<void>;
+  /**
+   * Removes the overlay row only — never the seed entity underneath it.
+   * Guarded by `expectedVersion` the same way `upsertEntry` is: a mismatch
+   * returns `{ ok: false, conflict: true, currentVersion }` and deletes
+   * nothing.
+   */
+  deleteEntry(kind: CatalogEntryKind, id: string, expectedVersion: number): Promise<CatalogDeleteResult>;
   /** Clears every overlay row for the hotel; the catalog reverts to seed. */
   reset(hotelId: string): Promise<void>;
+}
+
+/**
+ * The current instant, behind an interface so a service that needs "now" —
+ * `BookingService`'s cancellation eligibility, `ContentService`'s "upcoming"
+ * filters — can be tested against a fixed date instead of the real clock.
+ * `systemClock` (`lib/domain/clock.ts`) is the only implementation actually
+ * wired (see each service's constructor default); nothing here changes what
+ * "today" is computed as, only where the `Date` it starts from comes from.
+ */
+export interface Clock {
+  now(): Date;
 }

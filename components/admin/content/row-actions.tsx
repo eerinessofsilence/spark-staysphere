@@ -12,10 +12,12 @@ import { cn } from '@/lib/utils';
 
 interface RowActionsProps {
   id: string;
+  /** The version the row was read at, so a delete never removes an entity someone has edited since. */
+  version: number;
   /** The entity's own name — for the trigger's label and the confirm title. */
   label: string;
   editHref: string;
-  deleteAction: (id: string) => Promise<ContentFormState>;
+  deleteAction: (id: string, expectedVersion: number) => Promise<ContentFormState>;
   confirmMessage: string;
   /** Set when the service would refuse the delete anyway; the item shows disabled with this reason. */
   deleteBlockedReason?: string;
@@ -30,7 +32,7 @@ const itemClass =
  * thing. Delete always confirms in the product's own dialog, and a rule the
  * service enforces on its own (a booking against it, say) comes back there.
  */
-export function RowActions({ id, label, editHref, deleteAction, confirmMessage, deleteBlockedReason }: RowActionsProps) {
+export function RowActions({ id, version, label, editHref, deleteAction, confirmMessage, deleteBlockedReason }: RowActionsProps) {
   const router = useRouter();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -43,7 +45,7 @@ export function RowActions({ id, label, editHref, deleteAction, confirmMessage, 
   const remove = async () => {
     setPending(true);
     setError('');
-    const result = await deleteAction(id);
+    const result = await deleteAction(id, version);
     setPending(false);
     if (result.status === 'success') {
       setConfirming(false);

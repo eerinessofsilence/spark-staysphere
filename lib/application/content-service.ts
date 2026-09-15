@@ -4,10 +4,13 @@ import { effectiveVersion } from '../domain/catalog-overlay';
 import { isEquirectangular, isPanorama } from '../domain/media';
 import { floorOf, nextRoomNumber } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
+import { systemClock } from '../domain/clock';
 import type {
+  BookingStore,
   CatalogContentPort,
   CatalogEntryKind,
-  HotelRepository,
+  CatalogReader,
+  Clock,
   MediaLibraryPort,
 } from '../domain/ports';
 import {
@@ -81,6 +84,9 @@ export type ContentError =
 
 export type ContentResult<T> = { ok: true; value: T } | { ok: false; error: ContentError };
 
+/** Whether a delete is allowed, and if not, why — asked before offering the button, not after it is pressed. */
+export type Removal = { allowed: true } | { allowed: false; reason: string };
+
 function ok<T>(value: T): ContentResult<T> {
   return { ok: true, value };
 }
@@ -94,6 +100,30 @@ function fieldErrorsOf(error: z.ZodError): Record<string, string[]> {
   return z.flattenError(error).fieldErrors as Record<string, string[]>;
 }
 
+/**
+ * The hotel form edits areas and hotspots by id, so its errors are keyed by id too
+ * (`areas.pool.description`, `areas.pool.hotspots.bar.cta`) — a flattened `areas` key could not
+ * say which of a dozen fields to point at.
+ */
+function hotelFieldErrors(error: z.ZodError, raw: unknown): Record<string, string[]> {
+  const input = (raw ?? {}) as { areas?: Array<{ id?: string; hotspots?: Array<{ id?: string }> }> };
+  const errors: Record<string, string[]> = {};
+  for (const issue of error.issues) {
+    const [top, areaIndex, field, hotspotIndex, hotspotField] = issue.path;
+    let key = String(top ?? 'hotel');
+    if (top === 'areas' && typeof areaIndex === 'number') {
+      const area = input.areas?.[areaIndex];
+      key =
+        field === 'hotspots' && typeof hotspotIndex === 'number'
+          ? `areas.${area?.id}.hotspots.${area?.hotspots?.[hotspotIndex]?.id}.${String(hotspotField)}`
+          : `areas.${area?.id}.${String(field)}`;
+    }
+    (errors[key] ??= []).push(issue.message);
+  }
+  return errors;
+}
+
+
 const mediaItemSchema = z.object({
   type: z.enum(['image', '360']),
   url: z.string().min(1),
@@ -104,13 +134,13 @@ const hotelAreaInputSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Enter a name.'),
   description: z.string().min(1, 'Enter a description.'),
-  photoAlt: z.string().min(1, 'Enter alt text.'),
+  photoAlt: z.string().min(1, 'Describe the photo for screen readers.'),
   hotspots: z.array(
     z.object({
       id: z.string(),
       label: z.string().min(1, 'Enter a label.'),
       description: z.string().min(1, 'Enter a description.'),
-      cta: z.string().min(1, 'Enter a call to action.'),
+      cta: z.string().min(1, 'Enter the button text.'),
     }),
   ),
 });
@@ -147,7 +177,7 @@ const roomFieldsSchema = z.object({
 export type RoomFieldsInput = z.infer<typeof roomFieldsSchema>;
 
 const createRoomSchema = roomFieldsSchema.extend({
-  slug: z.string().min(1, 'Enter a slug.').regex(KEBAB_CASE, KEBAB_MESSAGE),
+  slug: z.string().min(1, 'Enter a page address.').regex(KEBAB_CASE, KEBAB_MESSAGE),
 });
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
@@ -162,7 +192,7 @@ const createPhysicalRoomSchema = physicalRoomFieldsSchema.extend({
 
 const rateFieldsSchema = z.object({
   name: z.string().min(1, 'Enter a name.'),
-  nightlyPrice: z.number().nonnegative('Enter a price of 0 or higher.'),
+  nightlyPrice: z.number().positive('Enter a price greater than 0.'),
   otaComparisonPrice: z.number().nonnegative().optional(),
   breakfastIncluded: z.boolean(),
   includedServices: z.array(z.string().min(1)),
@@ -177,9 +207,10 @@ const addOnFieldsSchema = z.object({
   parentId: z.string().optional(),
   /** Urls only — width/height are resolved from the media library, never trusted from the client. */
   photos: z.array(z.string().min(1)).optional(),
-  price: z.number().nonnegative('Enter a price of 0 or higher.'),
+  price: z.number().positive('Enter a price greater than 0.'),
   pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),
-  enabled: z.boolean(),
+  /** Set when an add-on is created. An existing one goes on and off sale through `setAddOnEnabled`. */
+  enabled: z.boolean().optional(),
 });
 export type AddOnFieldsInput = z.infer<typeof addOnFieldsSchema>;
 
@@ -189,13 +220,18 @@ export interface Versioned {
 
 export class ContentService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: CatalogReader & Pick<BookingStore, 'listBookings'>,
     private readonly content: CatalogContentPort,
     private readonly media: MediaLibraryPort,
     private readonly hotelSlug: string,
     /** Which ids came from `mock-data.ts` — the only entities a hard delete is refused for. */
     private readonly seedIds: Record<CatalogEntryKind, ReadonlySet<string>>,
+    private readonly clock: Clock = systemClock,
   ) {}
+
+  private todayIso(): string {
+    return this.clock.now().toISOString().slice(0, 10);
+  }
 
   private async hotel(): Promise<Hotel> {
     const hotel = await this.repository.getHotel(this.hotelSlug);
@@ -206,6 +242,37 @@ export class ContentService {
   private async versionOf(kind: CatalogEntryKind, id: string): Promise<number> {
     const entry = await this.content.getEntry(kind, id);
     return entry?.version ?? 0;
+  }
+
+  /**
+   * Every mutator ends by upserting the overlay row and turning the port's
+   * result into a `ContentResult` — this is that one step. A caller that
+   * needs to add fields to a successful result (`createRoom`/`createRate`/
+   * `createAddOn` all also return the new `id`) checks `.ok` and builds its
+   * own `ok(...)` from `.value.version`; every other mutator just returns
+   * this directly.
+   */
+  private async save(
+    kind: CatalogEntryKind,
+    id: string,
+    hotelId: string,
+    data: unknown,
+    expectedVersion: number,
+  ): Promise<ContentResult<Versioned>> {
+    const result = await this.content.upsertEntry({ kind, id, hotelId, data, expectedVersion });
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok({ version: result.version });
+  }
+
+  /** `save`'s counterpart for `deleteRate`/`deleteAddOn`. */
+  private async remove(
+    kind: CatalogEntryKind,
+    id: string,
+    expectedVersion: number,
+  ): Promise<ContentResult<null>> {
+    const result = await this.content.deleteEntry(kind, id, expectedVersion);
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok(null);
   }
 
   private isSeed(kind: CatalogEntryKind, id: string): boolean {
@@ -234,7 +301,8 @@ export class ContentService {
    * Resolves a media item's `url` against the library and fills in the
    * dimensions from there — a client never gets to assert its own width or
    * height. Returns a field error path (e.g. `media.1.url`) on the first
-   * problem found.
+   * problem found. Every item needs a label: the room page shows it as the
+   * name of that view.
    */
   private resolveMedia(
     items: z.infer<typeof mediaItemSchema>[],
@@ -251,7 +319,14 @@ export class ContentService {
           fieldErrors: { [path]: ['A 360° view must be an equirectangular (2:1) panorama.'] },
         };
       }
-      media.push({ type: item.type, url: item.url, label: item.label, width: asset.width, height: asset.height });
+      const label = item.label?.trim();
+      if (!label) {
+        return {
+          ok: false,
+          fieldErrors: { [`${fieldPrefix}.${index}.label`]: ['Add a label — guests see it as the name of this view.'] },
+        };
+      }
+      media.push({ type: item.type, url: item.url, label, width: asset.width, height: asset.height });
     }
     return { ok: true, media };
   }
@@ -300,7 +375,7 @@ export class ContentService {
   async updateHotel(rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
     assertCanEditContent();
     const parsed = hotelContentInputSchema.safeParse(rawInput);
-    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
+    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: hotelFieldErrors(parsed.error, rawInput) });
     const input = parsed.data;
 
     const current = await this.hotel();
@@ -340,15 +415,7 @@ export class ContentService {
       areas: nextAreas,
     } satisfies Hotel);
 
-    const result = await this.content.upsertEntry({
-      kind: 'hotel',
-      id: current.id,
-      hotelId: current.id,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('hotel', current.id, current.id, next, expectedVersion);
   }
 
   // ------------------------------------------------------------ Room types
@@ -385,7 +452,7 @@ export class ContentService {
     const hotel = await this.hotel();
     const rooms = await this.repository.listRooms(hotel.id);
     if (rooms.some((room) => room.slug === slug)) {
-      return fail({ kind: 'validation', fieldErrors: { slug: ['That slug is already in use.'] } });
+      return fail({ kind: 'validation', fieldErrors: { slug: ['That page address is already in use.'] } });
     }
 
     const media = this.resolveMedia(input.media, 'media');
@@ -408,9 +475,9 @@ export class ContentService {
       hidden: true,
     } satisfies RoomType);
 
-    const result = await this.content.upsertEntry({ kind: 'room', id, hotelId: hotel.id, data: room, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('room', id, hotel.id, room, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateRoom(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -443,15 +510,7 @@ export class ContentService {
       media: media.media,
     } satisfies RoomType);
 
-    const result = await this.content.upsertEntry({
-      kind: 'room',
-      id,
-      hotelId: next.hotelId,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('room', id, next.hotelId, next, expectedVersion);
   }
 
   async setRoomHidden(id: string, hidden: boolean, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -473,15 +532,7 @@ export class ContentService {
 
     const { version: _version, ...rest } = current;
     const next = roomTypeSchema.parse({ ...rest, hidden } satisfies RoomType);
-    const result = await this.content.upsertEntry({
-      kind: 'room',
-      id,
-      hotelId: next.hotelId,
-      data: next,
-      expectedVersion,
-    });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('room', id, next.hotelId, next, expectedVersion);
   }
 
   /**
@@ -506,10 +557,9 @@ export class ContentService {
       );
     }
     for (const rate of await this.repository.listRatePlans(id)) {
-      await this.content.deleteEntry('rate', rate.id);
+      await this.content.deleteEntry('rate', rate.id, await this.versionOf('rate', rate.id));
     }
-    await this.content.deleteEntry('room', id);
-    return ok(null);
+    return this.remove('room', id, current.version);
   }
 
   // -------------------------------------------------------- Physical rooms
@@ -641,8 +691,7 @@ export class ContentService {
       );
     }
 
-    await this.content.deleteEntry('unit', id);
-    return ok(null);
+    return this.remove('unit', id, current.version);
   }
 
   // ----------------------------------------------------------------- Rates
@@ -689,9 +738,9 @@ export class ContentService {
       otaComparisonPrice: input.otaComparisonPrice,
     } satisfies RatePlan);
 
-    const result = await this.content.upsertEntry({ kind: 'rate', id, hotelId: hotel.id, data: rate, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('rate', id, hotel.id, rate, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateRate(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -715,30 +764,35 @@ export class ContentService {
     } satisfies RatePlan);
 
     const hotel = await this.hotel();
-    const result = await this.content.upsertEntry({ kind: 'rate', id, hotelId: hotel.id, data: next, expectedVersion });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('rate', id, hotel.id, next, expectedVersion);
   }
 
-  async deleteRate(id: string): Promise<ContentResult<null>> {
-    assertCanEditContent();
+  async rateRemoval(id: string): Promise<Removal> {
     const current = await this.findRate(id);
-    if (!current) return fail({ kind: 'not_found' });
+    if (!current) return { allowed: false, reason: 'This rate no longer exists.' };
     if (this.isSeed('rate', id)) {
-      return ruleError('This rate came with the demo catalog and can only be edited, not removed.');
+      return { allowed: false, reason: 'Came with the demo catalog — it can be edited, not removed.' };
     }
     if (await this.referencedByBooking('rate', id)) {
-      return ruleError('This rate has a booking against it and cannot be removed.');
+      return { allowed: false, reason: 'A booking uses this rate, so it stays.' };
     }
     const room = await this.getRoomContent(current.roomTypeId);
     if (room && !room.hidden) {
       const rates = await this.repository.listRatePlans(current.roomTypeId);
       if (rates.length <= 1) {
-        return ruleError('This is the only rate on a room that is on sale. Hide the room first, or add another rate.');
+        return { allowed: false, reason: 'The only rate on a room that is on the site — hide the room or add another rate first.' };
       }
     }
-    await this.content.deleteEntry('rate', id);
-    return ok(null);
+    return { allowed: true };
+  }
+
+  async deleteRate(id: string, expectedVersion: number): Promise<ContentResult<null>> {
+    assertCanEditContent();
+    const current = await this.findRate(id);
+    if (!current) return fail({ kind: 'not_found' });
+    const removal = await this.rateRemoval(id);
+    if (!removal.allowed) return ruleError(removal.reason);
+    return this.remove('rate', id, expectedVersion);
   }
 
   // --------------------------------------------------------------- Add-ons
@@ -760,10 +814,10 @@ export class ContentService {
     addOns: AddOn[],
   ): Promise<string | null> {
     if (!parentId) return null;
-    if (parentId === ownId) return 'An add-on cannot be its own parent.';
+    if (parentId === ownId) return 'An add-on cannot be offered inside itself.';
     const parent = addOns.find((addOn) => addOn.id === parentId);
-    if (!parent) return 'Pick an existing add-on as the parent.';
-    if (parent.parentId) return 'The parent must itself be a top-level add-on — nesting only goes one level.';
+    if (!parent) return 'Pick an existing add-on to offer it inside.';
+    if (parent.parentId) return 'That add-on is itself an extra — extras only go one level deep.';
     return null;
   }
 
@@ -792,12 +846,12 @@ export class ContentService {
       price: input.price,
       currency: hotel.currency,
       pricingUnit: input.pricingUnit,
-      enabled: input.enabled,
+      enabled: input.enabled ?? true,
     } satisfies AddOn);
 
-    const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: addOn, expectedVersion: 0 });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ id, version: result.version });
+    const saved = await this.save('addon', id, hotel.id, addOn, 0);
+    if (!saved.ok) return saved;
+    return ok({ id, version: saved.value.version });
   }
 
   async updateAddOn(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
@@ -814,7 +868,7 @@ export class ContentService {
     const parentError = await this.validateParent(input.parentId, id, addOns);
     if (parentError) return fail({ kind: 'validation', fieldErrors: { parentId: [parentError] } });
     if (addOns.some((addOn) => addOn.parentId === id) && input.parentId) {
-      return ruleError('This add-on has extras of its own, so it cannot also become an extra. Nesting only goes one level.', 'parentId');
+      return ruleError('This add-on has extras of its own, so it cannot also be offered inside another. Extras only go one level deep.', 'parentId');
     }
 
     const photos = this.resolvePhotos(input.photos);
@@ -830,20 +884,19 @@ export class ContentService {
       photos: photos.photos,
       price: input.price,
       pricingUnit: input.pricingUnit,
-      enabled: input.enabled,
+      enabled: input.enabled ?? current.enabled,
     } satisfies AddOn);
 
-    const result = await this.content.upsertEntry({ kind: 'addon', id, hotelId: hotel.id, data: next, expectedVersion });
-    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
-    return ok({ version: result.version });
+    return this.save('addon', id, hotel.id, next, expectedVersion);
   }
 
   /**
-   * The quick on/off switch shared by `/admin` and the CMS — no version
-   * field on that control, so this reads the current version itself and
-   * retries once if a concurrent edit landed in between.
+   * The quick on/off switch shared by the add-on list and an add-on's own page — no version field
+   * on that control, so this reads the current version itself and retries once if a concurrent
+   * edit landed in between. It returns the version it stepped from, so the form on the same page
+   * can step along with it.
    */
-  async setAddOnEnabled(id: string, enabled: boolean): Promise<ContentResult<Versioned>> {
+  async setAddOnEnabled(id: string, enabled: boolean): Promise<ContentResult<Versioned & { previousVersion: number }>> {
     assertCanEditContent();
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const current = await this.getAddOnContent(id);
@@ -851,35 +904,36 @@ export class ContentService {
       const { version, ...rest } = current;
       const next = addOnSchema.parse({ ...rest, enabled } satisfies AddOn);
       const hotel = await this.hotel();
-      const result = await this.content.upsertEntry({
-        kind: 'addon',
-        id,
-        hotelId: hotel.id,
-        data: next,
-        expectedVersion: version,
-      });
-      if (result.ok) return ok({ version: result.version });
+      const saved = await this.save('addon', id, hotel.id, next, version);
+      if (saved.ok) return ok({ version: saved.value.version, previousVersion: version });
     }
     return fail({ kind: 'conflict', currentVersion: await this.versionOf('addon', id) });
   }
 
-  async deleteAddOn(id: string): Promise<ContentResult<null>> {
-    assertCanEditContent();
+  async addOnRemoval(id: string): Promise<Removal> {
     const current = await this.getAddOnContent(id);
-    if (!current) return fail({ kind: 'not_found' });
+    if (!current) return { allowed: false, reason: 'This add-on no longer exists.' };
     if (this.isSeed('addon', id)) {
-      return ruleError('This add-on came with the demo catalog and can only be edited or withdrawn, not removed.');
+      return { allowed: false, reason: 'Came with the demo catalog — withdraw it from sale instead of removing it.' };
     }
     if (await this.referencedByBooking('addon', id)) {
-      return ruleError('This add-on has a booking against it and cannot be removed. Withdraw it instead.');
+      return { allowed: false, reason: 'A booking includes it — withdraw it from sale instead.' };
     }
     const hotel = await this.hotel();
     const addOns = await this.repository.listAddOns(hotel.id);
     if (addOns.some((addOn) => addOn.parentId === id)) {
-      return ruleError('This add-on still has extras under it. Remove those first.');
+      return { allowed: false, reason: 'Remove the extras offered inside it first.' };
     }
-    await this.content.deleteEntry('addon', id);
-    return ok(null);
+    return { allowed: true };
+  }
+
+  async deleteAddOn(id: string, expectedVersion: number): Promise<ContentResult<null>> {
+    assertCanEditContent();
+    const current = await this.getAddOnContent(id);
+    if (!current) return fail({ kind: 'not_found' });
+    const removal = await this.addOnRemoval(id);
+    if (!removal.allowed) return ruleError(removal.reason);
+    return this.remove('addon', id, expectedVersion);
   }
 
   // ----------------------------------------------------------------- Reset

@@ -57,6 +57,12 @@ export default async function RatesPage() {
   return (
     <AdminPage>
       <AdminPageHeader title="Room Rates" />
+      <p className="mt-4 max-w-3xl text-sm text-muted-foreground">
+        In production, rates and availability come from the PMS or channel manager and this page reads
+        them back; seasonal and date-based pricing arrive with that integration. Here, a saved rate reprices
+        the guest site immediately, and an override forces a room type&apos;s status for every night. The
+        price here is the room&apos;s first rate under Rooms — the same field, whichever page you change it on.
+      </p>
 
       <section aria-label="Rates and availability by room type" className="mt-6 rounded-[28px] bg-card shadow-soft">
         <div
@@ -64,7 +70,7 @@ export default async function RatesPage() {
           className={cn('hidden gap-4 border-b border-border px-5 py-3 text-sm text-muted-foreground lg:grid', columns)}
         >
           <span className="self-end">Room type</span>
-          <span className="self-end">Nightly · OTA comparison, {hotel.currency}</span>
+          <span className="self-end">Nightly · booking-site price, {hotel.currency}</span>
           <span className="grid grid-cols-7 gap-1 text-center text-xs">
             {dates.map((date, index) => (
               <span key={date}>
@@ -100,7 +106,7 @@ export default async function RatesPage() {
 
               <div>
                 <p className="mb-1.5 text-xs text-muted-foreground lg:hidden" aria-hidden="true">
-                  Nightly · OTA comparison, {hotel.currency}
+                  Nightly · booking-site price, {hotel.currency}
                 </p>
                 {rate ? (
                   <RatePriceForm

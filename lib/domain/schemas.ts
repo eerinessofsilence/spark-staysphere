@@ -131,74 +131,6 @@ export const buildingSpinnerSchema = z.object({
 });
 
 /**
- * One stack of floors in the property's massing. A hotel is a handful of
- * these — a tower, a terraced front, a low wing — and the 3D model builds
- * itself from them, so any property can be described without a modeller.
- * Metres on the ground plane: x runs east, z runs south, toward the camera's
- * opening view. Floor 1 is the ground floor.
- */
-export const buildingBlockSchema = z.object({
-  id: z.string(),
-  x: z.number(),
-  z: z.number(),
-  width: z.number().positive(),
-  depth: z.number().positive(),
-  fromFloor: z.number().int().min(1),
-  toFloor: z.number().int().min(1),
-  /**
-   * Bends the block along an arc, as how far its middle bows forward of its
-   * ends in metres. `width` stays the length measured along the bend, so a
-   * bowed block is described the way a straight one is. The model builds the
-   * bend as a run of straight bays, which is how such a facade is built.
-   */
-  bow: z.number().positive().optional(),
-  /** Faces that carry a balcony on every floor; the south face by default. */
-  balconies: z.array(z.enum(['front', 'back', 'left', 'right'])).optional(),
-  /** Floors drawn fully glazed — a lobby at the base, a restaurant on top. */
-  glazedFloors: z.array(z.number().int().min(1)).optional(),
-  /** The roof is a terrace: a parapet instead of a plain slab. */
-  roofTerrace: z.boolean().optional(),
-});
-
-/**
- * The property as a turnable model. Either a real GLB the property owns
- * (`url`), or the massing above, built on the fly. In a GLB, a mesh named
- * `floor-3` is picked as the third floor; nothing else is required of it.
- */
-export const hotelModelSchema = z.object({
-  url: z.string().optional(),
-  /** Floor-to-floor height in metres. 3.4 when omitted. */
-  floorHeight: z.number().positive().optional(),
-  blocks: z.array(buildingBlockSchema),
-  /** The ground the blocks stand on: a plinth, a pool, the sea to the south. */
-  grounds: z
-    .object({
-      width: z.number().positive(),
-      depth: z.number().positive(),
-      /** How far the plinth stands above the sea; a cliff when it is tall. */
-      height: z.number().positive().optional(),
-      pool: z
-        .object({
-          x: z.number(),
-          z: z.number(),
-          width: z.number().positive(),
-          depth: z.number().positive(),
-        })
-        .optional(),
-      sea: z.boolean().optional(),
-    })
-    .optional(),
-  /** The opening camera, in degrees around and above the building. */
-  view: z
-    .object({
-      azimuth: z.number(),
-      elevation: z.number(),
-      distance: z.number().positive().optional(),
-    })
-    .optional(),
-});
-
-/**
  * The marks a hotel facility can wear — a fixed vocabulary rather than a free
  * icon name, so the CMS offers a grid to pick from and the guest site never
  * meets a key it has no drawing for. `components/hotel/facility-icon.ts`
@@ -275,8 +207,6 @@ export const hotelSchema = z.object({
    * the same hotspot ids (see `SPINNER_AREA_ID` in `hotel-scene.tsx`).
    */
   spinner: buildingSpinnerSchema.optional(),
-  /** The building as a model a guest can turn; absent until the property describes it. */
-  model: hotelModelSchema.optional(),
 });
 
 export const roomTypeSchema = z.object({
@@ -382,7 +312,7 @@ export const ROOM_NUMBER = /^(?:G|[1-9]\d?)\d{2}$/;
 
 /**
  * One door in the building. The catalog sells room types; these are what a
- * type's availability counts and what the floor plan and the Property Desk draw.
+ * type's availability counts and what the floor plan and the tape chart draw.
  */
 export const physicalRoomSchema = z.object({
   id: z.string(),
@@ -421,18 +351,56 @@ export const integrationStatusSchema = z.object({
   lastSyncAt: z.string().datetime().nullable(),
 });
 
+/**
+ * A stay longer than this both overruns `nightsInRange`'s own cap (silently
+ * dropping availability checks and holds for the nights past it) and would
+ * still be priced and charged in full by `nightsBetween`, which has no cap
+ * of its own — see `lib/domain/availability.ts`.
+ */
+export const MAX_STAY_NIGHTS = 60;
+
+/**
+ * Party-size limits. One source: `stayCriteriaSchema` below is the canonical
+ * shape, reused by `quoteRequestBodySchema`/`bookingRequestBodySchema`
+ * (`booking-intake.ts`) and the assistant's search body schema, so a change
+ * to how many guests a stay can hold is a change in one place. The numeric
+ * constants exist for `search-params.ts`'s clamp functions, which clamp a
+ * raw number rather than parse one through Zod.
+ */
+export const MIN_ADULTS = 1;
+export const MAX_ADULTS = 8;
+export const MIN_CHILDREN = 0;
+export const MAX_CHILDREN = 6;
+
+/**
+ * The base shape, kept separate from the `.refine()` below (which wraps it in
+ * a `ZodEffects` that no longer exposes `.shape`) so other schemas that need
+ * these same fields — `quoteRequestBodySchema` in `booking-intake.ts`, the
+ * assistant's search body — can reuse `stayCriteriaFieldsSchema.shape.adults`
+ * etc. instead of retyping the same `.min().max()`.
+ */
+export const stayCriteriaFieldsSchema = z.object({
+  checkIn: z.string().date(),
+  checkOut: z.string().date(),
+  adults: z.number().int().min(MIN_ADULTS).max(MAX_ADULTS),
+  children: z.number().int().min(MIN_CHILDREN).max(MAX_CHILDREN),
+});
+
 /** What the guest is shopping for. Every price in the app is derived from this. */
-export const stayCriteriaSchema = z
-  .object({
-    checkIn: z.string().date(),
-    checkOut: z.string().date(),
-    adults: z.number().int().min(1).max(8),
-    children: z.number().int().min(0).max(6),
-  })
+export const stayCriteriaSchema = stayCriteriaFieldsSchema
   .refine((value) => value.checkOut > value.checkIn, {
     message: 'Check-out must be after check-in.',
     path: ['checkOut'],
-  });
+  })
+  .refine(
+    (value) => {
+      const nights = Math.round(
+        (Date.parse(value.checkOut) - Date.parse(value.checkIn)) / 86_400_000,
+      );
+      return nights <= MAX_STAY_NIGHTS;
+    },
+    { message: `Stays are limited to ${MAX_STAY_NIGHTS} nights.`, path: ['checkOut'] },
+  );
 
 export const addOnLineSchema = z.object({
   addOnId: z.string(),
@@ -519,8 +487,6 @@ export const bookingRequestSchema = z.object({
 
 export type Hotel = z.infer<typeof hotelSchema>;
 export type HotelArea = z.infer<typeof hotelAreaSchema>;
-export type HotelModel = z.infer<typeof hotelModelSchema>;
-export type BuildingBlock = z.infer<typeof buildingBlockSchema>;
 export type Hotspot = z.infer<typeof hotspotSchema>;
 export type BuildingSpinnerData = z.infer<typeof buildingSpinnerSchema>;
 export type SpinnerHotspot = z.infer<typeof spinnerHotspotSchema>;

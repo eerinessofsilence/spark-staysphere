@@ -152,6 +152,7 @@ export default async function RoomTypesPage() {
                       <Td className="align-middle text-right">
                         <RowActions
                           id={room.id}
+                          version={room.version}
                           label={room.name}
                           editHref={href}
                           deleteAction={deleteRoomAction}

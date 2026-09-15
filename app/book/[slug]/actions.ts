@@ -1,6 +1,6 @@
 'use server';
 
-import { BookingError, type BookingErrorCode } from '@/lib/application/booking-service';
+import type { BookingErrorCode } from '@/lib/application/booking-service';
 import {
   bookingRequestBodySchema,
   confirmForSlug,
@@ -8,6 +8,7 @@ import {
   quoteRequestBodySchema,
 } from '@/lib/application/booking-intake';
 import type { PaymentMethod, Quote } from '@/lib/domain/schemas';
+import { mapBookingError } from '@/app/api/_lib/http';
 
 /**
  * The booking UI's only entry point to quotes and confirmation. Both actions go
@@ -56,7 +57,8 @@ export async function quoteStay(input: {
   try {
     return { ok: true, quote: await quoteForSlug(parsed.data) };
   } catch (error) {
-    if (error instanceof BookingError) return { ok: false, message: error.message };
+    const mapped = mapBookingError(error);
+    if (mapped.kind !== 'unknown') return { ok: false, message: mapped.message };
     return { ok: false, message: 'We could not price that stay. Choose another room or dates.' };
   }
 }
@@ -86,14 +88,18 @@ export async function confirmBooking(input: ConfirmBookingInput): Promise<Confir
     const booking = await confirmForSlug(parsed.data, input.idempotencyKey);
     return { ok: true, reference: booking.reference };
   } catch (error) {
-    if (error instanceof BookingError) {
+    const mapped = mapBookingError(error);
+    if (mapped.kind === 'booking') {
       return {
         ok: false,
-        code: error.code,
-        message: error.message,
-        currentTotal: error.details?.currentTotal,
-        fieldErrors: error.details?.fieldErrors,
+        code: mapped.code,
+        message: mapped.message,
+        currentTotal: mapped.currentTotal,
+        fieldErrors: mapped.fieldErrors,
       };
+    }
+    if (mapped.kind === 'not_found') {
+      return { ok: false, code: 'not_found', message: mapped.message };
     }
     console.error('Booking confirmation failed', error);
     return {

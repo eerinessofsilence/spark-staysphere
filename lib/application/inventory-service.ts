@@ -1,10 +1,11 @@
-import { addDays, format, parseISO } from 'date-fns';
 import { demoHash, nightsInRange } from '../domain/availability';
-import type { DemoControlPort, HotelRepository } from '../domain/ports';
+import { addIsoDays } from '../domain/dates';
+import type { AvailabilityReader, BookingStore, CatalogReader, DemoControlPort } from '../domain/ports';
 import { roomCategory, type RoomCategory } from '../domain/room-attributes';
 import {
   allocateRoomType,
   buildRoomUnits,
+  compareRoomNumbers,
   type Facade,
   type NightOccupant,
   type RoomUnit,
@@ -47,7 +48,7 @@ export interface FloorPlan {
   availableCount: number;
 }
 
-export type ChessboardSegment =
+export type TapeChartSegment =
   | {
       kind: 'booking';
       start: number;
@@ -66,34 +67,34 @@ export type ChessboardSegment =
     }
   | { kind: 'demand' | 'closed'; start: number; span: number };
 
-export interface ChessboardRoom {
+export interface TapeChartRoom {
   number: string;
   floor: number;
   facade: Facade;
-  segments: ChessboardSegment[];
+  segments: TapeChartSegment[];
 }
 
-export interface ChessboardGroup {
+export interface TapeChartGroup {
   roomTypeId: string;
   roomName: string;
   roomSlug: string;
   hidden: boolean;
-  rooms: ChessboardRoom[];
+  rooms: TapeChartRoom[];
 }
 
-export interface ChessboardDay {
+export interface TapeChartDay {
   date: string;
   occupied: number;
   arrivals: number;
   departures: number;
 }
 
-export interface Chessboard {
+export interface TapeChart {
   hotel: Hotel;
   dates: string[];
   totalRooms: number;
-  groups: ChessboardGroup[];
-  days: ChessboardDay[];
+  groups: TapeChartGroup[];
+  days: TapeChartDay[];
 }
 
 export interface BookingRoom {
@@ -101,17 +102,15 @@ export interface BookingRoom {
   chosenByGuest: boolean;
 }
 
-function addDaysIso(iso: string, days: number): string {
-  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd');
-}
-
 function byRoomNumber(a: { number: string }, b: { number: string }): number {
-  return a.number.localeCompare(b.number, 'en', { numeric: true });
+  return compareRoomNumbers(a.number, b.number);
 }
 
 export class InventoryService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: AvailabilityReader &
+      Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms'> &
+      Pick<BookingStore, 'listBookings'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
   ) {}
@@ -128,7 +127,7 @@ export class InventoryService {
   private async allocate(room: RoomType, units: RoomUnit[], bookings: Booking[], nights: string[]) {
     const [availability, override] = await Promise.all([
       nights.length > 0
-        ? this.repository.getAvailability(room.id, nights[0]!, addDaysIso(nights.at(-1)!, 1))
+        ? this.repository.getAvailability(room.id, nights[0]!, addIsoDays(nights.at(-1)!, 1))
         : Promise.resolve([]),
       this.demoControl.getRoomStatusOverride(room.id),
     ]);
@@ -224,7 +223,7 @@ export class InventoryService {
   }
 
   /** The PMS view: every room, including hidden room types, across a window of nights. */
-  async getChessboard(hotelSlug: string, from: string, days: number): Promise<Chessboard> {
+  async getTapeChart(hotelSlug: string, from: string, days: number): Promise<TapeChart> {
     const hotel = await this.catalog.getHotel(hotelSlug);
     const rooms = await this.repository.listRooms(hotel.id);
     const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(hotel.id));
@@ -232,9 +231,9 @@ export class InventoryService {
     const confirmed = allBookings.filter((booking) => booking.status === 'confirmed');
     const bookingsByType = this.confirmedByRoomType(allBookings);
     const byReference = new Map(allBookings.map((booking) => [booking.reference, booking]));
-    const dates = Array.from({ length: days }, (_, index) => addDaysIso(from, index));
+    const dates = Array.from({ length: days }, (_, index) => addIsoDays(from, index));
 
-    const groups: ChessboardGroup[] = await Promise.all(
+    const groups: TapeChartGroup[] = await Promise.all(
       rooms.map(async (room) => {
         const roomUnits = units.filter((unit) => unit.roomTypeId === room.id).sort(byRoomNumber);
         const { occupancy } = await this.allocate(room, roomUnits, bookingsByType.get(room.id) ?? [], dates);
@@ -253,7 +252,7 @@ export class InventoryService {
       }),
     );
 
-    const summary: ChessboardDay[] = dates.map((date, index) => ({
+    const summary: TapeChartDay[] = dates.map((date, index) => ({
       date,
       occupied: groups.reduce(
         (sum, group) =>
@@ -327,9 +326,9 @@ function toSegments(
   dates: string[],
   bookings: Map<string, Booking>,
   unitNumber: string,
-): ChessboardSegment[] {
-  const segments: ChessboardSegment[] = [];
-  const windowEnd = addDaysIso(dates.at(-1)!, 1);
+): TapeChartSegment[] {
+  const segments: TapeChartSegment[] = [];
+  const windowEnd = addIsoDays(dates.at(-1)!, 1);
   let index = 0;
 
   while (index < dates.length) {

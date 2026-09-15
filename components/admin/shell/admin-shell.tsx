@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react';
-import { AdminBrand, AdminMobileMenu, AdminNav, DemoAccount, PropertyCard } from './admin-nav';
+import {
+  AdminBrand,
+  AdminMobileMenu,
+  AdminNav,
+  DemoAccount,
+  PropertyCard,
+  ViewSiteLink,
+} from './admin-nav';
+import { UnsavedChangesGuard } from './unsaved-changes';
 
 interface AdminShellProps {
   hotelName: string;
@@ -20,6 +28,7 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
             <AdminNav />
           </div>
           <div className="mt-3 grid gap-1 border-t border-border pt-3">
+            <ViewSiteLink />
             <DemoAccount />
           </div>
         </div>
@@ -35,6 +44,7 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
         </div>
         {children}
       </div>
+      <UnsavedChangesGuard />
     </div>
   );
 }

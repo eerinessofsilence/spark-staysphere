@@ -8,11 +8,13 @@
  * show — this list is only which ones to ask about.
  */
 
+import { BOOKING_REFERENCE_PATTERN } from './domain/booking';
+
 const STORAGE_KEY = 'spark.trips';
 const LIMIT = 40;
 
 function isReference(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9]{6}$/.test(value.trim());
+  return typeof value === 'string' && BOOKING_REFERENCE_PATTERN.test(value.trim());
 }
 
 /** Private windows and blocked site data throw rather than return empty. */

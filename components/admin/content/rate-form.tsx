@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { Switch } from '@/components/ui/switch';
 import { ContentForm } from './content-form';
@@ -31,6 +32,12 @@ interface RateFormProps {
   submitLabel: string;
   extraActions?: React.ReactNode;
   idPrefix: string;
+  /** `rate:<id>` for an existing rate; omitted when adding one. */
+  versionKey?: string;
+  /** The add-a-rate form clears itself after each rate it adds. */
+  resetOnSuccess?: boolean;
+  /** An existing rate's price is also on Rates & availability — say so, so the two never look like different numbers. */
+  showRatesLink?: boolean;
 }
 
 /** Shared by "add a rate" and "edit this rate" — the currency is fixed to the hotel's own and shown, not editable (see content-service.ts's currency rule). */
@@ -42,15 +49,40 @@ export function RateForm({
   submitLabel,
   extraActions,
   idPrefix,
+  versionKey,
+  resetOnSuccess = false,
+  showRatesLink = false,
 }: RateFormProps) {
   return (
-    <ContentForm action={formAction} initialVersion={initialVersion} submitLabel={submitLabel} extraActions={extraActions}>
+    <ContentForm
+      action={formAction}
+      initialVersion={initialVersion}
+      submitLabel={submitLabel}
+      extraActions={extraActions}
+      versionKey={versionKey}
+      resetOnSuccess={resetOnSuccess}
+    >
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id={`${idPrefix}-name`} name="name" label="Name">
             <TextInput id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
           </Field>
-          <Field id={`${idPrefix}-nightlyPrice`} name="nightlyPrice" label={`Nightly price (${currency})`}>
+          <Field
+            id={`${idPrefix}-nightlyPrice`}
+            name="nightlyPrice"
+            label={`Nightly price (${currency})`}
+            hint={
+              showRatesLink ? (
+                <>
+                  The same price as in{' '}
+                  <Link href="/admin/rates" className="underline underline-offset-2 hover:text-accent-strong">
+                    Rates &amp; availability
+                  </Link>
+                  .
+                </>
+              ) : undefined
+            }
+          >
             <TextInput
               id={`${idPrefix}-nightlyPrice`}
               name="nightlyPrice"
@@ -65,8 +97,8 @@ export function RateForm({
         <Field
           id={`${idPrefix}-otaComparisonPrice`}
           name="otaComparisonPrice"
-          label={`OTA comparison price (${currency})`}
-          hint="Optional. Demo-only figure shown as the direct saving — never a live OTA read."
+          label={`Booking-site price (${currency})`}
+          hint="Optional. Guests see the difference as their saving for booking direct. A demo figure — nothing is read from booking sites."
         >
           <TextInput
             id={`${idPrefix}-otaComparisonPrice`}
@@ -98,6 +130,7 @@ export function RateForm({
               name="includedServices"
               initial={initial.includedServices}
               addPlaceholder="Add what's included"
+              itemNoun="inclusion"
             />
           </div>
         </div>

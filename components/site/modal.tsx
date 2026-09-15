@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { iconButton } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { cn } from '@/lib/utils';
 
 /**
@@ -35,36 +36,68 @@ interface ModalProps {
   chrome?: boolean;
 }
 
+/** Tab-reachable elements a focus trap should cycle between. */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ open, onClose, title, children, className, chrome = true }: ModalProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   // A client component still renders once on the server, where there is no
   // `document.body` to portal into. Only portal after the browser has it.
   const [mounted, setMounted] = React.useState(false);
   const { rendered, visible } = useOverlayTransition(open);
+  // Whatever had focus before the dialog opened — almost always the control
+  // that opened it — so closing can give it back rather than stranding focus
+  // on a button that just portalled itself out of the document.
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => setMounted(true), []);
 
   React.useEffect(() => {
+    if (open) restoreFocusRef.current = document.activeElement as HTMLElement | null;
+  }, [open]);
+
+  // Keyed on `rendered`, not `open`: the panel this focuses does not exist
+  // in the DOM until `rendered` catches up with `open` a beat later, so
+  // focusing here on `open` alone found nothing and left focus on the page
+  // behind the dialog. The mirror case — giving focus back once the panel is
+  // gone — runs off the same signal.
+  React.useEffect(() => {
+    if (rendered) {
+      panelRef.current?.focus();
+      return;
+    }
+    const target = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    if (target && target !== document.body) target.focus();
+  }, [rendered]);
+
+  React.useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      // A dialog is a dead end for Tab: it must cycle inside itself rather
+      // than handing focus back to whatever the backdrop is covering.
+      if (event.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey ? document.activeElement === first : document.activeElement === last) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
-    panelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    // The page behind the sheet must not scroll under it — held
-    // through the close transition too, or the page flashes into view a beat
-    // before the sheet has finished sliding off it.
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [rendered]);
+  useScrollLock(rendered);
 
   if (!rendered || !mounted) return null;
 

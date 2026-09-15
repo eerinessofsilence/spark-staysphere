@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRightIcon, CalendarIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { cancelTrip, claimTrip, loadTrips } from '@/app/trips/actions';
 import type { TripSummary } from '@/lib/application/booking-service';
+import { stayBucket } from '@/lib/domain/availability';
 import { formatDateRange, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { readTrips, rememberTrip } from '@/lib/trips-storage';
@@ -33,10 +34,15 @@ function todayIso(): string {
   return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
-/** Cancelled stays leave the calendar entirely — a cancelled trip is not "past". */
+/**
+ * The guest tab set has no separate "in house" tab — a stay in progress
+ * still reads as the guest's upcoming trip — so this folds the shared
+ * `stayBucket` rule's `in_house` into `upcoming` rather than redefining the
+ * upcoming/past boundary itself (see lib/domain/availability.ts).
+ */
 function bucketOf(trip: TripSummary, today: string): Tab {
-  if (trip.status === 'cancelled') return 'cancelled';
-  return trip.checkOut >= today ? 'upcoming' : 'past';
+  const bucket = stayBucket(trip, today);
+  return bucket === 'in_house' ? 'upcoming' : bucket;
 }
 
 export function TripsView({ stayQuery }: { stayQuery: string }) {
@@ -344,7 +350,12 @@ function CancelDialog({
             <button
               type="submit"
               disabled={pending}
-              className={pill('primary', 'min-h-11 bg-danger text-white hover:bg-danger/90')}
+              // `text-primary-foreground`, not a literal `text-white`: the
+              // night scheme's `--danger` is a light coral meant for text on
+              // a dark surface, not a solid fill behind white — that paired
+              // to 2.3:1. The paired foreground token reads as ink there and
+              // warm white by day, matching every other solid pill.
+              className={pill('primary', 'min-h-11 bg-danger text-primary-foreground hover:bg-danger/90')}
             >
               {pending ? 'Cancelling…' : 'Cancel booking'}
             </button>

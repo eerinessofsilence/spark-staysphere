@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import type {
   BookingEngineAdapter,
+  BookingStore,
+  CatalogReader,
+  Clock,
   CrmAdapter,
-  HotelRepository,
+  PaymentAttemptStore,
   PaymentProvider,
   PmsAdapter,
   QuoteRequest,
@@ -19,7 +22,10 @@ import type {
   RoomType,
 } from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
+import { matchesGuestEmail } from '../domain/booking';
+import { systemClock } from '../domain/clock';
 import { nightsBetween } from '../domain/pricing';
+import { coverPhoto } from '../domain/room-attributes';
 
 export type BookingErrorCode =
   | 'invalid_request'
@@ -80,17 +86,6 @@ const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google
 /** A browser can remember a long history; a page does not need to load all of it. */
 const MAX_TRIPS = 40;
 
-/**
- * Whether the stay is still ahead. Compared as calendar dates, in the
- * server's own day: a guest arriving today is checking in, not booking, and
- * either way this is a demo whose property sits in one timezone.
- */
-function isBeforeCheckIn(checkIn: string): boolean {
-  const today = new Date();
-  const offset = today.getTimezoneOffset();
-  return checkIn > new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
-}
-
 /** References are shown and typed in upper case, whatever the keyboard did. */
 function normalizeReference(reference: string): string {
   return reference.trim().toUpperCase();
@@ -113,12 +108,26 @@ export function createReference(): string {
 
 export class BookingService {
   constructor(
-    private readonly repository: HotelRepository,
+    private readonly repository: Pick<CatalogReader, 'listAddOns' | 'listRatePlans' | 'listRooms'> &
+      BookingStore &
+      PaymentAttemptStore,
     private readonly bookingEngine: BookingEngineAdapter,
     private readonly paymentProvider: PaymentProvider,
     private readonly crm?: CrmAdapter,
     private readonly pms?: PmsAdapter,
+    private readonly clock: Clock = systemClock,
   ) {}
+
+  /**
+   * Whether the stay is still ahead. Compared as calendar dates, in the
+   * server's own day: a guest arriving today is checking in, not booking, and
+   * either way this is a demo whose property sits in one timezone.
+   */
+  private isBeforeCheckIn(checkIn: string): boolean {
+    const today = this.clock.now();
+    const offset = today.getTimezoneOffset();
+    return checkIn > new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
+  }
 
   /** Server-authoritative price and availability. The UI never computes a total itself. */
   async quote(request: QuoteRequest): Promise<Quote> {
@@ -126,7 +135,7 @@ export class BookingService {
   }
 
   async getByReference(reference: string): Promise<Booking> {
-    const booking = await this.repository.getBookingByReference(reference);
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) throw new BookingError('not_found', `No booking found for ${reference}.`);
     return booking;
   }
@@ -191,7 +200,7 @@ export class BookingService {
   async findTrip(reference: string, email: string): Promise<TripSummary | null> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return null;
-    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) return null;
+    if (!matchesGuestEmail(booking.guest.email, email)) return null;
 
     const rooms = await this.repository.listRooms(booking.hotelId);
     return this.summarize(booking, rooms.find((room) => room.id === booking.roomTypeId) ?? null);
@@ -212,7 +221,7 @@ export class BookingService {
   ): Promise<{ outcome: CancelOutcome; trip?: TripSummary }> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
-    if (booking.guest.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+    if (!matchesGuestEmail(booking.guest.email, email)) {
       return { outcome: 'not_found' };
     }
 
@@ -222,7 +231,7 @@ export class BookingService {
     if (booking.status === 'cancelled') {
       return { outcome: 'already_cancelled', trip: this.summarize(booking, room) };
     }
-    if (!isBeforeCheckIn(booking.checkIn)) {
+    if (!this.isBeforeCheckIn(booking.checkIn)) {
       return { outcome: 'stay_started', trip: this.summarize(booking, room) };
     }
 
@@ -240,13 +249,13 @@ export class BookingService {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
     if (booking.status === 'cancelled') return { outcome: 'already_cancelled', booking };
-    if (!isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
+    if (!this.isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
     const cancelled = await this.repository.cancelBooking(booking.reference);
     return cancelled ? { outcome: 'cancelled', booking: cancelled } : { outcome: 'not_found' };
   }
 
   private summarize(booking: Booking, room: RoomType | null): TripSummary {
-    const photo = room?.media.find((item) => item.type === 'image') ?? null;
+    const photo = room ? (coverPhoto(room) ?? null) : null;
     return {
       reference: booking.reference,
       roomName: room?.name ?? 'Your room',
@@ -261,7 +270,7 @@ export class BookingService {
       total: booking.total,
       currency: booking.currency,
       status: booking.status,
-      canCancel: booking.status !== 'cancelled' && isBeforeCheckIn(booking.checkIn),
+      canCancel: booking.status !== 'cancelled' && this.isBeforeCheckIn(booking.checkIn),
       createdAt: booking.createdAt,
     };
   }

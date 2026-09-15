@@ -82,8 +82,8 @@ export async function updateRateAction(
   return formStateFromResult(result, 'Rate saved.');
 }
 
-export async function deleteRateAction(id: string): Promise<ContentFormState> {
-  const result = await contentService.deleteRate(id);
+export async function deleteRateAction(id: string, expectedVersion: number): Promise<ContentFormState> {
+  const result = await contentService.deleteRate(id, expectedVersion);
   if (!result.ok) return formStateFromError(result.error);
   revalidateContent();
   return { status: 'success', message: 'Rate removed.' };

@@ -28,7 +28,7 @@ export default async function TripsPage({ searchParams }: PageProps<'/trips'>) {
           <h1 className="text-display text-5xl sm:text-6xl">My trips</h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Every demo booking made in this browser. Nothing is charged and no account is needed —
-            the stays live in this demo&apos;s memory and are listed here by their booking number.
+            this browser remembers which booking numbers are yours, and lists them here.
           </p>
         </header>
 

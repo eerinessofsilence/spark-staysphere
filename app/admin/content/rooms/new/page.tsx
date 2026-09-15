@@ -3,6 +3,7 @@ import { contentService } from '@/lib/application/container';
 import { bedLabels, viewLabels } from '@/lib/formatting';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
+import { labelOptions } from '@/components/admin/content/label-options';
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
 import { OrderedStringList } from '@/components/admin/content/ordered-string-list';
@@ -55,21 +56,13 @@ export default async function NewRoomPage() {
                   </Field>
                   <Field id="room-bedType" name="bedType" label="Bed">
                     <Select id="room-bedType" name="bedType" defaultValue="king" required>
-                      {Object.entries(bedLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
+                      {labelOptions(bedLabels)}
                     </Select>
                   </Field>
                 </div>
                 <Field id="room-view" name="view" label="View">
                   <Select id="room-view" name="view" defaultValue="sea" required className="sm:w-56">
-                    {Object.entries(viewLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
+                    {labelOptions(viewLabels)}
                   </Select>
                 </Field>
               </div>
@@ -80,7 +73,7 @@ export default async function NewRoomPage() {
                 Amenities
               </h2>
               <div className="mt-4">
-                <OrderedStringList name="amenities" initial={[]} addPlaceholder="Add an amenity" />
+                <OrderedStringList name="amenities" initial={[]} addPlaceholder="Add an amenity" itemNoun="amenity" />
               </div>
             </div>
 

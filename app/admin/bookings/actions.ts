@@ -15,7 +15,7 @@ export async function cancelBookingAction(reference: string): Promise<CancelBook
     revalidatePath('/admin');
     revalidatePath('/admin/bookings');
     revalidatePath('/admin/bookings/[reference]', 'page');
-    revalidatePath('/admin/chessboard');
+    revalidatePath('/admin/tape-chart');
     revalidatePath('/rooms');
   }
 

@@ -1,10 +1,15 @@
 # Building spinner — implementation spec (handoff)
 
-Status: **decided**. Scope and architecture were settled via a structured interview with the
-product owner (2026-09-06) — see the Decision log at the bottom. Two steps remain before an
-implementing agent (e.g. Codex) can write the component itself: picking a specific 3D asset and
-provisioning Blender locally. See "Next steps." Update `TECH.md`'s Photography and media section
-once this ships — it currently states "There is no 3D scene" and that's true until this lands.
+Status: **shipped**. This is a decision record now, not an open handoff: the scope and
+architecture below were settled via a structured interview with the product owner (2026-09-06) —
+see the Decision log at the bottom — and `BuildingSpinner` (today in `components/view-360/`, see
+that module's README.md; file paths further down are as they were when this was written) is the live
+result, replacing the arrival page's facade/roof/cove photo. See TECH.md's "Photography and media"
+section for the current, maintained description of how it works; this file is kept for the
+reasoning behind the frame-count, hotspot, and baked-vs-live-scene decisions, which TECH.md does
+not repeat. A same-day detour into a live three.js scene (`Hotel.model`, procedural block massing)
+was tried and replaced by this spinner hours later — see CLAUDE.md's roadmap and TECH.md's
+Photography section for that history.
 
 ## Why this document exists
 

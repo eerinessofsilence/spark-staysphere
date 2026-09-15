@@ -69,18 +69,18 @@ presented as the hotel's own.
 
 `/images/panoramas/*` are equirectangular (2:1) panoramas of real places, none of them Asteria
 Cove — the property has not been captured in 360 yet. They are offered beside the flat
-photography in two places, both behind a "360° view" button on the picture itself:
-
-- **Arrival screen** — each `HotelArea` carries a `panorama` (see `hotelAreas` in
-  `lib/infrastructure/mock-data.ts`); `HotelScene` swaps the area photo for the sphere.
-- **Room pages** — each room carries one as a `media` entry of `type: '360'` (see
-  `panoramaByRoom`); `RoomGallery` shows it as one more tab beside the photographs.
+photography on room pages, behind a "360° view" button on the picture itself: each room carries
+one as a `media` entry of `type: '360'` (see `panoramaByRoom` in `lib/infrastructure/mock-data.ts`),
+and `RoomGallery` shows it through `PanoramaViewer` (`components/view-360/`) as one more tab
+beside the photographs. The arrival captures (`hotel`, `pool`, `spa`, `lobby`) are still named by
+each `HotelArea`'s `panorama` field and listed in `/admin/media`, but no guest screen shows them
+since the building spinner replaced the arrival sphere tour.
 
 Areas and rooms of a kind share a file until real captures replace them one by one. All are
 downscaled to 4096×2048 WebP. Every file but one is
 [CC0](https://creativecommons.org/publicdomain/zero/1.0/) (public domain, no attribution
-required — credited here and in the gallery anyway); the aerial over the arrival screen is
-CC BY-SA, which is why the sphere carries a visible credit and the file keeps that licence.
+required — credited here and in the gallery anyway); the arrival aerial is CC BY-SA, so the file
+keeps that licence and must carry a visible credit wherever a screen shows it again.
 
 | File | Used for | Credit | Source |
 |---|---|---|---|

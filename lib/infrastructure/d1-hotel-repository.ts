@@ -117,26 +117,32 @@ export async function cancelBooking(
   if (!existing) return null;
   if (existing.status === 'cancelled') return existing;
 
-  const result = await db
-    .prepare("UPDATE bookings SET status = 'cancelled' WHERE reference = ? AND status <> 'cancelled'")
-    .bind(reference)
-    .run();
+  const nights = existing.status === 'confirmed' ? nightsInRange(existing.checkIn, existing.checkOut) : [];
 
-  const changed = (result.meta.changes ?? 0) > 0;
-  if (changed && existing.status === 'confirmed') {
-    const nights = nightsInRange(existing.checkIn, existing.checkOut);
-    if (nights.length > 0) {
-      await db.batch(
-        nights.map((date) =>
-          db
-            .prepare(
-              'UPDATE inventory_holds SET held = MAX(held - 1, 0) WHERE room_type_id = ? AND date = ?',
-            )
-            .bind(existing.roomTypeId, date),
-        ),
-      );
-    }
+  // One batch (one implicit D1 transaction), not two round trips: a crash
+  // between "cancel the booking" and "credit back the nights" must not be
+  // possible. `changes()` reports the row count of the immediately preceding
+  // statement in this same batch/connection, so the credit only fires when
+  // *this* statement actually flipped the booking to cancelled — never when
+  // a concurrent cancel already won the race (its UPDATE affects 0 rows here)
+  // and never on an already-cancelled booking (guarded above).
+  const statements = [
+    db
+      .prepare("UPDATE bookings SET status = 'cancelled' WHERE reference = ? AND status <> 'cancelled'")
+      .bind(reference),
+  ];
+  if (nights.length > 0) {
+    const placeholders = nights.map(() => '(?)').join(', ');
+    statements.push(
+      db
+        .prepare(
+          `UPDATE inventory_holds SET held = MAX(held - 1, 0)
+           WHERE changes() > 0 AND room_type_id = ? AND date IN (SELECT column1 FROM (VALUES ${placeholders}))`,
+        )
+        .bind(existing.roomTypeId, ...nights),
+    );
   }
+  await db.batch(statements);
 
   return { ...existing, status: 'cancelled' };
 }
@@ -152,67 +158,86 @@ export async function listBookings(db: D1Database): Promise<Booking[]> {
 /**
  * Inserts the booking (a no-op on a replayed idempotency key) and, only when
  * this call actually created the row, increments the per-night holds that
- * back availability. Re-reads by idempotency key afterward so a genuinely
- * concurrent duplicate returns whichever row actually won, not this one.
+ * back availability and records the assigned unit — all in one batch (one
+ * implicit D1 transaction), so a crash partway through can never leave a
+ * confirmed-looking booking that holds no inventory. Both downstream
+ * statements are gated on `WHERE EXISTS (SELECT 1 FROM bookings WHERE id =
+ * ?)`, bound to *this* call's own `booking.id` — not on `changes()`, which
+ * only reflects the statement immediately before it and so cannot gate two
+ * separate downstream statements correctly. The EXISTS check only passes
+ * when this call's own INSERT actually won: on a replay with the same
+ * idempotency key but a different (fresh) `booking.id`, that id was never
+ * inserted, so both downstream statements correctly no-op instead of
+ * crediting inventory or attaching a unit to a booking row that doesn't
+ * exist. Re-reads by idempotency key afterward so a genuinely concurrent
+ * duplicate returns whichever row actually won, not necessarily this one.
  */
 export async function saveBooking(db: D1Database, booking: Booking): Promise<Booking> {
   await ensureSchema(db);
 
-  const insertResult = await db
-    .prepare(
-      `INSERT INTO bookings (
-        id, reference, idempotency_key, hotel_id, room_type_id, rate_plan_id,
-        check_in, check_out, adults, children,
-        guest_first_name, guest_last_name, guest_email, guest_phone,
-        add_on_ids, total, currency, status, created_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      ON CONFLICT (idempotency_key) DO NOTHING`,
-    )
-    .bind(
-      booking.id,
-      booking.reference,
-      booking.idempotencyKey,
-      booking.hotelId,
-      booking.roomTypeId,
-      booking.ratePlanId,
-      booking.checkIn,
-      booking.checkOut,
-      booking.adults,
-      booking.children,
-      booking.guest.firstName,
-      booking.guest.lastName,
-      booking.guest.email,
-      booking.guest.phone,
-      JSON.stringify(booking.addOnIds),
-      booking.total,
-      booking.currency,
-      booking.status,
-      booking.createdAt,
-    )
-    .run();
+  const statements = [
+    db
+      .prepare(
+        `INSERT INTO bookings (
+          id, reference, idempotency_key, hotel_id, room_type_id, rate_plan_id,
+          check_in, check_out, adults, children,
+          guest_first_name, guest_last_name, guest_email, guest_phone,
+          add_on_ids, total, currency, status, created_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT (idempotency_key) DO NOTHING`,
+      )
+      .bind(
+        booking.id,
+        booking.reference,
+        booking.idempotencyKey,
+        booking.hotelId,
+        booking.roomTypeId,
+        booking.ratePlanId,
+        booking.checkIn,
+        booking.checkOut,
+        booking.adults,
+        booking.children,
+        booking.guest.firstName,
+        booking.guest.lastName,
+        booking.guest.email,
+        booking.guest.phone,
+        JSON.stringify(booking.addOnIds),
+        booking.total,
+        booking.currency,
+        booking.status,
+        booking.createdAt,
+      ),
+  ];
 
-  const inserted = (insertResult.meta.changes ?? 0) > 0;
-  if (inserted && booking.unitNumber) {
-    await db
-      .prepare('INSERT INTO booking_units (booking_id, unit_number) VALUES (?, ?) ON CONFLICT (booking_id) DO NOTHING')
-      .bind(booking.id, booking.unitNumber)
-      .run();
-  }
-  if (inserted && booking.status === 'confirmed') {
+  if (booking.status === 'confirmed') {
     const nights = nightsInRange(booking.checkIn, booking.checkOut);
     if (nights.length > 0) {
-      await db.batch(
-        nights.map((date) =>
-          db
-            .prepare(
-              `INSERT INTO inventory_holds (room_type_id, date, held) VALUES (?, ?, 1)
-               ON CONFLICT (room_type_id, date) DO UPDATE SET held = held + 1`,
-            )
-            .bind(booking.roomTypeId, date),
-        ),
+      const placeholders = nights.map(() => '(?)').join(', ');
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO inventory_holds (room_type_id, date, held)
+             SELECT ?, column1, 1 FROM (VALUES ${placeholders}) WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?)
+             ON CONFLICT (room_type_id, date) DO UPDATE SET held = held + 1`,
+          )
+          .bind(booking.roomTypeId, ...nights, booking.id),
       );
     }
   }
+
+  if (booking.unitNumber) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO booking_units (booking_id, unit_number)
+           SELECT ?, ? WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?)
+           ON CONFLICT (booking_id) DO NOTHING`,
+        )
+        .bind(booking.id, booking.unitNumber, booking.id),
+    );
+  }
+
+  await db.batch(statements);
 
   const saved = await findBookingByIdempotencyKey(db, booking.idempotencyKey);
   if (!saved) throw new Error('Booking insert did not persist.');

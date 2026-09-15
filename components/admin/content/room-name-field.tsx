@@ -16,13 +16,18 @@ const CATEGORY_LABELS: Record<ReturnType<typeof roomCategory>, string> = {
 /**
  * The room's catalog category is derived from its name (`roomCategory` in
  * `lib/domain/room-attributes.ts`) — there is no category field to fill in,
- * so this shows what the site will file the room under as the name is typed.
+ * so this shows where the catalog will list the room as the name is typed.
  */
 export function RoomNameField({ initial }: { initial: string }) {
   const [value, setValue] = React.useState(initial);
 
   return (
-    <Field id="room-name" name="name" label="Name" hint={`Filed on the site as: ${CATEGORY_LABELS[roomCategory({ name: value })]}`}>
+    <Field
+      id="room-name"
+      name="name"
+      label="Name"
+      hint={`Listed in the catalog under ${CATEGORY_LABELS[roomCategory({ name: value })]} — it follows the name.`}
+    >
       <TextInput
         id="room-name"
         name="name"

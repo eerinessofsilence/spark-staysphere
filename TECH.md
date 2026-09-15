@@ -6,11 +6,16 @@
 - Tailwind CSS 4 plus shadcn UI primitives.
 - Zod for runtime validation and inferred domain types.
 - Cloudflare/Sites-compatible Vite build.
-- Phosphor Icons (`@phosphor-icons/react/dist/ssr`, filled weight) for every product icon;
-  `lucide-react` remains only as an internal dependency of the generated shadcn primitives and
-  is lint-banned elsewhere.
-- Bricolage Grotesque, Onest, and Instrument Serif self-hosted through `next/font/google`.
-- Playwright for golden-path end-to-end coverage at 1440px and 390px.
+- Two icon sets, split by job — see DESIGN_SYSTEM.md rule 5: Heroicons outline
+  (`@heroicons/react/24/outline`) for interface marks, Phosphor filled
+  (`@phosphor-icons/react/dist/ssr`, `weight="fill"`) for marks that denote a physical thing (a
+  bathtub, a bed, a room's amenities). `lucide-react` is lint-banned outside `components/ui/` (the
+  generated shadcn primitives), see `.oxlintrc.json`.
+- Inter and Instrument Serif (italic accent only) self-hosted through `next/font/google`; the
+  interface face is really San Francisco on Apple platforms, with Inter as the fallback for
+  everyone else — see DESIGN_SYSTEM.md's Typography section.
+- Vitest for unit tests (`lib/domain/**`, pure logic — `npm run test`); Playwright for
+  golden-path end-to-end coverage at 1440px and 390px (`npm run test:e2e`).
 - Not installed: TanStack Query and React Hook Form. Server components own data fetching and
   the booking form is small enough that controlled inputs are simpler than a form library.
 
@@ -33,11 +38,26 @@ owns idempotency, the price/availability recheck, the hold, demo authorization, 
 best-effort CRM/PMS delivery. `lib/application/container.ts` is the composition root and the only
 module that imports `lib/infrastructure`.
 
+`HotelRepository` is not one interface a service takes whole — it `extends` four narrower ones
+(`CatalogReader`, `AvailabilityReader`, `BookingStore`, `PaymentAttemptStore`), and each service's
+constructor declares only the slice it actually calls (`CatalogService` takes
+`CatalogReader & AvailabilityReader`; `BookingService` takes a `Pick` of the catalog reads it needs
+plus the full booking and payment stores). Every concrete repository still implements all four, so
+this changes nothing about what `container.ts` wires in, only what each constructor's declared
+type says it may call. `Clock` (`lib/domain/ports.ts`, real implementation `lib/domain/clock.ts`)
+is the same idea for "now": `BookingService` and `ContentService` take one as an optional
+constructor parameter (default the real clock), so a test can pass a fixed date without either
+service's own "today" formula changing.
+
 `lib/application/booking-intake.ts` is the shared slug-addressed intake used by both the booking
 UI's server actions and the HTTP route handlers, so both entry points re-derive price on the server
-and neither trusts a client-supplied total.
+and neither trusts a client-supplied total. `app/api/_lib/http.ts` is the same idea for the HTTP
+routes' shared boilerplate: `parseJsonBody` (read → Zod-validate → 400 on failure) and
+`mapBookingError`/`toBookingErrorResponse` (one `BookingErrorCode` → HTTP status table), so
+`/api/quotes`, `/api/bookings`, and the booking form's server actions can't map the same failure
+to three different outcomes.
 
-`lib/infrastructure` holds eight demo room types with rates and add-ons (static seed data, never
+`lib/infrastructure` holds the demo room types with rates and add-ons (static seed data, never
 persisted), an in-memory repository with deterministic date-aware availability, mock
 implementations of every adapter port, and the `DemoControlPort` backing `/admin` (status
 overrides, add-on enablement, integration status rows).
@@ -135,18 +155,50 @@ urls against; `MediaStoragePort` is declared alongside them for a future upload 
 implemented.
 
 `/admin/content`'s forms are server actions with Zod validation, driven by `useActionState`
-through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm` —
-the field-error banner, the `role="status"` success message, the save button's pending state, and
-a `beforeunload` warning once a field has changed. `Field` (`components/admin/content/fields.tsx`)
-reads its own error out of that wrapper's context by the Zod field-error key (`name`, not always
-the same as its DOM `id`). Reorderable lists (`amenities`, a rate's `includedServices`, a room's
+through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm`.
+It dispatches from its own submit handler rather than `<form action>`: React resets every
+uncontrolled field once a form action finishes, which after a failed save wiped what had been
+typed and refilled the invalid field under its own error. The wrapper owns, for every form:
+
+- **Unsaved changes, measured.** The form's `FormData` is compared with the last saved snapshot,
+  so reordering a list, a Select or a switch counts as much as typing. While anything differs the
+  sticky button bar says "Unsaved changes", `beforeunload` warns, and
+  `components/admin/shell/unsaved-changes.tsx`'s guard (mounted once in the admin shell) catches
+  in-admin link clicks — which never fire `beforeunload` — and asks in the product `Modal`.
+- **Where the result is.** The button bar sticks to the bottom of the screen while its form is on
+  it. A failed save says so there ("Not saved — 1 field needs attention"), opens any `<details>`
+  around the first error, scrolls it to the middle and focuses its control; `Field` marks its error
+  with `data-field-error`, and the list editors show `media.1.label`-style errors on their own row.
+- **Versions shared on the page.** `version-channel.ts` lets controls that write the same entity
+  (a room's form and its "Hide from the site" button; an add-on's form and its on-sale switch)
+  announce each step they save (`from` → `to`); another control still holding `from` steps along,
+  so a person's own click is never reported back to them as someone else's edit. A genuine
+  conflict keeps the edits in the form and offers "Save my version" or "Discard mine and load
+  theirs".
+
+Actions that flip one flag — "Hide from the site", an add-on's on-sale switch, in the list or on its
+own page — act at once and offer Undo for a few seconds; everything else waits for Save. Deletes
+are offered only where `ContentService.rateRemoval`/`addOnRemoval` allow one (otherwise the reason
+is shown instead), confirmed in the product `Modal`, and a deleted add-on's page sends the person
+back to the list with a notice rather than to a 404. Room numbers are stored per room, so moving a
+room type to another floor or view renumbers nothing; a room a current booking chose is protected
+where its number actually lives, in the room editor (see "Physical rooms" below).
+
+`Field` (`components/admin/content/fields.tsx`) reads its own error out of the wrapper's context by
+its error key (`name`, not always the same as its DOM `id`; the hotel form's are id-based paths like
+`areas.pool.hotspots.bar.cta`). Reorderable lists (`amenities`, a rate's `includedServices`, a room's
 `media`, an add-on's `photos`) have no drag-and-drop library — up/down/remove buttons, with state
-serialized into one hidden JSON input the server action reads back with `parseJsonList`. The media
-picker is the shared product `Modal`, listing the manifest with a folder filter.
+serialized into one hidden JSON input the server action reads back with `parseJsonList`; text still
+in an "add" field is saved with the list. A gallery item's type follows from the file picked
+(`mediaTypeOf`: panoramas are 360° views) and its label is required, prefilled from the file name,
+because the room page shows it as the name of that view. The media picker is the shared product
+`Modal`: it opens on the room's own folder when that folder has photos not yet in the gallery,
+searches by name, and marks photos already added. The content list searches by name and filters to
+room types, add-ons, or only what is hidden or withdrawn.
 
-## Physical rooms, the floor plan and the chessboard
+## Physical rooms, the floor plan and the tape chart
 
-The catalog sells room types; a floor plan and a PMS chessboard need doors. Physical rooms are
+The catalog sells room types; a floor plan and a PMS tape chart need doors. Physical rooms are
 stored: a `PhysicalRoom` (`number`, `floor`, `roomTypeId`) is a CMS entity of kind `unit`, seeded in
 `mock-data.ts` by `layOutRooms` with the numbers the demo building always had (floor by floor, sea
 facade first) and edited under `/admin/content/units`. A room type sells exactly as many rooms a night
@@ -168,9 +220,9 @@ lowest-ranked room free for their whole stay (a stay never changes rooms mid-way
 availability still counts as taken fills the lowest-ranked free rooms as simulated demand, or as
 closed when an admin override is behind it. Ranks are hashed per room type so occupied doors scatter.
 `InventoryService` (`lib/application/inventory-service.ts`) exposes it as `getFloorPlan` (one stay,
-guest-facing, hidden types left out), `getChessboard` (every room across a window of nights, with
+guest-facing, hidden types left out), `getTapeChart` (every room across a window of nights, with
 bookings, demand, closures and daily arrivals and departures) and `getBookingRoom`. Simulated demand
-is cut into 2–5-night blocks only so the chessboard reads like a PMS, and is labelled as simulated
+is cut into 2–5-night blocks only so the tape chart reads like a PMS, and is labelled as simulated
 wherever it appears.
 
 A booking may carry `unitNumber`, the room the guest picked. `booking-intake.ts` checks that room is
@@ -184,14 +236,15 @@ the catalog's per-night minimum.
 
 ## Back office
 
-`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around three groups of
-screens. What reads and writes real demo data, and what is a labelled mock-up of a later feature:
+`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around two groups of
+screens in the sidebar nav (`components/admin/shell/admin-nav.tsx`), Operations and Content. What
+reads and writes real demo data, and what is a labelled preview of a later feature:
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
-| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getChessboard`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getTapeChart`, `HotelRepository.listBookings`, `DemoControlPort` — live |
 | `/admin/reset` | "Reset demo state" — not in the sidebar; reachable by URL for the demo owner and the e2e harness, not by navigation | `DemoControlPort.reset`, `ContentService.resetContent` — live |
-| `/admin/chessboard` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getChessboard` — live; demand is simulated and says so |
+| `/admin/tape-chart` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getTapeChart` — live; demand is simulated and says so |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; detail is three cards — guest (contact, party, totals across their stays), booking (status, room, rate, payment, dates, extras, cancel), room (photo, facts, price summary) — over the guest's booking history, matched by email | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom`, `HotelRepository.listBookings` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
 | `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
@@ -206,13 +259,18 @@ from `buildPriceBreakdown`. Each has a fixed idempotency key, so pressing it twi
 and none falls in the 45–48-day window the e2e suite books into. Past and in-house stays are why
 it skips `BookingService.confirm`, which rightly refuses them.
 
-Every screen here reads or writes real demo data; there are no mock-up screens. Brand settings,
+Every screen in the sidebar nav reads or writes real demo data. Four more routes exist but are not
+linked from the nav — reachable only by typing the URL — and each says on screen that it is a
+preview: `/admin/settings` (brand preview, "changes aren't saved in this demo"),
+`/admin/settings/team` ("sign-in and roles arrive with admin auth"), `/admin/integrations` (mock
+adapter status, "nothing is connected to a real system"), and `/admin/media` (the committed
+manifest, read-only — there is no upload path, see "Content management (CMS)"). Brand settings,
 team roles, integration credentials and media uploads are left out until they can actually save.
 
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
 `stay_started` rules as the guest's, without the email check, since the desk is trusted (until
 auth, anyone who can open `/admin` is). A cancelled booking releases its nights and its room at
-once, because both the floor plan and the chessboard recompute `allocateRoomType` on read. The rates
+once, because both the floor plan and the tape chart recompute `allocateRoomType` on read. The rates
 screen saves through `ContentService.updateRate` with the rate's `version`, so it and the CMS rate
 form share one concurrency check and one overlay row. Every write revalidates the admin screens
 that show it and the guest routes it reprices.
@@ -283,7 +341,9 @@ Implemented as route handlers in this app; there is no separate API service.
   attempt instead of an authorization.
   An optional `unitNumber` (e.g. `"402"`) books that exact room; it must belong to the room type and
   be free for the whole stay, or the request gets 409 `unavailable`.
-- `GET /api/bookings/:reference` — reads a booking from the current process.
+- `GET /api/bookings/:reference?email=…` — reads a booking from the current process. The
+  reference alone opens nothing: `email` must match the guest's own, the same rule
+  `findTrip`/`cancelTrip` enforce for "My trips", since a reference is guessable in bulk.
 
 The guest UI reaches the same intake through server actions (`app/book/[slug]/actions.ts`) rather
 than fetching these routes. The back office is server actions only: overrides and the demo reset
@@ -318,24 +378,31 @@ through the same `object-fit: cover` maths the browser applies, so markers stay 
 viewports. Room galleries come from `RoomType.media`, where each image carries a `label` that
 becomes its tab.
 
-The building itself is a model a guest can turn: `Hotel.model` describes the property as a
-handful of `blocks` (a tower, a terraced front, a wing — each a footprint, a floor range, which
-faces carry balconies, which floors are glazed) plus the grounds, and
-`components/hotel/hotel-model-scene.ts` builds it with three.js: floor plates and piers, sliding
-doors in dark frames, glass balustrades on a handrail, a glazed arcade at the base, on a headland
-that falls to the sea with maquis and cypresses behind. It is lit by a real sky — an HDRI, one
-per scheme — and surfaced with scanned plaster, concrete and ground, all Poly Haven CC0 assets at
-1K stored locally (`public/hdri`, `public/textures`, ~12 MB, credited in
-`public/images/CREDITS.md`) and loaded only when the model is; the night sky lights most of the
-rooms and the pool. A property that owns a GLB sets `model.url` instead and the massing
-is skipped; a mesh named `floor-3` in it is picked as the third floor. Either way the floors are
-the way into the catalog — a tap on one, or on the rail beside the stage, lists the room types on
-that floor at the catalog's own price. three.js (~150 KB gzipped) is a lazy import behind an
-`IntersectionObserver`, so it only ships once the stage is near the viewport; the scene renders
-on demand (only while on screen, only when something moved), one finger turns it and two pinch,
-and `prefers-reduced-motion` disables the idle turn. The React side, `components/hotel/hotel-model.tsx`,
-owns all the UI and follows the `.dark` class on `<html>` through a `MutationObserver`, reading
-the scene's colours off the page's own tokens.
+The building itself is a model a guest can turn: `Hotel.spinner` (`BuildingSpinnerData`) is a
+baked 160-frame orbit around the exterior — `frames` (one image per angle, all sharing one
+framing so hotspot fractions project through a single size), `keyAngles` (the stops the prev/next
+arrows jump between, since stepping 160 frames one at a time is unusable), and `hotspots`, each
+carrying `keyframes` for the sub-range of frames where it actually faces the camera.
+`BuildingSpinner` draws the current frame to a single `<canvas>` rather than mounting elements —
+160 full-size images left in the DOM after one full turn would be unreasonable — loads frames
+nearest-first around the opening frame and fills in the rest in the background, and animates
+between `keyAngles` stops on an arrow button or arrow key (a press during a turn queues the next
+stop). A drag turns it directly, about a frame per 4px; there is no inertia and no idle rotation.
+A tap on a hotspot opens a card beside it (the product's sheet on a phone) with the room type's
+price from the catalog offer; `?frame=N` and `?unit=<slug>` deep-link into it. If the frames can't
+load it falls back, silently, to the area's still photo with the markers pinned front-on.
+
+A room gallery's 360° tab is `PanoramaViewer`: an equirectangular sphere over Pannellum, vendored
+at `public/vendor/pannellum`, mounted only while its tab is open.
+
+Both views are one module, `components/view-360/`, with a single public entry (`index.ts`; a deep
+import fails `npm run lint`). Its README.md is the maintained reference — structure, invariants,
+and how to replace the frames, add a hotspot, or give a room a sphere — and
+`docs/decisions/0005-view-360-module.md` records why it is shaped that way. See `SPINNER_SPEC.md`'s
+decision log (2026-09-06) for the frame-count, hotspot, and baked-vs-live-WebGL reasoning behind a
+baked frame sequence over a live scene. A same-day detour into a live three.js model built from
+procedural block massing (`Hotel.model`) was tried and replaced by this spinner hours later; its
+files and the `Hotel.model` schema were removed as dead code once the spinner took over.
 
 ## Current limitations
 

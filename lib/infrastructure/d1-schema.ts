@@ -32,7 +32,15 @@ const ready = new WeakMap<D1Database, Promise<void>>();
 export function ensureSchema(db: D1Database): Promise<void> {
   let promise = ready.get(db);
   if (!promise) {
-    promise = db.batch(STATEMENTS.map((statement) => db.prepare(statement))).then(() => undefined);
+    promise = db
+      .batch(STATEMENTS.map((statement) => db.prepare(statement)))
+      .then(() => undefined)
+      .catch((error) => {
+        // Don't cache a failed bootstrap — a transient D1 error would
+        // otherwise fail every call for the rest of the isolate's life.
+        ready.delete(db);
+        throw error;
+      });
     ready.set(db, promise);
   }
   return promise;

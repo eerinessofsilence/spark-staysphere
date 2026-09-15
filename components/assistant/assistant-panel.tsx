@@ -24,6 +24,7 @@ import { iconButton, fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RoomCard } from '@/components/rooms/room-card';
 import { OVERLAY_TRANSITION_MS, useOverlayTransition } from '@/components/site/use-overlay-transition';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { ThinkingOrbs, type AssistantPhase } from './thinking-orbs';
 import { useVoiceCapture } from './use-voice-capture';
 
@@ -126,6 +127,14 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     }
   }, [voice.status]);
 
+  // The panel stays mounted while closed (only its own render returns null),
+  // so nothing else stops a live recording when the guest presses Escape or
+  // taps away — the mic would stay on, and what it caught would still be
+  // uploaded for transcription. `cancel` discards rather than transcribing.
+  React.useEffect(() => {
+    if (!open) voice.cancel();
+  }, [open, voice.cancel]);
+
   React.useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -139,14 +148,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
     };
   }, [open, onClose]);
 
-  React.useEffect(() => {
-    if (!rendered) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [rendered]);
+  useScrollLock(rendered);
 
   const runSearch = React.useCallback(
     async (utterance: string, filtersOverride?: RoomFilters, criteriaOverride?: StayCriteria) => {

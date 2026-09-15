@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ reference: string }> }): Promise<Metadata> {
   const { reference } = await params;
-  return { title: `${reference} — Reservations | SPARK StaySphere 360` };
+  return { title: `${reference} — Bookings | SPARK StaySphere 360` };
 }
 
 function timestamp(iso: string): string {
@@ -236,9 +236,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           </Section>
 
           <div className="mt-6 flex flex-wrap items-start justify-between gap-4 border-t border-border pt-5">
-            <Link href={`/admin/chessboard?from=${booking.checkIn}`} className={pill('ghost')}>
+            <Link href={`/admin/tape-chart?from=${booking.checkIn}`} className={pill('ghost')}>
               <TableCellsIcon className="size-4" aria-hidden="true" />
-              Show on Property Desk
+              Show on tape chart
             </Link>
             <BookingActions reference={booking.reference} canCancel={canCancel} note={note} />
           </div>

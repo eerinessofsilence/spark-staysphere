@@ -53,6 +53,30 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
 }
 
 /**
+ * The branded `Select` (`components/ui/select.tsx`) is a button + popup, not a
+ * native `<select>` — `selectOption`/`toHaveValue` don't apply. Its options
+ * portal to `document.body`, so they're found from `page`, not the trigger.
+ * Base UI ignores a mouseup on any item for ~400ms after the popup opens, so
+ * a click right under the trigger can't double as an accidental selection —
+ * the option click has to land after that window, not right after `click()`.
+ * Selecting awaits a server action before the trigger's label updates, so
+ * this waits for that label before returning — a caller that reloads right
+ * after the click would otherwise abort that in-flight request.
+ */
+async function chooseOption(page: Page, combobox: Locator, optionName: string) {
+  // The first click on a server-rendered island can be lost before React
+  // attaches its listeners (see `actUntil`) — fail fast on each step so the
+  // caller's `actUntil` retries the whole open-then-pick sequence, rather
+  // than hanging on this attempt's default ~30s action timeout.
+  await combobox.click();
+  const option = page.getByRole('option', { name: optionName });
+  await option.waitFor({ state: 'visible', timeout: 3_000 });
+  await page.waitForTimeout(450);
+  await option.click();
+  await expect(combobox).toContainText(optionName, { timeout: 3_000 });
+}
+
+/**
  * Filter chips and add-on checkboxes settle only after the server re-renders,
  * so a blind retry would toggle them straight back. Guard on the current state.
  */
@@ -148,20 +172,22 @@ async function addExtra(page: Page, name: RegExp, extras: RegExp[] = []) {
 test('resetting demo state clears bookings and availability overrides', async ({ page }) => {
   await page.goto('/admin/reset');
 
-  const button = page.getByRole('button', { name: 'Reset demo state' });
+  // "No reservations yet" can already be true before the reset has finished — after a suite that made no
+  // bookings — so wait on the button's own disabled → enabled round trip, which only the reset resolves.
+  const reset = page.getByRole('button', { name: 'Reset demo state' });
   await actUntil(
-    () => button.click(),
-    () => expect(button).toBeDisabled({ timeout: 2_000 }),
+    () => reset.click(),
+    () => expect(reset).toBeDisabled({ timeout: 2_000 }),
   );
-  await expect(button).toBeEnabled({ timeout: 15_000 });
+  await expect(reset).toBeEnabled({ timeout: 15_000 });
 
   await page.goto('/admin');
-  await expect(page.getByText('No bookings yet')).toBeVisible();
+  await expect(page.getByText('No reservations yet')).toBeVisible();
 
   // Overrides live with the rates now, not on the overview.
   await page.goto('/admin/rates');
-  await expect(page.getByRole('combobox', { name: 'Availability override for Coastal Twin' })).toHaveValue(
-    'auto',
+  await expect(page.getByRole('combobox', { name: 'Availability override for Coastal Twin' })).toContainText(
+    'Auto (simulated)',
   );
 });
 
@@ -197,7 +223,7 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     `/book/deluxe-sea?${stayQuery}`,
     `/booking/${reference}`,
     '/admin',
-    '/admin/chessboard',
+    '/admin/tape-chart',
     '/admin/bookings',
     `/admin/bookings/${reference}`,
     '/admin/rates',
@@ -251,99 +277,19 @@ test('the arrival screen turns the building and its hotspots lead into the catal
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
-test('each traced storey of the facade names the room on it', async ({ page }) => {
-  // Deep-linked to a frame inside the arc where the sea facade faces the
-  // camera — that is where the storeys are traced.
-  await page.goto('/?frame=140');
-  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
-  await expect(scene).toBeVisible();
+test('the building opens on a deep-linked frame and turns to its next stop from the controls', async ({ page }) => {
+  await page.goto(`/?${stayQuery}&frame=40`);
+  await expect(page.getByRole('group', { name: /drag or use the arrow keys to spin/ })).toBeVisible();
+  // The frame in the address is where the orbit opens, and the address keeps it.
+  await expect(page).toHaveURL(/[?&]frame=40(&|$)/);
 
-  const storeys = page.locator('svg polygon');
-  await expect(storeys).toHaveCount(8, { timeout: 15_000 });
-
-  // Fourth floor, counting down from the roof: the storeys run top to bottom.
-  // The shapes take no pointer events — the spinner hit-tests them itself — so
-  // a point inside one is found the same way, from its own geometry.
-  const point = await page.evaluate(() => {
-    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][4]!;
-    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
-    const corners = band
-      .getAttribute('points')!
-      .trim()
-      .split(/\s+/)
-      .map((pair) => {
-        const [x, y] = pair.split(',').map(Number);
-        return { x: x!, y: y! };
-      });
-    const holds = (x: number, y: number) => {
-      let inside = false;
-      for (let i = 0, j = corners.length - 1; i < corners.length; j = i, i += 1) {
-        const a = corners[i]!;
-        const b = corners[j]!;
-        if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-      }
-      return inside;
-    };
-    const xs = corners.map((c) => c.x);
-    const ys = corners.map((c) => c.y);
-    const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
-    const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
-    for (let fx = 0.1; fx <= 0.92; fx += 0.02)
-      for (let fy = 0.3; fy <= 0.7; fy += 0.05) {
-        const x = x0 + (x1 - x0) * fx;
-        const y = y0 + (y1 - y0) * fy;
-        if (!holds(x, y)) continue;
-        const cx = Math.round(svgBox.x + x);
-        const cy = Math.round(svgBox.y + y);
-        // Nothing of the spinner's own chrome on top of this spot.
-        if (document.elementFromPoint(cx, cy)?.getAttribute('role') === 'group') return { x: cx, y: cy };
-      }
-    return null;
-  });
-  expect(point).not.toBeNull();
-
-  await page.mouse.click(point!.x, point!.y);
-  // A desk gets a card floating beside the storey, a phone the product's own
-  // sheet — either way the room is named and the way in says the same thing.
-  const openInto = page.locator('a[href*="/rooms/deluxe-sea"]').filter({ hasText: 'See this room' });
-  await expect(openInto).toBeVisible();
-  await expect(page.getByText('Deluxe Sea View').first()).toBeVisible();
-
-  await openInto.click();
-  await expect(page).toHaveURL(/\/rooms\/deluxe-sea/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Deluxe Sea View' })).toBeVisible();
-});
-
-test('the far side of the building sells its own rooms', async ({ page }) => {
-  // Half a turn from the sea facade: the town side is traced separately, and
-  // names the rooms that face that way.
-  await page.goto('/?frame=60');
-  const scene = page.getByRole('group', { name: /drag or use the arrow keys to spin/ });
-  await expect(scene).toBeVisible();
-  await expect(page.locator('svg polygon')).toHaveCount(4, { timeout: 15_000 });
-
-  const point = await page.evaluate(() => {
-    const band = [...document.querySelectorAll<SVGPolygonElement>('svg polygon')][1]!;
-    const svgBox = band.ownerSVGElement!.getBoundingClientRect();
-    const corners = band
-      .getAttribute('points')!
-      .trim()
-      .split(/\s+/)
-      .map((pair) => {
-        const [x, y] = pair.split(',').map(Number);
-        return { x: x!, y: y! };
-      });
-    const half = Math.floor(corners.length / 4);
-    return {
-      x: Math.round(svgBox.x + (corners[half]!.x + corners[corners.length - 1 - half]!.x) / 2),
-      y: Math.round(svgBox.y + (corners[half]!.y + corners[corners.length - 1 - half]!.y) / 2),
-    };
-  });
-
-  await page.mouse.click(point.x, point.y);
-  const openInto = page.locator('a[href*="/rooms/skyline-loft"]').filter({ hasText: 'See this room' });
-  await expect(openInto).toBeVisible();
-  await expect(page.getByText('Skyline Loft').first()).toBeVisible();
+  const frame = () => new URL(page.url()).searchParams.get('frame');
+  await actUntil(
+    () => page.getByRole('button', { name: 'Turn right' }).click(),
+    () => expect.poll(frame, { timeout: 3_000 }).not.toBe('40'),
+  );
+  // The dates the guest arrived with are still in the address after the turn.
+  expect(new URL(page.url()).searchParams.get('checkIn')).toBe(checkIn);
 });
 
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
@@ -464,6 +410,39 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   await page.getByRole('tab', { name: 'Bathroom' }).click();
   await expect(page.getByRole('tab', { name: 'Bathroom' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
+});
+
+test('a click on the stage mid-turn still lets the building finish on its stop', async ({ page }) => {
+  await page.goto(`/?${stayQuery}&frame=95`);
+  await expect(page.getByRole('group', { name: /drag or use the arrow keys to spin/ })).toBeVisible();
+
+  const frame = () => new URL(page.url()).searchParams.get('frame');
+  await actUntil(
+    () => page.getByRole('button', { name: 'Turn right' }).click(),
+    () => expect.poll(frame, { timeout: 3_000 }).not.toBe('95'),
+  );
+  // A near miss on the turn controls lands on the stage — it is a click, not a drag.
+  await page.getByText('360°', { exact: true }).click({ force: true });
+  await expect.poll(frame, { timeout: 5_000 }).toBe('140');
+});
+
+test('a room page opens its 360° view from the photograph and goes back to the photos', async ({ page }) => {
+  await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
+
+  const open360 = page.getByRole('button', { name: '360° view', exact: true });
+  const backToPhotos = page.getByRole('button', { name: 'Photos', exact: true });
+  await actUntil(
+    () => open360.click(),
+    () => expect(backToPhotos).toBeVisible({ timeout: 3_000 }),
+  );
+  await expect(page.getByRole('tab', { name: '360° view' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText(/Drag to look around/)).toBeVisible();
+  // The sphere names itself for assistive tech as soon as the viewer is built.
+  await expect(page.getByLabel('Deluxe Sea View, 360°', { exact: true })).toBeAttached();
+
+  await backToPhotos.click();
+  await expect(open360).toBeVisible();
+  await expect(page.getByText(/Drag to look around/)).toHaveCount(0);
 });
 
 test('adding a service leaves the guest where they were on the page', async ({ page }) => {
@@ -647,16 +626,16 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
 
   const override = page.getByRole('combobox', { name: 'Availability override for Coastal Twin' });
   // Reload before asserting, and assert on the override the server sent back:
-  // a pre-hydration selectOption changes the DOM without ever reaching the
+  // a pre-hydration selection changes the DOM without ever reaching the
   // server action, and a reload is what tells the two apart. The nightly
   // counts beside it cannot: they show simulated availability, which can
   // already read 0 whatever the override says.
   await actUntil(
     async () => {
-      await override.selectOption('sold_out');
+      await chooseOption(page, override, 'Fully booked');
       await page.reload();
     },
-    () => expect(override).toHaveValue('sold_out', { timeout: 3_000 }),
+    () => expect(override).toContainText('Fully booked', { timeout: 3_000 }),
   );
 
   await page.goto(`/rooms/coastal-twin?${stayQuery}`);
@@ -672,10 +651,10 @@ test('an admin sell-out immediately blocks that room for guests', async ({ page 
   await page.goto('/admin/rates');
   await actUntil(
     async () => {
-      await override.selectOption('auto');
+      await chooseOption(page, override, 'Auto (simulated)');
       await page.reload();
     },
-    () => expect(override).toHaveValue('auto', { timeout: 3_000 }),
+    () => expect(override).toContainText('Auto (simulated)', { timeout: 3_000 }),
   );
 });
 
