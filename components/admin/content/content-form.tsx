@@ -95,14 +95,23 @@ export function ContentForm({
           <>
             {/* Reserves the strip's own height so the last field never rides under it. */}
             <div aria-hidden="true" className="h-24" />
-            <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
-              <div className="glass-bar flex w-full max-w-2xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full px-5 py-3">
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
+              {/* Sized to what it holds, not stretched to a 672px strip: a
+                  frosted capsule around the button, a few pixels of glass on
+                  each side. The status line sits inside only once it has
+                  something to say — empty, it takes no room and cancels the
+                  gap, but stays mounted so the live region still announces. */}
+              <div className="glass-bar pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-full p-1.5">
                 <button type="submit" disabled={isPending} className={pill('primary')}>
                   {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                   {submitLabel}
                 </button>
                 {extraActions}
-                <p role="status" aria-live="polite" className="text-sm font-medium text-success">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="pr-3 pl-1 text-sm font-medium text-success empty:-ml-2 empty:p-0"
+                >
                   {state.status === 'success' ? state.message : ''}
                 </p>
               </div>
