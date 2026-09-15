@@ -177,7 +177,7 @@ const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google
  * stays, which the guest flow rightly refuses, so it skips `confirm` and
  * saves straight through the repository — `saveBooking` still takes the
  * nights out of inventory and `cancelBooking` puts them back, so the
- * chessboard, availability and accounting all agree with what it made.
+ * tape chart, availability and accounting all agree with what it made.
  * Money still comes from `buildPriceBreakdown`, like every other total.
  */
 export class SampleBookingService {

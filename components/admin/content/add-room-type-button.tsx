@@ -14,7 +14,7 @@ import { Modal } from '@/components/site/modal';
 
 /**
  * A compact version of `/admin/content/rooms/new`'s form, for adding a room
- * type from wherever a hotel team is already looking (the Property Desk)
+ * type from wherever a hotel team is already looking (the tape chart)
  * instead of sending them across the app. Saving redirects to the new type's
  * own page — the same place the full page lands — to add a rate, more
  * photos, and its physical rooms.

@@ -254,7 +254,7 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
 `lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,
 and cancelled with and without payment — saved through `HotelRepository.saveBooking`/
-`cancelBooking`, so inventory holds, the chessboard and accounting agree with them. Totals come
+`cancelBooking`, so inventory holds, the tape chart and accounting agree with them. Totals come
 from `buildPriceBreakdown`. Each has a fixed idempotency key, so pressing it twice adds nothing,
 and none falls in the 45–48-day window the e2e suite books into. Past and in-house stays are why
 it skips `BookingService.confirm`, which rightly refuses them.
