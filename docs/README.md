@@ -31,3 +31,9 @@ A doc that names a file, a route, or a number is a claim that can go stale the m
 changes under it — this happened to nearly every top-level doc in this repo before a dedicated
 review caught it. If you change something a doc describes, update the doc in the same PR; see
 CONTRIBUTING.md.
+
+`npm run check:docs` (`scripts/check-doc-paths.mjs`) catches one specific kind of drift
+automatically, in CI on every PR: a backticked file path in any Markdown file that no longer
+matches a real file in the repo. It can't catch a stale *number* or a claim that's gone false in
+some other way — that still needs a human (or an agent) actually reading the doc against the code,
+the way this session's own review did.

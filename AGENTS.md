@@ -32,8 +32,11 @@ npm run typecheck
 npm run test         # vitest: lib/domain unit tests
 npm run lint
 npm run build
+npm run check:docs   # fails if a doc names a file that no longer exists
 npm run test:e2e     # Playwright golden path; needs `npx playwright install chromium` once
 ```
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request.
 
 ## Architecture
 

@@ -39,13 +39,16 @@ the safer default for a change you're opening a PR for.
 
 ## Before you open a PR
 
-Run what changed:
+CI (`.github/workflows/ci.yml`) runs typecheck, vitest, lint, build, the doc-reference check, and
+the e2e suite on every PR — you don't have to run everything locally first, but it's faster to
+catch a failure before pushing:
 
 ```bash
 npm run typecheck
 npm run test          # vitest — if you touched lib/domain
 npm run lint
 npm run build
+npm run check:docs    # fails if a doc names a file that no longer exists
 npm run test:e2e      # if you touched a guest or admin flow
 ```
 

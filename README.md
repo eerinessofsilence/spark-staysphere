@@ -28,11 +28,15 @@ transcription, put `OPENAI_API_KEY=sk-...` in a gitignored `.dev.vars` file at t
 
 ## Checks
 
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request — locally, run whichever
+ones cover what you changed:
+
 ```bash
 npm run typecheck
 npm run test         # vitest: pure domain and application logic
 npm run lint
 npm run build
+npm run check:docs   # fails if a doc names a file that no longer exists
 npm run test:e2e     # Playwright golden path, 1440px and 390px
 ```
 

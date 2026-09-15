@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "generate:media-manifest": "node scripts/generate-media-manifest.mjs"
+    "generate:media-manifest": "node scripts/generate-media-manifest.mjs",
+    "check:docs": "node scripts/check-doc-paths.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
