@@ -86,8 +86,10 @@ the catalog offer's own, passed in through `rooms`.
 1. **Frames go to one `<canvas>`**, never an `<img>` per frame — 160 full-size images would stay
    in the DOM after one turn. `useCanvasFrame` resizes the canvas only when the stage changes, so
    a frame still on its way leaves the last one showing instead of flashing empty.
-2. **Pointer capture is taken only after the drag threshold** (50px mouse, 8px touch). Capturing
-   on press retargets the click and kills taps on markers — see docs/TROUBLESHOOTING.md.
+2. **A press is not a drag until it crosses the threshold** (50px mouse, 8px touch). Pointer
+   capture is taken only then — capturing on press retargets the click and kills taps on markers
+   (docs/TROUBLESHOOTING.md) — and only then does it interrupt a turn the arrows started. A click
+   on the stage mid-turn used to stop the animation where it was, leaving the orbit between stops.
 3. **The stage is `touch-pan-y`**, not `touch-none`: it fills a phone's screen, and the page must
    still scroll past it.
 4. **Failure is quiet.** If the opening frame fails twice, the spinner shows `fallbackPhoto` with

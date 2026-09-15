@@ -411,6 +411,20 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
 });
 
+test('a click on the stage mid-turn still lets the building finish on its stop', async ({ page }) => {
+  await page.goto(`/?${stayQuery}&frame=95`);
+  await expect(page.getByRole('group', { name: /drag or use the arrow keys to spin/ })).toBeVisible();
+
+  const frame = () => new URL(page.url()).searchParams.get('frame');
+  await actUntil(
+    () => page.getByRole('button', { name: 'Turn right' }).click(),
+    () => expect.poll(frame, { timeout: 3_000 }).not.toBe('95'),
+  );
+  // A near miss on the turn controls lands on the stage — it is a click, not a drag.
+  await page.getByText('360°', { exact: true }).click({ force: true });
+  await expect.poll(frame, { timeout: 5_000 }).toBe('140');
+});
+
 test('a room page opens its 360° view from the photograph and goes back to the photos', async ({ page }) => {
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
 
