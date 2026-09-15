@@ -34,7 +34,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
       { href: '/admin', label: 'Dashboard', icon: HomeIcon },
       { href: '/admin/chessboard', label: 'Property Desk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Reservations', icon: CalendarDaysIcon },
-      { href: '/admin/rates', label: 'Rates & availability', icon: TagIcon },
+      { href: '/admin/rates', label: 'Room Rates', icon: TagIcon },
       { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },
     ],
   },

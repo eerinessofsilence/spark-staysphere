@@ -18,7 +18,7 @@ import { RatePriceForm } from '@/components/admin/operations/rate-price-form';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { updateBaseRateAction } from './actions';
 
-export const metadata: Metadata = { title: 'Rates & availability — Hotel admin | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'Room Rates — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 const NIGHTS = 7;
@@ -56,7 +56,7 @@ export default async function RatesPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Rates & availability" />
+      <AdminPageHeader title="Room Rates" />
 
       <section aria-label="Rates and availability by room type" className="mt-6 rounded-[28px] bg-card shadow-soft">
         <div
