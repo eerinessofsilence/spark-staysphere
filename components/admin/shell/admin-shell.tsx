@@ -29,7 +29,7 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
         <div className="sticky top-0 z-40 p-3 lg:hidden">
           <div className="flex h-14 items-center gap-2 rounded-full bg-card pr-2 pl-3 shadow-soft">
             <AdminBrand />
-            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{hotelName}</span>
+            <div className="min-w-0 flex-1" />
             <AdminMobileMenu hotelName={hotelName} location={location} />
           </div>
         </div>
