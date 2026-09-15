@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Star } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon, ArrowUpRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters } from '@/lib/application/catalog-service';
 import { coverPhoto } from '@/lib/domain/room-attributes';
@@ -72,7 +73,31 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
       <main id="main">
         {/* Arrival */}
         <section className="mx-auto max-w-page pt-3 sm:px-gutter sm:pt-8 lg:pt-14">
-          <h1 className="sr-only">{hotel.name}</h1>
+          {/* What the place is before what it looks like: the name, its
+              classification and where it stands, above the building. Gold
+              for the stars, the same `text-warning` the CMS's own rating
+              picker fills with — a rating reads as that colour everywhere
+              now, not just where it's editable. One image with one label,
+              so a screen reader hears "5-star hotel", not five unnamed
+              marks. */}
+          <header className="px-gutter pb-4 sm:px-0 sm:pb-6">
+            <h1 className="text-display text-4xl sm:text-5xl">{hotel.name}</h1>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground sm:text-base">
+              <span
+                role="img"
+                aria-label={`${hotel.starRating}-star hotel`}
+                className="flex items-center gap-0.5 text-warning"
+              >
+                {Array.from({ length: hotel.starRating }, (_, index) => (
+                  <Star key={index} weight="fill" className="size-4" aria-hidden="true" />
+                ))}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
+                {hotel.location}
+              </span>
+            </p>
+          </header>
 
           {/* On a phone the arrival photograph is the screen: it runs to both
               edges and starts straight under the header, rather than sitting
