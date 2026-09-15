@@ -7,6 +7,7 @@ import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { AddPropertyButton } from '@/components/admin/operations/add-property-button';
 import { ChessboardGrid } from '@/components/admin/chessboard/chessboard-grid';
 import { ChessboardLegend } from '@/components/admin/chessboard/chessboard-legend';
 import {
@@ -47,14 +48,7 @@ export default async function ChessboardPage({ searchParams }: { searchParams: P
 
   return (
     <AdminPage>
-      <AdminPageHeader
-        title="Property Desk"
-        actions={
-          <Link href="/admin/bookings" className={pill('secondary')}>
-            All reservations
-          </Link>
-        }
-      />
+      <AdminPageHeader title="Property Desk" actions={<AddPropertyButton />} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
