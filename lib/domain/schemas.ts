@@ -11,6 +11,18 @@ export const photoSchema = z.object({
   alt: z.string(),
 });
 
+/**
+ * A photograph with nothing riding on its exact pixels — no hotspot maths, no
+ * licence-mandated alt text. What a dish's gallery and the hotel's own "about"
+ * photo both are; `alt` is composed from context at render time instead of
+ * being a field an editor has to remember to fill in.
+ */
+export const simplePhotoSchema = z.object({
+  url: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+});
+
 export const hotspotSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -193,6 +205,10 @@ export const hotelSchema = z.object({
   tagline: z.string(),
   location: z.string(),
   starRating: z.number().int().min(1).max(5),
+  /** The one paragraph on the arrival page introducing the property. */
+  description: z.string(),
+  /** The photograph beside that paragraph. */
+  aboutPhoto: simplePhotoSchema,
   currency: currencySchema,
   timezone: z.string(),
   areas: z.array(hotelAreaSchema),
@@ -281,15 +297,7 @@ export const addOnSchema = z.object({
    * photographs: the first is the card, the rest are the panel's slider.
    * Services have none and are shown by name and description.
    */
-  photos: z
-    .array(
-      z.object({
-        url: z.string(),
-        width: z.number().int().positive(),
-        height: z.number().int().positive(),
-      }),
-    )
-    .optional(),
+  photos: z.array(simplePhotoSchema).optional(),
   price: z.number().nonnegative(),
   currency: currencySchema,
   pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),

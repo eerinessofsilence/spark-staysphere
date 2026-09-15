@@ -319,6 +319,9 @@ export const demoHotel: Hotel = {
   tagline: 'See the stay. Book the room.',
   location: 'Limassol, Cyprus',
   starRating: 5,
+  description:
+    "Eight floors of white balconies curving above the town, the upper ones looking clear over the rooftops to the Mediterranean, with a 25-metre infinity pool and a cliffside spa on site, and the bay's marina and beach clubs ten minutes downhill.",
+  aboutPhoto: { url: '/images/hotel/cove.webp', width: 2000, height: 3000 },
   currency: 'EUR',
   timezone: 'Asia/Nicosia',
   areas: hotelAreas,

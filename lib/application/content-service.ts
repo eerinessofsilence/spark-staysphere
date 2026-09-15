@@ -119,6 +119,8 @@ export const hotelContentInputSchema = z.object({
   tagline: z.string().min(1, 'Enter a tagline.'),
   location: z.string().min(1, 'Enter a location.'),
   starRating: z.number().int().min(1, 'Pick a star rating.').max(5, 'Pick a star rating.'),
+  description: z.string().min(1, 'Enter a description.'),
+  aboutPhoto: z.string().min(1, 'Pick a photo.'),
   /** Never edited from `/admin/content/hotel` — areas keep their current copy unless something else patches them. */
   areas: z.array(hotelAreaInputSchema),
 });
@@ -262,6 +264,15 @@ export class ContentService {
     return { ok: true, photos };
   }
 
+  private resolvePhoto(
+    url: string,
+    field: string,
+  ): { ok: true; photo: Hotel['aboutPhoto'] } | { ok: false; fieldErrors: Record<string, string[]> } {
+    const asset = this.media.find(url);
+    if (!asset) return { ok: false, fieldErrors: { [field]: ['Pick a photo from the media library.'] } };
+    return { ok: true, photo: { url, width: asset.width, height: asset.height } };
+  }
+
   /** Everything the media picker can offer — see `lib/infrastructure/media-library.ts`. */
   listMedia() {
     return this.media.list();
@@ -307,12 +318,17 @@ export class ContentService {
       };
     });
 
+    const aboutPhoto = this.resolvePhoto(input.aboutPhoto, 'aboutPhoto');
+    if (!aboutPhoto.ok) return fail({ kind: 'validation', fieldErrors: aboutPhoto.fieldErrors });
+
     const next = hotelSchema.parse({
       ...current,
       name: input.name,
       tagline: input.tagline,
       location: input.location,
       starRating: input.starRating,
+      description: input.description,
+      aboutPhoto: aboutPhoto.photo,
       areas: nextAreas,
     } satisfies Hotel);
 

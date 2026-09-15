@@ -13,6 +13,8 @@ export async function updateHotelAction(
     tagline: String(formData.get('tagline') ?? ''),
     location: String(formData.get('location') ?? ''),
     starRating: Number(formData.get('starRating')),
+    description: String(formData.get('description') ?? ''),
+    aboutPhoto: String(formData.get('aboutPhoto') ?? ''),
     // Areas/hotspots have no fields on this form — an empty list leaves
     // every area exactly as it is (see `updateHotel`'s per-area patch match).
     areas: [],

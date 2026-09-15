@@ -138,9 +138,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 About {hotel.name}
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Eight floors of white balconies curving above the town, the upper ones looking
-                clear over the rooftops to the Mediterranean, with a 25-metre infinity pool and a
-                cliffside spa on site, and the bay's marina and beach clubs ten minutes downhill.
+                {hotel.description}
               </p>
               <p className="mt-5 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
@@ -149,10 +147,10 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
             </Reveal>
             <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[28px]">
               <img
-                src="/images/hotel/cove.webp"
-                alt="The cove below Asteria Cove, with the beach club and the boat to the islands"
-                width={2000}
-                height={3000}
+                src={hotel.aboutPhoto.url}
+                alt={`About ${hotel.name}`}
+                width={hotel.aboutPhoto.width}
+                height={hotel.aboutPhoto.height}
                 loading="lazy"
                 decoding="async"
                 className="size-full object-cover"
