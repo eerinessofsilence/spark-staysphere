@@ -84,7 +84,7 @@
 @theme {
   --container-page: 87.5rem;
   --container-reading: 62.5rem;
-  --container-form: 56.25rem;
+  --container-form: 68.75rem;
 
   --grid-template-columns-sidebar: minmax(0, 1fr) minmax(0, 22rem);
   --grid-template-columns-sidebar-start: minmax(0, 22rem) minmax(0, 1fr);

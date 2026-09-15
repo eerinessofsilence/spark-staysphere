@@ -184,7 +184,7 @@ free-hand a width or a column track.
 
 - **Page width.** `container-page` (1400px) for every guest page, the header, the footer and the
   admin screens; `container-reading` (1000px) for single-column reading pages — the confirmation
-  and trips; `container-form` (900px) for admin editors. Each centres itself and carries the
+  and trips; `container-form` (1100px) for admin editors. Each centres itself and carries the
   gutter. When only the width is wanted — the full-bleed phone hero — use `max-w-page`.
 - **Gutter.** `--gutter` is 16px on a phone, 24px from `sm`, 32px from `lg`. It is the side
   margin (`px-gutter`), the bleed of an edge-to-edge rail (`-mx-gutter px-gutter
