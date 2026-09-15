@@ -41,7 +41,9 @@ interface UseOrbitOptions {
  * The arrows jump to the next `keyAngles` stop and animate the frames in
  * between — stepping 160 frames one at a time is unusable. A press during an
  * animation queues the next stop instead of being dropped, and steps on from
- * where the queued presses will finish, not from the frame on screen.
+ * where the queued presses will finish, not from the frame on screen. Only a
+ * real drag interrupts a turn; a click anywhere on the stage leaves it to
+ * finish on its stop.
  *
  * Pointer capture is taken only once a drag crosses its threshold: capturing
  * on press retargets the following `click` to the stage, so a tap on a marker
@@ -135,9 +137,9 @@ export function useOrbit({ frameCount, keyAngles, openingFrame, enabled, onTurnS
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (!enabled) return;
-    stopAnimation();
-    queueRef.current = [];
-    intendedRef.current = frameRef.current;
+    // Only a candidate until it travels. A press that turns out to be a click —
+    // a near miss on the turn controls, a tap on the stage — must not cut short
+    // a turn the arrows started, or the orbit is left between two stops.
     dragRef.current = {
       startX: event.clientX,
       startFrame: frameRef.current,
@@ -154,6 +156,10 @@ export function useOrbit({ frameCount, keyAngles, openingFrame, enabled, onTurnS
     const deltaX = event.clientX - drag.startX;
     if (!drag.moved) {
       if (Math.abs(deltaX) < drag.threshold) return;
+      // Now it is a drag: it takes over from any turn in progress, from wherever that turn reached.
+      stopAnimation();
+      queueRef.current = [];
+      drag.startFrame = frameRef.current;
       drag.moved = true;
       draggedRef.current = true;
       event.currentTarget.setPointerCapture(drag.pointerId);
@@ -166,8 +172,10 @@ export function useOrbit({ frameCount, keyAngles, openingFrame, enabled, onTurnS
   };
 
   const endDrag = () => {
+    const drag = dragRef.current;
     dragRef.current = null;
-    setIsTurning(false);
+    // A press that never became a drag leaves an arrow turn running — and its markers hidden.
+    if (drag?.moved) setIsTurning(false);
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
