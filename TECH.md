@@ -192,6 +192,14 @@ screens. What reads and writes real demo data, and what is a labelled mock-up of
 | `/admin/content` — Rooms | Two tabs: Room types (`/admin/content`: cover, price, room count) and Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one); room type, room and rate editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 | `/admin/content/add-ons` — Services | Its own nav item: every add-on by category, with the on-sale switch, and the add-on editors under it | `ContentService` — live |
 
+An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
+`lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,
+and cancelled with and without payment — saved through `HotelRepository.saveBooking`/
+`cancelBooking`, so inventory holds, the chessboard and accounting agree with them. Totals come
+from `buildPriceBreakdown`. Each has a fixed idempotency key, so pressing it twice adds nothing,
+and none falls in the 45–48-day window the e2e suite books into. Past and in-house stays are why
+it skips `BookingService.confirm`, which rightly refuses them.
+
 Every screen here reads or writes real demo data; there are no mock-up screens. Brand settings,
 team roles, integration credentials and media uploads are left out until they can actually save.
 

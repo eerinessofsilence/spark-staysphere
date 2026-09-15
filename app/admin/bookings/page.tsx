@@ -22,6 +22,7 @@ import {
 } from '@/components/admin/operations/booking-buckets';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { PaymentSummary } from '@/components/admin/operations/payment-state';
+import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -142,11 +143,14 @@ export default async function BookingsPage({
         {sorted.length === 0 ? (
           <EmptyState
             title="No bookings to show yet"
-            body="Demo bookings made on the guest site appear here with their guest, room, and payment."
+            body="Demo bookings made on the guest site appear here with their guest, room, and payment — or fill the demo with sample stays: past, in house, upcoming and cancelled."
             action={
-              <Link href="/rooms" className={pill('primary')}>
-                Make a demo booking
-              </Link>
+              <div className="flex flex-wrap items-start justify-center gap-2">
+                <Link href="/rooms" className={pill('primary')}>
+                  Make a demo booking
+                </Link>
+                <SampleBookingsButton />
+              </div>
             }
           />
         ) : rows.length === 0 ? (

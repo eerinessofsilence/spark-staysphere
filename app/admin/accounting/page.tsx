@@ -8,6 +8,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
+import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -54,12 +55,16 @@ export default async function AccountingPage() {
           <div>
             <h2 className="text-display text-2xl">No payments yet</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              Complete a demo booking on the guest site and its payment shows up here.
+              Complete a demo booking on the guest site and its payment shows up here, or add sample stays to see
+              every kind of payment at once.
             </p>
           </div>
-          <Link href="/rooms" className={pill('primary')}>
-            Make a demo booking
-          </Link>
+          <div className="flex flex-wrap items-start justify-center gap-2">
+            <Link href="/rooms" className={pill('primary')}>
+              Make a demo booking
+            </Link>
+            <SampleBookingsButton />
+          </div>
         </div>
       ) : (
         <>

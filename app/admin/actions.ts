@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { contentService, demoControl } from '@/lib/application/container';
+import { contentService, DEMO_HOTEL_SLUG, demoControl, sampleBookingService } from '@/lib/application/container';
+import { toIsoDate } from '@/lib/application/search-params';
 import { roomStatusSchema } from '@/lib/domain/schemas';
 import { z } from 'zod';
 
@@ -26,6 +27,7 @@ function refresh() {
   revalidatePath('/admin/rates');
   revalidatePath('/admin/bookings');
   revalidatePath('/admin/chessboard');
+  revalidatePath('/admin/accounting');
   revalidatePath('/rooms');
   revalidatePath('/');
 }
@@ -43,6 +45,13 @@ export async function setAddOnEnabled(input: z.infer<typeof addOnSchema>): Promi
   const parsed = addOnSchema.parse(input);
   await contentService.setAddOnEnabled(parsed.addOnId, parsed.enabled);
   refresh();
+}
+
+/** A dozen past, in-house, upcoming and cancelled stays, so an empty demo has something to show. */
+export async function addSampleBookings(): Promise<{ created: number }> {
+  const result = await sampleBookingService.seed(DEMO_HOTEL_SLUG, toIsoDate(new Date()));
+  refresh();
+  return result;
 }
 
 export async function resetDemoState(): Promise<void> {

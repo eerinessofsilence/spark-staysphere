@@ -98,7 +98,7 @@ function normalizeReference(reference: string): string {
 
 const REFERENCE_ALPHABET = 'ACDEFGHJKLMNPQRTUVWXY3456789';
 
-function createReference(): string {
+export function createReference(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   let reference = '';
   for (const byte of bytes) reference += REFERENCE_ALPHABET[byte % REFERENCE_ALPHABET.length];

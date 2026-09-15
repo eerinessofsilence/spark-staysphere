@@ -19,6 +19,7 @@ import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
 import { ContentService } from './content-service';
 import { InventoryService } from './inventory-service';
+import { SampleBookingService } from './sample-bookings';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -49,6 +50,9 @@ export const bookingService = new BookingService(
   mockCrmAdapter,
   mockPmsAdapter,
 );
+
+/** Fills an empty demo with sample stays; only ever run from the back office. */
+export const sampleBookingService = new SampleBookingService(hotelRepository);
 
 /** Which ids came from mock-data.ts — the only ones content-service refuses to hard-delete. */
 const seedIds: Record<CatalogEntryKind, ReadonlySet<string>> = {
