@@ -22,8 +22,8 @@ import {
   type StayBucket,
 } from '@/components/admin/operations/booking-buckets';
 import { BookingDatesFilter } from '@/components/admin/operations/booking-dates-filter';
+import { BookingRowActions } from '@/components/admin/operations/booking-row-actions';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
-import { PaymentSummary } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -99,13 +99,7 @@ export default async function BookingsPage({
   const visible = filter === 'all' ? searched : searched.filter((booking) => stayBucket(booking, today) === filter);
 
   const rows = await Promise.all(
-    visible.map(async (booking) => {
-      const [room, payments] = await Promise.all([
-        inventoryService.getBookingRoom(booking),
-        hotelRepository.listPaymentAttempts(booking.id),
-      ]);
-      return { booking, room, payments };
-    }),
+    visible.map(async (booking) => ({ booking, room: await inventoryService.getBookingRoom(booking) })),
   );
 
   const filters: Filter[] = ['all', ...stayBuckets];
@@ -209,12 +203,18 @@ export default async function BookingsPage({
                 <Th>Room</Th>
                 <Th>Stay</Th>
                 <Th className="text-right">Total</Th>
-                <Th>Payment</Th>
                 <Th>Status</Th>
+                <Th className="w-14">
+                  <span className="sr-only">Actions</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ booking, room, payments }) => (
+              {rows.map(({ booking, room }) => {
+                const canCancel = booking.status === 'confirmed' && booking.checkIn > today;
+                const cancelBlockedReason =
+                  booking.status === 'cancelled' ? 'Already cancelled' : !canCancel ? 'Stay has begun' : undefined;
+                return (
                 <tr key={booking.id} className="border-b border-border last:border-b-0">
                   <Td className="whitespace-nowrap">
                     <Link
@@ -259,13 +259,18 @@ export default async function BookingsPage({
                     {formatMoney(booking.total, booking.currency)}
                   </Td>
                   <Td>
-                    <PaymentSummary payments={payments} />
-                  </Td>
-                  <Td>
                     <BookingStatusBadge status={booking.status} />
                   </Td>
+                  <Td className="text-right">
+                    <BookingRowActions
+                      reference={booking.reference}
+                      canCancel={canCancel}
+                      cancelBlockedReason={cancelBlockedReason}
+                    />
+                  </Td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </TableCard>
         )}
