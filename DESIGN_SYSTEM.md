@@ -8,11 +8,13 @@ second.
 
 ## Direction
 
-Photography-led, warm, and quiet by day; near-black with one electric lime by night — the
-whole product runs on the night scheme now, `.dark` set once on `<html>`, the same tokens
-under different values. Ink does the work by day, lime by night; large geometric display
-type; pill-shaped controls; frosted panels over photographs. The references are premium hotel
-and residential sites, not SaaS dashboards.
+Photography-led, warm, and quiet by day; near-black with one electric lime by night — the same
+tokens under different values, `.dark` set once on `<html>` for whichever scheme applies. Light is
+the default a first-time visitor gets (`lib/theme.ts`'s `DEFAULT_THEME`); the theme toggle
+(`components/site/theme-toggle.tsx`) offers light, dark, or the visitor's own OS preference, stored
+per browser. Ink does the work by day, lime by night; large geometric display type; pill-shaped
+controls; frosted panels over photographs. The references are premium hotel and residential sites,
+not SaaS dashboards.
 
 ## Rules
 
@@ -77,10 +79,10 @@ CSS variables live in `app/globals.css`; components consume tokens, never near-d
 | Accent | `#B8603A` | `bg-accent`, `text-accent` | Section-label dot, focus ring, active marks |
 | Accent strong | `#9A4E2C` | `text-accent-strong` | Accent text on light surfaces, savings, italic phrase |
 | Accent soft | `#F4E6DD` | `bg-accent-soft` | Accent-tinted notice backgrounds |
-| Muted text | `#6B6B66` | `text-muted-foreground` | Secondary copy, labels |
+| Muted text | `#66665F` | `text-muted-foreground` | Secondary copy, labels |
 | Border | `#DDD9D0` | `border-border` | Hairlines and control borders |
 | Success | `#2E7D5B` | `text-success` | Available, confirmed |
-| Warning | `#B4711C` | `text-warning` | Limited inventory, price change |
+| Warning | `#965D0D` | `text-warning` | Limited inventory, price change |
 | Danger | `#C4473A` | `text-danger` | Fully booked, failed payment |
 | Primary hover | `#2B2B2B` | `hover:bg-primary-hover` | The primary pill's hover; lime `#C2EC2E` by night |
 | Raised surface | `#FFFFFF` | `.surface-raised` | The phone stay search — the one panel that stays light (`#F4F2EC`) by night, with `--surface-raised-foreground` for its text |
@@ -251,19 +253,25 @@ Titles and body differ by size and weight, not by typeface — the way the platf
   a desk's centred card fades in a touch smaller. Named properties only (`opacity`, `transform`),
   never `transition-all`: a panel's own class can change its width or radius at a breakpoint, and
   that has no business animating just because the dialog opened.
-- Nothing else animates. In particular: no reveal-on-scroll for headings or sections. That is the
-  same genre of template motion rule 3 already bans in cards — a staggered fade-up is exactly what
-  the first, generic pass of this product did, and the read is identical whether the cliché is a
-  visual one or a motion one.
-- **The one scoped exception**: the AI room finder's orbs (`components/assistant/thinking-orbs.tsx`)
+- Nothing else animates by default. A staggered fade-up on every card or section on scroll is the
+  same genre of template motion rule 3 already bans in cards — the read is identical whether the
+  cliché is a visual one or a motion one. There are two scoped, deliberate exceptions to "nothing
+  else animates", both below; a template-motion request that doesn't match one of them should
+  still be refused on rule 3's terms.
+- **Exception one — the arrival page's headings and sections** (`components/site/reveal.tsx`'s
+  `Reveal`). Unlike the banned pattern, this fires once per element, the first time it crosses into
+  view, not on every scroll pass, and the hidden state lives in CSS gated on the document being
+  scripted (a `.js` class the theme's own head script sets), so a page that cannot run the
+  `IntersectionObserver` never has its copy hidden in the first place. `prefers-reduced-motion`
+  skips straight to the shown state. Used only on `/`; a section elsewhere that wants the same
+  arrival feel reuses `Reveal` rather than hand-rolling a second observer.
+- **Exception two**: the AI room finder's orbs (`components/assistant/thinking-orbs.tsx`)
   animate continuously while listening, transcribing, or thinking. This is not decoration — it is
   the product's only channel for a machine state that has no other visible signal, and every state
   it represents also carries its own text in a `role="status"` region, so the animation is never
   the only thing saying what is happening. It stays inside the assistant panel, uses only
   `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
   the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
-  Nothing else in the product gets this exception; a template-motion request elsewhere should still
-  be refused on rule 3's terms.
 
 ## Accessibility
 

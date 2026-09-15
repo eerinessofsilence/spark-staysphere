@@ -2,9 +2,10 @@
 
 White-label interactive hotel discovery and direct-booking platform. **See the stay. Book the room.**
 
-The demo property is **Asteria Cove**, a fictional hotel with eight room types. The guest journey
-runs end to end: arrival → room search → room detail → services → guest details → demo payment →
-confirmation, with a hotel-side operations view at `/admin`.
+The demo property is **Asteria Cove**, a fictional hotel with room types from studios to a
+penthouse (see `lib/infrastructure/mock-data.ts` for the seed catalog). The guest journey runs end
+to end: arrival → room search → room detail → services → guest details → demo payment →
+confirmation, with a hotel-side back office at `/admin`.
 
 ## Quick start
 
@@ -15,33 +16,62 @@ npm install
 npm run dev
 ```
 
-Then open the local URL printed by the development server.
+Then open the local URL printed by the development server. `npm run dev` runs against a real,
+locally emulated D1 database (no Cloudflare account needed) — bookings, admin overrides, and CMS
+edits made in `/admin` survive a restart. To start clean, delete `.wrangler/state`, or use
+"Reset demo state" on `/admin`.
+
+**Optional — the AI room finder.** Without a key, search still answers through a deterministic
+keyword interpreter and voice input is unavailable. To enable OpenAI interpretation and
+transcription, put `OPENAI_API_KEY=sk-...` in a gitignored `.dev.vars` file at the repo root (not
+`.env` — see `lib/infrastructure/cloudflare-env.ts`).
 
 ## Checks
 
 ```bash
 npm run typecheck
+npm run test         # vitest: pure domain and application logic
 npm run lint
 npm run build
 npm run test:e2e     # Playwright golden path, 1440px and 390px
 ```
 
 `npm run test:e2e` starts its own dev server on port 3100. The first run needs
-`npx playwright install chromium`.
+`npx playwright install chromium`. The suite shares one dev server and one D1 database across
+every spec (`workers: 1`), so a spec that reads "how many bookings exist" can see ones an earlier
+spec made; the CMS and golden-path specs reset demo state at the start of their own runs.
 
 ## Routes
 
+**Guest**
+
 | Route | What it does |
 |---|---|
-| `/` | Arrival: the property area by area with hotspots into the catalog; how it works; stay search |
-| `/rooms` | Catalog: URL-driven dates, guests, budget, room type, view, beds, area, floor, amenities, sort |
+| `/` | Arrival: the property area by area with hotspots into the catalog (a draggable building spinner over the facade), how it works, stay search |
+| `/rooms` | Catalog: URL-driven dates, guests, budget, room type, view, beds, area, floor, amenities, sort, plus a floor plan to pick the exact room |
 | `/rooms/[slug]` | Room detail: photo gallery with a draggable 360° tab and fullscreen, facts, add-ons, sticky server-quoted summary |
 | `/book/[slug]` | Six-step booking: stay, room and rate, services, guest details, demo payment, review |
 | `/booking/[reference]` | Confirmation: reference, dates, room, services, price breakdown |
-| `/admin` | Demo operations: availability overrides, add-on enablement, session bookings, integration status |
+| `/trips` | "My trips": bookings this browser remembers, plus claim-by-reference-and-email and self-service cancel |
+
+**Back office** (`/admin`, server actions only — see TECH.md's "Back office")
+
+| Route | What it does |
+|---|---|
+| `/admin` | Overview: tonight's occupancy, 14-night chart, arrivals/departures, recent bookings, integration status, reset demo state |
+| `/admin/tape-chart` | Rooms × nights, 7/14/30-night window, filter by room type |
+| `/admin/bookings`, `/admin/bookings/[reference]` | Search, stay-bucket filters, booking detail, desk cancel |
+| `/admin/rates` | Base nightly and OTA-comparison price per room type, availability override |
+| `/admin/content` and its editors | The CMS: room types, rates, add-ons, and the hotel's own copy — no deploy needed |
+| `/admin/settings`, `/admin/settings/team`, `/admin/integrations`, `/admin/media` | Labelled previews — brand settings, team roles, integration credentials, and media uploads are not yet wired to anything real |
+
+**API** (the guest UI reaches quotes/bookings through server actions instead; these exist for external callers)
+
+| Route | What it does |
+|---|---|
 | `POST /api/quotes` | Server-authoritative price and availability for a stay |
 | `POST /api/bookings` | Creates a demo booking; requires an `Idempotency-Key` header |
-| `GET /api/bookings/:reference` | Reads a booking created in this process |
+| `GET /api/bookings/:reference?email=…` | Reads a booking; `email` must match the guest's own |
 | `POST /api/assistant/search` | An utterance, interpreted into a filter object and priced through `CatalogService` |
 | `POST /api/assistant/transcribe` | One audio recording, transcribed to plain text |
 
@@ -60,23 +90,26 @@ computes a price: every total on screen comes from a server quote.
 
 ## What is real and what is not
 
-- Inventory, rates, availability, and partner-site comparison prices are **simulated demo data**
-  held in memory. They reset when the server process restarts.
+- Simulated demand (base occupancy without a real booking behind it) is deterministic, computed
+  fresh on every read — there is nothing to reset there. Bookings, payment attempts, admin
+  overrides, and inventory holds are **durable** (D1 locally and in production), so a demo booking
+  survives a `npm run dev` restart. The room/rate/add-on **catalog** (names, prices, descriptions)
+  stays static seed data — `/admin/content` edits are a durable overlay on top of it, never a
+  change to the seed. See TECH.md's Persistence and "Content management (CMS)" sections.
 - Payment is **demo only**. No card fields are rendered and no card data is collected.
 - Photography is **licensed stock** from Unsplash standing in for the property's own, stored
   locally in `public/images` and credited in `public/images/CREDITS.md`. Nothing is hotlinked.
   The room gallery's 360° tab is a real draggable panorama (Pannellum, vendored at
   `public/vendor/pannellum`), but over a stand-in equirectangular photo, not the property's own
   tiles.
-- Bookings, payment attempts, admin overrides, and inventory holds are **durable** (D1), so a
-  demo booking survives a `npm run dev` restart. The room/rate/add-on catalog stays static seed
-  data — see TECH.md's Persistence section.
-- Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin` says so.
+- Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin/integrations`
+  says so, and `/admin/settings`, `/admin/settings/team`, and `/admin/media` are labelled previews
+  with nothing behind them yet.
 - The AI room finder (the round control, bottom-right) interprets an utterance into a filter
   object — it never invents a room, a price, or availability, and every enum it may use is one the
-  catalog already owns. With `OPENAI_API_KEY` set it uses OpenAI for interpretation and
-  transcription; unset, search still answers through a deterministic keyword interpreter and the
-  mic is unavailable. See TECH.md's "AI concierge" section.
+  catalog already owns. With `OPENAI_API_KEY` set (see Quick start) it uses OpenAI for
+  interpretation and transcription; unset, search still answers through a deterministic keyword
+  interpreter and the mic is unavailable. See TECH.md's "AI concierge" section.
 
 See `TECH.md` for the production integration model, `DESIGN_SYSTEM.md` for the design rules and
 tokens (read the Rules first), and `AGENTS.md` for contribution rules.

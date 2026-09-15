@@ -6,11 +6,16 @@
 - Tailwind CSS 4 plus shadcn UI primitives.
 - Zod for runtime validation and inferred domain types.
 - Cloudflare/Sites-compatible Vite build.
-- Phosphor Icons (`@phosphor-icons/react/dist/ssr`, filled weight) for every product icon;
-  `lucide-react` remains only as an internal dependency of the generated shadcn primitives and
-  is lint-banned elsewhere.
-- Bricolage Grotesque, Onest, and Instrument Serif self-hosted through `next/font/google`.
-- Playwright for golden-path end-to-end coverage at 1440px and 390px.
+- Two icon sets, split by job — see DESIGN_SYSTEM.md rule 5: Heroicons outline
+  (`@heroicons/react/24/outline`) for interface marks, Phosphor filled
+  (`@phosphor-icons/react/dist/ssr`, `weight="fill"`) for marks that denote a physical thing (a
+  bathtub, a bed, a room's amenities). `lucide-react` is lint-banned outside `components/ui/` (the
+  generated shadcn primitives), see `.oxlintrc.json`.
+- Inter and Instrument Serif (italic accent only) self-hosted through `next/font/google`; the
+  interface face is really San Francisco on Apple platforms, with Inter as the fallback for
+  everyone else — see DESIGN_SYSTEM.md's Typography section.
+- Vitest for unit tests (`lib/domain/**`, pure logic — `npm run test`); Playwright for
+  golden-path end-to-end coverage at 1440px and 390px (`npm run test:e2e`).
 - Not installed: TanStack Query and React Hook Form. Server components own data fetching and
   the booking form is small enough that controlled inputs are simpler than a form library.
 
@@ -33,11 +38,26 @@ owns idempotency, the price/availability recheck, the hold, demo authorization, 
 best-effort CRM/PMS delivery. `lib/application/container.ts` is the composition root and the only
 module that imports `lib/infrastructure`.
 
+`HotelRepository` is not one interface a service takes whole — it `extends` four narrower ones
+(`CatalogReader`, `AvailabilityReader`, `BookingStore`, `PaymentAttemptStore`), and each service's
+constructor declares only the slice it actually calls (`CatalogService` takes
+`CatalogReader & AvailabilityReader`; `BookingService` takes a `Pick` of the catalog reads it needs
+plus the full booking and payment stores). Every concrete repository still implements all four, so
+this changes nothing about what `container.ts` wires in, only what each constructor's declared
+type says it may call. `Clock` (`lib/domain/ports.ts`, real implementation `lib/domain/clock.ts`)
+is the same idea for "now": `BookingService` and `ContentService` take one as an optional
+constructor parameter (default the real clock), so a test can pass a fixed date without either
+service's own "today" formula changing.
+
 `lib/application/booking-intake.ts` is the shared slug-addressed intake used by both the booking
 UI's server actions and the HTTP route handlers, so both entry points re-derive price on the server
-and neither trusts a client-supplied total.
+and neither trusts a client-supplied total. `app/api/_lib/http.ts` is the same idea for the HTTP
+routes' shared boilerplate: `parseJsonBody` (read → Zod-validate → 400 on failure) and
+`mapBookingError`/`toBookingErrorResponse` (one `BookingErrorCode` → HTTP status table), so
+`/api/quotes`, `/api/bookings`, and the booking form's server actions can't map the same failure
+to three different outcomes.
 
-`lib/infrastructure` holds eight demo room types with rates and add-ons (static seed data, never
+`lib/infrastructure` holds the demo room types with rates and add-ons (static seed data, never
 persisted), an in-memory repository with deterministic date-aware availability, mock
 implementations of every adapter port, and the `DemoControlPort` backing `/admin` (status
 overrides, add-on enablement, integration status rows).
@@ -201,8 +221,9 @@ the catalog's per-night minimum.
 
 ## Back office
 
-`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around three groups of
-screens. What reads and writes real demo data, and what is a labelled mock-up of a later feature:
+`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around two groups of
+screens in the sidebar nav (`components/admin/shell/admin-nav.tsx`), Operations and Content. What
+reads and writes real demo data, and what is a labelled preview of a later feature:
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
@@ -212,7 +233,12 @@ screens. What reads and writes real demo data, and what is a labelled mock-up of
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
 | `/admin/content` and its editors | Room types with cover, price and room count; add-ons by category with the on-sale switch; room, rate, add-on and hotel editors | `ContentService` — live |
 
-Every screen here reads or writes real demo data; there are no mock-up screens. Brand settings,
+Every screen in the sidebar nav reads or writes real demo data. Four more routes exist but are not
+linked from the nav — reachable only by typing the URL — and each says on screen that it is a
+preview: `/admin/settings` (brand preview, "changes aren't saved in this demo"),
+`/admin/settings/team` ("sign-in and roles arrive with admin auth"), `/admin/integrations` (mock
+adapter status, "nothing is connected to a real system"), and `/admin/media` (the committed
+manifest, read-only — there is no upload path, see "Content management (CMS)"). Brand settings,
 team roles, integration credentials and media uploads are left out until they can actually save.
 
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/

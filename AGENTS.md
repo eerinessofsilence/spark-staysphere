@@ -29,6 +29,7 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) — ne
 npm install
 npm run dev
 npm run typecheck
+npm run test         # vitest: lib/domain unit tests
 npm run lint
 npm run build
 npm run test:e2e     # Playwright golden path; needs `npx playwright install chromium` once
@@ -74,7 +75,7 @@ Run typecheck, lint, build, and the e2e suite when a flow changed. Include loadi
 unavailable, and success states for new flows. Do not claim an integration is live when it is
 mocked.
 
-Two traps this codebase has already hit, worth knowing before you add UI:
+Traps this codebase has already hit, worth knowing before you add UI:
 
 - A controlled checkbox or select whose state only settles after a server round trip will thrash
   under Playwright's `check()`/`selectOption()` retries. Assert on the server-rendered effect, not
@@ -107,3 +108,9 @@ Two traps this codebase has already hit, worth knowing before you add UI:
   Wait on a signal that only becomes true once the action itself resolves (a button's own
   disabled → enabled round trip, a `role="status"` message change), not on content the action
   happens not to touch.
+- Every export of a `'use client'` file is a client reference, a plain helper function included —
+  not just its components. A Server Component that imports one and *calls* it directly (not as
+  JSX) throws "Unexpectedly client reference export '…' is called on server" at render time, which
+  neither `tsc` nor `oxlint` catches, only an actual page render does. If a plain function needs to
+  be shared with a Server Component, put it in a module with no `'use client'` at the top — it
+  needs one only if it uses hooks or a browser API.
