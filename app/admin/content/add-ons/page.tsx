@@ -39,7 +39,7 @@ export default async function ServicesPage() {
         actions={
           <Link href="/admin/content/add-ons/new" className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
-            New add-on
+            Add service
           </Link>
         }
       />

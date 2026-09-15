@@ -123,7 +123,7 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
   await page.locator('#addon-name').fill('Sunset Kayak Tour');
   await page.locator('#addon-description').fill('A guided kayak tour at golden hour, back before dinner.');
   await page.locator('#addon-price').fill('55');
-  await page.getByRole('button', { name: 'Create add-on' }).click();
+  await page.getByRole('button', { name: 'Create service' }).click();
   await expect(page).toHaveURL(/\/admin\/content\/add-ons\/addon_sunset-kayak-tour/, { timeout: 10_000 });
 
   await page.goto(`/rooms/deluxe-sea?${stayQuery}`);

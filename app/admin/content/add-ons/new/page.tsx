@@ -5,7 +5,7 @@ import { AddOnFields } from '@/components/admin/content/add-on-fields';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { createAddOnAction } from './actions';
 
-export const metadata: Metadata = { title: 'New add-on — Services | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'New service — Services | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 export default async function NewAddOnPage() {
@@ -19,12 +19,12 @@ export default async function NewAddOnPage() {
     <AdminPage width="narrow">
       <AdminPageHeader
         breadcrumbs={[{ label: 'Content' }, { label: 'Services', href: '/admin/content/add-ons' }]}
-        title="New add-on"
+        title="New service"
         description="A service or a dish guests can add to their stay. An extra with a parent is offered inside that add-on."
       />
 
       <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
-        <ContentForm action={createAddOnAction} initialVersion={0} submitLabel="Create add-on" dock>
+        <ContentForm action={createAddOnAction} initialVersion={0} submitLabel="Create service" dock>
           <AddOnFields
             initial={{
               name: '',
