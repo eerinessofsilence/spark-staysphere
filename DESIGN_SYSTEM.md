@@ -215,7 +215,12 @@ free-hand a width or a column track.
   around both, which on a phone was a grey ring around an ink dot. The pressed lens fills with
   ink. Tapping opens a frosted card with the description and one CTA.
 - Room galleries show one photograph at a time with pill tabs (thumbnail + label), paging
-  arrows, a `01 / 04` counter, and fullscreen.
+  arrows, and fullscreen — no counter, the tabs already name every view. A 360° capture is one
+  more tab (a globe instead of a thumbnail), also reachable from a glass "360° view" pill on the
+  photograph itself; over the sphere the paging hides, since it would swallow the drag.
+- The building spinner and the panorama sphere (`components/view-360/`) use the same marker and
+  card language as the flat photos: lens markers, a frosted card beside the marker from `sm`, the
+  product's sheet below it, and an ink turn-control pill — never the library's own chrome.
 - Photographs always carry `width`/`height` to avoid layout shift, and `loading="lazy"` unless
   they are the arrival hero.
 

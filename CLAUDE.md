@@ -22,10 +22,12 @@ hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
-replaced by a draggable building spinner (`Hotel.spinner`, `components/hotel/building-spinner.tsx`)
+replaced by a draggable building spinner (`Hotel.spinner`, `BuildingSpinner`)
 — a baked 160-frame orbit drawn to a canvas, not a live 3D scene — whose hotspots open the rooms
 on each floor; see `SPINNER_SPEC.md` for why a baked sequence replaced an earlier, same-day
-three.js attempt. Playwright covers the golden path at 1440px and 390px.
+three.js attempt. That spinner and the room gallery's panorama sphere (`PanoramaViewer`) are one
+module, `components/view-360/`, whose README.md is the handoff doc for both. Playwright covers the
+golden path at 1440px and 390px.
 
 Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
 in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
@@ -55,6 +57,9 @@ integrations.
   a component or a server action.
 - All money flows through `buildPriceBreakdown` in `lib/domain/pricing.ts`; components never
   compute a total.
+- The 360° views are imported only from `@/components/view-360` (lint-enforced); inside, pure
+  maths is a tested function, a hook owns one side effect, a component only composes — see
+  `components/view-360/README.md` and `docs/decisions/0005-view-360-module.md`.
 - `lib/application/container.ts` is the only module that may import `lib/infrastructure`.
 - UI follows `DESIGN_SYSTEM.md › Rules` — they exist because the first pass looked generic. Ink
   pills, clay accent, Phosphor filled icons, photography, no eyebrows, no stat tiles, no icon

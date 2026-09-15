@@ -62,6 +62,19 @@ function toInt(value: string | undefined, fallback: number | null): number | nul
 }
 
 /** Exported so callers outside a URL (the assistant's sanitiser) can reuse the one check. */
+/**
+ * `href` with the guest's stay carried along, so a link out of the arrival
+ * screen lands on the same dates. The stay's keys win over any the link
+ * already names; the link's own keys (`view=sea`, say) are kept.
+ */
+export function withStayQuery(href: string, stayQuery?: string): string {
+  const [path = '', query] = href.split('?');
+  const params = new URLSearchParams(query ?? '');
+  if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+}
+
 export function isIsoDate(value: string | undefined | null): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value));
 }

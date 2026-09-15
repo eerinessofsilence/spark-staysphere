@@ -58,11 +58,12 @@ detail page, booking review, and again right before confirming) so a client-supp
 never trusted.
 
 **Room type vs. room (unit)** — A **room type** (`RoomType`) is what's sold: "Deluxe Sea View," a
-name, a view, a capacity, amenities, a gallery. A **room** (or **unit**, `RoomUnit`) is one
-physical door with a number, e.g. `304`. `unitsFor` (`lib/domain/availability.ts`) says how many
-units a room type has; `buildRoomUnits` (`lib/domain/room-units.ts`) derives every actual room
-number from that, floor by floor. The catalog sells room types; the floor plan and the tape chart
-show units.
+name, a view, a capacity, amenities, a gallery. A **room** (`PhysicalRoom`, a CMS entity of kind
+`unit`) is one physical door with a stored number, e.g. `304` — its floor is read off the number
+(`floorOf`). A type sells exactly as many rooms a night as it has stored rooms; hotel teams add,
+renumber and remove them under `/admin/content/units`, and the demo seed lays them out with
+`layOutRooms` (`lib/domain/room-units.ts`). `buildRoomUnits` turns stored rooms into the `RoomUnit`s
+the allocator works with. The catalog sells room types; the floor plan and the tape chart show rooms.
 
 **Room zone** — A traced outline on one of the arrival page's flat photo areas (e.g. the pool
 photo), stored as fractions of the photo, mapped to a room slug — `HotelArea.roomZones`
@@ -76,8 +77,14 @@ runtime by anything, including the CMS — see **Overlay**.
 spinner (the draggable 160-frame orbit on `/`), which only "exists" across the sub-range of frames
 where the thing it names actually faces the camera — tracked per frame via `keyframes`.
 `keyAngles` are the specific frames the prev/next arrows jump between (front, side, back, side —
-not an even quarter-turn, picked by hand to match the property's actual footprint). See TECH.md's
-"Photography and media" section and SPINNER_SPEC.md's decision log for the full mechanic.
+not an even quarter-turn, picked by hand to match the property's actual footprint). The maths is
+`components/view-360/building-spinner/orbit.ts`; see that module's README.md for the mechanic and
+SPINNER_SPEC.md's decision log for why.
+
+**360° views** — The two views in `components/view-360/`: the **building spinner**
+(`BuildingSpinner`, orbiting the outside) and the **panorama sphere** (`PanoramaViewer`, looking
+around from inside a room, from a `media` item of `type: '360'`). One module, imported only
+through its `index.ts`.
 
 **Stay bucket** — Where a booking sits relative to today: `'upcoming' | 'in_house' | 'past' |
 'cancelled'` (`stayBucket`, `lib/domain/availability.ts`). Shared by the guest's "My trips" list

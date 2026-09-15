@@ -23,6 +23,7 @@ Outside `docs/`, at the repo root:
 | [CLAUDE.md](../CLAUDE.md) | You want the product intent and the implementation roadmap in one place. |
 | [TECH.md](../TECH.md) | You want the deep technical reference — persistence, the CMS's concurrency model, the AI concierge, production integration — all with the *why*, not just the *what*. This is the file `docs/ARCHITECTURE.md` is the fast, five-minute version of. |
 | [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) | You're adding or changing any UI. Read its **Rules** section first, always. |
+| [components/view-360/README.md](../components/view-360/README.md) | You're changing the building spinner or a 360° panorama — the module's map, rules, and recipes. |
 | [SPINNER_SPEC.md](../SPINNER_SPEC.md) | You want the specific reasoning behind the building spinner's frame count, hotspot mechanic, and baked-vs-live-scene choice — it's `docs/decisions/`'s first entry in substance, kept at the root because most of the other docs already link it there. |
 
 ## Keeping this accurate

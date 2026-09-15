@@ -2,7 +2,8 @@
 
 Status: **shipped**. This is a decision record now, not an open handoff: the scope and
 architecture below were settled via a structured interview with the product owner (2026-09-06) —
-see the Decision log at the bottom — and `components/hotel/building-spinner.tsx` is the live
+see the Decision log at the bottom — and `BuildingSpinner` (today in `components/view-360/`, see
+that module's README.md; file paths further down are as they were when this was written) is the live
 result, replacing the arrival page's facade/roof/cove photo. See TECH.md's "Photography and media"
 section for the current, maintained description of how it works; this file is kept for the
 reasoning behind the frame-count, hotspot, and baked-vs-live-scene decisions, which TECH.md does

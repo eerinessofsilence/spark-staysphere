@@ -174,9 +174,9 @@ Actions that flip one flag — "Hide from the site", an add-on's on-sale switch,
 own page — act at once and offer Undo for a few seconds; everything else waits for Save. Deletes
 are offered only where `ContentService.rateRemoval`/`addOnRemoval` allow one (otherwise the reason
 is shown instead), confirmed in the product `Modal`, and a deleted add-on's page sends the person
-back to the list with a notice rather than to a 404. Room numbers follow a type's floor and view
-(`buildRoomUnits`), so `updateRoom` and `createRoom` refuse a change that would renumber a room a
-guest picked for an upcoming stay, and the editor says which rooms are held.
+back to the list with a notice rather than to a 404. Room numbers are stored per room, so moving a
+room type to another floor or view renumbers nothing; a room a current booking chose is protected
+where its number actually lives, in the room editor (see "Physical rooms" below).
 
 `Field` (`components/admin/content/fields.tsx`) reads its own error out of the wrapper's context by
 its error key (`name`, not always the same as its DOM `id`; the hotel form's are id-based paths like
@@ -367,17 +367,26 @@ baked 160-frame orbit around the exterior — `frames` (one image per angle, all
 framing so hotspot fractions project through a single size), `keyAngles` (the stops the prev/next
 arrows jump between, since stepping 160 frames one at a time is unusable), and `hotspots`, each
 carrying `keyframes` for the sub-range of frames where it actually faces the camera.
-`components/hotel/building-spinner.tsx` draws the current frame to a single `<canvas>` rather than
-mounting elements — 160 full-size images left in the DOM after one full turn would be
-unreasonable — loads frames in batches around whatever's current and fills in the rest in the
-background, and animates between `keyAngles` stops on an arrow press or drag release with a
-spring, not a dead stop. One finger drags it and it flicks on release; `prefers-reduced-motion`
-disables the idle turn. A tap on a hotspot, or on the rail beside the stage, lists the room types
-on that floor at the catalog's own price. See `SPINNER_SPEC.md`'s decision log (2026-09-06) for the frame-count, hotspot, and
-baked-vs-live-WebGL reasoning behind path A, a baked frame sequence over a live scene. A same-day
-detour into a live three.js model built from procedural block massing (`Hotel.model`) was tried
-and replaced by this spinner hours later; its files and the `Hotel.model` schema were removed as
-dead code once the spinner took over.
+`BuildingSpinner` draws the current frame to a single `<canvas>` rather than mounting elements —
+160 full-size images left in the DOM after one full turn would be unreasonable — loads frames
+nearest-first around the opening frame and fills in the rest in the background, and animates
+between `keyAngles` stops on an arrow button or arrow key (a press during a turn queues the next
+stop). A drag turns it directly, about a frame per 4px; there is no inertia and no idle rotation.
+A tap on a hotspot opens a card beside it (the product's sheet on a phone) with the room type's
+price from the catalog offer; `?frame=N` and `?unit=<slug>` deep-link into it. If the frames can't
+load it falls back, silently, to the area's still photo with the markers pinned front-on.
+
+A room gallery's 360° tab is `PanoramaViewer`: an equirectangular sphere over Pannellum, vendored
+at `public/vendor/pannellum`, mounted only while its tab is open.
+
+Both views are one module, `components/view-360/`, with a single public entry (`index.ts`; a deep
+import fails `npm run lint`). Its README.md is the maintained reference — structure, invariants,
+and how to replace the frames, add a hotspot, or give a room a sphere — and
+`docs/decisions/0005-view-360-module.md` records why it is shaped that way. See `SPINNER_SPEC.md`'s
+decision log (2026-09-06) for the frame-count, hotspot, and baked-vs-live-WebGL reasoning behind a
+baked frame sequence over a live scene. A same-day detour into a live three.js model built from
+procedural block massing (`Hotel.model`) was tried and replaced by this spinner hours later; its
+files and the `Hotel.model` schema were removed as dead code once the spinner took over.
 
 ## Current limitations
 

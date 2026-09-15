@@ -19,7 +19,7 @@ npm run dev
 Then open the local URL printed by the development server. `npm run dev` runs against a real,
 locally emulated D1 database (no Cloudflare account needed) — bookings, admin overrides, and CMS
 edits made in `/admin` survive a restart. To start clean, delete `.wrangler/state`, or use
-"Reset demo state" on `/admin`.
+"Reset demo state" on `/admin/reset`.
 
 **Optional — the AI room finder.** Without a key, search still answers through a deterministic
 keyword interpreter and voice input is unavailable. To enable OpenAI interpretation and
@@ -62,7 +62,8 @@ spec made; the CMS and golden-path specs reset demo state at the start of their 
 
 | Route | What it does |
 |---|---|
-| `/admin` | Overview: tonight's occupancy, 14-night chart, arrivals/departures, recent bookings, integration status, reset demo state |
+| `/admin` | Overview: tonight's occupancy, 14-night chart, arrivals/departures, recent bookings, integration status |
+| `/admin/reset` | "Reset demo state" — not in the sidebar; for the demo owner and the e2e suite |
 | `/admin/tape-chart` | Rooms × nights, 7/14/30-night window, filter by room type |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search, stay-bucket filters, booking detail, desk cancel |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, availability override |

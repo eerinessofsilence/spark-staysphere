@@ -6,6 +6,8 @@ Two suites, for two different jobs. Neither replaces the other.
 
 ```
 lib/domain/**/*.test.ts
+lib/application/**/*.test.ts
+components/**/*.test.ts      — a UI module's own maths, e.g. components/view-360
 ```
 
 For pure logic: a function of its inputs, no server, no browser, no D1, usually no mocks at all.
@@ -19,7 +21,9 @@ build config). That one is async, loads the Cloudflare Workers plugin, and reads
 `vitest.config.ts` is a bare Node environment with the same `@/` path alias.
 
 **What belongs here:** anything in `lib/domain/` — pricing math, date math, room allocation,
-catalog merging, slug rules. If you're about to test a `lib/application/` service, check whether
+catalog merging, slug rules — and a component module's pure arithmetic kept out of React for this
+reason (`components/view-360/building-spinner/orbit.test.ts`, `components/site/cover-fit.test.ts`).
+If you're about to test a `lib/application/` service, check whether
 the rule you actually care about can be pulled into a pure `lib/domain/` function first; it's
 easier to test and easier to reuse.
 
@@ -57,7 +61,7 @@ local D1 database) persists across `npm run dev` and `npm run test:e2e` runs ali
 thing happened during this project's own recent refactor and turned out to be accumulated state
 from repeated manual runs in the same session, not a bug.
 
-**Reset D1 between runs** with the "Reset demo state" button on `/admin`, or by deleting
+**Reset D1 between runs** with the "Reset demo state" button on `/admin/reset`, or by deleting
 `.wrangler/state` (it's gitignored and gets rebuilt automatically).
 
 **The dev server can go stale.** If e2e suddenly can't connect (`ERR_CONNECTION_REFUSED`) after it

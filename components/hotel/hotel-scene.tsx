@@ -21,13 +21,17 @@ import {
   ChevronRightIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
-import { BuildingSpinner } from '@/components/hotel/building-spinner';
-import { useAnchoredCard, type CardAnchor } from '@/components/hotel/use-anchored-card';
-import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
+import { RoomFactTags, type RoomFacts } from '@/components/rooms/room-facts';
+import { projectOnCover } from '@/components/site/cover-fit';
 import { Modal } from '@/components/site/modal';
-import type { BuildingSpinnerData, HotelArea, Hotspot, RoomOffer } from '@/lib/domain/schemas';
+import { useAnchoredCard, useMarkerAnchor, type CardAnchor } from '@/components/site/use-anchored-card';
+import { useElementSize } from '@/components/site/use-element-size';
+import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
+import { BuildingSpinner } from '@/components/view-360';
+import { withStayQuery } from '@/lib/application/search-params';
+import type { BuildingSpinnerData, HotelArea, Hotspot } from '@/lib/domain/schemas';
 import { bedLabels, formatFloor, formatMoney, formatRoomLine } from '@/lib/formatting';
-import { iconButton, pill, tag } from '@/lib/ui';
+import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 /** The one `HotelArea` a `spinner` replaces the flat photo of — see `SPINNER_SPEC.md`. */
@@ -38,8 +42,8 @@ const SPINNER_AREA_ID = 'hotel';
  * hotspots that lead into the catalog and, on the facade, the floors traced so
  * a hover names the room. Positions are stored as fractions of the photo and
  * mapped through the same cover-crop the browser applies, so a marker stays on
- * the balcony it points at whatever the viewport. The 360° tour lives beside
- * this, in `PanoramaTour`.
+ * the balcony it points at whatever the viewport. With a `spinner` the stage is
+ * the building orbit instead (`BuildingSpinner`, from `@/components/view-360`).
  */
 
 const hotspotIcons: Record<string, typeof MapPin> = {
@@ -52,21 +56,6 @@ const hotspotIcons: Record<string, typeof MapPin> = {
   reception: Bell,
   transfer: Car,
 };
-
-/** What a marker can say about the room it sells; priced by the catalog, never here. */
-export interface RoomFacts {
-  name: string;
-  areaM2: number;
-  floor: number;
-  capacity: number;
-  bedType: RoomOffer['room']['bedType'];
-  nightlyPrice: number;
-  currency: RoomOffer['price']['currency'];
-  status?: RoomOffer['status'];
-  remaining?: number;
-  /** The room's cover, so a phone's sheet can show what the marker points at. */
-  photo?: { url: string; width?: number; height?: number };
-}
 
 interface HotelSceneProps {
   areas: HotelArea[];
@@ -84,19 +73,6 @@ interface HotelSceneProps {
   className?: string;
 }
 
-/** `object-fit: cover`: the photo's scale and centring, applied to a fraction of it. */
-function projectOnto(
-  point: { x: number; y: number },
-  photo: { width: number; height: number },
-  dims: { width: number; height: number },
-) {
-  const scale = Math.max(dims.width / photo.width, dims.height / photo.height);
-  return {
-    x: (dims.width - photo.width * scale) / 2 + point.x * photo.width * scale,
-    y: (dims.height - photo.height * scale) / 2 + point.y * photo.height * scale,
-  };
-}
-
 export function HotelScene({
   areas,
   location,
@@ -111,53 +87,15 @@ export function HotelScene({
   const [index, setIndex] = React.useState(0);
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
-  const [dims, setDims] = React.useState({ width: 0, height: 0 });
+  const dims = useElementSize(stageRef);
   const [hoveredZone, setHoveredZone] = React.useState<string | null>(null);
   // Below `sm` a marker opens the product's sheet instead of a card floating
   // on a 275px-tall photograph. Read after mount, which is always before a
   // marker can have been pressed.
-  const [isPhone, setIsPhone] = React.useState(false);
+  const isPhone = useMediaQuery(PHONE_QUERY);
   const [pinnedZone, setPinnedZone] = React.useState<string | null>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
-  const [activeAnchor, setActiveAnchor] = React.useState<CardAnchor | null>(null);
-
-  React.useEffect(() => {
-    const element = stageRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setDims({ width: entry.contentRect.width, height: entry.contentRect.height });
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  // The card's anchor is measured off the real marker, not guessed from its
-  // usual size: a marker carrying a room's floor and price can run to two
-  // lines, and a guessed height there would undersell how tall it actually is
-  // — exactly the gap a clamp can't make up for, so the card ends up over it.
-  React.useLayoutEffect(() => {
-    const stage = stageRef.current;
-    const marker = activeHotspot ? markerRefs.current[activeHotspot] : null;
-    if (!stage || !marker) {
-      setActiveAnchor(null);
-      return;
-    }
-    const stageRect = stage.getBoundingClientRect();
-    const markerRect = marker.getBoundingClientRect();
-    setActiveAnchor({
-      x: markerRect.left - stageRect.left + markerRect.width / 2,
-      top: markerRect.top - stageRect.top,
-      bottom: markerRect.bottom - stageRect.top,
-    });
-  }, [activeHotspot, dims.width, dims.height]);
-
-  React.useEffect(() => {
-    const query = window.matchMedia('(max-width: 639px)');
-    const apply = () => setIsPhone(query.matches);
-    apply();
-    query.addEventListener('change', apply);
-    return () => query.removeEventListener('change', apply);
-  }, []);
+  const activeAnchor = useMarkerAnchor(stageRef, markerRefs, activeHotspot, `${dims.width}x${dims.height}`);
 
   /**
    * With an orbit available the arrival stage is the orbit and nothing else:
@@ -184,7 +122,7 @@ export function HotelScene({
   const zoneAnchor: CardAnchor | null =
     zone && area && dims.width > 0
       ? (() => {
-          const centre = projectOnto(
+          const centre = projectOnCover(
             {
               x: zone.outline.reduce((sum, point) => sum + point.x, 0) / zone.outline.length,
               y: zone.outline.reduce((sum, point) => sum + point.y, 0) / zone.outline.length,
@@ -220,7 +158,7 @@ export function HotelScene({
   const roomLine = (hotspot: Hotspot): string | null =>
     formatRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined);
 
-  const project = (point: { x: number; y: number }) => projectOnto(point, area.photo, dims);
+  const project = (point: { x: number; y: number }) => projectOnCover(point, area.photo, dims);
 
   /** A marker's place, as a style; percentages until the stage has been measured. */
   const positionFor = (hotspot: Hotspot): React.CSSProperties => {
@@ -231,13 +169,7 @@ export function HotelScene({
     return { left: x, top: y };
   };
 
-  const hotspotHref = (hotspot: Hotspot): string => {
-    const [path, query] = hotspot.href.split('?');
-    const params = new URLSearchParams(query ?? '');
-    if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
-    const search = params.toString();
-    return search ? `${path}?${search}` : path;
-  };
+  const hotspotHref = (hotspot: Hotspot): string => withStayQuery(hotspot.href, stayQuery);
 
   const active = isSpinnerArea ? null : (area.hotspots.find((hotspot) => hotspot.id === activeHotspot) ?? null);
 
@@ -380,7 +312,7 @@ export function HotelScene({
                 return (
                   <Link
                     key={zone.roomSlug}
-                    href={stayQuery ? `/rooms/${zone.roomSlug}?${stayQuery}` : `/rooms/${zone.roomSlug}`}
+                    href={withStayQuery(`/rooms/${zone.roomSlug}`, stayQuery)}
                     onMouseEnter={() => setHoveredZone(zone.roomSlug)}
                     onMouseLeave={() => setHoveredZone(null)}
                     ref={zoneCardRef}
@@ -576,22 +508,7 @@ export function HotelScene({
                     {active.description}
                   </p>
 
-                  {facts ? (
-                    <ul className="mt-4 flex flex-wrap gap-1.5">
-                      <li className={tag(tintSurface[factTone.area])}>
-                        <Ruler weight="fill" className={cn('size-3.5', tintInk[factTone.area])} aria-hidden="true" />
-                        {facts.areaM2} m²
-                      </li>
-                      <li className={tag(tintSurface[factTone.bed])}>
-                        <Bed weight="fill" className={cn('size-3.5', tintInk[factTone.bed])} aria-hidden="true" />
-                        {bedLabels[facts.bedType]}
-                      </li>
-                      <li className={tag(tintSurface[factTone.capacity])}>
-                        <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
-                        Sleeps {facts.capacity}
-                      </li>
-                    </ul>
-                  ) : null}
+                  {facts ? <RoomFactTags facts={facts} className="mt-4" /> : null}
 
                   <Link
                     href={hotspotHref(active)}

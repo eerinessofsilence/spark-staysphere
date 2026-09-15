@@ -276,6 +276,21 @@ test('the arrival screen turns the building and its hotspots lead into the catal
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your room' })).toBeVisible();
 });
 
+test('the building opens on a deep-linked frame and turns to its next stop from the controls', async ({ page }) => {
+  await page.goto(`/?${stayQuery}&frame=40`);
+  await expect(page.getByRole('group', { name: /drag or use the arrow keys to spin/ })).toBeVisible();
+  // The frame in the address is where the orbit opens, and the address keeps it.
+  await expect(page).toHaveURL(/[?&]frame=40(&|$)/);
+
+  const frame = () => new URL(page.url()).searchParams.get('frame');
+  await actUntil(
+    () => page.getByRole('button', { name: 'Turn right' }).click(),
+    () => expect.poll(frame, { timeout: 3_000 }).not.toBe('40'),
+  );
+  // The dates the guest arrived with are still in the address after the turn.
+  expect(new URL(page.url()).searchParams.get('checkIn')).toBe(checkIn);
+});
+
 test('the arrival page offers the rest of the rooms on the way out', async ({ page }) => {
   await page.goto(`/?${stayQuery}`);
 
@@ -394,6 +409,25 @@ test('a room detail page reprices when a service is added', async ({ page }) => 
   await page.getByRole('tab', { name: 'Bathroom' }).click();
   await expect(page.getByRole('tab', { name: 'Bathroom' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('img', { name: /Bathroom/ })).toBeVisible();
+});
+
+test('a room page opens its 360° view from the photograph and goes back to the photos', async ({ page }) => {
+  await page.goto(`/rooms/deluxe-sea?${stayQuery}`);
+
+  const open360 = page.getByRole('button', { name: '360° view', exact: true });
+  const backToPhotos = page.getByRole('button', { name: 'Photos', exact: true });
+  await actUntil(
+    () => open360.click(),
+    () => expect(backToPhotos).toBeVisible({ timeout: 3_000 }),
+  );
+  await expect(page.getByRole('tab', { name: '360° view' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText(/Drag to look around/)).toBeVisible();
+  // The sphere names itself for assistive tech as soon as the viewer is built.
+  await expect(page.getByLabel('Deluxe Sea View, 360°', { exact: true })).toBeAttached();
+
+  await backToPhotos.click();
+  await expect(open360).toBeVisible();
+  await expect(page.getByText(/Drag to look around/)).toHaveCount(0);
 });
 
 test('adding a service leaves the guest where they were on the page', async ({ page }) => {

@@ -46,6 +46,8 @@ CI (`.github/workflows/ci.yml`) runs all of these on every pull request.
   `app/admin/content/`: the CMS — six routes (overview, hotel, room `[id]`/`new`, add-on
   `[id]`/`new`), each `export const dynamic = 'force-dynamic'` and its own `actions.ts`; `_lib/`
   holds the shared `revalidateContent()` helper and the `ContentResult` → form-state mapping.
+- `components/view-360/`: the building spinner and the panorama sphere — one module, imported only
+  from `@/components/view-360` (lint fails a deep import); its README.md is the working reference.
 - `components/`: reusable UI primitives (`ui/`) and product components (`hotel/`, `rooms/` —
   including `rooms/floor-plan/`, `booking/`, `search/`, `site/`, `admin/`, `admin/content/` — the
   CMS's form shell (`ContentForm`, `Field`), the reorderable-list and media-picker editors, and the

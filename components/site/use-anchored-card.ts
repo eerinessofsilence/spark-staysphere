@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { Size } from '@/components/site/cover-fit';
 
 /** A point on the stage a card should hang off, in the stage's local pixels. */
 export interface CardAnchor {
@@ -12,11 +13,6 @@ export interface CardAnchor {
   bottom: number;
 }
 
-interface StageSize {
-  width: number;
-  height: number;
-}
-
 const MARGIN = 16;
 const GAP = 16;
 /**
@@ -25,6 +21,43 @@ const GAP = 16;
  */
 const RAIL = 72;
 
+/** Where `element` sits inside `stage`, as the anchor a card hangs off. */
+export function anchorWithin(stage: Element, element: Element): CardAnchor {
+  const stageRect = stage.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  return {
+    x: rect.left - stageRect.left + rect.width / 2,
+    top: rect.top - stageRect.top,
+    bottom: rect.bottom - stageRect.top,
+  };
+}
+
+/**
+ * The anchor of whichever marker is open, measured off the real element rather
+ * than guessed from its usual size: a marker carrying a room's floor and price
+ * can run to two lines, and a guessed height would undersell it — exactly the
+ * gap a clamp can't make up, so the card would land on top of it.
+ *
+ * `layoutKey` names whatever moves the markers (the stage size, the orbit's
+ * frame); a change re-measures.
+ */
+export function useMarkerAnchor(
+  stageRef: React.RefObject<HTMLElement | null>,
+  markerRefs: React.RefObject<Record<string, HTMLElement | null>>,
+  markerId: string | null,
+  layoutKey: string,
+): CardAnchor | null {
+  const [anchor, setAnchor] = React.useState<CardAnchor | null>(null);
+
+  React.useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const marker = markerId ? markerRefs.current[markerId] : null;
+    setAnchor(stage && marker ? anchorWithin(stage, marker) : null);
+  }, [stageRef, markerRefs, markerId, layoutKey]);
+
+  return anchor;
+}
+
 /**
  * Positions a floating card next to whatever it explains — a marker, a
  * building — instead of it always landing in the same corner. The card is
@@ -32,10 +65,7 @@ const RAIL = 72;
  * flip between "above" and "below" the anchor clears it exactly, and the
  * result is clamped so the card never runs off the stage.
  */
-export function useAnchoredCard<T extends HTMLElement = HTMLDivElement>(
-  anchor: CardAnchor | null,
-  stage: StageSize,
-) {
+export function useAnchoredCard<T extends HTMLElement = HTMLDivElement>(anchor: CardAnchor | null, stage: Size) {
   // Generic over the element: the marker's card is a div, the floor band's is
   // a link. The hook only ever reads `offsetWidth`/`offsetHeight`.
   const cardRef = React.useRef<T>(null);

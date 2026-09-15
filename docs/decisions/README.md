@@ -6,11 +6,12 @@ project — only the ones worth someone not re-litigating.
 
 | # | Decision |
 |---|---|
-| — | [The building spinner: baked frames over a live 3D scene](../../SPINNER_SPEC.md) — kept at the repo root, since TECH.md, DESIGN_SYSTEM.md, and CLAUDE.md already link it there; the fullest decision log of the four. |
+| — | [The building spinner: baked frames over a live 3D scene](../../SPINNER_SPEC.md) — kept at the repo root, since TECH.md, DESIGN_SYSTEM.md, and CLAUDE.md already link it there; the fullest decision log of them all. |
 | [0001](0001-d1-seed-overlay.md) | D1 for durable state; the catalog stays seed data with a CMS overlay |
 | [0002](0002-no-drag-and-drop-cms-lists.md) | CMS reorderable lists use up/down buttons, not drag-and-drop |
 | [0003](0003-fetch-not-openai-sdk.md) | Call the OpenAI REST API with `fetch`, not the `openai` npm package |
 | [0004](0004-hotel-repository-port-slices.md) | Split `HotelRepository` into four narrower interfaces |
+| [0005](0005-view-360-module.md) | The 360° views are one module with a single public entry |
 
 ## Adding one
 

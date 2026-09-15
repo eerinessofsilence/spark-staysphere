@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { ArrowsPointingInIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import { PanoramaViewer } from '@/components/hotel/panorama-viewer';
+import { useScrollLock } from '@/components/site/use-scroll-lock';
+import { PanoramaViewer } from '@/components/view-360';
 import type { RoomType } from '@/lib/domain/schemas';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
@@ -34,18 +35,14 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
   // The overlay's own escape hatch: Escape closes it, and the page behind it
   // must not scroll under it — the native API gets both for free.
+  useScrollLock(fakeFullscreen);
   React.useEffect(() => {
     if (!fakeFullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setFakeFullscreen(false);
     };
     document.addEventListener('keydown', onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [fakeFullscreen]);
 
   if (!photo) return null;

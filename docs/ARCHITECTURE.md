@@ -46,7 +46,7 @@ so its constructor signature documents its own dependency:
 ```mermaid
 flowchart TD
     HR["HotelRepository\n(every concrete backend implements all four)"]
-    CR[CatalogReader\ngetHotel, listRooms, listRatePlans, listAddOns]
+    CR[CatalogReader\ngetHotel, listRooms, listPhysicalRooms, listRatePlans, listAddOns]
     AR[AvailabilityReader\ngetAvailability]
     BS[BookingStore\nfindByIdempotencyKey, saveBooking, getByReference, cancelBooking, listBookings]
     PS[PaymentAttemptStore\nsavePaymentAttempt, listPaymentAttempts]
@@ -58,7 +58,7 @@ flowchart TD
     CatalogService -->|CatalogReader & AvailabilityReader| CR
     CatalogService --> AR
     ContentService -->|CatalogReader & listBookings| CR
-    InventoryService -->|AvailabilityReader & listRooms & listBookings| AR
+    InventoryService -->|AvailabilityReader & listRooms/listPhysicalRooms & listBookings| AR
     BookingService -->|listAddOns/listRatePlans/listRooms & BookingStore & PaymentAttemptStore| BS
     BookingService --> PS
 ```
@@ -86,7 +86,7 @@ flowchart LR
 ```
 
 `mergeCatalog` is pure and shared by both backends, so a D1-backed read and an in-memory read can
-never disagree about the result. "Reset demo state" on `/admin` clears the whole overlay table —
+never disagree about the result. "Reset demo state" on `/admin/reset` clears the whole overlay table —
 the catalog just falls back to seed.
 
 Bookings, payment attempts, admin overrides, and inventory holds are durable state, not catalog —
@@ -112,10 +112,11 @@ the app running (state just doesn't survive a restart) rather than failing outri
 | A port interface | `lib/domain/ports.ts` |
 | A D1-or-in-memory choice for a port | `lib/infrastructure/durable-hotel-repository.ts`, `durable-catalog-content.ts` |
 | The one place infrastructure gets wired up | `lib/application/container.ts` |
-| A guest route's UI | `app/` (routes) and `components/` (`hotel/`, `rooms/`, `booking/`, `search/`, `site/`) |
+| A guest route's UI | `app/` (routes) and `components/` (`hotel/`, `rooms/`, `booking/`, `search/`, `site/`, `view-360/`) |
+| The building spinner or a 360° panorama | `components/view-360/` — start at its README.md; import only from `@/components/view-360` (lint fails a deep import) |
 | An admin screen's UI | `app/admin/**`, `components/admin/**` (`shell/` = the back-office chrome, `content/` = CMS form pieces, `tape-chart/` and `operations/` = the PMS-style views) |
 | Shared API route boilerplate | `app/api/_lib/http.ts` (`parseJsonBody`, `mapBookingError`, `toBookingErrorResponse`) |
-| A shared client hook | `components/site/use-scroll-lock.ts`, `use-overlay-transition.ts`; `components/admin/content/use-ordered-list.ts`, `use-undoable-toggle.ts` |
+| A shared client hook | `components/site/use-scroll-lock.ts`, `use-overlay-transition.ts`, `use-media-query.ts`, `use-element-size.ts`, `use-anchored-card.ts` (plus the pure `cover-fit.ts`); `components/admin/content/use-ordered-list.ts`, `use-undoable-toggle.ts` |
 | Design tokens and rules | `app/globals.css` (tokens), DESIGN_SYSTEM.md (rules) |
 
 ## Four rules that don't bend

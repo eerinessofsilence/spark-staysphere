@@ -64,7 +64,7 @@ regressing — if you add a route, it's covered automatically.
 
 **Calling `setPointerCapture` on pointerdown inside an interactive stage retargets pointerup** and
 silently kills clicks on child buttons. Capture only once a drag threshold is crossed — see
-`components/hotel/building-spinner.tsx` for the working pattern.
+`components/view-360/building-spinner/use-orbit.ts` for the working pattern.
 
 ## D1
 

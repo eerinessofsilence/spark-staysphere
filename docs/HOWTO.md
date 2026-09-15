@@ -9,11 +9,11 @@ Two ways, and they end up in the same place (both read back through `mergeCatalo
 ARCHITECTURE.md), but they're for different purposes.
 
 **Through the CMS (`/admin/content/rooms/new`) — for a demo-time edit, no deploy.** Fill in the
-form; `ContentService.createRoom` (`lib/application/content-service.ts`) validates it, picks a
-kebab-case id from the name, and refuses a floor/view that would renumber a room a guest has
-already picked. The new room starts **hidden** — it needs at least one photo and one rate before
-it can go on the site (the room's own page shows a checklist of what's missing). This writes one
-row to the D1 `catalog_entries` overlay table; the seed file is never touched.
+form; `ContentService.createRoom` (`lib/application/content-service.ts`) validates it and picks a
+kebab-case id from the name. The new room type starts **hidden** — it needs at least one room
+(added under `/admin/content/units`), one photo and one rate before it can go on the site (its own
+page shows a checklist of what's missing). This writes one row to the D1 `catalog_entries`
+overlay table; the seed file is never touched.
 
 **In the seed (`lib/infrastructure/mock-data.ts`) — for a permanent addition to the demo.** Add an
 entry to the `roomSeed: RoomSeed[]` array (near the top of the room section):
@@ -41,10 +41,11 @@ the slug. Three things to know:
 - **Photos.** `photos[].file` must exist at `public/images/rooms/<slug>/<file>.webp` (or set
   `from: 'another-slug'` to borrow that room's folder — see "Add a photo" below and the comment on
   `RoomSeed` for why that's normal here).
-- **Physical room count.** How many actual doors this room type has comes from `unitsFor` in
-  `lib/domain/availability.ts`'s `baseUnits` map — add an entry there, or it defaults to 5.
-- **No manual numbering.** Room numbers (`buildRoomUnits` in `lib/domain/room-units.ts`) are
-  derived automatically from every room type's floor and view; you never assign a number by hand.
+- **Physical room count.** How many doors this room type has in the seed comes from
+  `seedRoomCounts` in `lib/infrastructure/mock-data.ts` — add an entry there, or it gets 5.
+- **No manual numbering in the seed.** `demoPhysicalRooms` lays the rooms out with `layOutRooms`
+  (`lib/domain/room-units.ts`): floor by floor, sea facade first. After that, numbers are stored —
+  hotel teams renumber, add and remove rooms under `/admin/content/units`.
 
 ## Add a photo
 
@@ -57,6 +58,18 @@ the slug. Three things to know:
    standing in for the property's own, and every one is credited. Nothing is hotlinked.
 4. Use it: through the CMS's media picker (an existing room or add-on's photo/media field), or by
    referencing the path directly in a seed entry (see "Add a room type" above).
+
+## Change a 360° view
+
+The building spinner on `/` and the panorama sphere in a room gallery are one module,
+`components/view-360/`. Its README.md has the recipes — replace the orbit with the property's own
+render, add or move a hotspot, give a room a sphere, swap the panorama library — plus the rules that
+keep the views working and the by-hand checks to run afterwards. Two things to know before opening
+it:
+
+- Import only from `@/components/view-360`. `npm run lint` fails on a path into the folder.
+- A new rule about frames, stops, hotspots or hit-testing goes in `orbit.ts` or
+  `sphere-geometry.ts` with a unit test beside it, not into a component or an effect.
 
 ## Add a guest route
 

@@ -23,8 +23,9 @@ method-by-method against its own source:
 
 - `CatalogService`: `CatalogReader & AvailabilityReader`
 - `ContentService`: `CatalogReader & Pick<BookingStore, 'listBookings'>`
-- `InventoryService`: `AvailabilityReader & Pick<CatalogReader, 'listRooms'> &
-  Pick<BookingStore, 'listBookings'>`
+- `InventoryService`: `AvailabilityReader & Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms'> &
+  Pick<BookingStore, 'listBookings'>` (`listPhysicalRooms` joined `CatalogReader` when rooms
+  became stored entities)
 - `BookingService`: `Pick<CatalogReader, 'listAddOns' | 'listRatePlans' | 'listRooms'> &
   BookingStore & PaymentAttemptStore`
 

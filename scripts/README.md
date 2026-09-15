@@ -6,7 +6,7 @@ of `npm run dev` or `npm run build`.
 
 ## The building spinner's orbit frames
 
-The arrival page's draggable building spinner (`components/hotel/building-spinner.tsx`,
+The arrival page's draggable building spinner (`components/view-360/`,
 `Hotel.spinner`) is a baked sequence of frame images plus hand-traced hotspot outlines — see
 SPINNER_SPEC.md for the full reasoning and `docs/decisions/` for the shorter version. Regenerating
 it, in order:
