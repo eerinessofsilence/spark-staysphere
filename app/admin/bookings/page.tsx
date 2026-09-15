@@ -23,6 +23,7 @@ import {
 } from '@/components/admin/operations/booking-buckets';
 import { BookingDatesFilter } from '@/components/admin/operations/booking-dates-filter';
 import { BookingRowActions } from '@/components/admin/operations/booking-row-actions';
+import { BookingStatusFilter } from '@/components/admin/operations/booking-status-filter';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -109,29 +110,15 @@ export default async function BookingsPage({
       <AdminPageHeader title="Reservations" />
 
       <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <nav aria-label="Filter reservations by stay" className="-mx-1 flex flex-wrap gap-2 px-1">
-          {filters.map((option) => {
-            const current = option === filter;
-            return (
-              <Link
-                key={option}
-                href={hrefFor(option, query, range)}
-                aria-current={current ? 'page' : undefined}
-                className={cn(
-                  'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors',
-                  current
-                    ? 'bg-primary text-primary-foreground'
-                    : 'border border-border bg-card text-foreground hover:bg-stone',
-                )}
-              >
-                {option === 'all' ? 'All' : stayBucketLabels[option]}
-                <span className={cn('tabular-nums', current ? 'opacity-80' : 'text-muted-foreground')}>
-                  {counts[option]}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
+        <BookingStatusFilter
+          options={filters.map((option) => ({
+            key: option,
+            label: option === 'all' ? 'All' : stayBucketLabels[option],
+            count: counts[option],
+            href: hrefFor(option, query, range),
+            current: option === filter,
+          }))}
+        />
 
         <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap">
         <BookingDatesFilter from={range?.from ?? null} to={range?.to ?? null} />
