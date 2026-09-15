@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
-  ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
   KeyIcon,
   PlusIcon,
@@ -56,16 +55,9 @@ export default async function RoomContentPage({ params }: { params: Promise<{ id
 
   return (
     <AdminPage>
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content" className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Room types
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Room types', href: '/admin/content' }]}
         title={room.name}
-        description={`/rooms/${room.slug}`}
         actions={
           <>
             <RoomVisibilityToggle

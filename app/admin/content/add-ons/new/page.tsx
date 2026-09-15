@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
-import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { AddOnFields } from '@/components/admin/content/add-on-fields';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -20,14 +17,8 @@ export default async function NewAddOnPage() {
 
   return (
     <AdminPage width="narrow">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content/add-ons" className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Add-ons
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Add-ons', href: '/admin/content/add-ons' }]}
         title="New add-on"
         description="A service or a dish guests can add to their stay. An extra with a parent is offered inside that add-on."
       />

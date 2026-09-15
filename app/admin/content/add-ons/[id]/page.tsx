@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, MinusCircle } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { pill, tag } from '@/lib/ui';
@@ -33,14 +32,8 @@ export default async function AddOnContentPage({ params }: { params: Promise<{ i
 
   return (
     <AdminPage width="narrow">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content/add-ons" className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Add-ons
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Add-ons', href: '/admin/content/add-ons' }]}
         title={addOn.name}
         actions={
           <>

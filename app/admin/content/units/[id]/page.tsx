@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeftIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { TableCellsIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { facadeOf } from '@/lib/domain/room-units';
 import { facadeLabels, formatFloor } from '@/lib/formatting';
@@ -33,14 +33,8 @@ export default async function PhysicalRoomPage({ params }: { params: Promise<{ i
 
   return (
     <AdminPage width="narrow">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href={backHref} className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Rooms', href: backHref }]}
         title={`Room ${room.number}`}
         description={[type?.name ?? room.roomTypeId, formatFloor(room.floor), side].filter(Boolean).join(' · ')}
       />

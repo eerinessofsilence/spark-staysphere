@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PushPin } from '@phosphor-icons/react/dist/ssr';
-import { ArrowLeftIcon, CheckIcon, EnvelopeIcon, PhoneIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, EnvelopeIcon, PhoneIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { BookingError } from '@/lib/application/booking-service';
 import { bookingService, hotelRepository, inventoryService } from '@/lib/application/container';
 import { toIsoDate } from '@/lib/application/search-params';
@@ -19,14 +19,14 @@ import {
   formatPricingUnit,
   viewLabels,
 } from '@/lib/formatting';
-import { iconButton, pill, tag } from '@/lib/ui';
+import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { BookingActions } from '@/components/admin/operations/booking-actions';
 import { stayBucket, stayBucketLabels } from '@/components/admin/operations/booking-buckets';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { attemptStatus, methodLabel } from '@/components/admin/operations/payment-state';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
-import { AdminPage } from '@/components/admin/shell/admin-page';
+import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,23 +89,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
   return (
     <AdminPage>
-      <header className="flex items-center gap-3">
-        <Link href="/admin/bookings" aria-label="Back to bookings" className={iconButton('light')}>
-          <ArrowLeftIcon className="size-5" aria-hidden="true" />
-        </Link>
-        <div className="min-w-0">
-          <h1 className="text-display text-2xl">Booking details</h1>
-          <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
-            <Link href="/admin/bookings" className="hover:text-foreground">
-              Reservations
-            </Link>
-            <span aria-hidden="true"> / </span>
-            <span aria-current="page" className="text-foreground">
-              {booking.reference}
-            </span>
-          </nav>
-        </div>
-      </header>
+      <AdminPageHeader
+        breadcrumbs={[{ label: 'Operations' }, { label: 'Reservations', href: '/admin/bookings' }]}
+        title="Booking details"
+        description={booking.reference}
+      />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-12">
         <Card id="guest-heading" title="Guest" className="xl:col-span-3">

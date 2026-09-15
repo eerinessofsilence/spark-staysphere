@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { bedLabels, viewLabels } from '@/lib/formatting';
-import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
 import { MediaListEditor } from '@/components/admin/content/media-list-editor';
@@ -20,14 +17,8 @@ export default async function NewRoomPage() {
 
   return (
     <AdminPage width="narrow">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content" className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Room types
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Room types', href: '/admin/content' }]}
         title="New room type"
         description="A new room type starts hidden from the site. Add its rooms under Rooms, give it a rate and a photo, then show it from its own page."
       />

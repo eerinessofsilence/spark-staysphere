@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { formatFloor } from '@/lib/formatting';
-import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { NewPhysicalRoomFields } from '@/components/admin/content/new-physical-room-fields';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -30,14 +27,8 @@ export default async function NewPhysicalRoomPage({
 
   return (
     <AdminPage width="narrow">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content/units" className={pill('secondary')}>
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms
-        </Link>
-      </nav>
-
       <AdminPageHeader
+        breadcrumbs={[{ label: 'Content' }, { label: 'Rooms', href: '/admin/content/units' }]}
         title="New room"
         description="A room sells as part of its room type: each one you add is one more of that type on sale every night."
       />
