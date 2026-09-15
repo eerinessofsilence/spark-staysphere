@@ -19,6 +19,11 @@ export function RoomGallery({ room }: { room: RoomType }) {
   const panoramaIndex = views.findIndex((item) => item.type === '360');
   const [index, setIndex] = React.useState(0);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  // iOS Safari has no Fullscreen API for anything but a `<video>` element —
+  // `requestFullscreen` either doesn't exist or never settles — so the button
+  // falls back to a fixed overlay there, the same swap the arrival stage makes.
+  const [fakeFullscreen, setFakeFullscreen] = React.useState(false);
+  const fullscreen = isFullscreen || fakeFullscreen;
   const photo = views[index] ?? views[0];
 
   React.useEffect(() => {
@@ -26,6 +31,22 @@ export function RoomGallery({ room }: { room: RoomType }) {
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
+
+  // The overlay's own escape hatch: Escape closes it, and the page behind it
+  // must not scroll under it — the native API gets both for free.
+  React.useEffect(() => {
+    if (!fakeFullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFakeFullscreen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [fakeFullscreen]);
 
   if (!photo) return null;
 
@@ -41,11 +62,21 @@ export function RoomGallery({ room }: { room: RoomType }) {
   const toggleFullscreen = async () => {
     const element = stageRef.current;
     if (!element) return;
+    if (fakeFullscreen) {
+      setFakeFullscreen(false);
+      return;
+    }
+    if (typeof element.requestFullscreen !== 'function' || document.fullscreenEnabled === false) {
+      setFakeFullscreen(true);
+      return;
+    }
     try {
       if (document.fullscreenElement === element) await document.exitFullscreen();
       else await element.requestFullscreen();
     } catch {
-      // Progressive enhancement only.
+      // Still refused (an embedded webview, a permission prompt) — the
+      // overlay is the fallback of last resort.
+      setFakeFullscreen(true);
     }
   };
 
@@ -61,7 +92,15 @@ export function RoomGallery({ room }: { room: RoomType }) {
           if (event.key === 'ArrowLeft') goPhoto(-1);
           if (event.key === 'ArrowRight') goPhoto(1);
         }}
-        className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-stone sm:aspect-[16/10]"
+        // Full screen shows the whole photograph on ink, the way a lightbox
+        // does, rather than the cover crop the inline frame uses: on a phone
+        // held upright that crop would keep only the middle of a landscape
+        // shot, and "full size" means seeing all of it.
+        className={cn(
+          'relative aspect-[4/3] overflow-hidden rounded-[28px] sm:aspect-[16/10]',
+          fullscreen ? 'bg-ink' : 'bg-stone',
+          fakeFullscreen && 'fixed inset-0 z-50 aspect-auto rounded-none sm:aspect-auto',
+        )}
       >
         {photos.map((candidate) => (
           <img
@@ -73,7 +112,8 @@ export function RoomGallery({ room }: { room: RoomType }) {
             decoding="async"
             aria-hidden={candidate.url !== photo.url}
             className={cn(
-              'absolute inset-0 size-full object-cover transition-opacity duration-500',
+              'absolute inset-0 size-full transition-opacity duration-500',
+              fullscreen ? 'object-contain' : 'object-cover',
               candidate.url === photo.url ? 'opacity-100' : 'opacity-0',
             )}
           />
@@ -114,11 +154,11 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
         <button
           type="button"
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
+          aria-label={fullscreen ? 'Exit fullscreen' : 'View fullscreen'}
           onClick={toggleFullscreen}
           className={iconButton('glass', 'absolute top-4 right-4 z-10')}
         >
-          {isFullscreen ? (
+          {fullscreen ? (
             <ArrowsPointingInIcon className="size-5" aria-hidden="true" />
           ) : (
             <ArrowsPointingOutIcon className="size-5" aria-hidden="true" />

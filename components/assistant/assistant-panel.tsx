@@ -459,7 +459,9 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               maxLength={400}
               tabIndex={showingResults ? -1 : undefined}
               disabled={showingResults || phase === 'listening' || phase === 'transcribing'}
-              className={fieldClass}
+              // Bigger than the shared field: this is the one input the panel
+              // opens on, not a row in a form beside others it has to match.
+              className={cn(fieldClass, 'min-h-14 text-base')}
             />
 
             {!micHidden ? (

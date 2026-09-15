@@ -16,8 +16,9 @@ the back office is server actions only, no new API routes.
 
 The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
 live on demo data. Operations: an overview, a rooms × nights tape chart, bookings with detail and
-cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, rates and
-add-ons, and the hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
+cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
+rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, and the
+hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
@@ -58,6 +59,10 @@ integrations.
 - UI follows `DESIGN_SYSTEM.md › Rules` — they exist because the first pass looked generic. Ink
   pills, clay accent, Phosphor filled icons, photography, no eyebrows, no stat tiles, no icon
   cards. `lib/ui.ts` holds the shared shapes (`pill`, `tag`, `iconButton`, `fieldClass`).
+- Layout is a grid of Tailwind theme tokens in `app/globals.css`: `container-page`/`-reading`/`-form`,
+  the `gutter` spacing step, and named column templates (`grid-cols-sidebar`, `-sidebar-start`,
+  `-media`, `-main-aside`, `-shell`). No page free-hands `max-w-[…px]` or a `grid-cols-[…]` split —
+  see `DESIGN_SYSTEM.md › Layout grid`.
 - PMS or channel manager is the production source of truth for inventory, rates, and reservations.
 - OTA integrations require official partner access; no scraping.
 - Live payment is out of scope. Production must use provider-hosted/tokenized collection.
@@ -81,9 +86,9 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) in the
    and the property's own rendered orbit frames in place of the demo `Hotel.spinner` sequence.
 9. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
    one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
-   behind the existing ports. A production PMS/channel-manager
-   also becomes the owner of prices, rates and room assignment, which the CMS and rates screen
-   document inline but do not enforce.
+   behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,
+   rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
+   enforce.
 10. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
 11. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
     saved brand settings, draft/versioned content, multi-hotel support (`hotel_id` is already in

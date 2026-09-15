@@ -4,11 +4,12 @@ import { contentService } from '@/lib/application/container';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, TextArea, TextInput } from '@/components/admin/content/fields';
+import { StarRatingField } from '@/components/admin/content/star-rating-field';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { updateHotelAction } from './actions';
 
 export const metadata: Metadata = {
-  title: 'Hotel & areas — Hotel admin | SPARK StaySphere 360',
+  title: 'Hotel Settings — Hotel admin | SPARK StaySphere 360',
 };
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export default async function HotelContentPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Hotel & areas"
+        title="Hotel Settings"
         description="The hotel's name, and the words on its arrival page: what each photograph of the property says, and the points guests can tap on it."
         actions={
           <a href="/" target="_blank" rel="noreferrer" className={pill('secondary')}>
@@ -41,7 +42,13 @@ export default async function HotelContentPage() {
       </nav>
 
       <div className="mt-6">
-        <ContentForm action={updateHotelAction} initialVersion={version} submitLabel="Save hotel details" versionKey="hotel">
+        <ContentForm
+          action={updateHotelAction}
+          initialVersion={version}
+          submitLabel="Save hotel details"
+          versionKey="hotel"
+          dock
+        >
           <div className="grid gap-6">
             <div
               id="hotel-basics"
@@ -201,6 +208,9 @@ function HotelBasics({ hotel }: { hotel: Awaited<ReturnType<typeof contentServic
       </Field>
       <Field id="hotel-location" name="location" label="Location">
         <TextInput id="hotel-location" name="location" defaultValue={hotel.location} required />
+      </Field>
+      <Field id="hotel-starRating" name="starRating" label="Star rating">
+        <StarRatingField id="hotel-starRating" name="starRating" defaultValue={hotel.starRating} />
       </Field>
     </>
   );

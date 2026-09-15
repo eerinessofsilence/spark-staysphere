@@ -1,7 +1,6 @@
 import { addDays, format, isValid, parseISO } from 'date-fns';
 import { roomCategories, type RoomCategory } from '../domain/room-attributes';
-import { ROOM_NUMBER } from '../domain/room-units';
-import { MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, MIN_CHILDREN } from '../domain/schemas';
+import { MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, MIN_CHILDREN, ROOM_NUMBER } from '../domain/schemas';
 import type { RoomType, StayCriteria } from '../domain/schemas';
 import { defaultRoomFilters, type RoomFilters, type SortOrder } from './catalog-service';
 

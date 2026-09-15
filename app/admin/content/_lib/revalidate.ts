@@ -16,6 +16,9 @@ export function revalidateContent(): void {
   revalidatePath('/admin/tape-chart');
   revalidatePath('/admin/content');
   revalidatePath('/admin/content/hotel');
+  revalidatePath('/admin/content/units');
+  revalidatePath('/admin/content/add-ons');
+  revalidatePath('/admin/content/units/[id]', 'page');
   revalidatePath('/admin/content/rooms/[id]', 'page');
   revalidatePath('/admin/content/add-ons/[id]', 'page');
 }

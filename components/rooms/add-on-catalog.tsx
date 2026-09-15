@@ -178,11 +178,15 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
           <span className="flex min-w-0 flex-col gap-1">
             <span className="text-display text-base leading-tight">{addOn.name}</span>
             {/* Money in the display face, the unit small beside it — the same
-                voice the panel and the bill give a price. */}
-            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-              <span className="text-display text-base">{formatMoney(addOn.price, addOn.currency)}</span>
+                voice the panel and the bill give a price. A `<p>` rather than
+                a `nowrap` flex row: on a narrow tile the two used to overflow
+                straight past the padding reserved for the add button instead
+                of wrapping, since `nowrap` forbids the very break that would
+                have kept them clear of it. */}
+            <p className="leading-snug">
+              <span className="text-display text-base">{formatMoney(addOn.price, addOn.currency)}</span>{' '}
               <span className="text-xs text-muted-foreground">{formatPricingUnit(addOn.pricingUnit)}</span>
-            </span>
+            </p>
           </span>
         </span>
       </button>
@@ -456,7 +460,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
   if (photos.length === 0) return words;
 
   return (
-    <div className="relative grid lg:min-h-[32rem] lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+    <div className="relative grid lg:min-h-[32rem] lg:grid-cols-2">
       <div className="relative">
         <PhotoSlider
           photos={photos}

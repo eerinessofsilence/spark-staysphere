@@ -290,7 +290,7 @@ function Stepper({
           aria-label={`Decrease ${label.toLowerCase()}`}
           className={iconButton('light', 'size-9')}
         >
-          <MinusIcon className="size-3.5" aria-hidden="true" />
+          <MinusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
         </button>
         <span className="w-4 text-center text-sm font-medium tabular-nums" aria-live="polite">
           {value}
@@ -302,7 +302,7 @@ function Stepper({
           aria-label={`Increase ${label.toLowerCase()}`}
           className={iconButton('light', 'size-9')}
         >
-          <PlusIcon className="size-3.5" aria-hidden="true" />
+          <PlusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
         </button>
       </div>
     </div>

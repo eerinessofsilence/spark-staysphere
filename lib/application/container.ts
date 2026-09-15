@@ -10,7 +10,7 @@ import { durableCatalogContentPort } from '../infrastructure/durable-catalog-con
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
-import { demoAddOns, demoHotel, demoRates, demoRooms } from '../infrastructure/mock-data';
+import { demoAddOns, demoHotel, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
 import { createOpenAiTranscriber } from '../infrastructure/openai-transcriber';
@@ -54,6 +54,7 @@ export const bookingService = new BookingService(
 const seedIds: Record<CatalogEntryKind, ReadonlySet<string>> = {
   hotel: new Set([demoHotel.id]),
   room: new Set(demoRooms.map((room) => room.id)),
+  unit: new Set(demoPhysicalRooms.map((room) => room.id)),
   rate: new Set(demoRates.map((rate) => rate.id)),
   addon: new Set(demoAddOns.map((addOn) => addOn.id)),
 };

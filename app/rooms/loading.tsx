@@ -5,14 +5,14 @@ export default function RoomsLoading() {
     <div
       role="status"
       aria-live="polite"
-      className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10"
+      className="container-page py-8 lg:py-12"
     >
       <span className="sr-only">Loading rooms…</span>
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-6 h-12 w-72" />
       <Skeleton className="mt-4 h-4 w-96 max-w-full" />
       <Skeleton className="mt-6 h-20 w-full rounded-[28px]" />
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,17.5rem)_minmax(0,1fr)] lg:gap-8">
+      <div className="mt-8 grid gap-6 lg:grid-cols-sidebar-start lg:gap-8">
         <Skeleton className="hidden h-[32rem] rounded-[28px] lg:block" />
         <div className="grid gap-6">
           {[0, 1, 2].map((index) => (

@@ -15,7 +15,7 @@ import { deleteAddOnAction, setAddOnOnSaleAction, updateAddOnAction } from './ac
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const addOn = await contentService.getAddOnContent(id);
-  return { title: `${addOn?.name ?? id} — Rooms & add-ons | SPARK StaySphere 360` };
+  return { title: `${addOn?.name ?? id} — Add-ons | SPARK StaySphere 360` };
 }
 
 export const dynamic = 'force-dynamic';
@@ -43,9 +43,9 @@ export default async function AddOnContentPage({
   return (
     <AdminPage width="narrow">
       <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-        <Link href="/admin/content" className={pill('secondary')}>
+        <Link href="/admin/content/add-ons" className={pill('secondary')}>
           <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms & add-ons
+          Add-ons
         </Link>
       </nav>
 
@@ -78,6 +78,7 @@ export default async function AddOnContentPage({
           initialVersion={addOn.version}
           submitLabel="Save add-on"
           versionKey={`addon:${addOn.id}`}
+          dock
           extraActions={
             removal.allowed ? (
               <DeleteEntityButton
@@ -86,7 +87,7 @@ export default async function AddOnContentPage({
                 label={addOn.name}
                 noun="add-on"
                 action={deleteAddOnAction}
-                afterDeleteHref={`/admin/content?removed=${encodeURIComponent(addOn.name)}`}
+                afterDeleteHref={`/admin/content/add-ons?removed=${encodeURIComponent(addOn.name)}`}
               />
             ) : (
               <span className="text-xs text-muted-foreground">{removal.reason}</span>

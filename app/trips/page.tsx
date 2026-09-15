@@ -23,7 +23,7 @@ export default async function TripsPage({ searchParams }: PageProps<'/trips'>) {
   return (
     <>
       <SiteHeader stayQuery={stayQuery} />
-      <main id="main" className="mx-auto max-w-[1000px] px-3 py-8 sm:px-6 lg:py-12">
+      <main id="main" className="container-reading py-8 lg:py-12">
         <header className="max-w-2xl">
           <h1 className="text-display text-5xl sm:text-6xl">My trips</h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">

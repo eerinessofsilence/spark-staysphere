@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation';
 import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
+  KeyIcon,
   PlusIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircle, CircleDashed, EyeSlash } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { coverPhoto } from '@/lib/domain/room-attributes';
-import { buildRoomUnits } from '@/lib/domain/room-units';
+import { byRoomNumber } from '@/lib/domain/room-units';
 import { bedLabels, formatMoney, viewLabels } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
@@ -34,14 +35,10 @@ import {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const room = await contentService.getRoomContent(id);
-  return { title: `${room?.name ?? id} — Rooms & add-ons | SPARK StaySphere 360` };
+  return { title: `${room?.name ?? id} — Room types | SPARK StaySphere 360` };
 }
 
 export const dynamic = 'force-dynamic';
-
-function roomsList(numbers: string[]): string {
-  return numbers.length === 1 ? `room ${numbers[0]}` : `rooms ${numbers.join(', ')}`;
-}
 
 export default async function RoomContentPage({
   params,
@@ -51,13 +48,12 @@ export default async function RoomContentPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const [room, rates, { hotel }, assets, rooms, pickedRooms] = await Promise.all([
+  const [room, rates, { hotel }, assets, physicalRooms] = await Promise.all([
     contentService.getRoomContent(id),
     contentService.listRatesContent(id),
     contentService.getHotelContent(),
     Promise.resolve(contentService.listMedia()),
-    contentService.listRoomsContent(),
-    contentService.pickedRoomNumbers(id),
+    contentService.listPhysicalRoomsContent(),
   ]);
   if (!room) notFound();
   const removals = await Promise.all(rates.map((rate) => contentService.rateRemoval(rate.id)));
@@ -65,14 +61,17 @@ export default async function RoomContentPage({
   const boundUpdateRoom = updateRoomAction.bind(null, id);
   const cover = coverPhoto(room);
   const cheapest = [...rates].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
-  const units = buildRoomUnits(rooms).filter((unit) => unit.roomTypeId === room.id);
+  const units = physicalRooms.filter((unit) => unit.roomTypeId === room.id).sort(byRoomNumber);
   const roomCount = units.length;
   const numberRange =
     units.length === 0 ? null : units.length === 1 ? units[0]!.number : `${units[0]!.number}–${units.at(-1)!.number}`;
   const photoCount = room.media.filter((item) => item.type === 'image').length;
-  const missing = [photoCount === 0 ? 'a photo' : null, rates.length === 0 ? 'a rate' : null].filter(
-    (item): item is string => item !== null,
-  );
+  // The same three things `setRoomHidden` requires before a type goes on sale.
+  const missing = [
+    roomCount === 0 ? 'a room' : null,
+    photoCount === 0 ? 'a photo' : null,
+    rates.length === 0 ? 'a rate' : null,
+  ].filter((item): item is string => item !== null);
   const justCreated = query.created === '1';
 
   return (
@@ -80,7 +79,7 @@ export default async function RoomContentPage({
       <nav aria-label="Breadcrumb" className="mb-6 text-sm">
         <Link href="/admin/content" className={pill('secondary')}>
           <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          Rooms & add-ons
+          Room types
         </Link>
       </nav>
 
@@ -109,7 +108,7 @@ export default async function RoomContentPage({
           <CheckCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
           <span>
             <span className="font-medium">Room type created.</span> It stays hidden from the site until it has a
-            photo and a rate.
+            room, a photo and a rate.
           </span>
         </p>
       ) : null}
@@ -120,6 +119,9 @@ export default async function RoomContentPage({
             Before it goes on the site
           </h2>
           <ol className="mt-3 grid gap-2 text-sm">
+            <ReadinessStep done={roomCount > 0} href={`/admin/content/units/new?type=${room.id}`} todo="Add a room">
+              {roomCount === 1 ? '1 room' : `${roomCount} rooms`}
+            </ReadinessStep>
             <ReadinessStep done={photoCount > 0} href="#room-media" todo="Add a photo">
               {photoCount === 1 ? '1 photo' : `${photoCount} photos`}
             </ReadinessStep>
@@ -136,8 +138,8 @@ export default async function RoomContentPage({
         </section>
       ) : null}
 
-      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-12">
+      <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-sidebar">
+        <div className="grid min-w-0 grid-cols-1 gap-12">
           {/* A card from `sm` up. On a phone its padding would squeeze the photo rows past the screen edge. */}
           <section
             id="room-details"
@@ -152,6 +154,7 @@ export default async function RoomContentPage({
               initialVersion={room.version}
               submitLabel="Save room"
               versionKey={`room:${room.id}`}
+              dock
             >
               <div className="mt-6 grid gap-8">
                 <div role="group" aria-labelledby="room-details-heading">
@@ -181,11 +184,7 @@ export default async function RoomContentPage({
                         id="room-floor"
                         name="floor"
                         label="Floor"
-                        hint={
-                          pickedRooms.length > 0
-                            ? `Guests picked ${roomsList(pickedRooms)} for upcoming stays, and room numbers follow the floor — so it stays as it is while those bookings stand.`
-                            : `Room numbers follow the floor${numberRange ? ` (now ${numberRange})` : ''}.`
-                        }
+                        hint="Where the type sits in the building. Each room keeps its own number."
                       >
                         <TextInput id="room-floor" name="floor" type="number" min={0} step="1" defaultValue={room.floor} required />
                       </Field>
@@ -360,6 +359,13 @@ export default async function RoomContentPage({
             >
               <TableCellsIcon className="size-4" aria-hidden="true" />
               See them on the tape chart
+            </Link>
+            <Link
+              href={`/admin/content/units#type-${room.id}`}
+              className="inline-flex min-h-11 items-center gap-2 font-medium hover:text-accent-strong"
+            >
+              <KeyIcon className="size-4" aria-hidden="true" />
+              {roomCount === 0 ? 'Add its first room' : 'Manage its rooms'}
             </Link>
             <p className="text-xs text-muted-foreground">The card shows what is saved and updates with each save.</p>
           </div>

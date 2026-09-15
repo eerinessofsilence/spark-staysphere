@@ -60,7 +60,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
       {/* The stay joins this browser's "My trips" list the moment it exists. */}
       <RememberTrip reference={booking.reference} />
       <SiteHeader />
-      <main id="main" className="mx-auto max-w-[1000px] px-3 py-10 sm:px-6">
+      <main id="main" className="container-reading py-10">
         <div className="rounded-[28px] bg-card p-6 shadow-soft sm:p-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -86,7 +86,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
             </div>
           </div>
 
-          <div className="mt-8 grid gap-6 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
+          <div className="mt-8 grid gap-6 sm:grid-cols-media">
             {room && coverPhoto(room) ? (
               <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-stone">
                 <img

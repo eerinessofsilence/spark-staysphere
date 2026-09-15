@@ -139,7 +139,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
     <article
       className={cn(
         'group relative grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
-        'sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]',
+        'sm:grid-cols-media lg:grid-cols-sidebar-start',
         soldOut && 'opacity-90',
       )}
     >

@@ -5,11 +5,11 @@ export default function RoomDetailLoading() {
     <div
       role="status"
       aria-live="polite"
-      className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10"
+      className="container-page py-8 lg:py-12"
     >
       <span className="sr-only">Loading this room…</span>
       <Skeleton className="h-4 w-28" />
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
+      <div className="mt-6 grid gap-8 lg:grid-cols-sidebar lg:gap-10">
         <div>
           <Skeleton className="h-12 w-80 max-w-full" />
           <Skeleton className="mt-4 h-4 w-full max-w-2xl" />

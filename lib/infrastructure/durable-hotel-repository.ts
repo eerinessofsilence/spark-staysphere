@@ -1,10 +1,10 @@
 import { mergeCatalog } from '../domain/catalog-overlay';
 import type { CatalogEntryRecord, DemoControlPort, HotelRepository } from '../domain/ports';
-import type { AddOn, Hotel, RatePlan, RoomType } from '../domain/schemas';
+import type { AddOn, Hotel, PhysicalRoom, RatePlan, RoomType } from '../domain/schemas';
 import { getDemoDatabase } from './cloudflare-env';
 import * as d1 from './d1-hotel-repository';
 import { durableCatalogContentPort } from './durable-catalog-content';
-import { mockDemoControlPort, mockHotelRepository } from './mock-hotel-repository';
+import { mockAvailability, mockDemoControlPort, mockHotelRepository } from './mock-hotel-repository';
 
 /**
  * The repository and control port the app actually uses. Every durable
@@ -13,11 +13,11 @@ import { mockDemoControlPort, mockHotelRepository } from './mock-hotel-repositor
  * reads through D1 when one is configured, falling back to the in-memory
  * mock otherwise (no hosting.json d1 binding, or running outside workerd).
  *
- * getHotel/listRooms/listRatePlans/listAddOns read the static seed
- * (mock-data.ts) and merge the CMS overlay (`durableCatalogContentPort`,
- * itself D1-or-in-memory the same way) on top — see
- * `lib/domain/catalog-overlay.ts`. Nothing else in this file's booking state
- * is affected: only what `/admin/content` can edit is overlaid.
+ * getHotel/listRooms/listPhysicalRooms/listRatePlans/listAddOns read the
+ * static seed (mock-data.ts) and merge the CMS overlay
+ * (`durableCatalogContentPort`, itself D1-or-in-memory the same way) on top —
+ * see `lib/domain/catalog-overlay.ts`. Nothing else in this file's booking
+ * state is affected: only what `/admin/content` can edit is overlaid.
  */
 export const durableHotelRepository: HotelRepository = {
   async getHotel(slug) {
@@ -36,6 +36,15 @@ export const durableHotelRepository: HotelRepository = {
       'room',
       hotelId,
     )) as CatalogEntryRecord<RoomType>[];
+    return mergeCatalog(seed, overlay);
+  },
+
+  async listPhysicalRooms(hotelId) {
+    const seed = await mockHotelRepository.listPhysicalRooms(hotelId);
+    const overlay = (await durableCatalogContentPort.listEntries(
+      'unit',
+      hotelId,
+    )) as CatalogEntryRecord<PhysicalRoom>[];
     return mergeCatalog(seed, overlay);
   },
 
@@ -64,11 +73,16 @@ export const durableHotelRepository: HotelRepository = {
     return mergeCatalog(seed, overlay);
   },
 
-  getAvailability(roomTypeId, from, to) {
+  async getAvailability(roomTypeId, from, to) {
+    // Rooms are keyed to the one demo hotel, like rates above. Counting the
+    // merged list is what keeps the CMS's rooms and the rooms on sale equal.
+    const hotel = await mockHotelRepository.getHotel('asteria-cove');
+    const rooms = hotel ? await durableHotelRepository.listPhysicalRooms(hotel.id) : [];
+    const units = rooms.filter((room) => room.roomTypeId === roomTypeId).length;
     const db = getDemoDatabase();
     return db
-      ? d1.getAvailability(db, roomTypeId, from, to)
-      : mockHotelRepository.getAvailability(roomTypeId, from, to);
+      ? d1.getAvailability(db, roomTypeId, units, from, to)
+      : mockAvailability(roomTypeId, units, from, to);
   },
   findBookingByIdempotencyKey(key) {
     const db = getDemoDatabase();

@@ -42,6 +42,15 @@ interface ContentFormProps {
    * saves move this form's version along instead of turning its next save into a false conflict.
    */
   versionKey?: string;
+  /**
+   * Docks the action row to the bottom edge of the viewport, centred, on a
+   * frosted strip (`.glass-bar`, the page-level cousin of `.glass`). Only for
+   * a page's one primary form: a room type page's own
+   * `ContentForm` docks, but the rate `ContentForm` repeated once per rate
+   * beneath it does not, or every rate on the page would float its own
+   * "Save" pill stacked on top of the last.
+   */
+  dock?: boolean;
 }
 
 /** What the form holds, minus its version — compared against the last saved state to know it changed. */
@@ -93,6 +102,7 @@ export function ContentForm({
   extraActions,
   resetOnSuccess = false,
   versionKey,
+  dock = false,
 }: ContentFormProps) {
   const formId = React.useId();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -264,37 +274,60 @@ export function ContentForm({
 
         <React.Fragment key={fieldsKey}>{children}</React.Fragment>
 
-        <div className="sticky bottom-3 z-20 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md">
-          <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
-            {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {submitLabel}
-          </button>
-          {extraActions}
-          <p
-            role="status"
-            aria-live="polite"
-            className={cn(
-              'flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-sm font-medium',
-              statusTone === 'danger' && 'text-danger',
-              statusTone === 'success' && 'text-success',
-              statusTone === 'muted' && 'text-muted-foreground',
-            )}
-          >
-            {statusText === 'Unsaved changes' ? (
-              <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-accent" />
-            ) : null}
-            {statusText}
-            {offerJump ? (
-              <button
-                type="button"
-                onClick={() => revealFirstError(formRef.current, bannerRef.current)}
-                className="cursor-pointer underline underline-offset-2"
-              >
-                Show me
+        {(() => {
+          const statusParagraph = (
+            <p
+              role="status"
+              aria-live="polite"
+              className={cn(
+                'flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-sm font-medium',
+                statusTone === 'danger' && 'text-danger',
+                statusTone === 'success' && 'text-success',
+                statusTone === 'muted' && 'text-muted-foreground',
+              )}
+            >
+              {statusText === 'Unsaved changes' ? (
+                <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-accent" />
+              ) : null}
+              {statusText}
+              {offerJump ? (
+                <button
+                  type="button"
+                  onClick={() => revealFirstError(formRef.current, bannerRef.current)}
+                  className="cursor-pointer underline underline-offset-2"
+                >
+                  Show me
+                </button>
+              ) : null}
+            </p>
+          );
+
+          return dock ? (
+            <>
+              {/* Reserves the strip's own height so the last field never rides under it. */}
+              <div aria-hidden="true" className="h-24" />
+              <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
+                <div className="glass-bar flex w-full max-w-2xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full px-5 py-3">
+                  <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
+                    {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+                    {submitLabel}
+                  </button>
+                  {extraActions}
+                  {statusParagraph}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="sticky bottom-3 z-20 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md">
+              <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
+                {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+                {submitLabel}
               </button>
-            ) : null}
-          </p>
-        </div>
+              {extraActions}
+              {statusParagraph}
+            </div>
+          );
+        })()}
       </form>
     </FieldErrorsContext.Provider>
   );

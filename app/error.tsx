@@ -19,12 +19,12 @@ export default function GlobalError({
   return (
     <main
       id="main"
-      className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-4 py-20 text-center"
+      className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-gutter py-20 text-center"
     >
       <span className="grid size-12 place-items-center rounded-full bg-danger/10 text-danger">
         <Warning weight="fill" className="size-6" aria-hidden="true" />
       </span>
-      <h1 className="text-display mt-6 text-4xl">Something went wrong</h1>
+      <h1 className="text-display mt-6 text-4xl sm:text-5xl">Something went wrong</h1>
       <p role="alert" className="mt-4 text-muted-foreground">
         We could not load this part of the booking demo. Nothing was charged or reserved.
       </p>

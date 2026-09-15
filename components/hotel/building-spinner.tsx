@@ -526,6 +526,11 @@ export function BuildingSpinner({
     isHovered: boolean,
   ) => {
     const line = formatRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined);
+    // The marker is a lens on the photograph, with the label beside it as its
+    // own small frosted chip from `sm` up. Not one pill around both: on a
+    // phone, where only the disc shows, a pill wrapping a disc was a grey ring
+    // around an ink dot. Pressed, the lens fills with ink so the chosen storey
+    // is unmistakable against the rest.
     return (
       <button
         key={hotspot.id}
@@ -544,18 +549,26 @@ export function BuildingSpinner({
         onMouseEnter={() => setHoveredHotspot(hotspot.id)}
         onMouseLeave={() => setHoveredHotspot(null)}
         style={positionFor(point)}
-        className={cn(
-          'absolute z-10 flex min-h-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 rounded-full p-1 pr-1 text-xs font-medium transition-colors sm:pr-3',
-          isActive || isHovered ? 'bg-ink text-[#F7F5F0]' : 'glass text-foreground hover:bg-white/90',
-        )}
+        className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 text-xs font-medium"
       >
         <span
           aria-hidden="true"
-          className={cn('grid size-7 place-items-center rounded-full', isActive ? 'bg-white/15 text-white' : 'bg-ink text-[#F7F5F0]')}
+          className={cn(
+            'grid size-11 place-items-center rounded-full transition-[transform,background-color] duration-200 sm:size-10',
+            isActive
+              ? 'bg-ink text-[#F7F5F0] shadow-soft'
+              : 'glass-lens text-[#161616]',
+            !isActive && isHovered && 'scale-110',
+          )}
         >
-          <MapPin weight="fill" className="size-3.5" />
+          <MapPin weight="fill" className="size-5" />
         </span>
-        <span className="hidden sm:inline">
+        <span
+          className={cn(
+            'hidden rounded-full px-3 py-1.5 sm:inline',
+            isActive ? 'bg-ink text-[#F7F5F0]' : 'glass text-foreground',
+          )}
+        >
           {hotspot.label}
           {line ? <span className={cn('font-normal', isActive ? 'text-white/70' : 'text-muted-foreground')}> · {line}</span> : null}
         </span>
@@ -665,6 +678,11 @@ export function BuildingSpinner({
     );
   }
 
+  // `touch-pan-y`, not `touch-none`: the stage fills the phone's screen, so
+  // `none` turned it into a dead zone the page could not be scrolled past — a
+  // swipe down spun the building instead of moving on. The browser keeps
+  // vertical panning (and cancels our pointer stream when it claims the
+  // gesture, which ends the drag); horizontal travel is still ours to turn.
   return (
     <div
       ref={stageRef}

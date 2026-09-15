@@ -96,7 +96,7 @@ it: see "Content management (CMS)" below.
 `/admin/content` lets a hotel team edit the hotel's copy, room types, rates, and add-ons without a
 deploy — but the seed in `mock-data.ts` is never mutated. Every edit is a row in one D1 table,
 `catalog_entries (kind, id, hotel_id, data, version, updated_at)`, keyed by `(kind, id)` where
-`kind` is `'hotel' | 'room' | 'rate' | 'addon'` and `data` is the full entity as JSON. A row with
+`kind` is `'hotel' | 'room' | 'unit' | 'rate' | 'addon'` (`room` a room type, `unit` one physical room) and `data` is the full entity as JSON. A row with
 an id the seed already has *replaces* that entity wholesale; a new id is a new entity. "Reset demo
 state" on `/admin` clears the whole table for the hotel, so the catalog falls back to seed.
 
@@ -121,7 +121,7 @@ hotspot too.
 `lib/application/content-service.ts` owns every business rule a write has to pass: kebab-case,
 unique, immutable-after-creation slugs; a rate's `roomTypeId` and an add-on's `parentId` must
 reference an existing entity (parent one level deep, no self-reference); a visible (non-hidden)
-room needs at least one rate and one `image` media item, checked both when a room is edited and
+room type needs at least one physical room, one rate and one `image` media item, checked both when a room is edited and
 when it is un-hidden; every price's currency must equal the hotel's; a media `url` must resolve in
 the media library, and a `360` item must be an equirectangular (2:1) file from
 `public/images/panoramas`; an entity referenced by any booking can only be hidden or withdrawn,
@@ -192,12 +192,21 @@ room types, add-ons, or only what is hidden or withdrawn.
 
 ## Physical rooms, the floor plan and the tape chart
 
-The catalog sells room types; a floor plan and a PMS tape chart need doors. `lib/domain/room-units.ts`
-derives every physical room from the same unit counts availability already sells (`unitsFor`), so
-the catalog, the guest floor plan and the back office can never report a different number of rooms.
-Rooms are numbered floor by floor (`305`), sea facade first, and a room's facade follows from its view
-(sea and pool → sea side, city and garden → town side). Numbers are always derived from every room
-type, hidden ones included, so they stay stable when the CMS hides a type.
+The catalog sells room types; a floor plan and a PMS tape chart need doors. Physical rooms are
+stored: a `PhysicalRoom` (`number`, `floor`, `roomTypeId`) is a CMS entity of kind `unit`, seeded in
+`mock-data.ts` by `layOutRooms` with the numbers the demo building always had (floor by floor, sea
+facade first) and edited under `/admin/content/units`. A room type sells exactly as many rooms a night
+as it has stored rooms — `durable-hotel-repository.ts`'s `getAvailability` counts `listPhysicalRooms`
+and hands that to `resolveRemaining` — so the CMS, the catalog, the guest floor plan and the back
+office can never report a different number of rooms. A room's floor is read off its number (`305` is on
+the 3rd floor, `G04` on the ground floor) and its facade follows its type's view (sea and pool → sea
+side, city and garden → town side); `buildRoomUnits` needs every room type, hidden ones included.
+
+A room type is created first and its rooms after it: `setRoomHidden` won't put a type on sale without
+at least one room. `content-service.ts` refuses a duplicate number; renumbering a room a current
+booking chose; and removing a room a current booking chose, a seed room, the last room of a type on
+sale, or any room whose type would be left with fewer rooms than the stays it already has booked on
+one night.
 
 `allocateRoomType` is the one rule for who is in which room on each night, and both views call it:
 bookings that named a room get it; other confirmed bookings go, in booking order, to the
@@ -227,11 +236,12 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
-| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status, "Reset demo state" | `InventoryService.getTapeChart`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getTapeChart`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin/reset` | "Reset demo state" — not in the sidebar; reachable by URL for the demo owner and the e2e harness, not by navigation | `DemoControlPort.reset`, `ContentService.resetContent` — live |
 | `/admin/tape-chart` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getTapeChart` — live; demand is simulated and says so |
-| `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; guest, room, money, payment attempts, activity; cancel | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom` — live |
+| `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; detail is three cards — guest (contact, party, totals across their stays), booking (status, room, rate, payment, dates, extras, cancel), room (photo, facts, price summary) — over the guest's booking history, matched by email | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom`, `HotelRepository.listBookings` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
-| `/admin/content` and its editors | Room types with cover, price and room count; add-ons by category with the on-sale switch; room, rate, add-on and hotel editors | `ContentService` — live |
+| `/admin/content` — Rooms & add-ons | One nav item, three tabs: Room types (`/admin/content`: cover, price, room count), Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one), Add-ons (`/admin/content/add-ons`: by category, with the on-sale switch); room type, room, rate and add-on editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 
 Every screen in the sidebar nav reads or writes real demo data. Four more routes exist but are not
 linked from the nav — reachable only by typing the URL — and each says on screen that it is a

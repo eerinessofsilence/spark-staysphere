@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { RoomType } from './schemas';
+import { ROOM_NUMBER, type PhysicalRoom, type RoomType } from './schemas';
 import {
   allocateRoomType,
   buildRoomUnits,
   compareRoomNumbers,
   facadeOf,
-  ROOM_NUMBER,
+  floorOf,
+  layOutRooms,
+  nextRoomNumber,
   roomNumber,
   type RoomUnit,
 } from './room-units';
@@ -66,46 +68,71 @@ describe('compareRoomNumbers', () => {
   });
 });
 
-describe('buildRoomUnits', () => {
-  it('builds one unit per room type per its seeded unit count', () => {
-    // room_asteria-penthouse is seeded at 2 units in availability.ts.
-    const units = buildRoomUnits([roomType({ id: 'room_asteria-penthouse', floor: 8 })]);
-    expect(units).toHaveLength(2);
-    expect(units.every((unit) => unit.roomTypeId === 'room_asteria-penthouse')).toBe(true);
-  });
+function physicalRoom(number: string, roomTypeId: string): PhysicalRoom {
+  return { id: `unit_${number}`, hotelId: 'hotel_asteria-cove', roomTypeId, number, floor: floorOf(number) };
+}
 
-  it('gives every unit a unique, well-formed room number', () => {
-    const units = buildRoomUnits([
-      roomType({ id: 'room_asteria-penthouse', floor: 8 }),
-      roomType({ id: 'room_pool-terrace', floor: 8, view: 'pool' }),
+describe('floorOf', () => {
+  it('reads the floor off a room number', () => {
+    expect(floorOf('305')).toBe(3);
+    expect(floorOf('1205')).toBe(12);
+    expect(floorOf('G04')).toBe(0);
+  });
+});
+
+describe('nextRoomNumber', () => {
+  it('starts a floor at position 01 and skips numbers already taken', () => {
+    expect(nextRoomNumber(4, [])).toBe('401');
+    expect(nextRoomNumber(4, [{ number: '401' }, { number: '402' }, { number: '404' }])).toBe('403');
+    expect(nextRoomNumber(0, [{ number: 'G01' }])).toBe('G02');
+  });
+});
+
+describe('layOutRooms', () => {
+  it('numbers each floor from 01, sea facade first', () => {
+    const laidOut = layOutRooms(
+      [roomType({ id: 'room_town', floor: 2, view: 'city' }), roomType({ id: 'room_sea', floor: 2, view: 'sea' })],
+      () => 2,
+    );
+    expect(laidOut.map((room) => `${room.number}:${room.roomTypeId}`)).toEqual([
+      '201:room_sea',
+      '202:room_sea',
+      '203:room_town',
+      '204:room_town',
     ]);
-    const numbers = units.map((unit) => unit.number);
-    expect(new Set(numbers).size).toBe(numbers.length);
-    for (const number of numbers) expect(number).toMatch(ROOM_NUMBER);
+    for (const room of laidOut) expect(room.number).toMatch(ROOM_NUMBER);
+  });
+});
+
+describe('buildRoomUnits', () => {
+  it('builds one unit per stored room, keeping its number and floor', () => {
+    const type = roomType({ id: 'room_asteria-penthouse', floor: 8 });
+    const units = buildRoomUnits([type], [physicalRoom('802', type.id), physicalRoom('801', type.id)]);
+    expect(units.map((unit) => unit.number)).toEqual(['801', '802']);
+    expect(units.every((unit) => unit.floor === 8 && unit.roomTypeId === type.id)).toBe(true);
   });
 
-  it('is stable across calls: same inputs produce the same numbering and ranks', () => {
-    const rooms = [roomType({ id: 'room_pool-terrace', floor: 3, view: 'pool' })];
-    expect(buildRoomUnits(rooms)).toEqual(buildRoomUnits(rooms));
+  it("takes each room's facade from its type's view", () => {
+    const units = buildRoomUnits(
+      [roomType({ id: 'room_pool', view: 'pool' }), roomType({ id: 'room_garden', view: 'garden' })],
+      [physicalRoom('201', 'room_pool'), physicalRoom('202', 'room_garden')],
+    );
+    expect(units.find((unit) => unit.number === '201')?.facade).toBe('sea');
+    expect(units.find((unit) => unit.number === '202')?.facade).toBe('town');
   });
 
-  it('keeps a hidden room in the numbering so a later visible room does not reuse its numbers', () => {
-    // Hidden listed first: if it were dropped before numbering, the visible
-    // room behind it on the same floor would start at position 1 instead of
-    // after the hidden room's units, and its numbers would silently move
-    // every time the CMS hid or unhid something.
-    const hidden = roomType({ id: 'room_hidden', floor: 1, hidden: true });
-    const visible = roomType({ id: 'room_visible', floor: 1 });
+  it('gives every room of a type a distinct fill rank, stable across calls', () => {
+    const types = [roomType({ id: 'room_pool-terrace', floor: 3, view: 'pool' })];
+    const rooms = ['301', '302', '303'].map((number) => physicalRoom(number, 'room_pool-terrace'));
+    const units = buildRoomUnits(types, rooms);
+    expect(new Set(units.map((unit) => unit.rank))).toEqual(new Set([0, 1, 2]));
+    expect(buildRoomUnits(types, rooms)).toEqual(units);
+  });
 
-    const withHidden = buildRoomUnits([hidden, visible]);
-    const withoutHidden = buildRoomUnits([visible]);
-
-    const visibleNumbersWithHidden = withHidden
-      .filter((unit) => unit.roomTypeId === 'room_visible')
-      .map((unit) => unit.number);
-    const visibleNumbersAlone = withoutHidden.map((unit) => unit.number);
-
-    expect(visibleNumbersWithHidden).not.toEqual(visibleNumbersAlone);
+  it('includes rooms of a hidden type and ignores rooms whose type is not passed', () => {
+    const hidden = roomType({ id: 'room_hidden', hidden: true });
+    const units = buildRoomUnits([hidden], [physicalRoom('101', 'room_hidden'), physicalRoom('102', 'room_gone')]);
+    expect(units.map((unit) => unit.number)).toEqual(['101']);
   });
 });
 

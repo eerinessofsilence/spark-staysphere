@@ -11,33 +11,17 @@ import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
 import { formatDateRange, formatDateShort, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
-import { ResetDemoButton } from '@/components/admin/room-controls';
+import { cn } from '@/lib/utils';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export const metadata: Metadata = {
-  title: 'Overview — Hotel admin | SPARK StaySphere 360',
+  title: 'Dashboard — Hotel admin | SPARK StaySphere 360',
 };
 
 export const dynamic = 'force-dynamic';
-
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-function tonightSentence(day: TapeChartDay | undefined, totalRooms: number): string {
-  if (!day) return '';
-  const share = totalRooms > 0 ? Math.round((day.occupied / totalRooms) * 100) : 0;
-  const movement = [
-    day.arrivals > 0 ? plural(day.arrivals, 'booking arrives', 'bookings arrive') : null,
-    day.departures > 0 ? plural(day.departures, 'booking checks out', 'bookings check out') : null,
-  ].filter((part): part is string => part !== null);
-  return `Tonight ${day.occupied} of ${totalRooms} rooms are occupied (${share}%), including simulated demand. ${
-    movement.length > 0 ? `${movement.join(' and ')} today.` : 'No demo bookings arrive or leave today.'
-  }`;
-}
 
 export default async function AdminOverviewPage() {
   const today = toIsoDate(new Date());
@@ -60,33 +44,59 @@ export default async function AdminOverviewPage() {
     .filter((booking) => booking.checkOut >= today && booking.checkOut < weekEnd)
     .sort((a, b) => a.checkOut.localeCompare(b.checkOut));
   const recent = sorted.slice(0, 5);
+  const cancelled = sorted.filter((booking) => booking.status === 'cancelled');
+  const tonight = board.days[0];
+  const occupancy = tonight && board.totalRooms > 0 ? Math.round((tonight.occupied / board.totalRooms) * 100) : 0;
+  const onSite = rooms.filter((room) => !room.hidden).length;
+  const cancelledRevenue = cancelled.reduce((sum, booking) => sum + booking.total, 0);
+  const grossRevenue = revenue + cancelledRevenue;
 
   return (
     <AdminPage>
       <AdminPageHeader
-        label="Hotel admin · demo"
-        title={hotel.name}
-        description={tonightSentence(board.days[0], board.totalRooms)}
+        title="Dashboard"
+        compact
         actions={
-          <>
-            <ResetDemoButton />
-            <Link href="/admin/tape-chart" className={pill('primary')}>
-              Open tape chart
-            </Link>
-          </>
+          <Link href="/admin/tape-chart" className={pill('primary')}>
+            Open tape chart
+          </Link>
         }
       />
 
-      <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-6">
-        <Metric label="rooms in the building" value={String(board.totalRooms)} />
+      <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Metric
-          label={confirmed.length === 1 ? 'confirmed demo booking' : 'confirmed demo bookings'}
-          value={String(confirmed.length)}
+          label="Occupied tonight"
+          value={`${tonight?.occupied ?? 0} / ${board.totalRooms}`}
+          detail={`${occupancy}% · ${tonight?.arrivals ?? 0} arriving, ${tonight?.departures ?? 0} leaving`}
+          chart={<Sparkline days={board.days} totalRooms={board.totalRooms} />}
         />
-        <Metric label="demo revenue from confirmed stays" value={formatMoney(revenue, hotel.currency)} />
+        <Metric
+          label="Rooms in the building"
+          value={String(board.totalRooms)}
+          detail={`${onSite} of ${rooms.length} room types on the site`}
+          chart={<Meter share={rooms.length > 0 ? onSite / rooms.length : 1} />}
+        />
+        <Metric
+          label="Confirmed bookings"
+          value={String(confirmed.length)}
+          detail={
+            cancelled.length === 0
+              ? 'No cancellations'
+              : cancelled.length === 1
+                ? '1 cancelled'
+                : `${cancelled.length} cancelled`
+          }
+          chart={<Meter share={sorted.length > 0 ? confirmed.length / sorted.length : 1} />}
+        />
+        <Metric
+          label="Revenue"
+          value={formatMoney(revenue, hotel.currency)}
+          detail="From confirmed demo stays"
+          chart={<Meter share={grossRevenue > 0 ? revenue / grossRevenue : 1} />}
+        />
       </dl>
 
-      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-main-aside">
         <OccupancyChart days={board.days} totalRooms={board.totalRooms} />
 
         <section aria-labelledby="week-heading" className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
@@ -112,11 +122,11 @@ export default async function AdminOverviewPage() {
       <section aria-labelledby="recent-heading" className="mt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 id="recent-heading" className="text-display text-3xl">
-            Recent bookings
+            Recent reservations
           </h2>
           {recent.length > 0 ? (
             <Link href="/admin/bookings" className={pill('secondary')}>
-              All bookings
+              All reservations
               <ArrowRightIcon className="size-4" aria-hidden="true" />
             </Link>
           ) : null}
@@ -128,10 +138,10 @@ export default async function AdminOverviewPage() {
               <CalendarBlank weight="fill" className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <h3 className="text-display text-2xl">No bookings yet</h3>
+              <h3 className="text-display text-2xl">No reservations yet</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 Complete a demo booking on the guest site and it appears here, on the tape chart, and in
-                Bookings.
+                Reservations.
               </p>
             </div>
             <Link href="/rooms" className={pill('primary')}>
@@ -187,16 +197,59 @@ export default async function AdminOverviewPage() {
           </div>
         )}
       </section>
-
     </AdminPage>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  label,
+  value,
+  detail,
+  chart,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  chart?: ReactNode;
+}) {
   return (
-    <div className="flex items-baseline gap-2">
-      <dd className="text-display order-1 text-4xl">{value}</dd>
-      <dt className="order-2 text-sm text-muted-foreground">{label}</dt>
+    <div className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <dt className="text-sm font-medium">{label}</dt>
+      <dd className="mt-3">
+        <span className="text-display block text-2xl tabular-nums sm:text-4xl">{value}</span>
+        <span className="mt-1.5 block text-sm text-muted-foreground">{detail}</span>
+      </dd>
+      {chart}
+    </div>
+  );
+}
+
+/** 14-point trend, tonight in the accent and the rest in the de-emphasis hue — same marks as `OccupancyChart` below it. */
+function Sparkline({ days, totalRooms }: { days: TapeChartDay[]; totalRooms: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 flex h-8 items-end gap-0.5">
+      {days.map((day, index) => {
+        const value = totalRooms > 0 ? Math.round((day.occupied / totalRooms) * 100) : 0;
+        return (
+          <span
+            key={day.date}
+            className={cn('min-w-0 flex-1 rounded-t-[2px]', index === 0 ? 'bg-accent' : 'bg-tint-stone-ink/40')}
+            style={{ height: `${Math.max(value, 4)}%` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** A ratio against its own total — fill in the accent, track a lighter step of the same ramp. */
+function Meter({ share }: { share: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-accent-soft">
+      <div
+        className="h-full rounded-full bg-accent"
+        style={{ width: `${Math.round(Math.max(0, Math.min(1, share)) * 100)}%` }}
+      />
     </div>
   );
 }

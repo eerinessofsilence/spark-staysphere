@@ -137,6 +137,37 @@ Titles and body differ by size and weight, not by typeface — the way the platf
 - **Accent — Instrument Serif italic** through `.text-accent-italic`, for the one emphasised
   phrase a screen is allowed.
 
+### Size scale (mobile first)
+
+Named tiers, not ad hoc classes — pick the row that matches the element's *role*, not the one
+that happens to look right next to it. Sizes below are the mobile (unprefixed) value; `→` gives
+the `sm:` step where one exists. A role with no `sm:` step is meant to hold its size across
+breakpoints.
+
+| Role | Mobile → `sm:` | Class | Where |
+|---|---|---|---|
+| Hero name | `clamp(3.25rem, 10vw, 8rem)` | `.text-display` inline style | Arrival hero property name |
+| Page title | 48px → 60px | `text-5xl sm:text-6xl` | Main flow pages: rooms, trips, book, admin, confirmation |
+| Page title, compact | 36px → 48px | `text-4xl sm:text-5xl` | Utility pages: error, not-found |
+| Page title, minimal | 24px → 30px | `text-2xl sm:text-3xl` | Room detail — the name sits directly above the gallery, so it doesn't compete with the photo the way a standalone page title can |
+| Section heading | 36px → 48px | `text-4xl sm:text-5xl` | Home page marketing sections (About, Rooms, Rest of the rooms) |
+| Subsection heading | 24px → 30px | `text-2xl sm:text-3xl` | In-page sections: room detail (amenities, rate, policies, add-ons), admin panels, empty states |
+| Compact heading | 24px | `text-2xl` | Dialogs, booking-flow step headers, summary-card titles (room name in a sidebar) |
+| Card title, full-width | 24px | `text-2xl` | Room name in a list row, or standalone card |
+| Card title, home rail | 20px | `text-xl` | Room name on the home page's horizontal room rail |
+| Card title, tile | 14–18px, container-scaled | `text-base @xs:text-lg` (grid) | Room name on a narrow catalog grid tile — scales with the tile, not the viewport |
+| Panel/field label | 14–15px, weight 500 | `font-sans text-sm font-medium tracking-normal` | A label that reads as a heading's job but a body's weight: filter group titles, a rate plan name under a room |
+| Summary total | 32px | `text-[2rem]` | The running total in a *mid-journey* sidebar card — room detail and checkout review share the same card, so they share this size |
+| Final total | 36px | `text-4xl` | The total on the confirmation page — the one number left to read once everything else is decided, so it gets the bigger of the two |
+| Sticky-bar total | 20px | `text-xl` | The docked mobile book bar — space is the constraint, not hierarchy |
+| Card nightly price | 18–24px, container-scaled | `text-lg @xs:text-2xl` (grid) / `text-2xl` (row) | Same container-query logic as the card title beside it |
+| Stat figure | 36px | `text-4xl` | Admin dashboard counters |
+| Body | 14–15px | `text-sm` / `text-base` | Paragraphs, captions inside cards |
+| Caption / meta | 12px | `text-xs` | Timestamps, fine print, helper text under a field |
+
+When a new number or heading doesn't fit a row above, it's a sign to name a new tier here — not to
+free-hand a `text-*xl` that happens to look right on one screen.
+
 ## Shape and space
 
 - Spacing unit 4px; preferred steps 8, 12, 16, 24, 32, 48, 64, 96.
@@ -146,13 +177,43 @@ Titles and body differ by size and weight, not by typeface — the way the platf
 - Elevation is `.shadow-soft` or `.shadow-soft-lg`, nothing stronger. Reach for a hairline first.
 - Frosted panels over photography use `.glass` (light) or `.glass-dark`.
 
+## Layout grid
+
+Defined once in `app/globals.css` as Tailwind theme tokens. Pages compose them; they never
+free-hand a width or a column track.
+
+- **Page width.** `container-page` (1400px) for every guest page, the header, the footer and the
+  admin screens; `container-reading` (1000px) for single-column reading pages — the confirmation
+  and trips; `container-form` (900px) for admin editors. Each centres itself and carries the
+  gutter. When only the width is wanted — the full-bleed phone hero — use `max-w-page`.
+- **Gutter.** `--gutter` is 16px on a phone, 24px from `sm`, 32px from `lg`. It is the side
+  margin (`px-gutter`), the bleed of an edge-to-edge rail (`-mx-gutter px-gutter
+  scroll-pl-gutter`), and the gap between a guest page's main column and its rail
+  (`gap-x-gutter`). The header pill, the page and the footer card therefore share both edges.
+- **Columns.** A page split is a named template: `grid-cols-sidebar` (content, then a 22rem rail
+  on the right — room page, booking flow, floor plan, editors), `grid-cols-sidebar-start` (a
+  22rem rail on the left — catalog filters, a list card's photo), `grid-cols-media` (a 16rem
+  photo beside its details), `grid-cols-main-aside` (8 of 12 beside 4 — the dashboard chart and
+  its list), `grid-cols-shell` (the admin sidebar). Anything that doesn't fit one of those uses
+  the twelve-column grid (`grid-cols-12` with `col-span-*`), and a collection of cards uses a
+  plain count (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). One stacked column is
+  `grid-cols-1` — it already is `minmax(0, 1fr)`.
+- **Arbitrary tracks** (`grid-cols-[…]`) are for a component's own row alignment only — a rates
+  row, the search bar's fields, a list row with a trailing button — never for a page layout. A
+  new page split is a new named template here first.
+- A loading skeleton uses exactly the container and template of the page it stands in for, so
+  nothing moves when the page arrives.
+
 ## Photography
 
 - Hero areas are `HotelArea` records with a photo, a caption, and hotspots stored as fractions
   of the photo. Hotspots are mapped through the same `object-fit: cover` maths the browser uses
   so a marker stays on the balcony it points at.
-- Hotspots are pills: ink circle with a filled icon, then the label. Labels collapse to the icon
-  below `sm`. Tapping opens a frosted card with the description and one CTA.
+- Hotspots are glass lenses (`.glass-lens`): a near-clear disc with a lit rim and a sheen
+  across its upper half, so the balcony it sits on stays visible through it, carrying a filled
+  ink pin. From `sm` the label rides beside it as its own small `.glass` chip — not one pill
+  around both, which on a phone was a grey ring around an ink dot. The pressed lens fills with
+  ink. Tapping opens a frosted card with the description and one CTA.
 - Room galleries show one photograph at a time with pill tabs (thumbnail + label), paging
   arrows, a `01 / 04` counter, and fullscreen.
 - Photographs always carry `width`/`height` to avoid layout shift, and `loading="lazy"` unless
@@ -223,7 +284,9 @@ Titles and body differ by size and weight, not by typeface — the way the platf
     room type) is the link.
   - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
     icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
-    on the overview are a baseline-aligned row of number + words between two rules, not tiles.
+    on the dashboard are four cards on the same 28px surface as the chart beside them: a short
+    label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
+    admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
   - **The tape chart** (`components/admin/tape-chart/`) is one row per door, grouped by room type,
     one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
     when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger

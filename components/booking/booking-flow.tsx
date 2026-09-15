@@ -301,7 +301,7 @@ export function BookingFlow({
     .filter(([, items]) => items.some((addOn) => !addOn.parentId));
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
+    <div className="grid grid-cols-1 gap-y-8 gap-x-gutter lg:grid-cols-sidebar">
       <div className="min-w-0">
         <StepRail steps={steps} current={stepIndex} onSelect={setStepIndex} className="mb-8" />
 
@@ -799,7 +799,10 @@ export function BookingFlow({
 
             <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-border pt-4">
               <span className="text-sm font-medium">Total</span>
-              <span className="text-display text-3xl">
+              {/* Same card as the room page's "Your stay" sidebar — same size,
+                  so the total doesn't quietly grow or shrink between the two
+                  steps of the same decision. */}
+              <span className="text-display text-[2rem]">
                 {formatMoney(quote.price.total, quote.price.currency)}
               </span>
             </div>

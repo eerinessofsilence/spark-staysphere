@@ -68,7 +68,11 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
   return (
     <RoomPricing roomSlug={room.slug} criteria={criteria} quote={quote}>
       <SiteHeader stayQuery={stayQuery} />
-      <main id="main" className="mx-auto max-w-[1400px] px-3 py-8 pb-28 sm:px-6 lg:py-12">
+      {/* No bottom clearance for the mobile book bar here: the footer right
+          below already reserves it at the true bottom of the page
+          (`clearsFloatingBar`), so adding it here too just doubled the gap
+          between the summary card and the footer, with nothing in it. */}
+      <main id="main" className="container-page py-8 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -76,10 +80,10 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
           </Link>
         </nav>
 
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
+        <div className="grid grid-cols-1 gap-y-8 gap-x-gutter lg:grid-cols-sidebar">
           <div className="min-w-0">
             <header className="mb-5">
-              <h1 className="text-display text-5xl sm:text-6xl">{room.name}</h1>
+              <h1 className="text-display text-2xl sm:text-3xl">{room.name}</h1>
             </header>
 
             <RoomGallery room={room} />
@@ -111,7 +115,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
 
             <section aria-labelledby="amenities-heading" className="mt-20">
               <div className="flex flex-wrap items-end gap-4">
-                <h2 id="amenities-heading" className="text-display text-3xl">
+                <h2 id="amenities-heading" className="text-display text-2xl sm:text-3xl">
                   In the room
                 </h2>
                 <ScrollArrows targetId="amenities-rail" className="ml-auto" />
@@ -153,7 +157,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="rate-heading" className="mt-20">
-              <h2 id="rate-heading" className="text-display text-3xl">
+              <h2 id="rate-heading" className="text-display text-2xl sm:text-3xl">
                 {ratePlan.name}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">Included at no extra cost.</p>
@@ -182,7 +186,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="policies-heading" className="mt-20">
-              <h2 id="policies-heading" className="text-display text-3xl">
+              <h2 id="policies-heading" className="text-display text-2xl sm:text-3xl">
                 Check-in &amp; check-out
               </h2>
               {/* The hours a guest actually plans a flight or a taxi around,
@@ -238,7 +242,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             </section>
 
             <section aria-labelledby="addons-heading" className="mt-20">
-              <h2 id="addons-heading" className="text-display text-3xl">
+              <h2 id="addons-heading" className="text-display text-2xl sm:text-3xl">
                 Add services
               </h2>
               <p className="mt-2 mb-5 text-sm text-muted-foreground">
@@ -250,7 +254,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
             {/* The kitchen sells through the same engine, but it is a different decision. */}
             {dining.some((addOn) => addOn.enabled && !addOn.parentId) ? (
               <section aria-labelledby="dining-heading" className="mt-20">
-                <h2 id="dining-heading" className="text-display text-3xl">
+                <h2 id="dining-heading" className="text-display text-2xl sm:text-3xl">
                   Order from the kitchen
                 </h2>
                 <p className="mt-2 mb-5 text-sm text-muted-foreground">

@@ -4,18 +4,7 @@ import {
   resolveRemaining,
   statusForRemaining,
   stayBucket,
-  unitsFor,
 } from './availability';
-
-describe('unitsFor', () => {
-  it('returns the seeded unit count for a known room type', () => {
-    expect(unitsFor('room_asteria-penthouse')).toBe(2);
-  });
-
-  it('defaults an unknown room type (e.g. one created in the CMS) to 5 units', () => {
-    expect(unitsFor('room_cms-created-suite')).toBe(5);
-  });
-});
 
 describe('statusForRemaining', () => {
   it.each([
@@ -57,44 +46,49 @@ describe('nightsInRange', () => {
 });
 
 describe('resolveRemaining', () => {
-  const roomTypeId = 'room_deluxe-sea'; // 8 units seeded
+  const roomTypeId = 'room_deluxe-sea';
+  const units = 8;
   const date = '2026-10-01';
 
   it('is always zero once the override is sold_out, regardless of holds', () => {
-    expect(resolveRemaining(roomTypeId, date, 'sold_out', 0)).toBe(0);
+    expect(resolveRemaining(roomTypeId, units, date, 'sold_out', 0)).toBe(0);
   });
 
   it('caps last_room at one minus what is already held', () => {
-    expect(resolveRemaining(roomTypeId, date, 'last_room', 0)).toBe(1);
-    expect(resolveRemaining(roomTypeId, date, 'last_room', 1)).toBe(0);
+    expect(resolveRemaining(roomTypeId, units, date, 'last_room', 0)).toBe(1);
+    expect(resolveRemaining(roomTypeId, units, date, 'last_room', 1)).toBe(0);
   });
 
   it('never goes negative when holds exceed the override ceiling', () => {
-    expect(resolveRemaining(roomTypeId, date, 'last_room', 5)).toBe(0);
-    expect(resolveRemaining(roomTypeId, date, 'limited', 5)).toBe(0);
+    expect(resolveRemaining(roomTypeId, units, date, 'last_room', 5)).toBe(0);
+    expect(resolveRemaining(roomTypeId, units, date, 'limited', 5)).toBe(0);
   });
 
   it('caps limited at two minus what is already held', () => {
-    expect(resolveRemaining(roomTypeId, date, 'limited', 0)).toBe(2);
-    expect(resolveRemaining(roomTypeId, date, 'limited', 1)).toBe(1);
+    expect(resolveRemaining(roomTypeId, units, date, 'limited', 0)).toBe(2);
+    expect(resolveRemaining(roomTypeId, units, date, 'limited', 1)).toBe(1);
   });
 
   it('caps available at the room type\'s full unit count minus holds', () => {
-    expect(resolveRemaining(roomTypeId, date, 'available', 0)).toBe(8);
-    expect(resolveRemaining(roomTypeId, date, 'available', 3)).toBe(5);
+    expect(resolveRemaining(roomTypeId, units, date, 'available', 0)).toBe(8);
+    expect(resolveRemaining(roomTypeId, units, date, 'available', 3)).toBe(5);
   });
 
   it('falls back to simulated demand minus holds with no override', () => {
-    const noHolds = resolveRemaining(roomTypeId, date, null, 0);
-    const withHolds = resolveRemaining(roomTypeId, date, null, 2);
+    const noHolds = resolveRemaining(roomTypeId, units, date, null, 0);
+    const withHolds = resolveRemaining(roomTypeId, units, date, null, 2);
     expect(withHolds).toBe(Math.max(0, noHolds - 2));
   });
 
-  it('gives an unknown (CMS-created) room type the same default-unit demand curve', () => {
-    // Must not throw or silently treat the room as having zero units.
-    const remaining = resolveRemaining('room_cms-created-suite', date, null, 0);
+  it('never reports more than the rooms a type actually has', () => {
+    const remaining = resolveRemaining('room_cms-created-suite', 3, date, null, 0);
     expect(remaining).toBeGreaterThanOrEqual(0);
-    expect(remaining).toBeLessThanOrEqual(5);
+    expect(remaining).toBeLessThanOrEqual(3);
+  });
+
+  it('is zero for a type with no rooms, whatever the override says', () => {
+    expect(resolveRemaining(roomTypeId, 0, date, 'available', 0)).toBe(0);
+    expect(resolveRemaining(roomTypeId, 0, date, null, 0)).toBe(0);
   });
 });
 

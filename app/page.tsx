@@ -71,7 +71,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
       />
       <main id="main">
         {/* Arrival */}
-        <section className="mx-auto max-w-[1400px] pt-3 sm:px-6 sm:pt-8 lg:pt-14">
+        <section className="mx-auto max-w-page pt-3 sm:px-gutter sm:pt-8 lg:pt-14">
           <h1 className="sr-only">{hotel.name}</h1>
 
           {/* On a phone the arrival photograph is the screen: it runs to both
@@ -90,7 +90,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
 
           {/* Its own gutter now: the section gave up its padding so the
               photograph above could reach the edges. */}
-          <div className="mt-5 px-3 sm:px-6 lg:px-12">
+          <div className="mt-5 px-gutter lg:px-12">
             <h2 className="sr-only">Search rooms</h2>
             {/* From `lg` the same search rides in the header instead. */}
             <div className="lg:hidden">
@@ -102,7 +102,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         {/* About the hotel. The interactive scene above is where a guest
             explores; this is the one paragraph that says what the place
             actually is, for the guest who wants that before anything else. */}
-        <section aria-labelledby="about-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+        <section aria-labelledby="about-heading" className="container-page mt-20">
           {/* No card, no shadow: this reads as the page's own copy, not one
               more tile among the room cards. Half the band each — at a third
               of the width the photograph was a thumbnail sat beside display
@@ -137,7 +137,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         </section>
 
         {/* Recommended rooms */}
-        <section aria-labelledby="rooms-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+        <section aria-labelledby="rooms-heading" className="container-page mt-20">
           <div className="flex flex-wrap items-end gap-4">
             <Reveal>
               <h2 id="rooms-heading" className="text-display text-4xl sm:text-5xl">
@@ -171,7 +171,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                   matches "The other rooms" rail below. */}
               <ul
                 id="highlights-rail"
-                className="no-scrollbar -mx-3 mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-3 pb-2 scroll-pl-3 sm:-mx-6 sm:px-6 sm:scroll-pl-6"
+                className="no-scrollbar -mx-gutter mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-gutter pb-2 scroll-pl-gutter"
               >
                 {/* Sized from the rail, not in px: exactly four across from
                     `lg`, three from `sm`, two on a phone — the width is the
@@ -192,7 +192,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
         </section>
 
         {/* Closing band */}
-        <section aria-labelledby="closing-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+        <section aria-labelledby="closing-heading" className="container-page mt-20">
           {/* Ink under the photograph, not just behind it: the copy here is
               white and the photo is lazy-loaded, so an unloaded frame would
               otherwise leave white text on a pale page. */}
@@ -239,7 +239,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
 
         {/* The rest of the house, on the way out */}
         {rest.length > 0 ? (
-          <section aria-labelledby="rest-heading" className="mx-auto mt-20 max-w-[1400px] px-3 sm:px-6">
+          <section aria-labelledby="rest-heading" className="container-page mt-20">
             <div className="flex flex-wrap items-end gap-4">
               <Reveal>
                 <h2 id="rest-heading" className="text-display text-4xl sm:text-5xl">

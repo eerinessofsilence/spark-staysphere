@@ -65,7 +65,7 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
   );
 
   return (
-    <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+    <div className="mt-10 grid gap-6 lg:grid-cols-sidebar">
       <div className="grid gap-6">
         <Group id="identity" title="Identity" description="Read live from the site content.">
           <dl className="grid gap-4 sm:grid-cols-3">
@@ -74,15 +74,15 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
             <Fact label="Location">{hotel.location}</Fact>
           </dl>
           <Link href="/admin/content/hotel" className={pill('secondary', 'mt-5')}>
-            Edit in Hotel & areas
+            Edit in Hotel Settings
           </Link>
         </Group>
 
         <Group id="logo" title="Logo" description="Shown in the header and footer of the booking site.">
           <div className="flex min-h-24 items-center justify-center rounded-3xl bg-stone/60 px-6">
-            <img src="/brand/spark-logo-on-light.svg" alt="Current logo" className="h-9 w-auto dark:hidden" />
+            <img src="/brand/staysphere-logo-on-light.svg" alt="Current logo" className="h-9 w-auto dark:hidden" />
             <img
-              src="/brand/spark-logo.svg"
+              src="/brand/staysphere-logo.svg"
               alt=""
               aria-hidden="true"
               className="hidden h-9 w-auto dark:block"

@@ -26,10 +26,6 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function counted(count: number, word: string): string {
-  return `${count} ${word}${count === 1 ? '' : 's'}`;
-}
-
 export default async function TapeChartPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const today = toIsoDate(new Date());
@@ -43,34 +39,21 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
   const type = rawType && board.groups.some((group) => group.roomTypeId === rawType) ? rawType : null;
   const groups = type ? board.groups.filter((group) => group.roomTypeId === type) : board.groups;
 
-  const night = board.days[0];
-  const percent = night && board.totalRooms > 0 ? Math.round((night.occupied / board.totalRooms) * 100) : 0;
-  const when = from === today ? 'Tonight' : `On ${formatDateShort(from)}`;
   const lastNight = board.dates.at(-1) ?? from;
 
   return (
     <AdminPage>
       <AdminPageHeader
         title="Tape chart"
-        description="Every room, night by night: who is in it, what simulated demand holds, and what is closed to sale."
+        compact
         actions={
           <Link href="/admin/bookings" className={pill('secondary')}>
-            All bookings
+            All reservations
           </Link>
         }
       />
 
-      {night ? (
-        <p className="mt-6 max-w-3xl text-base">
-          {when} {night.occupied} of {board.totalRooms} rooms are occupied ({percent}%) —{' '}
-          {counted(night.arrivals, 'arrival')}, {counted(night.departures, 'departure')}.{' '}
-          <span className="text-muted-foreground">
-            Occupancy counts simulated demand alongside real bookings.
-          </span>
-        </p>
-      ) : null}
-
-      <div className="mt-8 flex flex-wrap items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Link
             href={tapeChartHref({ from: addIsoDays(from, -days), days, type })}

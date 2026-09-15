@@ -88,3 +88,10 @@ export async function deleteRateAction(id: string, expectedVersion: number): Pro
   revalidateContent();
   return { status: 'success', message: 'Rate removed.' };
 }
+
+export async function deleteRoomAction(id: string): Promise<ContentFormState> {
+  const result = await contentService.deleteRoom(id);
+  if (!result.ok) return formStateFromError(result.error);
+  revalidateContent();
+  return { status: 'success', message: 'Room type removed.' };
+}

@@ -12,7 +12,7 @@ export default function TeamPage() {
     <AdminPage>
       <AdminPageHeader
         title="Team & roles"
-        description="Who can sign in to this admin, and what each role can change."
+        compact
         actions={<span className={tag()}>Demo — sign-in and roles arrive with admin auth</span>}
       />
       <div className="mt-10">

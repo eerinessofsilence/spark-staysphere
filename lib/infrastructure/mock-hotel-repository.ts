@@ -7,16 +7,16 @@ import type {
   RoomStatus,
 } from '../domain/schemas';
 import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
-import { demoAddOns, demoHotel, demoRates, demoRooms } from './mock-data';
+import { demoAddOns, demoHotel, demoPhysicalRooms, demoRates, demoRooms } from './mock-data';
 
 /**
  * Process-local in-memory demo state. This is the fallback used whenever no
  * D1 binding is configured (see durable-hotel-repository.ts), and it is also
  * exactly what ran before persistence existed — bookings, overrides, and
  * holds here reset with the worker isolate. The catalog itself (including an
- * add-on's `enabled` flag) is seed-only here; the CMS overlay that can
- * replace it lives in `catalog-content-mock.ts` and is merged on top by
- * `durable-hotel-repository.ts`.
+ * add-on's `enabled` flag and the physical rooms) is seed-only here; the CMS
+ * overlay that can replace it lives in `catalog-content-mock.ts` and is
+ * merged on top by `durable-hotel-repository.ts`.
  */
 const bookingsByIdempotencyKey = new Map<string, Booking>();
 const bookingsByReference = new Map<string, Booking>();
@@ -33,10 +33,18 @@ const integrationStatuses: IntegrationStatus[] = [
   { adapter: 'crm', mode: 'mock', connected: false, lastSyncAt: null },
 ];
 
-function remainingOn(roomTypeId: string, date: string): number {
+/**
+ * Availability for a room type with `units` rooms. The count comes from the
+ * caller — `durable-hotel-repository.ts` counts the stored rooms, CMS overlay
+ * included — so this never has to know where the rooms came from.
+ */
+export function mockAvailability(roomTypeId: string, units: number, from: string, to: string): Availability[] {
   const override = roomStatusOverrides.get(roomTypeId) ?? null;
-  const held = demoHolds.get(`${roomTypeId}|${date}`) ?? 0;
-  return resolveRemaining(roomTypeId, date, override, held);
+  return nightsInRange(from, to).map((date): Availability => {
+    const held = demoHolds.get(`${roomTypeId}|${date}`) ?? 0;
+    const remaining = resolveRemaining(roomTypeId, units, date, override, held);
+    return { roomTypeId, date, remaining, status: statusForRemaining(remaining) };
+  });
 }
 
 export const mockHotelRepository: HotelRepository = {
@@ -46,6 +54,9 @@ export const mockHotelRepository: HotelRepository = {
   async listRooms(hotelId) {
     return demoRooms.filter((room) => room.hotelId === hotelId);
   },
+  async listPhysicalRooms(hotelId) {
+    return demoPhysicalRooms.filter((room) => room.hotelId === hotelId);
+  },
   async listRatePlans(roomTypeId) {
     return demoRates.filter((rate) => rate.roomTypeId === roomTypeId);
   },
@@ -54,13 +65,8 @@ export const mockHotelRepository: HotelRepository = {
     return demoAddOns.map((addOn) => ({ ...addOn }));
   },
   async getAvailability(roomTypeId, from, to) {
-    // No seed-id guard here: `resolveRemaining` (via `unitsFor`) already
-    // defaults unknown room types to 5 units, so a room type created in the
-    // CMS overlay is bookable on this backend too, matching D1's behaviour.
-    return nightsInRange(from, to).map((date): Availability => {
-      const remaining = remainingOn(roomTypeId, date);
-      return { roomTypeId, date, remaining, status: statusForRemaining(remaining) };
-    });
+    const units = demoPhysicalRooms.filter((room) => room.roomTypeId === roomTypeId).length;
+    return mockAvailability(roomTypeId, units, from, to);
   },
   async findBookingByIdempotencyKey(key) {
     return bookingsByIdempotencyKey.get(key) ?? null;

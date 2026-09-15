@@ -94,7 +94,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
     <div className="mt-10">
       {trips.length === 0 ? (
         <div className="rounded-[28px] border border-dashed border-border p-10 text-center">
-          <h2 className="text-display text-3xl">No trips yet</h2>
+          <h2 className="text-display text-2xl sm:text-3xl">No trips yet</h2>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
             Bookings you make here are listed on this page. Booked on another device? Find it with
             your reference below.
@@ -180,7 +180,7 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
     <article
       className={cn(
         'group relative grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
-        'sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]',
+        'sm:grid-cols-media',
         cancelled && 'opacity-90',
       )}
     >

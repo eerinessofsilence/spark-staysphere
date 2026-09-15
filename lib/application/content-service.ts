@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { nightsInRange } from '../domain/availability';
+import { effectiveVersion } from '../domain/catalog-overlay';
 import { isEquirectangular, isPanorama } from '../domain/media';
-import { buildRoomUnits, compareRoomNumbers } from '../domain/room-units';
+import { floorOf, nextRoomNumber } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
 import { systemClock } from '../domain/clock';
 import type {
@@ -14,10 +16,14 @@ import type {
 import {
   addOnSchema,
   hotelSchema,
+  physicalRoomSchema,
   ratePlanSchema,
+  ROOM_NUMBER,
   roomTypeSchema,
   type AddOn,
+  type Booking,
   type Hotel,
+  type PhysicalRoom,
   type RatePlan,
   type RoomType,
 } from '../domain/schemas';
@@ -43,6 +49,7 @@ export function assertCanEditContent(): void {
 }
 
 const KEBAB_MESSAGE = 'Use lowercase letters, numbers, and hyphens only, e.g. "garden-loft".';
+const ROOM_NUMBER_MESSAGE = 'Use the floor, then a two-digit position: "305", or "G04" on the ground floor.';
 
 /** Appends `-2`, `-3`, … until the id is free — ids are internal, never shown as a field. */
 function uniqueId(base: string, taken: ReadonlySet<string>): string {
@@ -50,6 +57,22 @@ function uniqueId(base: string, taken: ReadonlySet<string>): string {
   let n = 2;
   while (taken.has(`${base}-${n}`)) n += 1;
   return `${base}-${n}`;
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** The most stays of one room type sharing a single night, from tonight on. */
+function peakNightlyStays(stays: Booking[]): number {
+  const today = todayIso();
+  const perNight = new Map<string, number>();
+  for (const stay of stays) {
+    for (const night of nightsInRange(stay.checkIn, stay.checkOut)) {
+      if (night >= today) perNight.set(night, (perNight.get(night) ?? 0) + 1);
+    }
+  }
+  return Math.max(0, ...perNight.values());
 }
 
 export type ContentError =
@@ -99,9 +122,6 @@ function hotelFieldErrors(error: z.ZodError, raw: unknown): Record<string, strin
   return errors;
 }
 
-function roomsPhrase(numbers: string[]): string {
-  return numbers.length === 1 ? `A guest picked room ${numbers[0]}` : `Guests picked rooms ${numbers.join(', ')}`;
-}
 
 const mediaItemSchema = z.object({
   type: z.enum(['image', '360']),
@@ -128,6 +148,8 @@ export const hotelContentInputSchema = z.object({
   name: z.string().min(1, 'Enter a name.'),
   tagline: z.string().min(1, 'Enter a tagline.'),
   location: z.string().min(1, 'Enter a location.'),
+  starRating: z.number().int().min(1, 'Pick a star rating.').max(5, 'Pick a star rating.'),
+  /** Never edited from `/admin/content/hotel` — areas keep their current copy unless something else patches them. */
   areas: z.array(hotelAreaInputSchema),
 });
 export type HotelContentInput = z.infer<typeof hotelContentInputSchema>;
@@ -149,6 +171,15 @@ const createRoomSchema = roomFieldsSchema.extend({
   slug: z.string().min(1, 'Enter a page address.').regex(KEBAB_CASE, KEBAB_MESSAGE),
 });
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
+
+const physicalRoomFieldsSchema = z.object({
+  number: z.string().trim().toUpperCase().regex(ROOM_NUMBER, ROOM_NUMBER_MESSAGE),
+});
+export type PhysicalRoomFieldsInput = z.infer<typeof physicalRoomFieldsSchema>;
+
+const createPhysicalRoomSchema = physicalRoomFieldsSchema.extend({
+  roomTypeId: z.string().min(1, 'Pick a room type.'),
+});
 
 const rateFieldsSchema = z.object({
   name: z.string().min(1, 'Enter a name.'),
@@ -249,6 +280,14 @@ export class ContentService {
     return bookings.some((booking) => booking.addOnIds.includes(id));
   }
 
+  /** Confirmed stays of a room type that haven't checked out yet. */
+  private async currentStays(roomTypeId: string): Promise<Booking[]> {
+    const today = todayIso();
+    return (await this.repository.listBookings()).filter(
+      (booking) => booking.status === 'confirmed' && booking.roomTypeId === roomTypeId && booking.checkOut > today,
+    );
+  }
+
   /**
    * Resolves a media item's `url` against the library and fills in the
    * dimensions from there — a client never gets to assert its own width or
@@ -298,29 +337,14 @@ export class ContentService {
     return { ok: true, photos };
   }
 
-  /**
-   * Room numbers are derived from each type's floor and view (`buildRoomUnits`), so moving a type
-   * — or adding one to a floor — renumbers rooms. Returns the guest-picked rooms of upcoming stays
-   * that would stop pointing at the room the guest chose.
-   */
-  private async renumberedPicks(before: RoomType[], after: RoomType[]): Promise<string[]> {
-    const today = this.todayIso();
-    const picks = (await this.repository.listBookings()).filter(
-      (booking) => booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
-    );
-    if (picks.length === 0) return [];
-    const owners = (rooms: RoomType[]) => new Map(buildRoomUnits(rooms).map((unit) => [unit.number, unit.roomTypeId]));
-    const was = owners(before);
-    const will = owners(after);
-    const lost = picks
-      .filter((booking) => was.get(booking.unitNumber!) === booking.roomTypeId && will.get(booking.unitNumber!) !== booking.roomTypeId)
-      .map((booking) => booking.unitNumber!);
-    return [...new Set(lost)].sort(compareRoomNumbers);
-  }
-
   /** Everything the media picker can offer — see `lib/infrastructure/media-library.ts`. */
   listMedia() {
     return this.media.list();
+  }
+
+  /** Whether an entity came with the demo catalog — a page uses this to not offer a delete the service would refuse. */
+  isSeedEntry(kind: CatalogEntryKind, id: string): boolean {
+    return this.isSeed(kind, id);
   }
 
   // ---------------------------------------------------------------- Hotel
@@ -363,13 +387,14 @@ export class ContentService {
       name: input.name,
       tagline: input.tagline,
       location: input.location,
+      starRating: input.starRating,
       areas: nextAreas,
     } satisfies Hotel);
 
     return this.save('hotel', current.id, current.id, next, expectedVersion);
   }
 
-  // ----------------------------------------------------------------- Rooms
+  // ------------------------------------------------------------ Room types
 
   async listRoomsContent(): Promise<Array<RoomType & Versioned>> {
     const hotel = await this.hotel();
@@ -384,20 +409,11 @@ export class ContentService {
     return { ...room, version: await this.versionOf('room', id) };
   }
 
-  /** Rooms of this type a guest picked on the floor plan for a stay that hasn't ended. */
-  async pickedRoomNumbers(roomTypeId: string): Promise<string[]> {
-    const today = this.todayIso();
-    const bookings = await this.repository.listBookings();
-    const numbers = bookings
-      .filter(
-        (booking) =>
-          booking.roomTypeId === roomTypeId && booking.status === 'confirmed' && booking.unitNumber && booking.checkOut > today,
-      )
-      .map((booking) => booking.unitNumber!);
-    return [...new Set(numbers)].sort(compareRoomNumbers);
-  }
-
-  /** New rooms start hidden: `content-service` never lets a room go visible without a rate and a photo (see `setRoomHidden`), and a room cannot carry either at the moment it's created. */
+  /**
+   * New room types start hidden: `setRoomHidden` never lets one go on sale
+   * without at least one room, a rate and a photo, and a type has none of
+   * those at the moment it's created — its rooms are added next, under Rooms.
+   */
   async createRoom(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
     assertCanEditContent();
     const parsed = createRoomSchema.safeParse(rawInput);
@@ -435,14 +451,6 @@ export class ContentService {
       hidden: true,
     } satisfies RoomType);
 
-    const lost = await this.renumberedPicks(rooms, [...rooms, room]);
-    if (lost.length > 0) {
-      return ruleError(
-        `${roomsPhrase(lost)} for upcoming stays, and a new room type on floor ${input.floor} would renumber them. Pick another floor while those bookings stand.`,
-        'floor',
-      );
-    }
-
     const saved = await this.save('room', id, hotel.id, room, 0);
     if (!saved.ok) return saved;
     return ok({ id, version: saved.value.version });
@@ -462,19 +470,6 @@ export class ContentService {
 
     if (!current.hidden && !media.media.some((item) => item.type === 'image')) {
       return ruleError('This room is on sale, so it needs at least one photo. Add one, or hide the room first.', 'media');
-    }
-
-    if (input.floor !== current.floor || input.view !== current.view) {
-      const rooms = await this.repository.listRooms(current.hotelId);
-      const moved = rooms.map((room) => (room.id === id ? { ...room, floor: input.floor, view: input.view } : room));
-      const lost = await this.renumberedPicks(rooms, moved);
-      if (lost.length > 0) {
-        const field = input.floor !== current.floor ? 'floor' : 'view';
-        return ruleError(
-          `${roomsPhrase(lost)} for upcoming stays, and changing the ${field} would renumber ${lost.length === 1 ? 'it' : 'them'}. Keep the ${field} as it is while ${lost.length === 1 ? 'that booking stands' : 'those bookings stand'}.`,
-          field,
-        );
-      }
     }
 
     const { version: _version, ...rest } = current;
@@ -500,6 +495,10 @@ export class ContentService {
     if (!current) return fail({ kind: 'not_found' });
 
     if (!hidden) {
+      const rooms = await this.repository.listPhysicalRooms(current.hotelId);
+      if (!rooms.some((room) => room.roomTypeId === id)) {
+        return ruleError('Add at least one room of this type before showing it on the site.');
+      }
       const rates = await this.repository.listRatePlans(id);
       if (rates.length === 0) return ruleError('Add a rate before showing this room on the site.');
       if (!current.media.some((item) => item.type === 'image')) {
@@ -510,6 +509,165 @@ export class ContentService {
     const { version: _version, ...rest } = current;
     const next = roomTypeSchema.parse({ ...rest, hidden } satisfies RoomType);
     return this.save('room', id, next.hotelId, next, expectedVersion);
+  }
+
+  /**
+   * Only a CMS-created room type with no bookings and no rooms left under it.
+   * Its rates go with it — a rate means nothing without its type, and a
+   * CMS-created type only ever has CMS-created rates.
+   */
+  async deleteRoom(id: string): Promise<ContentResult<null>> {
+    assertCanEditContent();
+    const current = await this.getRoomContent(id);
+    if (!current) return fail({ kind: 'not_found' });
+    if (this.isSeed('room', id)) {
+      return ruleError('This room type came with the demo catalog and can only be edited or hidden, not removed.');
+    }
+    if (await this.referencedByBooking('room', id)) {
+      return ruleError('This room type has bookings against it and cannot be removed. Hide it instead.');
+    }
+    const rooms = (await this.repository.listPhysicalRooms(current.hotelId)).filter((room) => room.roomTypeId === id);
+    if (rooms.length > 0) {
+      return ruleError(
+        `This room type still has ${rooms.length === 1 ? '1 room' : `${rooms.length} rooms`} under it. Remove them under Rooms first.`,
+      );
+    }
+    for (const rate of await this.repository.listRatePlans(id)) {
+      await this.content.deleteEntry('rate', rate.id, await this.versionOf('rate', rate.id));
+    }
+    return this.remove('room', id, current.version);
+  }
+
+  // -------------------------------------------------------- Physical rooms
+
+  async listPhysicalRoomsContent(): Promise<Array<PhysicalRoom & Versioned>> {
+    const hotel = await this.hotel();
+    const [rooms, overlay] = await Promise.all([
+      this.repository.listPhysicalRooms(hotel.id),
+      this.content.listEntries('unit', hotel.id),
+    ]);
+    return rooms.map((room) => ({ ...room, version: effectiveVersion(overlay, room.id) }));
+  }
+
+  async getPhysicalRoomContent(id: string): Promise<(PhysicalRoom & Versioned) | null> {
+    return (await this.listPhysicalRoomsContent()).find((room) => room.id === id) ?? null;
+  }
+
+  /** Room type id → the first free number on that type's floor, for the new-room form to start from. */
+  async suggestRoomNumbers(): Promise<Record<string, string>> {
+    const hotel = await this.hotel();
+    const [types, rooms] = await Promise.all([
+      this.repository.listRooms(hotel.id),
+      this.repository.listPhysicalRooms(hotel.id),
+    ]);
+    return Object.fromEntries(types.map((type) => [type.id, nextRoomNumber(type.floor, rooms)]));
+  }
+
+  /** A room's floor is read off its number, so the two can never disagree. */
+  async createPhysicalRoom(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
+    assertCanEditContent();
+    const parsed = createPhysicalRoomSchema.safeParse(rawInput);
+    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
+    const input = parsed.data;
+
+    const hotel = await this.hotel();
+    const [types, rooms] = await Promise.all([
+      this.repository.listRooms(hotel.id),
+      this.repository.listPhysicalRooms(hotel.id),
+    ]);
+    const type = types.find((candidate) => candidate.id === input.roomTypeId);
+    if (!type) return fail({ kind: 'validation', fieldErrors: { roomTypeId: ['Pick an existing room type.'] } });
+    if (rooms.some((room) => room.number === input.number)) {
+      return fail({ kind: 'validation', fieldErrors: { number: [`Room ${input.number} already exists.`] } });
+    }
+
+    const id = uniqueId(`unit_${input.number}`, new Set(rooms.map((room) => room.id)));
+    const room = physicalRoomSchema.parse({
+      id,
+      hotelId: hotel.id,
+      roomTypeId: type.id,
+      number: input.number,
+      floor: floorOf(input.number),
+    } satisfies PhysicalRoom);
+
+    const result = await this.content.upsertEntry({ kind: 'unit', id, hotelId: hotel.id, data: room, expectedVersion: 0 });
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok({ id, version: result.version });
+  }
+
+  async updatePhysicalRoom(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
+    assertCanEditContent();
+    const current = await this.getPhysicalRoomContent(id);
+    if (!current) return fail({ kind: 'not_found' });
+
+    const parsed = physicalRoomFieldsSchema.safeParse(rawInput);
+    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
+    const { number } = parsed.data;
+
+    if (number !== current.number) {
+      const rooms = await this.repository.listPhysicalRooms(current.hotelId);
+      if (rooms.some((room) => room.id !== id && room.number === number)) {
+        return fail({ kind: 'validation', fieldErrors: { number: [`Room ${number} already exists.`] } });
+      }
+      const chosen = (await this.currentStays(current.roomTypeId)).find((stay) => stay.unitNumber === current.number);
+      if (chosen) {
+        return ruleError(
+          `A guest chose room ${current.number} for booking ${chosen.reference}, so its number can't change until that stay is over.`,
+          'number',
+        );
+      }
+    }
+
+    const { version: _version, ...rest } = current;
+    const next = physicalRoomSchema.parse({ ...rest, number, floor: floorOf(number) } satisfies PhysicalRoom);
+    const result = await this.content.upsertEntry({
+      kind: 'unit',
+      id,
+      hotelId: next.hotelId,
+      data: next,
+      expectedVersion,
+    });
+    if (!result.ok) return fail({ kind: 'conflict', currentVersion: result.currentVersion });
+    return ok({ version: result.version });
+  }
+
+  /**
+   * Removing a room takes a night of capacity away from its type, so it is
+   * refused whenever what's left couldn't hold the stays already booked.
+   */
+  async deletePhysicalRoom(id: string): Promise<ContentResult<null>> {
+    assertCanEditContent();
+    const current = await this.getPhysicalRoomContent(id);
+    if (!current) return fail({ kind: 'not_found' });
+    if (this.isSeed('unit', id)) {
+      return ruleError('This room came with the demo building. It can be renumbered, not removed.');
+    }
+
+    const [types, rooms, stays] = await Promise.all([
+      this.repository.listRooms(current.hotelId),
+      this.repository.listPhysicalRooms(current.hotelId),
+      this.currentStays(current.roomTypeId),
+    ]);
+    const chosen = stays.find((stay) => stay.unitNumber === current.number);
+    if (chosen) {
+      return ruleError(`A guest chose this room for booking ${chosen.reference}. It can be removed once that stay is over.`);
+    }
+
+    const type = types.find((candidate) => candidate.id === current.roomTypeId);
+    const left = rooms.filter((room) => room.roomTypeId === current.roomTypeId && room.id !== id).length;
+    if (type && !type.hidden && left === 0) {
+      return ruleError(
+        `This is the last ${type.name} room and that room type is on sale. Hide the room type first, or add another room.`,
+      );
+    }
+    const peak = peakNightlyStays(stays);
+    if (peak > left) {
+      return ruleError(
+        `${type?.name ?? 'This room type'} has ${peak} stays booked on the same night, so it needs at least ${peak} rooms.`,
+      );
+    }
+
+    return this.remove('unit', id, current.version);
   }
 
   // ----------------------------------------------------------------- Rates
