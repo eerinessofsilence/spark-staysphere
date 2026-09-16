@@ -198,12 +198,6 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                 <span className="font-semibold">{methodLabel}</span>
               </p>
             ) : null}
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              {authorized
-                ? 'Demo payment authorized by the mock provider. No card details were collected and no money moved.'
-                : 'Nothing is taken at booking with this method — in production the balance would be settled before or on arrival. This is a demo either way: no money moves.'}
-              {ratePlan ? ` ${ratePlan.cancellationPolicy}` : ''}
-            </p>
           </section>
 
           <div className="mt-8 flex flex-wrap gap-3">
