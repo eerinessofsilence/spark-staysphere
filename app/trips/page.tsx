@@ -26,10 +26,6 @@ export default async function TripsPage({ searchParams }: PageProps<'/trips'>) {
       <main id="main" className="container-reading py-8 lg:py-12">
         <header className="max-w-2xl">
           <h1 className="text-display text-4xl sm:text-5xl">My trips</h1>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Every demo booking made in this browser. Nothing is charged and no account is needed —
-            this browser remembers which booking numbers are yours, and lists them here.
-          </p>
         </header>
 
         <TripsView stayQuery={stayQuery} />
