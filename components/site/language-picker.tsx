@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 
 const REGION: Record<Locale, string> = {
   en: 'United Kingdom',
-  ru: 'Россия',
+  ru: '',
   hr: 'Hrvatska',
   de: 'Deutschland',
   fr: 'France',
