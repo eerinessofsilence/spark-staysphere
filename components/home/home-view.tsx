@@ -216,7 +216,7 @@ export function HomeView({
               aria-hidden="true"
               className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent"
             />
-            <div className="relative flex flex-col items-start gap-7 p-8 pt-40 text-[#F7F5F0] sm:p-12 sm:pt-56 lg:min-h-[32rem] lg:justify-end">
+            <div className="relative flex min-h-[26rem] flex-col items-start justify-end gap-7 p-8 text-[#F7F5F0] sm:min-h-[30rem] sm:p-12 lg:min-h-[32rem]">
               <Reveal>
                 {/* The section's actual heading, not a paragraph that looks
                     like one. The emphasis is carried by the italic serif
