@@ -596,7 +596,7 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   // The stay is now one of this browser's trips, without an account.
   await page.goto('/trips');
   await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
-  await expect(page.getByText(reference)).toBeVisible();
+  await expect(page.getByText(reference, { exact: true })).toBeVisible();
 
   // The booking reaches the operations view.
   await page.goto('/admin');
@@ -613,22 +613,22 @@ test('a trip is claimed by reference and the email it was booked with', async ({
   // The reference alone must not be a lookup key.
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
-  await expect(page.getByText(reference)).toHaveCount(0);
+  await expect(page.getByText(reference, { exact: true })).toHaveCount(0);
 
   await page.getByLabel('Booking number').fill(reference);
   await page.getByLabel('Email').fill('someone.else@example.com');
   await page.getByRole('button', { name: 'Find booking' }).click();
   await expect(page.getByText(/No booking matches that reference and email/)).toBeVisible();
   // Nothing was added: a right reference with the wrong email lists no stay.
-  await expect(page.getByText(reference)).toHaveCount(0);
+  await expect(page.getByText(reference, { exact: true })).toHaveCount(0);
 
   await page.getByLabel('Email').fill('ada@example.com');
   await page.getByRole('button', { name: 'Find booking' }).click();
-  await expect(page.getByText(reference)).toBeVisible();
+  await expect(page.getByText(reference, { exact: true })).toBeVisible();
 
   // And it is remembered, so the trip survives a reload.
   await page.reload();
-  await expect(page.getByText(reference)).toBeVisible();
+  await expect(page.getByText(reference, { exact: true })).toBeVisible();
 });
 
 test('an admin sell-out immediately blocks that room for guests', async ({ page }) => {
@@ -722,7 +722,7 @@ test('a guest cancels a stay, and the room goes back on sale', async ({ page }) 
 
   await page.goto('/trips');
   await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
-  await expect(page.getByText(reference)).toBeVisible();
+  await expect(page.getByText(reference, { exact: true })).toBeVisible();
 
   // The reference this browser holds is not on its own permission to cancel.
   await page.getByRole('button', { name: 'Cancel booking' }).first().click();
@@ -741,7 +741,7 @@ test('a guest cancels a stay, and the room goes back on sale', async ({ page }) 
   // The showcase stays keep Upcoming non-empty, so check this reference left
   // it specifically, not that the tab's count hit zero.
   await page.getByRole('tab', { name: /Upcoming/ }).click();
-  await expect(page.getByText(reference)).toHaveCount(0);
+  await expect(page.getByText(reference, { exact: true })).toHaveCount(0);
 
   // The desk sees the same thing.
   await page.goto('/admin');
