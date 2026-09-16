@@ -18,6 +18,7 @@ import { AuthDialog, type AuthMode } from '@/components/site/auth-dialog';
 import { ThemeToggle } from '@/components/site/theme-toggle';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { useScrollLock } from '@/components/site/use-scroll-lock';
+import { useT } from '@/lib/i18n/context';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ const PANEL_WIDTH = 320;
 const VIEWPORT_MARGIN = 12;
 
 export function SiteMenu({ stayQuery }: SiteMenuProps) {
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<AuthMode | null>(null);
   const { rendered, visible } = useOverlayTransition(open);
@@ -108,7 +110,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
       <div
         ref={panelRef}
         role="dialog"
-        aria-label="Menu"
+        aria-label={t('nav.menu')}
         className={cn(
           'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[18px] border border-border bg-card shadow-soft-lg',
           'sm:inset-auto sm:top-(--panel-top) sm:right-(--panel-right) sm:w-(--panel-width) sm:max-w-[calc(100vw-2rem)] sm:overflow-visible sm:rounded-3xl',
@@ -129,11 +131,11 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         }
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:hidden">
-          <span className="text-sm font-medium">Menu</span>
+          <span className="text-sm font-medium">{t('nav.menu')}</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Close"
+            aria-label={t('nav.close')}
             className={iconButton('light', 'size-10')}
           >
             <XMarkIcon className="size-4" aria-hidden="true" />
@@ -143,28 +145,28 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         <div className="p-3 sm:p-3">
           <div className="grid gap-1">
             <MenuButton icon={UserPlusIcon} onClick={() => startAuth('signup')} strong>
-              Sign up
+              {t('nav.signUp')}
             </MenuButton>
             <MenuButton icon={ArrowRightEndOnRectangleIcon} onClick={() => startAuth('signin')} strong>
-              Log in
+              {t('nav.logIn')}
             </MenuButton>
           </div>
 
           <div className="my-3 border-t border-border" />
 
-          <nav aria-label="Site" className="grid gap-1">
+          <nav aria-label={t('nav.site')} className="grid gap-1">
             <MenuLink icon={BuildingOffice2Icon} href={`/${suffix}`} onNavigate={navigate}>
-              The hotel
+              {t('nav.theHotel')}
             </MenuLink>
             <MenuLink icon={Squares2X2Icon} href={`/rooms${suffix}`} onNavigate={navigate}>
-              All rooms
+              {t('nav.allRooms')}
             </MenuLink>
             <MenuLink icon={BriefcaseIcon} href={`/trips${suffix}`} onNavigate={navigate}>
-              My trips
+              {t('nav.myTrips')}
             </MenuLink>
             {/* The stay is a guest's, not the desk's: admin opens without it. */}
             <MenuLink icon={Cog6ToothIcon} href="/admin" onNavigate={navigate}>
-              Hotel admin
+              {t('nav.hotelAdmin')}
             </MenuLink>
           </nav>
 
@@ -184,7 +186,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Menu and account"
+        aria-label={t('nav.menuAndAccount')}
         className="inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-full border border-border bg-card py-1 pr-1 pl-3.5 transition-colors hover:shadow-soft"
       >
         <Bars3Icon className="size-5" aria-hidden="true" />

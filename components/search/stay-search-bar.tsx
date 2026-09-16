@@ -8,6 +8,7 @@ import { StayDatesField } from '@/components/search/stay-dates-field';
 import type { RoomFilters } from '@/lib/application/catalog-service';
 import { buildQuery } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 
 interface StaySearchBarProps {
@@ -27,9 +28,11 @@ export function StaySearchBar({
   filters,
   minDate,
   className,
-  submitLabel = 'Search rooms',
+  submitLabel,
   size = 'default',
 }: StaySearchBarProps) {
+  const t = useT();
+  const label = submitLabel ?? t('search.searchRooms');
   const router = useRouter();
   const [draft, setDraft] = React.useState<StayCriteria>(criteria);
   const [isPending, startTransition] = React.useTransition();
@@ -75,7 +78,7 @@ export function StaySearchBar({
         <button
           type="submit"
           disabled={invalid || isPending}
-          aria-label={submitLabel}
+          aria-label={label}
           className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? (
@@ -126,7 +129,7 @@ export function StaySearchBar({
           className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
         >
           <MagnifyingGlassIcon className="size-4" aria-hidden="true" />
-          {isPending ? 'Searching…' : submitLabel}
+          {isPending ? t('search.searching') : label}
         </button>
       </div>
     </form>

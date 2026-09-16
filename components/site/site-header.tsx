@@ -1,5 +1,8 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { useT } from '@/lib/i18n/context';
 import { LanguagePicker } from '@/components/site/language-picker';
 import { SiteMenu } from '@/components/site/site-menu';
 import { cn } from '@/lib/utils';
@@ -21,6 +24,7 @@ const navLinkClass =
   'min-h-11 rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors flex items-center hover:bg-stone/60 hover:text-foreground';
 
 export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
+  const t = useT();
   const suffix = stayQuery ? `?${stayQuery}` : '';
 
   return (
@@ -50,10 +54,10 @@ export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
             together, so a phone has exactly one nav to open. */}
         <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
           <Link href={`/rooms${suffix}`} className={navLinkClass}>
-            All rooms
+            {t('nav.allRooms')}
           </Link>
           <Link href={`/trips${suffix}`} className={navLinkClass}>
-            My trips
+            {t('nav.myTrips')}
           </Link>
         </nav>
 

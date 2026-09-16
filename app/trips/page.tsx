@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
 import { buildQuery, parseCriteria } from '@/lib/application/search-params';
-import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
-import { TripsView } from '@/components/trips/trips-view';
-import { SiteFooter } from '@/components/site/site-footer';
-import { SiteHeader } from '@/components/site/site-header';
+import { TripsPageView } from '@/components/trips/trips-page-view';
 
 export const metadata: Metadata = {
   title: 'My trips — Asteria Cove | SPARK StaySphere 360',
@@ -20,18 +17,5 @@ export default async function TripsPage({ searchParams }: PageProps<'/trips'>) {
   const criteria = parseCriteria(await searchParams);
   const stayQuery = buildQuery({ criteria });
 
-  return (
-    <>
-      <SiteHeader stayQuery={stayQuery} />
-      <main id="main" className="container-reading py-8 lg:py-12">
-        <header className="max-w-2xl">
-          <h1 className="text-display text-4xl sm:text-5xl">My trips</h1>
-        </header>
-
-        <TripsView stayQuery={stayQuery} />
-      </main>
-      <SiteFooter stayQuery={stayQuery} />
-      <AssistantLauncher />
-    </>
-  );
+  return <TripsPageView stayQuery={stayQuery} />;
 }

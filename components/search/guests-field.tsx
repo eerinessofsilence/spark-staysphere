@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { MinusIcon, PlusIcon, UsersIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n/context';
 import { fieldClass, iconButton, pill } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { useScrollLock } from '@/components/site/use-scroll-lock';
@@ -55,6 +56,7 @@ export function GuestsField({
   size = 'default',
   error,
 }: GuestsFieldProps) {
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   const { rendered, visible } = useOverlayTransition(open);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -97,8 +99,8 @@ export function GuestsField({
 
   useScrollLock(rendered);
 
-  const summary = `${adults} adult${adults === 1 ? '' : 's'}${
-    children > 0 ? ` · ${children} child${children === 1 ? '' : 'ren'}` : ''
+  const summary = `${adults} ${t(adults === 1 ? 'search.adults' : 'search.adults').toLowerCase()}${
+    children > 0 ? ` · ${children} ${t('search.children').toLowerCase()}` : ''
   }`;
 
   const panel = (
@@ -114,7 +116,7 @@ export function GuestsField({
       <div
         ref={panelRef}
         role="dialog"
-        aria-label="Guests"
+        aria-label={t('search.guestsDialogAria')}
         className={cn(
           // A sheet pinned to the bottom on a phone, hugging its two rows.
           'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[18px] border border-border bg-card shadow-soft-lg',
@@ -141,27 +143,27 @@ export function GuestsField({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          aria-label="Close"
+          aria-label={t('nav.close')}
           className={iconButton('light', 'size-10')}
         >
           <XMarkIcon className="size-4" aria-hidden="true" />
         </button>
-        <p className="text-sm font-medium">Guests</p>
+        <p className="text-sm font-medium">{t('search.guests')}</p>
         <span className="size-10" aria-hidden="true" />
       </div>
 
       <div className="divide-y divide-border px-4 pt-2 sm:p-4">
         <Stepper
-          label="Adults"
-          hint="Ages 13+"
+          label={t('search.adults')}
+          hint={t('search.adultsHint')}
           value={adults}
           min={MIN_ADULTS}
           max={MAX_ADULTS}
           onChange={(next) => onChange({ adults: next, children })}
         />
         <Stepper
-          label="Children"
-          hint="Ages 2–12"
+          label={t('search.children')}
+          hint={t('search.childrenHint')}
           value={children}
           min={MIN_CHILDREN}
           max={MAX_CHILDREN}
@@ -175,7 +177,7 @@ export function GuestsField({
           onClick={() => setOpen(false)}
           className={pill('primary', 'min-h-12 w-full sm:min-h-10 sm:w-auto sm:px-5')}
         >
-          Done
+          {t('search.done')}
         </button>
       </div>
       </div>
@@ -187,7 +189,7 @@ export function GuestsField({
   if (variant === 'stacked') {
     return (
       <div className="relative">
-        <span className="mb-1.5 block text-sm text-muted-foreground">Guests</span>
+        <span className="mb-1.5 block text-sm text-muted-foreground">{t('search.guests')}</span>
         <button
           ref={triggerRef}
           id={id}
@@ -225,7 +227,7 @@ export function GuestsField({
           onClick={() => setOpen((current) => !current)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`Guests, ${summary}. Choose your guests.`}
+          aria-label={`${t('search.guests')}, ${summary}. ${t('search.chooseYourGuests')}.`}
           className={cn(
             'flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-stone/60',
             open && 'bg-stone/60',
@@ -252,7 +254,7 @@ export function GuestsField({
       >
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <UsersIcon className="size-3.5" aria-hidden="true" />
-          Guests
+          {t('search.guests')}
         </span>
         <span className="mt-0.5 block text-base font-medium">{summary}</span>
       </button>
@@ -287,7 +289,7 @@ function Stepper({
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
-          aria-label={`Decrease ${label.toLowerCase()}`}
+          aria-label={`− ${label}`}
           className={iconButton('light', 'size-9')}
         >
           <MinusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
@@ -299,7 +301,7 @@ function Stepper({
           type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
-          aria-label={`Increase ${label.toLowerCase()}`}
+          aria-label={`+ ${label}`}
           className={iconButton('light', 'size-9')}
         >
           <PlusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />

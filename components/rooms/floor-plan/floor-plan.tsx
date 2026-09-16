@@ -4,11 +4,14 @@ import * as React from 'react';
 import type { FloorPlanUnit } from '@/lib/application/inventory-service';
 import { facades, type Facade } from '@/lib/domain/room-units';
 import type { StayCriteria } from '@/lib/domain/schemas';
-import { facadeLabels, formatFloor, formatRoomNumber } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import type { TranslationKey } from '@/lib/i18n/dictionaries';
+import { lCategoryShort, lFacade, lFloor, lRoomNumber } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locale';
 import { Modal } from '@/components/site/modal';
 import { cn } from '@/lib/utils';
 import { RoomUnitCard } from './room-unit-card';
-import { categoryShort, hatch, statusSurface, unitStatusWords } from './unit-status';
+import { hatch, statusSurface, unitStatusWords } from './unit-status';
 
 interface FloorPlanProps {
   units: FloorPlanUnit[];
@@ -16,18 +19,6 @@ interface FloorPlanProps {
   criteria: StayCriteria;
   initialRoom: string | null;
 }
-
-const legend = [
-  { label: 'Available', swatch: statusSurface.available, style: undefined },
-  {
-    label: 'Selected',
-    swatch: cn(statusSurface.available, 'ring-2 ring-accent ring-offset-1 ring-offset-canvas'),
-    style: undefined,
-  },
-  { label: 'Booked', swatch: statusSurface.booked, style: hatch },
-  { label: "Doesn't fit your party", swatch: statusSurface.unsuitable, style: undefined },
-  { label: 'Hidden by filters', swatch: statusSurface.filtered, style: undefined },
-];
 
 /** Null until mounted, so a preselected room never flashes the phone sheet open on a desk. */
 function useWideScreen(): boolean | null {
@@ -43,6 +34,19 @@ function useWideScreen(): boolean | null {
 }
 
 export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanProps) {
+  const t = useT();
+  const { locale } = useLocale();
+  const legend = [
+    { label: t('rooms.legendAvailable'), swatch: statusSurface.available, style: undefined },
+    {
+      label: t('rooms.legendSelected'),
+      swatch: cn(statusSurface.available, 'ring-2 ring-accent ring-offset-1 ring-offset-canvas'),
+      style: undefined,
+    },
+    { label: t('rooms.legendBooked'), swatch: statusSurface.booked, style: hatch },
+    { label: t('rooms.legendUnsuitable'), swatch: statusSurface.unsuitable, style: undefined },
+    { label: t('rooms.legendFiltered'), swatch: statusSurface.filtered, style: undefined },
+  ];
   const [selected, setSelected] = React.useState<string | null>(
     initialRoom && units.some((unit) => unit.number === initialRoom) ? initialRoom : null,
   );
@@ -58,20 +62,18 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
   if (units.length === 0) {
     return (
       <div className="rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
-        <h2 className="text-display text-3xl">No rooms on the plan</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          There are no rooms to show for this stay right now. Try other dates.
-        </p>
+        <h2 className="text-display text-3xl">{t('rooms.noRoomsOnPlan')}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t('rooms.noRoomsOnPlanBody')}</p>
       </div>
     );
   }
 
-  const gridProps = { units, floors, selected, onSelect: toggle, guests };
+  const gridProps = { units, floors, selected, onSelect: toggle, guests, t, locale };
 
   return (
     <div className="grid grid-cols-1 gap-y-6 gap-x-gutter xl:grid-cols-sidebar">
       <div className="min-w-0">
-        <ul aria-label="Legend" className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <ul aria-label={t('rooms.legendAria')} className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
           {legend.map((item) => (
             <li key={item.label} className="flex items-center gap-2">
               <span
@@ -94,14 +96,13 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
         </div>
       </div>
 
-      <aside aria-label="Selected room" className="hidden xl:block">
+      <aside aria-label={t('rooms.selectedRoomAria')} className="hidden xl:block">
         <div className="sticky top-24">
           {selectedUnit ? (
             <RoomUnitCard unit={selectedUnit} criteria={criteria} onClose={close} />
           ) : (
             <p className="rounded-[18px] border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
-              Pick a room on the plan to see what it is, what it costs for your dates, and book that
-              exact room.
+              {t('rooms.pickARoomOnPlan')}
             </p>
           )}
         </div>
@@ -110,7 +111,7 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
       <Modal
         open={selectedUnit !== null && wide === false}
         onClose={close}
-        title={selectedUnit ? formatRoomNumber(selectedUnit.number) : 'Room'}
+        title={selectedUnit ? lRoomNumber(selectedUnit.number, locale) : t('rooms.room')}
         chrome={false}
       >
         {selectedUnit ? <RoomUnitCard unit={selectedUnit} criteria={criteria} onClose={close} bare /> : null}
@@ -126,9 +127,11 @@ interface FacadeGridProps {
   selected: string | null;
   onSelect: (number: string) => void;
   guests: number;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  locale: Locale;
 }
 
-function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: FacadeGridProps) {
+function FacadeGrid({ units, floors, shown, selected, onSelect, guests, t, locale }: FacadeGridProps) {
   const rows = floors.filter((floor) =>
     units.some((unit) => unit.floor === floor && shown.includes(unit.facade)),
   );
@@ -142,7 +145,7 @@ function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: Facade
         <span aria-hidden="true" />
         {shown.map((facade) => (
           <h3 key={facade} className="rounded-t-[18px] bg-card px-4 pt-4 pb-2 text-sm font-medium">
-            {facadeLabels[facade]}
+            {lFacade(facade, locale)}
           </h3>
         ))}
         <span aria-hidden="true" />
@@ -156,7 +159,7 @@ function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: Facade
                 <div
                   key={facade}
                   role="group"
-                  aria-label={`${facadeLabels[facade]}, ${formatFloor(floor)}`}
+                  aria-label={`${lFacade(facade, locale)}, ${lFloor(floor, locale)}`}
                   className={cn(
                     'flex flex-wrap content-start gap-1 bg-card px-3 py-1.5',
                     index > 0 && 'border-t border-border/60',
@@ -172,6 +175,8 @@ function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: Facade
                         selected={unit.number === selected}
                         onSelect={onSelect}
                         guests={guests}
+                        t={t}
+                        locale={locale}
                       />
                     ))}
                 </div>
@@ -198,13 +203,17 @@ function Cell({
   selected,
   onSelect,
   guests,
+  t,
+  locale,
 }: {
   unit: FloorPlanUnit;
   selected: boolean;
   onSelect: (number: string) => void;
   guests: number;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  locale: Locale;
 }) {
-  const label = `${formatRoomNumber(unit.number)}, ${unit.roomName}. ${unitStatusWords(unit, guests)}`;
+  const label = `${lRoomNumber(unit.number, locale)}, ${unit.roomName}. ${unitStatusWords(unit, guests, t)}`;
   return (
     <button
       type="button"
@@ -224,7 +233,7 @@ function Cell({
       <span className={cn('text-[11px] leading-none font-semibold tabular-nums', unit.status === 'booked' && 'line-through')}>
         {unit.number}
       </span>
-      <span className="mt-0.5 text-[9px] leading-none opacity-80">{categoryShort[unit.category]}</span>
+      <span className="mt-0.5 text-[9px] leading-none opacity-80">{lCategoryShort(unit.category, locale)}</span>
     </button>
   );
 }

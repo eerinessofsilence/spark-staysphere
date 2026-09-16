@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { EnvelopeIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 
 /**
@@ -13,12 +16,6 @@ import { cn } from '@/lib/utils';
  * copy: it has to be present and findable, not to take a third of the panel.
  */
 
-const navigation = [
-  { href: '/', label: 'The hotel' },
-  { href: '/rooms', label: 'All rooms' },
-  { href: '/admin', label: 'Hotel admin', keepStay: false },
-];
-
 interface SiteFooterProps {
   stayQuery?: string;
   /**
@@ -30,7 +27,14 @@ interface SiteFooterProps {
 }
 
 export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
+  const t = useT();
   const suffix = stayQuery ? `?${stayQuery}` : '';
+
+  const navigation = [
+    { href: '/', label: t('nav.theHotel') },
+    { href: '/rooms', label: t('nav.allRooms') },
+    { href: '/admin', label: t('nav.hotelAdmin'), keepStay: false },
+  ];
 
   return (
     <footer className={cn('container-page mt-24 pb-3 sm:pb-6', clearsFloatingBar && 'pb-24 lg:pb-6')}>
@@ -38,9 +42,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
         <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-8">
           <div>
             <img src="/brand/staysphere-logo-footer.svg" alt="StaySphere" className="h-7 w-auto" />
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/60">
-              A white-label direct-booking front end for independent hotels.
-            </p>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/60">{t('footer.tagline')}</p>
           </div>
 
           <div className="flex flex-wrap items-start gap-x-12 gap-y-6">
@@ -77,14 +79,10 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
               fill in both schemes (3.25:1 for the copyright line) — under
               WCAG AA for 12px text. /50 on both clears it with room. */}
           <p className="max-w-4xl text-xs leading-relaxed text-white/50">
-            Asteria Cove is a fictional property. Rates, availability, comparison prices, and
-            payments are simulated — no card data is collected and no reservation is made anywhere.
-            Photographs and 360° captures are licensed stand-ins for the property's own, credited
-            in <code className="text-white/60">public/images/CREDITS.md</code>.
+            {t('footer.disclosurePre')} <code className="text-white/60">public/images/CREDITS.md</code>
+            {t('footer.disclosurePost')}
           </p>
-          <p className="mt-4 text-xs text-white/50">
-            © {new Date().getFullYear()} Spark StaySphere — demo build.
-          </p>
+          <p className="mt-4 text-xs text-white/50">{t('footer.copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>
     </footer>

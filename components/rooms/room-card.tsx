@@ -1,8 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { Bed, Buildings, Eye, Ruler, UsersThree } from '@phosphor-icons/react/dist/ssr';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import type { RoomOffer } from '@/lib/domain/schemas';
-import { bedLabels, formatFloor, formatMoney, formatNights, viewLabels } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lFloor, lMoney, lNights, lView } from '@/lib/i18n/format';
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { factTone, featureIcon, tintInk, tintSurface } from './feature-icon';
@@ -32,6 +35,8 @@ interface RoomCardProps {
  * to decide, and sending them through one more page first is a toll.
  */
 export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
+  const { locale } = useLocale();
+  const t = useT();
   const { room, ratePlan, price, status } = offer;
   // With twenty room types and tight scarcity on the rarer suites, a badge
   // on every third catalog tile made the whole page read as mostly closed.
@@ -87,13 +92,13 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
     <div>
       <p>
         <span className={cn('text-display', row ? 'text-2xl' : 'text-lg @xs:text-2xl')}>
-          {formatMoney(price.nightlyPrice, price.currency)}
+          {lMoney(price.nightlyPrice, price.currency, locale)}
         </span>
-        <span className={cn('text-muted-foreground', row ? 'text-xs' : 'text-xs @xs:text-sm')}> a night</span>
+        <span className={cn('text-muted-foreground', row ? 'text-xs' : 'text-xs @xs:text-sm')}> {t('rooms.aNight')}</span>
       </p>
       {row ? (
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatMoney(price.total, price.currency)} for {formatNights(price.nights)}, taxes in
+          {lMoney(price.total, price.currency, locale)} {t('rooms.forNightsTaxesIn', { nights: lNights(price.nights, locale) })}
         </p>
       ) : null}
     </div>
@@ -119,7 +124,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
               the view read the same on nearly every card. Size and bed are the
               two facts a guest actually weighs between two photographs. */}
           <p className="text-xs text-muted-foreground @xs:text-sm">
-            {room.areaM2} m² · {bedLabels[room.bedType]}
+            {room.areaM2} m² · {lBed(room.bedType, locale)}
           </p>
           <div className="mt-auto pt-2">{priceBlock}</div>
         </div>
@@ -129,10 +134,10 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
 
   const facts = [
     { icon: Ruler, label: `${room.areaM2} m²`, tone: factTone.area },
-    { icon: Bed, label: bedLabels[room.bedType], tone: factTone.bed },
-    { icon: UsersThree, label: `Sleeps ${room.capacity}`, tone: factTone.capacity },
-    { icon: Buildings, label: formatFloor(room.floor), tone: factTone.floor },
-    { icon: Eye, label: viewLabels[room.view], tone: factTone.view },
+    { icon: Bed, label: lBed(room.bedType, locale), tone: factTone.bed },
+    { icon: UsersThree, label: t('room.sleepsUpTo', { n: room.capacity }), tone: factTone.capacity },
+    { icon: Buildings, label: lFloor(room.floor, locale), tone: factTone.floor },
+    { icon: Eye, label: lView(room.view, locale), tone: factTone.view },
   ];
 
   return (
@@ -184,7 +189,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
               href={`/book/${room.slug}?${stayQuery}`}
               className={pill('primary', 'relative z-10 w-full sm:w-auto')}
             >
-              Book this room
+              {t('rooms.bookThisRoom')}
             </Link>
           )}
         </div>

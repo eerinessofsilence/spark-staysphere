@@ -6,6 +6,7 @@ import { Bars3Icon, BuildingOffice2Icon, Squares2X2Icon } from '@heroicons/react
 import type { RoomFilters } from '@/lib/application/catalog-service';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 
 interface LayoutToggleProps {
@@ -13,12 +14,6 @@ interface LayoutToggleProps {
   filters: RoomFilters;
   layout: CatalogLayout;
 }
-
-const options: { value: CatalogLayout; label: string; icon: typeof Bars3Icon }[] = [
-  { value: 'grid', label: 'Grid', icon: Squares2X2Icon },
-  { value: 'list', label: 'List', icon: Bars3Icon },
-  { value: 'plan', label: 'Floor plan', icon: BuildingOffice2Icon },
-];
 
 /**
  * Grid or list, as two segments of one control rather than two buttons — the
@@ -30,8 +25,15 @@ const options: { value: CatalogLayout; label: string; icon: typeof Bars3Icon }[]
  * hydration.
  */
 export function LayoutToggle({ criteria, filters, layout }: LayoutToggleProps) {
+  const t = useT();
   const router = useRouter();
   const [, startTransition] = React.useTransition();
+
+  const options: { value: CatalogLayout; label: string; icon: typeof Bars3Icon }[] = [
+    { value: 'grid', label: t('rooms.layoutGrid'), icon: Squares2X2Icon },
+    { value: 'list', label: t('rooms.layoutList'), icon: Bars3Icon },
+    { value: 'plan', label: t('rooms.layoutPlan'), icon: BuildingOffice2Icon },
+  ];
 
   const select = (next: CatalogLayout) => {
     if (next === layout) return;

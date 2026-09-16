@@ -1,8 +1,11 @@
+'use client';
+
 import {
   ArrowLeftStartOnRectangleIcon,
   ArrowRightEndOnRectangleIcon,
 } from '@heroicons/react/24/outline';
-import { formatDateShort } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lDateShort } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 
 interface StayDatesSummaryProps {
@@ -21,21 +24,23 @@ interface StayDatesSummaryProps {
  * booking flow cannot drift into showing it two different ways.
  */
 export function StayDatesSummary({ checkIn, checkOut, className }: StayDatesSummaryProps) {
+  const { locale } = useLocale();
+  const t = useT();
   return (
     <div className={cn('grid grid-cols-2 gap-3', className)}>
       <div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <ArrowRightEndOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
-          Check-in
+          {t('search.checkIn')}
         </p>
-        <p className="text-display mt-0.5 text-lg">{formatDateShort(checkIn)}</p>
+        <p className="text-display mt-0.5 text-lg">{lDateShort(checkIn, locale)}</p>
       </div>
       <div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <ArrowLeftStartOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
-          Check-out
+          {t('search.checkOut')}
         </p>
-        <p className="text-display mt-0.5 text-lg">{formatDateShort(checkOut)}</p>
+        <p className="text-display mt-0.5 text-lg">{lDateShort(checkOut, locale)}</p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useT } from '@/lib/i18n/context';
 
 export type VoiceCaptureStatus =
   | 'idle'
@@ -28,6 +29,7 @@ interface UseVoiceCaptureOptions {
  * this hook's owner every frame.
  */
 export function useVoiceCapture({ onTranscript, onError }: UseVoiceCaptureOptions) {
+  const t = useT();
   const [status, setStatus] = React.useState<VoiceCaptureStatus>('idle');
   /** Seconds left before the 30s auto-stop; null until the last 5 seconds. */
   const [countdown, setCountdown] = React.useState<number | null>(null);
@@ -113,20 +115,17 @@ export function useVoiceCapture({ onTranscript, onError }: UseVoiceCaptureOption
         const payload = (await response.json().catch(() => null)) as
           | { text?: unknown; message?: unknown }
           | null;
-        if (!response.ok) {
-          throw new Error(
-            (payload && typeof payload.message === 'string' && payload.message) ||
-              'Could not transcribe that recording.',
-          );
-        }
+        // The server's own message is always English; the local translation is
+        // used instead so the error never leaks untranslated text to the guest.
+        if (!response.ok) throw new Error(t('assistant.couldNotTranscribe'));
         if (mountedRef.current) setStatus('idle');
         onTranscript(typeof payload?.text === 'string' ? payload.text : '');
-      } catch (error) {
+      } catch {
         if (mountedRef.current) setStatus('error');
-        onError?.(error instanceof Error ? error.message : 'Could not transcribe that recording.');
+        onError?.(t('assistant.couldNotTranscribe'));
       }
     },
-    [onError, onTranscript, releaseHardware],
+    [onError, onTranscript, releaseHardware, t],
   );
 
   const start = React.useCallback(async () => {
@@ -179,10 +178,10 @@ export function useVoiceCapture({ onTranscript, onError }: UseVoiceCaptureOption
         setStatus('denied');
       } else {
         setStatus('error');
-        onError?.('Could not access the microphone.');
+        onError?.(t('assistant.couldNotAccessMic'));
       }
     }
-  }, [finish, isSupported, onError, releaseHardware]);
+  }, [finish, isSupported, onError, releaseHardware, t]);
 
   const stop = React.useCallback(() => {
     void finish(false);

@@ -41,9 +41,23 @@ export async function getDefaultTrips(): Promise<TripSummary[]> {
   return bookingService.listTrips(bookings.map((booking) => booking.reference));
 }
 
+/** Stable codes the client maps to a localized message; `message` is the English fallback. */
+export type TripActionErrorCode =
+  | 'invalid_reference'
+  | 'invalid_email'
+  | 'not_found'
+  | 'stay_started'
+  | 'cancel_not_found';
+
 export type ClaimTripResult =
   | { ok: true; trip: TripSummary }
-  | { ok: false; message: string };
+  | { ok: false; code: TripActionErrorCode; message: string };
+
+function zodErrorResult(error: z.ZodError): { ok: false; code: TripActionErrorCode; message: string } {
+  const issue = error.issues[0];
+  const code: TripActionErrorCode = issue?.path[0] === 'email' ? 'invalid_email' : 'invalid_reference';
+  return { ok: false, code, message: issue?.message ?? 'Check those details.' };
+}
 
 export async function claimTrip(input: {
   reference: string;
@@ -51,7 +65,7 @@ export async function claimTrip(input: {
 }): Promise<ClaimTripResult> {
   const parsed = claimSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check those details.' };
+    return zodErrorResult(parsed.error);
   }
 
   const trip = await bookingService.findTrip(parsed.data.reference, parsed.data.email);
@@ -60,6 +74,7 @@ export async function claimTrip(input: {
     // has to match, and saying which half was wrong would be a lookup tool.
     return {
       ok: false,
+      code: 'not_found',
       message: 'No booking matches that reference and email. Demo bookings are also lost when the server restarts.',
     };
   }
@@ -68,7 +83,7 @@ export async function claimTrip(input: {
 
 export type CancelTripResult =
   | { ok: true; trip: TripSummary }
-  | { ok: false; message: string };
+  | { ok: false; code: TripActionErrorCode; message: string };
 
 export async function cancelTrip(input: {
   reference: string;
@@ -76,7 +91,7 @@ export async function cancelTrip(input: {
 }): Promise<CancelTripResult> {
   const parsed = claimSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check those details.' };
+    return zodErrorResult(parsed.error);
   }
 
   const { outcome, trip } = await bookingService.cancelTrip(parsed.data.reference, parsed.data.email);
@@ -89,11 +104,13 @@ export async function cancelTrip(input: {
     case 'stay_started':
       return {
         ok: false,
+        code: 'stay_started',
         message: 'This stay has already begun — the front desk handles changes from here.',
       };
     default:
       return {
         ok: false,
+        code: 'cancel_not_found',
         message: 'That reference and email do not match a booking we can cancel.',
       };
   }

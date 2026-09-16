@@ -17,17 +17,20 @@ import type {
   RoomType,
   StayCriteria,
 } from '@/lib/domain/schemas';
+import { useLocale, useT } from '@/lib/i18n/context';
+import type { TranslationKey } from '@/lib/i18n/dictionaries';
 import {
-  addOnCategoryLabels,
-  facadeLabels,
-  formatDateRange,
-  formatFloor,
-  formatGuests,
-  formatMoney,
-  formatNights,
-  formatRoomNumber,
-  viewLabels,
-} from '@/lib/formatting';
+  lAddOnCategory,
+  lDateRange,
+  lFacade,
+  lFloor,
+  lGuests,
+  lMoney,
+  lNights,
+  lPaymentMethod,
+  lRoomNumber,
+  lView,
+} from '@/lib/i18n/format';
 import { Checkbox } from '@/components/ui/checkbox';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { facadeOf } from '@/lib/domain/room-units';
@@ -43,16 +46,8 @@ import { fieldClass, pill } from '@/lib/ui';
 import { StatusBadge } from '@/components/rooms/status-badge';
 import { cn } from '@/lib/utils';
 
-const steps = [
-  { id: 'stay', label: 'Your stay' },
-  { id: 'room', label: 'Room & rate' },
-  // "Extras" rather than "Services": the step now holds the kitchen's list too,
-  // and the panel heading is this label, so it would otherwise repeat the group.
-  { id: 'services', label: 'Extras' },
-  { id: 'guest', label: 'Guest details' },
-  { id: 'payment', label: 'Payment' },
-  { id: 'review', label: 'Review' },
-] as const;
+/** Ids only, for typing the flow's step state; labels are localized inside the component. */
+const STEP_IDS = ['stay', 'room', 'services', 'guest', 'payment', 'review'] as const;
 
 /**
  * The methods a European property's booking engine actually offers, named as
@@ -61,48 +56,12 @@ const steps = [
  * reaches the server, and the two that take nothing at booking time record a
  * pending payment instead of a fake authorization.
  */
-const paymentMethods: {
-  id: PaymentMethod;
-  label: string;
-  hint: string;
-  icon: typeof CreditCard;
-  tone: AmenityTone;
-}[] = [
-  {
-    id: 'card',
-    label: 'Card',
-    hint: 'Visa, Mastercard, Amex. Charged when the booking is made.',
-    icon: CreditCard,
-    tone: 'clay',
-  },
-  {
-    id: 'apple_pay',
-    label: 'Apple Pay',
-    hint: 'Confirm with Face ID or Touch ID.',
-    icon: AppleLogo,
-    tone: 'stone',
-  },
-  {
-    id: 'google_pay',
-    label: 'Google Pay',
-    hint: 'Pay with a card saved to your Google account.',
-    icon: GoogleLogo,
-    tone: 'sage',
-  },
-  {
-    id: 'bank_transfer',
-    label: 'Bank transfer',
-    hint: 'SEPA transfer. The room is held; the balance is due before arrival.',
-    icon: Bank,
-    tone: 'sand',
-  },
-  {
-    id: 'pay_at_hotel',
-    label: 'Pay at the hotel',
-    hint: 'Guarantee the room now, settle the whole stay on arrival.',
-    icon: Lock,
-    tone: 'rose',
-  },
+const PAYMENT_METHOD_META: { id: PaymentMethod; hintKey: TranslationKey; icon: typeof CreditCard; tone: AmenityTone }[] = [
+  { id: 'card', hintKey: 'book.cardHint', icon: CreditCard, tone: 'clay' },
+  { id: 'apple_pay', hintKey: 'book.applePayHint', icon: AppleLogo, tone: 'stone' },
+  { id: 'google_pay', hintKey: 'book.googlePayHint', icon: GoogleLogo, tone: 'sage' },
+  { id: 'bank_transfer', hintKey: 'book.bankTransferHint', icon: Bank, tone: 'sand' },
+  { id: 'pay_at_hotel', hintKey: 'book.payAtHotelHint', icon: Lock, tone: 'rose' },
 ];
 
 interface BookingFlowProps {
@@ -124,6 +83,22 @@ type FlowError = {
   currentTotal?: number;
 };
 
+/**
+ * The server's own error messages are always English — see `app/book/[slug]/actions.ts`
+ * and the `BookingError` codes it forwards. Showing them directly would leak untranslated
+ * text into the guest's chosen language, so the code alone picks the localized copy; the
+ * one place a dynamic detail (a room number) matters, `flowError.code === 'unavailable'`,
+ * already renders its own translated CTA row alongside this generic message.
+ */
+const BOOKING_ERROR_KEYS: Record<string, TranslationKey> = {
+  invalid_request: 'book.errorInvalidRequest',
+  unavailable: 'book.errorRoomUnavailable',
+  price_changed: 'book.errorPriceChanged',
+  payment_declined: 'book.errorPaymentDeclined',
+  not_found: 'book.errorNotFound',
+  quote_failed: 'book.errorQuoteFailed',
+};
+
 export function BookingFlow({
   hotel,
   room,
@@ -135,7 +110,36 @@ export function BookingFlow({
   minDate,
   roomNumber: initialRoomNumber = null,
 }: BookingFlowProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const router = useRouter();
+
+  const steps = React.useMemo(
+    () =>
+      [
+        { id: STEP_IDS[0], label: t('book.stepYourStay') },
+        { id: STEP_IDS[1], label: t('book.stepRoomAndRate') },
+        // "Extras" rather than "Services": the step now holds the kitchen's
+        // list too, and the panel heading is this label, so it would
+        // otherwise repeat the group.
+        { id: STEP_IDS[2], label: t('book.stepExtras') },
+        { id: STEP_IDS[3], label: t('book.stepGuestDetails') },
+        { id: STEP_IDS[4], label: t('book.stepPayment') },
+        { id: STEP_IDS[5], label: t('book.stepReview') },
+      ] as const,
+    [t],
+  );
+
+  const paymentMethods = React.useMemo(
+    () =>
+      PAYMENT_METHOD_META.map((meta) => ({
+        ...meta,
+        label: lPaymentMethod(meta.id, locale),
+        hint: t(meta.hintKey),
+      })),
+    [t, locale],
+  );
+
   const [stepIndex, setStepIndex] = React.useState(0);
   const [criteria, setCriteria] = React.useState(initialCriteria);
   const [addOnIds, setAddOnIds] = React.useState(initialAddOnIds);
@@ -214,17 +218,17 @@ export function BookingFlow({
 
   const validateGuest = (): boolean => {
     const errors: Record<string, string[]> = {};
-    if (guest.firstName.trim().length < 1) errors.firstName = ['Enter a first name.'];
-    if (guest.lastName.trim().length < 1) errors.lastName = ['Enter a last name.'];
+    if (guest.firstName.trim().length < 1) errors.firstName = [t('book.enterFirstNameError')];
+    if (guest.lastName.trim().length < 1) errors.lastName = [t('book.enterLastNameError')];
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email)) {
-      errors.email = ['Enter an email we can send the confirmation to.'];
+      errors.email = [t('book.enterEmailError')];
     }
     // Digits typed after the country code, not the composed `guest.phone` —
     // otherwise a longer dial code (+971) buys the guest a shorter real
     // number and a shorter one (+1) demands a longer one, for no reason
     // tied to whether the number itself is real.
     if (phoneNational.replace(/\D/g, '').length < 7) {
-      errors.phone = ['Enter a phone number with at least 7 digits.'];
+      errors.phone = [t('book.enterPhoneError')];
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -278,7 +282,22 @@ export function BookingFlow({
       currentTotal: result.currentTotal,
     });
     if (result.fieldErrors) {
-      setFieldErrors(result.fieldErrors);
+      // The server's own field messages are Zod defaults, always in English;
+      // translated one-for-one by field name instead of shown as-is.
+      const fieldErrorKeys: Record<string, TranslationKey> = {
+        firstName: 'book.enterFirstNameError',
+        lastName: 'book.enterLastNameError',
+        email: 'book.enterEmailError',
+        phone: 'book.enterPhoneError',
+      };
+      setFieldErrors(
+        Object.fromEntries(
+          Object.keys(result.fieldErrors).map((field) => [
+            field,
+            [t(fieldErrorKeys[field] ?? 'book.errorGeneric')],
+          ]),
+        ),
+      );
       setStepIndex(steps.findIndex((entry) => entry.id === 'guest'));
     }
     // A changed price invalidates the attempt; the next try needs a fresh key.
@@ -312,18 +331,16 @@ export function BookingFlow({
           >
             <Warning weight="fill" className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
             <div className="text-sm">
-              <p className="font-medium">{flowError.message}</p>
+              <p className="font-medium">{t(BOOKING_ERROR_KEYS[flowError.code] ?? 'book.errorGeneric')}</p>
               {flowError.currentTotal !== undefined ? (
                 <p className="mt-1 text-muted-foreground">
-                  The current total is{' '}
-                  {formatMoney(flowError.currentTotal, quote.price.currency)}. Review it in the
-                  summary and confirm again.
+                  {t('book.currentTotalIs', { total: lMoney(flowError.currentTotal, quote.price.currency, locale) })}
                 </p>
               ) : null}
               {flowError.code === 'unavailable' && roomNumber ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link href={`/rooms?${buildQuery({ criteria, layout: 'plan' })}`} className={pill('secondary')}>
-                    Pick another room on the plan
+                    {t('book.pickAnotherRoomPlan')}
                   </Link>
                   <button
                     type="button"
@@ -333,7 +350,7 @@ export function BookingFlow({
                     }}
                     className={pill('secondary')}
                   >
-                    Book any {room.name} instead
+                    {t('book.bookAnyInstead', { room: room.name })}
                   </button>
                 </div>
               ) : null}
@@ -342,7 +359,7 @@ export function BookingFlow({
                   href={`/rooms?${stayQuery}`}
                   className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 font-medium"
                 >
-                  Find another room
+                  {t('book.findAnotherRoom')}
                 </Link>
               ) : null}
             </div>
@@ -355,16 +372,17 @@ export function BookingFlow({
             className="mb-6 rounded-3xl border border-danger/25 bg-danger/10 p-4 text-sm"
           >
             <p className="font-medium text-danger">
-              The {room.name} is fully booked for {formatDateRange(criteria.checkIn, criteria.checkOut)}.
+              {t('book.fullyBookedForDates', {
+                room: room.name,
+                dateRange: lDateRange(criteria.checkIn, criteria.checkOut, locale),
+              })}
             </p>
-            <p className="mt-1 text-muted-foreground">
-              Change your dates below, or pick another room.
-            </p>
+            <p className="mt-1 text-muted-foreground">{t('book.changeDatesOrPickAnother')}</p>
             <Link
               href={`/rooms?${stayQuery}`}
               className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 font-medium"
             >
-              See available rooms
+              {t('book.seeAvailableRooms')}
             </Link>
           </div>
         ) : null}
@@ -382,7 +400,7 @@ export function BookingFlow({
                 checkOut={criteria.checkOut}
                 minDate={minDate}
                 onChange={(dates) => updateCriteria(dates)}
-                error={datesInvalid ? 'Check-out must be after check-in.' : undefined}
+                error={datesInvalid ? t('book.checkOutAfterCheckIn') : undefined}
               />
               <GuestsField
                 id="book-guests"
@@ -391,7 +409,9 @@ export function BookingFlow({
                 onChange={(guests) => updateCriteria(guests)}
                 variant="stacked"
                 error={
-                  overCapacity ? `The ${room.name} sleeps up to ${room.capacity} guests.` : undefined
+                  overCapacity
+                    ? t('book.sleepsUpToGuests', { room: room.name, n: String(room.capacity) })
+                    : undefined
                 }
               />
             </div>
@@ -417,7 +437,8 @@ export function BookingFlow({
                     <StatusBadge status={quote.status} remaining={quote.remaining} />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {room.areaM2} m² · {viewLabels[room.view]} · sleeps up to {room.capacity}
+                    {room.areaM2} m² · {lView(room.view, locale)} ·{' '}
+                    {t('room.sleepsUpTo', { n: String(room.capacity) })}
                   </p>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                     {room.description}
@@ -426,7 +447,7 @@ export function BookingFlow({
                     href={`/rooms?${stayQuery}`}
                     className={pill('secondary', 'mt-4')}
                   >
-                    Change room
+                    {t('book.changeRoom')}
                   </Link>
                 </div>
               </div>
@@ -459,7 +480,7 @@ export function BookingFlow({
             <div className="mt-5 grid gap-8" aria-busy={repricing}>
               {onSale.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                  No extra services are on sale for this stay.
+                  {t('book.noExtraServices')}
                 </p>
               ) : (
                 addOnGroups.map(([category, items]) => (
@@ -468,7 +489,7 @@ export function BookingFlow({
                       id={`flow-addons-${category}`}
                       className="font-sans text-sm font-medium tracking-normal"
                     >
-                      {addOnCategoryLabels[category]}
+                      {lAddOnCategory(category, locale)}
                     </h3>
                     <div className="mt-3">
                       <AddOnCatalog
@@ -486,11 +507,11 @@ export function BookingFlow({
 
           {step === 'guest' ? (
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <LabelledField id="guest-first" label="First name" error={fieldErrors.firstName?.[0]}>
+              <LabelledField id="guest-first" label={t('book.firstName')} error={fieldErrors.firstName?.[0]}>
                 <input
                   id="guest-first"
                   autoComplete="given-name"
-                  placeholder="Enter your first name"
+                  placeholder={t('book.enterFirstName')}
                   value={guest.firstName}
                   aria-invalid={Boolean(fieldErrors.firstName)}
                   onChange={(event) =>
@@ -499,11 +520,11 @@ export function BookingFlow({
                   className={fieldClass}
                 />
               </LabelledField>
-              <LabelledField id="guest-last" label="Last name" error={fieldErrors.lastName?.[0]}>
+              <LabelledField id="guest-last" label={t('book.lastName')} error={fieldErrors.lastName?.[0]}>
                 <input
                   id="guest-last"
                   autoComplete="family-name"
-                  placeholder="Enter your last name"
+                  placeholder={t('book.enterLastName')}
                   value={guest.lastName}
                   aria-invalid={Boolean(fieldErrors.lastName)}
                   onChange={(event) =>
@@ -512,12 +533,12 @@ export function BookingFlow({
                   className={fieldClass}
                 />
               </LabelledField>
-              <LabelledField id="guest-email" label="Email" error={fieldErrors.email?.[0]}>
+              <LabelledField id="guest-email" label={t('book.email')} error={fieldErrors.email?.[0]}>
                 <input
                   id="guest-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="Enter your email"
+                  placeholder={t('book.enterEmail')}
                   value={guest.email}
                   aria-invalid={Boolean(fieldErrors.email)}
                   onChange={(event) =>
@@ -526,7 +547,7 @@ export function BookingFlow({
                   className={fieldClass}
                 />
               </LabelledField>
-              <LabelledField id="guest-phone" label="Phone" error={fieldErrors.phone?.[0]}>
+              <LabelledField id="guest-phone" label={t('book.phone')} error={fieldErrors.phone?.[0]}>
                 <PhoneField
                   id="guest-phone"
                   countryIso={phoneCountry}
@@ -549,8 +570,7 @@ export function BookingFlow({
                 />
               </LabelledField>
               <p className="text-xs leading-relaxed text-muted-foreground sm:col-span-2">
-                Used only to render this demo confirmation. Nothing is emailed, stored beyond the
-                current server process, or shared with a third party.
+                {t('book.guestDataNotice')}
               </p>
             </div>
           ) : null}
@@ -558,12 +578,10 @@ export function BookingFlow({
           {step === 'payment' ? (
             <div className="mt-5">
               <p className="rounded-3xl bg-accent-soft p-4 text-sm text-accent-strong">
-                <span className="font-medium">Demo payment.</span> No card fields are shown and no
-                card data is collected. A production build collects payment through the provider's
-                own hosted, tokenized fields.
+                <span className="font-medium">{t('book.demoPaymentTitle')}</span> {t('book.demoPaymentBody')}
               </p>
               <fieldset className="mt-5">
-                <legend className="text-sm font-medium">Payment method</legend>
+                <legend className="text-sm font-medium">{t('book.paymentMethod')}</legend>
                 {/* The same tile the extras step sells services from: a seated
                     glyph, the name, one line of hint. Two across from `sm` and
                     three from `lg` — five methods in a single row of three
@@ -629,14 +647,11 @@ export function BookingFlow({
                   className="mt-0.5 size-5 rounded-full"
                 />
                 <span>
-                  I understand this is a demo booking at a fictional property, that no payment is
-                  taken, and that {ratePlan.cancellationPolicy.toLowerCase()}
+                  {t('book.acceptTermsPrefix')} {ratePlan.cancellationPolicy.toLowerCase()}
                 </span>
               </label>
               {!acceptedTerms ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Tick the box above to continue to review.
-                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{t('book.tickToContinue')}</p>
               ) : null}
             </div>
           ) : null}
@@ -644,37 +659,36 @@ export function BookingFlow({
           {step === 'review' ? (
             <div className="mt-5">
               <dl className="grid gap-4">
-              <ReviewRow label="Stay">
-                {formatDateRange(criteria.checkIn, criteria.checkOut)} ·{' '}
-                {formatNights(quote.price.nights)}
+              <ReviewRow label={t('book.reviewStay')}>
+                {lDateRange(criteria.checkIn, criteria.checkOut, locale)} ·{' '}
+                {lNights(quote.price.nights, locale)}
               </ReviewRow>
-              <ReviewRow label="Guests">
-                {formatGuests(criteria.adults, criteria.children)}
+              <ReviewRow label={t('book.reviewGuests')}>
+                {lGuests(criteria.adults, criteria.children, locale)}
               </ReviewRow>
-              <ReviewRow label="Room">
+              <ReviewRow label={t('book.reviewRoom')}>
                 {room.name}
-                {roomNumber ? `, ${formatRoomNumber(roomNumber).toLowerCase()}` : ''}, {ratePlan.name}
+                {roomNumber ? `, ${lRoomNumber(roomNumber, locale)}` : ''}, {ratePlan.name}
               </ReviewRow>
-              <ReviewRow label="Services">
+              <ReviewRow label={t('book.reviewServices')}>
                 {quote.price.addOnLines.length
                   ? quote.price.addOnLines.map((line) => line.name).join(', ')
-                  : 'None'}
+                  : t('book.reviewNone')}
               </ReviewRow>
-              <ReviewRow label="Guest">
+              <ReviewRow label={t('book.reviewGuest')}>
                 {guest.firstName} {guest.lastName} · {guest.email} · {guest.phone}
               </ReviewRow>
-              <ReviewRow label="Payment">
-                {paymentMethods.find((method) => method.id === paymentMethod)?.label} (demo)
+              <ReviewRow label={t('book.reviewPayment')}>
+                {paymentMethods.find((method) => method.id === paymentMethod)?.label} ({t('book.demo')})
               </ReviewRow>
-              <ReviewRow label="Total">
+              <ReviewRow label={t('book.reviewTotal')}>
                 <span className="font-medium">
-                  {formatMoney(quote.price.total, quote.price.currency)}
+                  {lMoney(quote.price.total, quote.price.currency, locale)}
                 </span>
               </ReviewRow>
               </dl>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                Price and availability are rechecked on the server the moment you confirm. If either
-                changed, we will tell you before anything is created.
+                {t('book.priceRecheckNotice')}
               </p>
             </div>
           ) : null}
@@ -687,7 +701,7 @@ export function BookingFlow({
               className={pill('secondary')}
             >
               <ArrowLeftIcon className="size-4" aria-hidden="true" />
-              Back
+              {t('book.back')}
             </button>
 
             {step === 'review' ? (
@@ -700,11 +714,11 @@ export function BookingFlow({
                 {submitting ? (
                   <>
                     <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
-                    Confirming…
+                    {t('book.confirming')}
                   </>
                 ) : (
                   <>
-                    Confirm demo booking
+                    {t('book.confirmDemoBooking')}
                     <ArrowRightIcon className="size-4" aria-hidden="true" />
                   </>
                 )}
@@ -716,7 +730,7 @@ export function BookingFlow({
                 disabled={repricing || (step !== 'guest' && step !== 'payment' && blocked)}
                 className={pill('primary', 'min-h-12 px-6')}
               >
-                Continue
+                {t('book.continue')}
                 <ArrowRightIcon className="size-4" aria-hidden="true" />
               </button>
             )}
@@ -750,10 +764,10 @@ export function BookingFlow({
           {roomNumber ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 rounded-2xl bg-stone/60 py-1 pr-1 pl-3 text-sm">
               <span>
-                <span className="font-medium">{formatRoomNumber(roomNumber)}</span>
+                <span className="font-medium">{lRoomNumber(roomNumber, locale)}</span>
                 <span className="text-muted-foreground">
                   {' '}
-                  · {formatFloor(room.floor)}, {facadeLabels[facadeOf(room.view)].toLowerCase()}
+                  · {lFloor(room.floor, locale)}, {lFacade(facadeOf(room.view), locale)}
                 </span>
               </span>
               <button
@@ -761,14 +775,14 @@ export function BookingFlow({
                 onClick={() => setRoomNumber(null)}
                 className="min-h-11 cursor-pointer rounded-full px-3 font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
               >
-                Any room instead
+                {t('book.anyRoomInstead')}
               </button>
             </div>
           ) : null}
 
           <StayDatesSummary checkIn={criteria.checkIn} checkOut={criteria.checkOut} className="mt-4" />
           <p className="mt-2 text-sm text-muted-foreground">
-            {formatNights(quote.price.nights)} · {formatGuests(criteria.adults, criteria.children)}
+            {lNights(quote.price.nights, locale)} · {lGuests(criteria.adults, criteria.children, locale)}
           </p>
 
           <div
@@ -778,45 +792,44 @@ export function BookingFlow({
           >
             <dl className="grid gap-2 text-sm">
               <BillRow
-                label={`${formatMoney(quote.price.nightlyPrice, quote.price.currency)} × ${formatNights(quote.price.nights)}`}
-                value={formatMoney(quote.price.roomTotal, quote.price.currency)}
+                label={`${lMoney(quote.price.nightlyPrice, quote.price.currency, locale)} × ${lNights(quote.price.nights, locale)}`}
+                value={lMoney(quote.price.roomTotal, quote.price.currency, locale)}
               />
               {quote.price.addOnLines.map((line) => (
                 <BillRow
                   key={line.addOnId}
                   indented={Boolean(line.parentId)}
                   onRemove={() => removeAddOn(line.addOnId)}
-                  removeLabel={`Remove ${line.name}`}
+                  removeLabel={t('room.remove', { name: line.name })}
                   label={`${line.name}${line.quantity > 1 ? ` × ${line.quantity}` : ''}`}
-                  value={formatMoney(line.total, quote.price.currency)}
+                  value={lMoney(line.total, quote.price.currency, locale)}
                 />
               ))}
               <BillRow
-                label="Taxes and city fees"
-                value={formatMoney(quote.price.taxesAndFees, quote.price.currency)}
+                label={t('room.taxesAndFees')}
+                value={lMoney(quote.price.taxesAndFees, quote.price.currency, locale)}
               />
             </dl>
 
             <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-border pt-4">
-              <span className="text-sm font-medium">Total</span>
+              <span className="text-sm font-medium">{t('room.total')}</span>
               {/* Same card as the room page's "Your stay" sidebar — same size,
                   so the total doesn't quietly grow or shrink between the two
                   steps of the same decision. */}
               <span className="text-display text-[2rem]">
-                {formatMoney(quote.price.total, quote.price.currency)}
+                {lMoney(quote.price.total, quote.price.currency, locale)}
               </span>
             </div>
             {repricing ? (
               <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                 <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
-                Repricing your stay…
+                {t('room.repricingYourStay')}
               </p>
             ) : null}
           </div>
 
           <p className="mt-4 rounded-2xl bg-stone/60 p-3 text-xs leading-relaxed text-muted-foreground">
-            Demo booking. Payment is simulated and no card data is collected — this reservation is
-            not a real one anywhere.
+            {t('book.demoBookingFooter')}
           </p>
           </div>
         </div>

@@ -12,7 +12,8 @@ import {
   type CatalogLayout,
 } from '@/lib/application/search-params';
 import type { RoomType, StayCriteria } from '@/lib/domain/schemas';
-import { bedLabels, categoryLabels, formatMoney, viewLabels } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lCategory, lMoney, lRoomCount, lView } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -30,6 +31,8 @@ interface RoomFiltersProps {
 }
 
 export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layout }: RoomFiltersProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const count = activeFilterCount(filters);
 
@@ -42,7 +45,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
             render={
               <button type="button" className={pill('secondary', 'w-full shadow-soft')}>
                 <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
-                Filters
+                {t('rooms.filters')}
                 {count > 0 ? (
                   <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
                     {count}
@@ -53,7 +56,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
           />
           <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[18px] border-t border-border">
             <SheetHeader className="border-b border-border px-6 py-4">
-              <SheetTitle className="text-display text-xl font-medium">Filter rooms</SheetTitle>
+              <SheetTitle className="text-display text-xl font-medium">{t('rooms.filterRooms')}</SheetTitle>
             </SheetHeader>
             <div className="overflow-y-auto px-6 pb-4">
               <FilterControls
@@ -67,7 +70,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
             </div>
             <div className="border-t border-border bg-card px-6 py-4">
               <button type="button" onClick={() => setSheetOpen(false)} className={pill('primary', 'w-full')}>
-                Show {resultCount} {resultCount === 1 ? 'room' : 'rooms'}
+                {t('rooms.showRooms', { rooms: lRoomCount(resultCount, locale) })}
               </button>
             </div>
           </SheetContent>
@@ -102,6 +105,8 @@ function FilterControls({
   // right under "Filter rooms" is the sheet saying the same thing twice.
   showTitle = true,
 }: FilterControlsProps & { showTitle?: boolean }) {
+  const t = useT();
+  const { locale } = useLocale();
   const router = useRouter();
   const [, startTransition] = React.useTransition();
   const [priceDraft, setPriceDraft] = React.useState<[number, number]>([
@@ -129,7 +134,7 @@ function FilterControls({
   return (
     <div className="flex flex-col gap-7">
       <div className={cn('flex items-center', showTitle ? 'justify-between' : 'justify-end')}>
-        {showTitle ? <h2 className="text-display text-xl font-medium">Filters</h2> : null}
+        {showTitle ? <h2 className="text-display text-xl font-medium">{t('rooms.filters')}</h2> : null}
         <button
           type="button"
           disabled={isDefault}
@@ -137,20 +142,20 @@ function FilterControls({
           className={pill('ghost', 'h-8 px-3 text-accent-strong disabled:text-muted-foreground')}
         >
           <XMarkIcon className="size-4" strokeWidth={2.4} aria-hidden="true" />
-          Reset
+          {t('rooms.reset')}
         </button>
       </div>
 
-      <Group title="Nightly budget" id={`${idPrefix}-budget`}>
+      <Group title={t('rooms.nightlyBudget')} id={`${idPrefix}-budget`}>
         <p className="mb-4 text-sm text-muted-foreground">
-          {formatMoney(priceDraft[0], 'EUR')} – {formatMoney(priceDraft[1], 'EUR')} a night
+          {lMoney(priceDraft[0], 'EUR', locale)} – {lMoney(priceDraft[1], 'EUR', locale)} {t('rooms.aNight')}
         </p>
         <Slider
           value={priceDraft}
           min={facets.priceRange.min}
           max={facets.priceRange.max}
           step={5}
-          aria-label="Nightly budget range"
+          aria-label={t('rooms.nightlyBudget')}
           onValueChange={(value) => {
             if (Array.isArray(value)) setPriceDraft([value[0] ?? 0, value[1] ?? 0]);
           }}
@@ -166,73 +171,74 @@ function FilterControls({
         />
       </Group>
 
-      <Group title="Room type" id={`${idPrefix}-type`}>
+      <Group title={t('rooms.roomType')} id={`${idPrefix}-type`}>
         <Chips
-          options={facets.categories.map((category) => ({ value: category, label: categoryLabels[category] }))}
+          options={facets.categories.map((category) => ({ value: category, label: lCategory(category, locale) }))}
           selected={filters.categories}
           onToggle={(value) => apply({ ...filters, categories: toggle(filters.categories, value) })}
         />
       </Group>
 
-      <Group title="View" id={`${idPrefix}-view`}>
+      <Group title={t('rooms.view')} id={`${idPrefix}-view`}>
         <Chips
-          options={facets.views.map((view) => ({ value: view, label: viewLabels[view] }))}
+          options={facets.views.map((view) => ({ value: view, label: lView(view, locale) }))}
           selected={filters.views}
           onToggle={(value) => apply({ ...filters, views: toggle(filters.views, value as RoomType['view']) })}
         />
       </Group>
 
-      <Group title="Beds" id={`${idPrefix}-beds`}>
+      <Group title={t('rooms.beds')} id={`${idPrefix}-beds`}>
         <Chips
-          options={facets.bedTypes.map((bed) => ({ value: bed, label: bedLabels[bed] }))}
+          options={facets.bedTypes.map((bed) => ({ value: bed, label: lBed(bed, locale) }))}
           selected={filters.bedTypes}
           onToggle={(value) => apply({ ...filters, bedTypes: toggle(filters.bedTypes, value as RoomType['bedType']) })}
         />
       </Group>
 
-      <Group title="Space and floor" id={`${idPrefix}-space`}>
+      <Group title={t('rooms.spaceAndFloor')} id={`${idPrefix}-space`}>
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectField
             id={`${idPrefix}-min-area`}
-            label="Minimum area"
+            label={t('rooms.minimumArea')}
             value={filters.minArea === null ? '' : String(filters.minArea)}
             onChange={(value) => apply({ ...filters, minArea: value === '' ? null : Number(value) })}
             options={[
-              { value: '', label: 'Any size' },
-              { value: '40', label: '40 m² or more' },
-              { value: '60', label: '60 m² or more' },
-              { value: '80', label: '80 m² or more' },
+              { value: '', label: t('rooms.anySize') },
+              { value: '40', label: t('rooms.orMoreArea', { size: '40' }) },
+              { value: '60', label: t('rooms.orMoreArea', { size: '60' }) },
+              { value: '80', label: t('rooms.orMoreArea', { size: '80' }) },
             ]}
           />
           <SelectField
             id={`${idPrefix}-min-floor`}
-            label="Floor"
+            label={t('rooms.floor')}
             value={filters.minFloor === null ? '' : String(filters.minFloor)}
             onChange={(value) => apply({ ...filters, minFloor: value === '' ? null : Number(value) })}
             options={[
-              { value: '', label: 'Any floor' },
-              { value: '1', label: '1st floor and up' },
-              { value: '4', label: '4th floor and up' },
-              { value: '6', label: '6th floor and up' },
+              { value: '', label: t('rooms.anyFloor') },
+              { value: '1', label: t('rooms.floorAndUp', { floor: '1' }) },
+              { value: '4', label: t('rooms.floorAndUp', { floor: '4' }) },
+              { value: '6', label: t('rooms.floorAndUp', { floor: '6' }) },
             ]}
           />
         </div>
       </Group>
 
-      <Group title="Amenities" id={`${idPrefix}-amenities`}>
+      <Group title={t('rooms.amenities')} id={`${idPrefix}-amenities`}>
         <Chips
           options={facets.amenities.map((amenity) => ({ value: amenity, label: amenity }))}
           selected={filters.amenities}
           onToggle={(value) => apply({ ...filters, amenities: toggle(filters.amenities, value) })}
+          emptyLabel={t('rooms.noAmenitiesYet')}
         />
       </Group>
 
-      <Group title="Availability" id={`${idPrefix}-availability`}>
+      <Group title={t('rooms.availability')} id={`${idPrefix}-availability`}>
         <label
           htmlFor={`${idPrefix}-hide-sold-out`}
           className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm"
         >
-          Hide fully booked rooms
+          {t('rooms.hideFullyBooked')}
           <Switch
             id={`${idPrefix}-hide-sold-out`}
             checked={!filters.includeSoldOut}
@@ -261,12 +267,14 @@ function Chips<T extends string>({
   options,
   selected,
   onToggle,
+  emptyLabel,
 }: {
   options: { value: T; label: string }[];
   selected: T[];
   onToggle: (value: T) => void;
+  emptyLabel?: string;
 }) {
-  if (options.length === 0) return <p className="text-sm text-muted-foreground">Nothing to filter by yet.</p>;
+  if (options.length === 0) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((option) => {

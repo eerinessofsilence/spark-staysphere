@@ -30,7 +30,8 @@ import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
 import { BuildingSpinner } from '@/components/view-360';
 import { withStayQuery } from '@/lib/application/search-params';
 import type { BuildingSpinnerData, HotelArea, Hotspot } from '@/lib/domain/schemas';
-import { bedLabels, formatFloor, formatMoney, formatRoomLine } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lFloor, lMoney, lRoomLine } from '@/lib/i18n/format';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -83,6 +84,8 @@ export function HotelScene({
   spinnerFocusHotspotId,
   className,
 }: HotelSceneProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const stageRef = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
@@ -156,7 +159,7 @@ export function HotelScene({
 
   /** Floor and tonight's price for a marker that sells a room, as one short line. */
   const roomLine = (hotspot: Hotspot): string | null =>
-    formatRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined);
+    lRoomLine(hotspot.roomSlug ? rooms?.[hotspot.roomSlug] : undefined, locale);
 
   const project = (point: { x: number; y: number }) => projectOnCover(point, area.photo, dims);
 
@@ -180,7 +183,9 @@ export function HotelScene({
         role="group"
         aria-roledescription="carousel"
         aria-label={
-          spinnerOnly ? `${area.name}, 360° view` : `Explore the hotel area by area. ${areas.length} areas.`
+          spinnerOnly
+            ? t('home.spinner360Aria', { name: area.name })
+            : t('home.exploreHotelAria', { count: String(areas.length) })
         }
         // Fills the screen below the header on a phone — 5rem is that
         // header's own height (h-14 + its pt-3) plus this section's pt-3
@@ -324,7 +329,8 @@ export function HotelScene({
                     <span className="flex flex-col gap-1 leading-tight">
                       <span className="font-medium">{facts.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatFloor(facts.floor)} · from {formatMoney(facts.nightlyPrice, facts.currency)}
+                        {lFloor(facts.floor, locale)} · {t('rooms.from')}{' '}
+                        {lMoney(facts.nightlyPrice, facts.currency, locale)}
                       </span>
                       <span className="flex items-center gap-2.5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -333,11 +339,11 @@ export function HotelScene({
                         </span>
                         <span className="flex items-center gap-1">
                           <Bed weight="fill" className="size-3" aria-hidden="true" />
-                          {bedLabels[facts.bedType]}
+                          {lBed(facts.bedType, locale)}
                         </span>
                         <span className="flex items-center gap-1">
                           <UsersIcon className="size-3" aria-hidden="true" />
-                          Sleeps {facts.capacity}
+                          {t('rooms.sleepsCount', { n: String(facts.capacity) })}
                         </span>
                       </span>
                     </span>
@@ -453,7 +459,7 @@ export function HotelScene({
             <div className="pointer-events-auto flex items-center gap-1 text-white">
               <button
                 type="button"
-                aria-label="Previous area"
+                aria-label={t('home.previousArea')}
                 onClick={() => go(index - 1)}
                 className={iconButton('glass', 'text-foreground')}
               >
@@ -461,7 +467,7 @@ export function HotelScene({
               </button>
               <button
                 type="button"
-                aria-label="Next area"
+                aria-label={t('home.nextArea')}
                 onClick={() => go(index + 1)}
                 className={iconButton('glass', 'text-foreground')}
               >

@@ -5,6 +5,7 @@ import { ArrowsPointingInIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRi
 import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { PanoramaViewer } from '@/components/view-360';
 import type { RoomType } from '@/lib/domain/schemas';
+import { useT } from '@/lib/i18n/context';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
  * Keyboard: arrows page, tabs switch.
  */
 export function RoomGallery({ room }: { room: RoomType }) {
+  const t = useT();
   const stageRef = React.useRef<HTMLDivElement>(null);
   const views = room.media.filter((item) => item.type === 'image' || item.type === '360');
   const photos = views.filter((item) => item.type === 'image');
@@ -84,7 +86,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
         tabIndex={0}
         role="group"
         aria-roledescription="carousel"
-        aria-label={`${room.name} photographs`}
+        aria-label={t('room.photographs', { name: room.name })}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') goPhoto(-1);
           if (event.key === 'ArrowRight') goPhoto(1);
@@ -103,7 +105,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
           <img
             key={candidate.url}
             src={candidate.url}
-            alt={candidate.url === photo.url ? `${room.name} — ${candidate.label ?? 'photo'}` : ''}
+            alt={candidate.url === photo.url ? `${room.name} — ${candidate.label ?? t('room.photo')}` : ''}
             width={candidate.width}
             height={candidate.height}
             decoding="async"
@@ -138,12 +140,12 @@ export function RoomGallery({ room }: { room: RoomType }) {
             {photo.type === '360' ? (
               <>
                 <PhotoIcon className="size-4" aria-hidden="true" />
-                Photos
+                {t('room.photos')}
               </>
             ) : (
               <>
                 <GlobeAltIcon className="size-4" aria-hidden="true" />
-                360° view
+                {t('room.threeSixtyView')}
               </>
             )}
           </button>
@@ -151,7 +153,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
         <button
           type="button"
-          aria-label={fullscreen ? 'Exit fullscreen' : 'View fullscreen'}
+          aria-label={fullscreen ? t('room.exitFullscreen') : t('room.viewFullscreen')}
           onClick={toggleFullscreen}
           className={iconButton('glass', 'absolute top-4 right-4 z-10')}
         >
@@ -170,10 +172,10 @@ export function RoomGallery({ room }: { room: RoomType }) {
             {/* No counter: the tabs under the photograph already name every
                 view and mark the one showing. */}
             <div className="flex items-center gap-1">
-              <button type="button" aria-label="Previous photo" onClick={() => goPhoto(-1)} className={iconButton('glass')}>
+              <button type="button" aria-label={t('room.previousPhoto')} onClick={() => goPhoto(-1)} className={iconButton('glass')}>
                 <ChevronLeftIcon className="size-4" aria-hidden="true" />
               </button>
-              <button type="button" aria-label="Next photo" onClick={() => goPhoto(1)} className={iconButton('glass')}>
+              <button type="button" aria-label={t('room.nextPhoto')} onClick={() => goPhoto(1)} className={iconButton('glass')}>
                 <ChevronRightIcon className="size-4" aria-hidden="true" />
               </button>
             </div>
@@ -182,10 +184,10 @@ export function RoomGallery({ room }: { room: RoomType }) {
       </div>
 
       <figcaption className="sr-only">
-        {views.length} views of the {room.name}. Use the buttons below to switch.
+        {t('room.viewsOfRoom', { count: String(views.length), name: room.name })}
       </figcaption>
 
-      <div role="tablist" aria-label="Room views" className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size">
+      <div role="tablist" aria-label={t('room.roomViews')} className="mt-3 flex gap-2 overflow-x-auto pb-1 contain-inline-size">
         {views.map((candidate, candidateIndex) => (
           <button
             key={candidate.url}
@@ -216,7 +218,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
 
       {photo.type === '360' ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Drag to look around. A stand-in panorama from{' '}
+          {t('room.dragToLookAroundPre')}
           <a
             href="https://polyhaven.com"
             target="_blank"
@@ -224,8 +226,8 @@ export function RoomGallery({ room }: { room: RoomType }) {
             className="underline underline-offset-2 hover:text-foreground"
           >
             Poly Haven
-          </a>{' '}
-          (CC0) until this room is captured in 360.
+          </a>
+          {t('room.dragToLookAroundPost')}
         </p>
       ) : null}
     </figure>

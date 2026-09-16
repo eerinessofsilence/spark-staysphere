@@ -1,13 +1,17 @@
+'use client';
+
+import { useT } from '@/lib/i18n/context';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BookLoading() {
+  const t = useT();
   return (
     <div
       role="status"
       aria-live="polite"
       className="container-page py-8 lg:py-12"
     >
-      <span className="sr-only">Preparing your booking…</span>
+      <span className="sr-only">{t('book.preparingBooking')}</span>
       <Skeleton className="h-4 w-44" />
       <Skeleton className="mt-6 h-12 w-96 max-w-full" />
       <div className="mt-8 grid gap-8 lg:grid-cols-sidebar lg:gap-10">

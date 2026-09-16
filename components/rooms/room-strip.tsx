@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import type { RoomOffer } from '@/lib/domain/schemas';
-import { formatMoney } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lMoney } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 
 interface RoomStripProps {
@@ -24,6 +27,8 @@ interface RoomStripProps {
  * on a phone while the page keeps its own padding.
  */
 export function RoomStrip({ offers, stayQuery, className, id }: RoomStripProps) {
+  const t = useT();
+  const { locale } = useLocale();
   if (offers.length === 0) return null;
 
   return (
@@ -64,11 +69,11 @@ export function RoomStrip({ offers, stayQuery, className, id }: RoomStripProps) 
                 {/* Size is the one fact that changes from tile to tile; the
                     capacity and view that used to sit here read the same
                     across the whole row. */}
-                {room.areaM2} m² · from{' '}
+                {room.areaM2} m² · {t('rooms.from')}{' '}
                 <span className="font-semibold text-foreground">
-                  {formatMoney(price.nightlyPrice, price.currency)}
+                  {lMoney(price.nightlyPrice, price.currency, locale)}
                 </span>{' '}
-                a night
+                {t('rooms.aNight')}
               </p>
             </Link>
           </li>

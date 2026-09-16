@@ -6,7 +6,8 @@ import { ArrowRightIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { Bed, Ruler } from '@phosphor-icons/react/dist/ssr';
 import { RoomFactTags, type RoomFacts } from '@/components/rooms/room-facts';
 import type { RoomStatus, SpinnerHotspot } from '@/lib/domain/schemas';
-import { bedLabels, formatMoney, statusText } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lMoney, lStatusText } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ interface HotspotContentProps {
 }
 
 function Availability({ status, remaining, className }: { status: RoomStatus; remaining?: number; className?: string }) {
+  const { locale } = useLocale();
   const soldOut = status === 'sold_out';
   return (
     <span
@@ -29,7 +31,7 @@ function Availability({ status, remaining, className }: { status: RoomStatus; re
       )}
     >
       <span aria-hidden="true" className={cn('size-1.5 rounded-full', soldOut ? 'bg-muted-foreground' : 'bg-[#2F9E63]')} />
-      {statusText(status, remaining ?? 0)}
+      {lStatusText(status, remaining ?? 0, locale)}
     </span>
   );
 }
@@ -50,6 +52,8 @@ export function SpinnerRoomCard({
   style: React.CSSProperties | undefined;
   onHover: () => void;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
   return (
     <Link
       ref={cardRef}
@@ -71,8 +75,8 @@ export function SpinnerRoomCard({
       <div className="p-4">
         {facts?.status ? <Availability status={facts.status} remaining={facts.remaining} /> : null}
         <p className="mt-2 font-medium">
-          {facts ? `${facts.name} — ${formatMoney(facts.nightlyPrice, facts.currency)}` : hotspot.label}
-          {facts ? <span className="text-sm font-normal text-muted-foreground"> a night</span> : null}
+          {facts ? `${facts.name} — ${lMoney(facts.nightlyPrice, facts.currency, locale)}` : hotspot.label}
+          {facts ? <span className="text-sm font-normal text-muted-foreground"> {t('rooms.aNight')}</span> : null}
         </p>
         {facts ? (
           <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
@@ -82,11 +86,11 @@ export function SpinnerRoomCard({
             </li>
             <li className="flex items-center gap-2">
               <Bed weight="fill" className="size-4" aria-hidden="true" />
-              {bedLabels[facts.bedType]}
+              {lBed(facts.bedType, locale)}
             </li>
             <li className="flex items-center gap-2">
               <UsersIcon className="size-4" aria-hidden="true" />
-              Sleeps {facts.capacity}
+              {t('rooms.sleepsCount', { n: String(facts.capacity) })}
             </li>
           </ul>
         ) : (
@@ -107,6 +111,8 @@ export function SpinnerRoomCard({
  * and a sheet has room for the prose the card had to drop.
  */
 export function SpinnerRoomSheetBody({ hotspot, facts, href }: HotspotContentProps) {
+  const t = useT();
+  const { locale } = useLocale();
   return (
     <div className="flex flex-col">
       {facts?.photo ? (
@@ -126,8 +132,8 @@ export function SpinnerRoomSheetBody({ hotspot, facts, href }: HotspotContentPro
           to this sheet for, so it takes the display size. */}
       {facts ? (
         <p className="mt-3 flex items-baseline gap-1.5">
-          <span className="text-display text-3xl">{formatMoney(facts.nightlyPrice, facts.currency)}</span>
-          <span className="text-sm text-muted-foreground">a night</span>
+          <span className="text-display text-3xl">{lMoney(facts.nightlyPrice, facts.currency, locale)}</span>
+          <span className="text-sm text-muted-foreground">{t('rooms.aNight')}</span>
         </p>
       ) : null}
 

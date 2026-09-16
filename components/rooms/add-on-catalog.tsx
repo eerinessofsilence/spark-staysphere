@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { AddOn } from '@/lib/domain/schemas';
-import { formatMoney, formatPricingUnit } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lMoney, lPricingUnit } from '@/lib/i18n/format';
 import { Modal } from '@/components/site/modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { iconButton, pill } from '@/lib/ui';
@@ -127,6 +128,8 @@ interface AddOnTileProps {
  * because a button inside a button is not a thing a browser will honour.
  */
 function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const Icon = addOnIcon(addOn.name);
   const cover = addOn.photos?.[0];
   // The same tone table the fact chips and amenity cards read from, so a
@@ -143,7 +146,7 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`Open ${addOn.name}`}
+        aria-label={t('room.openAddOn', { name: addOn.name })}
         className="flex h-full w-full cursor-pointer flex-col text-left transition-colors hover:bg-stone/50"
       >
         {cover ? (
@@ -184,8 +187,8 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
                 of wrapping, since `nowrap` forbids the very break that would
                 have kept them clear of it. */}
             <p className="leading-snug">
-              <span className="text-display text-base">{formatMoney(addOn.price, addOn.currency)}</span>{' '}
-              <span className="text-xs text-muted-foreground">{formatPricingUnit(addOn.pricingUnit)}</span>
+              <span className="text-display text-base">{lMoney(addOn.price, addOn.currency, locale)}</span>{' '}
+              <span className="text-xs text-muted-foreground">{lPricingUnit(addOn.pricingUnit, locale)}</span>
             </p>
           </span>
         </span>
@@ -195,7 +198,11 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
         type="button"
         onClick={added ? onRemove : onAdd}
         aria-pressed={added}
-        aria-label={added ? `Remove ${addOn.name} from your stay` : `Add ${addOn.name} to your stay`}
+        aria-label={
+          added
+            ? t('room.removeAddOnFromStay', { name: addOn.name })
+            : t('room.addAddOnToStay', { name: addOn.name })
+        }
         // Level with the seat on a row; in the corner under a photograph.
         className={iconButton(
           added ? 'dark' : 'light',
@@ -225,6 +232,7 @@ function PhotoSlider({
   name: string;
   className?: string;
 }) {
+  const t = useT();
   const [index, setIndex] = React.useState(0);
   const go = (delta: number) =>
     setIndex((current) => (current + delta + photos.length) % photos.length);
@@ -233,7 +241,7 @@ function PhotoSlider({
     <div
       role="group"
       aria-roledescription="carousel"
-      aria-label={`${name} photographs`}
+      aria-label={t('room.photographs', { name })}
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === 'ArrowLeft') go(-1);
@@ -261,7 +269,7 @@ function PhotoSlider({
         <div className="absolute inset-x-4 bottom-4 flex items-center justify-end gap-1">
           <button
             type="button"
-            aria-label="Previous photo"
+            aria-label={t('room.previousPhoto')}
             onClick={() => go(-1)}
             className={iconButton('glass')}
           >
@@ -283,7 +291,7 @@ function PhotoSlider({
           </span>
           <button
             type="button"
-            aria-label="Next photo"
+            aria-label={t('room.nextPhoto')}
             onClick={() => go(1)}
             className={iconButton('glass')}
           >
@@ -312,6 +320,8 @@ interface AddOnDetailsProps {
  * re-prices the stay once rather than three times.
  */
 function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: AddOnDetailsProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const added = selected.includes(addOn.id);
   const photos = addOn.photos ?? [];
   const [draft, setDraft] = React.useState<string[]>(() =>
@@ -340,9 +350,9 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
             money, not a footnote under the name. */}
         <p className="mt-3 flex items-baseline gap-2">
           <span className="text-display text-2xl sm:text-3xl">
-            {formatMoney(addOn.price, addOn.currency)}
+            {lMoney(addOn.price, addOn.currency, locale)}
           </span>
-          <span className="text-sm text-muted-foreground">{formatPricingUnit(addOn.pricingUnit)}</span>
+          <span className="text-sm text-muted-foreground">{lPricingUnit(addOn.pricingUnit, locale)}</span>
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">{addOn.description}</p>
       </div>
@@ -350,7 +360,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
       {extras.length > 0 ? (
         <div role="group" aria-labelledby={`${idPrefix}-${addOn.id}-extras`}>
           <h4 id={`${idPrefix}-${addOn.id}-extras`} className="text-display text-lg">
-            Add to it
+            {t('room.addToIt')}
           </h4>
           {/* No rules between the rows: the whole row is the target, so it
               needs a shape of its own to fill on hover, and a hairline through
@@ -389,10 +399,10 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
                           quiet. Side by side they read as one grey phrase. */}
                       <span className="shrink-0 text-right">
                         <span className="text-display block text-xl leading-none whitespace-nowrap">
-                          +{formatMoney(extra.price, extra.currency)}
+                          +{lMoney(extra.price, extra.currency, locale)}
                         </span>
                         <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground">
-                          {formatPricingUnit(extra.pricingUnit)}
+                          {lPricingUnit(extra.pricingUnit, locale)}
                         </span>
                       </span>
                     </span>
@@ -427,11 +437,11 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
             className={pill('primary', 'min-h-12 flex-1 justify-center')}
           >
             {added ? (
-              'Save changes'
+              t('room.saveChanges')
             ) : (
               <>
                 <PlusIcon className="size-4" aria-hidden="true" />
-                Add to your stay
+                {t('room.addToYourStay')}
               </>
             )}
           </button>
@@ -441,17 +451,15 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
               onClick={() => onCommit(withoutThis)}
               className={pill('secondary', 'min-h-12 justify-center')}
             >
-              Remove
+              {t('room.removeAction')}
             </button>
           ) : null}
         </div>
         {/* Every line in a pinned footer costs screen for good, so the phone
             keeps the promise and drops the mechanics. */}
         <p className="text-xs leading-relaxed text-muted-foreground">
-          <span className="hidden sm:inline">
-            Added to the stay and priced by the booking engine.{' '}
-          </span>
-          Nothing is charged now.
+          <span className="hidden sm:inline">{t('room.addedPricedByEngine')} </span>
+          {t('room.nothingChargedNow')}
         </p>
       </div>
     </div>
@@ -477,7 +485,7 @@ function AddOnDetails({ addOn, extras, selected, idPrefix, onClose, onCommit }: 
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={t('nav.close')}
         className={iconButton('light', 'absolute top-4 right-4 z-10 shadow-soft')}
       >
         <XMarkIcon className="size-4" aria-hidden="true" />

@@ -9,7 +9,8 @@ import { useElementSize } from '@/components/site/use-element-size';
 import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
 import { withStayQuery } from '@/lib/application/search-params';
 import type { BuildingSpinnerData, SpinnerHotspot } from '@/lib/domain/schemas';
-import { formatRoomLine } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lRoomLine } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { buildTrack, frontOnPoint, hotspotPosition, openingFrame } from './orbit';
 import { SpinnerMarker } from './spinner-marker';
@@ -59,6 +60,8 @@ export function BuildingSpinner({
   focusHotspotId,
   className,
 }: BuildingSpinnerProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const { frameCount } = spinner;
   const frameSize = { width: spinner.frameWidth, height: spinner.frameHeight };
   const keyAngles = React.useMemo(() => [...spinner.keyAngles].sort((a, b) => a - b), [spinner.keyAngles]);
@@ -126,7 +129,7 @@ export function BuildingSpinner({
     <SpinnerMarker
       key={hotspot.id}
       hotspot={hotspot}
-      line={formatRoomLine(factsFor(hotspot))}
+      line={lRoomLine(factsFor(hotspot), locale)}
       isActive={hotspot.id === activeHotspot}
       isHovered={hotspot.id === hoveredHotspot}
       style={positionFor(point)}
@@ -192,7 +195,7 @@ export function BuildingSpinner({
       role="group"
       tabIndex={active ? 0 : -1}
       aria-roledescription="carousel"
-      aria-label={`${title}, drag or use the arrow keys to spin around the building`}
+      aria-label={`${title}, ${t('home.spinnerDragHint')}`}
       // `pan-y`, not `none`: the stage fills a phone's screen, and `none` made
       // it a dead zone the page could not be scrolled past. The drag only reads
       // horizontal travel, so a vertical swipe stays the browser's to scroll

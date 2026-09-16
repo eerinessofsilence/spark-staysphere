@@ -1,8 +1,11 @@
+'use client';
+
 import { UsersIcon } from '@heroicons/react/24/outline';
 import { Bed, Ruler } from '@phosphor-icons/react/dist/ssr';
 import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import type { Currency, RoomStatus, RoomType } from '@/lib/domain/schemas';
-import { bedLabels } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed } from '@/lib/i18n/format';
 import { tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +30,8 @@ export interface RoomFacts {
 
 /** Size, bed and capacity as the tinted chips a room's sheet shows, one tone per kind of fact. */
 export function RoomFactTags({ facts, className }: { facts: RoomFacts; className?: string }) {
+  const t = useT();
+  const { locale } = useLocale();
   return (
     <ul className={cn('flex flex-wrap gap-1.5', className)}>
       <li className={tag(tintSurface[factTone.area])}>
@@ -35,11 +40,11 @@ export function RoomFactTags({ facts, className }: { facts: RoomFacts; className
       </li>
       <li className={tag(tintSurface[factTone.bed])}>
         <Bed weight="fill" className={cn('size-3.5', tintInk[factTone.bed])} aria-hidden="true" />
-        {bedLabels[facts.bedType]}
+        {lBed(facts.bedType, locale)}
       </li>
       <li className={tag(tintSurface[factTone.capacity])}>
         <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
-        Sleeps {facts.capacity}
+        {t('rooms.sleepsCount', { n: String(facts.capacity) })}
       </li>
     </ul>
   );

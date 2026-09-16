@@ -3,29 +3,31 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowRightIcon, CalendarIcon, UsersIcon } from '@heroicons/react/24/outline';
-import { cancelTrip, claimTrip, getDefaultTrips, loadTrips } from '@/app/trips/actions';
+import { cancelTrip, claimTrip, getDefaultTrips, loadTrips, type TripActionErrorCode } from '@/app/trips/actions';
 import type { TripSummary } from '@/lib/application/booking-service';
 import { stayBucket } from '@/lib/domain/availability';
-import { formatDateRange, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBookingStatus, lDateRange, lGuests, lMoney, lNights } from '@/lib/i18n/format';
+import type { TranslationKey } from '@/lib/i18n/dictionaries';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { readTrips, rememberTrip } from '@/lib/trips-storage';
 import { Modal } from '@/components/site/modal';
 import { cn } from '@/lib/utils';
 
-/** A cancelled stay still belongs in the list; it just does not read as upcoming. */
-const statusLabels: Record<TripSummary['status'], string> = {
-  draft: 'Not finished',
-  held: 'Held',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled',
-};
-
 type Tab = 'upcoming' | 'past' | 'cancelled';
 
-const tabLabels: Record<Tab, string> = {
-  upcoming: 'Upcoming',
-  past: 'Past',
-  cancelled: 'Cancelled',
+const TAB_LABEL_KEYS: Record<Tab, TranslationKey> = {
+  upcoming: 'trips.tabUpcoming',
+  past: 'trips.tabPast',
+  cancelled: 'trips.tabCancelled',
+};
+
+const TRIP_ERROR_KEYS: Record<TripActionErrorCode, TranslationKey> = {
+  invalid_reference: 'trips.bookingNumberFormatError',
+  invalid_email: 'trips.enterEmailError',
+  not_found: 'trips.notMatchError',
+  stay_started: 'trips.stayAlreadyBegunError',
+  cancel_not_found: 'trips.notMatchCancelError',
 };
 
 function todayIso(): string {
@@ -46,6 +48,7 @@ function bucketOf(trip: TripSummary, today: string): Tab {
 }
 
 export function TripsView({ stayQuery }: { stayQuery: string }) {
+  const t = useT();
   const [trips, setTrips] = React.useState<TripSummary[] | null>(null);
   const [tab, setTab] = React.useState<Tab>('upcoming');
   const [cancelling, setCancelling] = React.useState<TripSummary | null>(null);
@@ -89,7 +92,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
   if (trips === null) {
     return (
       <p className="mt-10 text-sm text-muted-foreground" role="status">
-        Looking up your bookings…
+        {t('trips.looking')}
       </p>
     );
   }
@@ -103,13 +106,12 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
     <div className="mt-10">
       {trips.length === 0 ? (
         <div className="rounded-[18px] border border-dashed border-border p-10 text-center">
-          <h2 className="text-display text-2xl sm:text-3xl">No trips yet</h2>
+          <h2 className="text-display text-2xl sm:text-3xl">{t('trips.noTripsYet')}</h2>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
-            Bookings you make here are listed on this page. Booked on another device? Find it with
-            your booking number below.
+            {t('trips.noTripsBody')}
           </p>
           <Link href={`/rooms?${stayQuery}`} className={pill('primary', 'mt-6')}>
-            Browse rooms
+            {t('trips.browseRooms')}
             <ArrowRightIcon className="size-4" aria-hidden="true" />
           </Link>
         </div>
@@ -117,10 +119,10 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
         <>
           <div
             role="tablist"
-            aria-label="Filter trips"
+            aria-label={t('trips.filterTripsAria')}
             className="inline-flex gap-1 rounded-full bg-stone/60 p-1"
           >
-            {(Object.keys(tabLabels) as Tab[]).map((key) => {
+            {(Object.keys(TAB_LABEL_KEYS) as Tab[]).map((key) => {
               const selected = key === tab;
               return (
                 <button
@@ -136,7 +138,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {tabLabels[key]}
+                  {t(TAB_LABEL_KEYS[key])}
                   <span className={cn('text-xs', selected ? 'text-muted-foreground' : 'opacity-70')}>
                     {counts[key]}
                   </span>
@@ -148,10 +150,10 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
           {shown.length === 0 ? (
             <p className="mt-6 rounded-[18px] border border-dashed border-border p-10 text-center text-muted-foreground">
               {tab === 'upcoming'
-                ? 'No stays ahead of you right now.'
+                ? t('trips.noUpcoming')
                 : tab === 'past'
-                  ? 'Nothing here yet — stays move across once you have checked out.'
-                  : 'Nothing cancelled.'}
+                  ? t('trips.noPast')
+                  : t('trips.noCancelled')}
             </p>
           ) : (
             <ul className="mt-6 grid gap-3">
@@ -183,6 +185,8 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
 }
 
 function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void }) {
+  const t = useT();
+  const { locale } = useLocale();
   const cancelled = trip.status === 'cancelled';
 
   return (
@@ -225,7 +229,7 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
               </Link>
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Booking number{' '}
+              {t('trips.bookingNumber')}{' '}
               <span className="font-semibold tracking-wide text-foreground">{trip.reference}</span>
             </p>
           </div>
@@ -236,43 +240,43 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
               cancelled && 'text-danger',
             )}
           >
-            {statusLabels[trip.status]}
+            {lBookingStatus(trip.status, locale)}
           </span>
         </div>
 
         <ul className="flex flex-wrap gap-1.5">
           <li className={tag()}>
             <CalendarIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            {formatDateRange(trip.checkIn, trip.checkOut)} · {formatNights(trip.nights)}
+            {lDateRange(trip.checkIn, trip.checkOut, locale)} · {lNights(trip.nights, locale)}
           </li>
           <li className={tag()}>
             <UsersIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            {formatGuests(trip.adults, trip.children)}
+            {lGuests(trip.adults, trip.children, locale)}
           </li>
           {trip.addOnCount > 0 ? (
             <li className={tag()}>
-              {trip.addOnCount} {trip.addOnCount === 1 ? 'extra' : 'extras'}
+              {trip.addOnCount} {t(trip.addOnCount === 1 ? 'trips.extraOne' : 'trips.extraOther')}
             </li>
           ) : null}
         </ul>
 
         <div className="flex flex-wrap items-baseline justify-between gap-4 border-t border-border pt-4">
           <span className="text-sm text-muted-foreground">
-            {cancelled ? 'Was' : 'Total paid'}
+            {t(cancelled ? 'trips.wasLabel' : 'trips.totalPaid')}
           </span>
           <span className={cn('text-display text-2xl', cancelled && 'line-through opacity-60')}>
-            {formatMoney(trip.total, trip.currency)}
+            {lMoney(trip.total, trip.currency, locale)}
           </span>
         </div>
 
         {/* Above the stretched link, or the card would swallow the click. */}
         <div className="relative z-10 flex flex-wrap gap-2">
           <Link href={`/booking/${trip.reference}`} className={pill('secondary', 'min-h-10 px-4')}>
-            View booking &amp; receipt
+            {t('trips.viewBookingReceipt')}
           </Link>
           {trip.canCancel ? (
             <button type="button" onClick={onCancel} className={pill('ghost', 'min-h-10 px-4 text-danger hover:bg-danger/10')}>
-              Cancel booking
+              {t('trips.cancelBooking')}
             </button>
           ) : null}
         </div>
@@ -296,6 +300,8 @@ function CancelDialog({
   onClose: () => void;
   onCancelled: (trip: TripSummary) => void;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
   const [email, setEmail] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
@@ -315,32 +321,34 @@ function CancelDialog({
     const result = await cancelTrip({ reference: trip.reference, email });
     setPending(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(t(TRIP_ERROR_KEYS[result.code]));
       return;
     }
     onCancelled(result.trip);
   };
 
   return (
-    <Modal open={trip !== null} onClose={onClose} title="Cancel booking">
+    <Modal open={trip !== null} onClose={onClose} title={t('trips.cancelBooking')}>
       {trip ? (
         <form onSubmit={submit}>
-          <h2 className="text-display text-2xl">Cancel this stay?</h2>
+          <h2 className="text-display text-2xl">{t('trips.cancelThisStay')}</h2>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            {trip.roomName}, {formatDateRange(trip.checkIn, trip.checkOut)} · {trip.reference}. The
-            room goes back on sale straight away. Nothing was charged in this demo, so there is
-            nothing to refund — and the booking cannot be reinstated afterwards.
+            {t('trips.cancelDialogBody', {
+              room: trip.roomName,
+              dateRange: lDateRange(trip.checkIn, trip.checkOut, locale),
+              reference: trip.reference,
+            })}
           </p>
 
           <label htmlFor="cancel-email" className="mt-5 mb-1.5 block text-sm text-muted-foreground">
-            Email the booking was made with
+            {t('trips.cancelEmailLabel')}
           </label>
           <input
             id="cancel-email"
             type="email"
             required
             autoComplete="email"
-            placeholder="Enter your email"
+            placeholder={t('book.enterEmail')}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={fieldClass}
@@ -354,7 +362,7 @@ function CancelDialog({
 
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} className={pill('secondary', 'min-h-11')}>
-              Keep booking
+              {t('trips.keepBooking')}
             </button>
             <button
               type="submit"
@@ -366,7 +374,7 @@ function CancelDialog({
               // warm white by day, matching every other solid pill.
               className={pill('primary', 'min-h-11 bg-danger text-primary-foreground hover:bg-danger/90')}
             >
-              {pending ? 'Cancelling…' : 'Cancel booking'}
+              {pending ? t('trips.cancelling') : t('trips.cancelBooking')}
             </button>
           </div>
         </form>
@@ -382,6 +390,7 @@ function ClaimForm({
   onFound: (trip: TripSummary) => void;
   known: string[];
 }) {
+  const t = useT();
   const [reference, setReference] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -396,30 +405,29 @@ function ClaimForm({
     const result = await claimTrip({ reference, email });
     setPending(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(t(TRIP_ERROR_KEYS[result.code]));
       return;
     }
     const already = known.includes(result.trip.reference);
     onFound(result.trip);
     setReference('');
     setEmail('');
-    setNotice(already ? 'That trip is already on this list.' : `${result.trip.reference} added.`);
+    setNotice(already ? t('trips.alreadyOnList') : t('trips.added', { reference: result.trip.reference }));
   };
 
   return (
     <section aria-labelledby="claim-heading" className="mt-12 rounded-[18px] bg-card p-6 shadow-soft sm:p-8">
       <h2 id="claim-heading" className="text-display text-2xl">
-        Find a booking
+        {t('trips.findABooking')}
       </h2>
       <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-        Booked on another device? Enter the booking number from your confirmation and the email you
-        booked with, and the stay joins this list.
+        {t('trips.findABookingBody')}
       </p>
 
       <form onSubmit={onSubmit} className="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <label htmlFor="claim-reference" className="mb-1.5 block text-sm text-muted-foreground">
-            Booking number
+            {t('trips.bookingNumber')}
           </label>
           <input
             id="claim-reference"
@@ -434,21 +442,21 @@ function ClaimForm({
         </div>
         <div>
           <label htmlFor="claim-email" className="mb-1.5 block text-sm text-muted-foreground">
-            Email
+            {t('book.email')}
           </label>
           <input
             id="claim-email"
             type="email"
             required
             autoComplete="email"
-            placeholder="Enter your email"
+            placeholder={t('trips.emailPlaceholder')}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={fieldClass}
           />
         </div>
         <button type="submit" disabled={pending} className={pill('primary', 'min-h-11')}>
-          {pending ? 'Looking…' : 'Find booking'}
+          {pending ? t('trips.looking') : t('trips.findBooking')}
         </button>
       </form>
 

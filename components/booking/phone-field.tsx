@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { CheckIcon, ChevronDownIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n/context';
 import { iconButton } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { useScrollLock } from '@/components/site/use-scroll-lock';
@@ -114,6 +115,7 @@ export function PhoneField({
   onNationalNumberChange,
   invalid,
 }: PhoneFieldProps) {
+  const t = useT();
   const country = countryByIso(countryIso);
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -196,7 +198,7 @@ export function PhoneField({
       <div
         ref={panelRef}
         role="dialog"
-        aria-label="Country code"
+        aria-label={t('book.countryCode')}
         className={cn(
           'fixed inset-x-3 bottom-3 z-50 flex max-h-[75dvh] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-soft-lg',
           'sm:inset-auto sm:top-(--panel-top) sm:left-(--panel-left) sm:w-(--panel-width) sm:max-w-[calc(100vw-2rem)] sm:rounded-3xl',
@@ -220,7 +222,7 @@ export function PhoneField({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Close"
+            aria-label={t('nav.close')}
             className={cn(iconButton('light', 'size-10 shrink-0'), 'sm:hidden')}
           >
             <XMarkIcon className="size-4" aria-hidden="true" />
@@ -235,17 +237,17 @@ export function PhoneField({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onSearchKeyDown}
-              placeholder="Search country or code"
-              aria-label="Search countries"
+              placeholder={t('book.searchCountryPlaceholder')}
+              aria-label={t('book.searchCountriesAria')}
               className="min-h-10 w-full rounded-full border border-border bg-transparent py-2 pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-accent"
             />
           </div>
         </div>
 
-        <ul className="min-h-0 flex-1 overflow-y-auto p-2" role="listbox" aria-label="Countries">
+        <ul className="min-h-0 flex-1 overflow-y-auto p-2" role="listbox" aria-label={t('book.countriesAria')}>
           {results.length === 0 ? (
             <li className="p-4 text-center text-sm text-muted-foreground">
-              No country matches &ldquo;{query}&rdquo;.
+              {t('book.noCountryMatches', { query })}
             </li>
           ) : (
             results.map((option) => {
@@ -295,7 +297,7 @@ export function PhoneField({
         id={`${id}-country`}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Country code, ${country.name} ${country.dial}. Choose a country.`}
+        aria-label={t('book.chooseCountryAria', { country: country.name, dial: country.dial })}
         onClick={() => setOpen((current) => !current)}
         className="flex shrink-0 cursor-pointer items-center gap-1 border-r border-border pr-2 pl-3.5 transition-colors hover:bg-stone/60"
       >
@@ -309,7 +311,7 @@ export function PhoneField({
         id={id}
         type="tel"
         autoComplete="tel-national"
-        placeholder="Enter your phone number"
+        placeholder={t('book.enterPhoneNumberPlaceholder')}
         value={nationalNumber}
         aria-invalid={invalid}
         onChange={(event) => onNationalNumberChange(event.target.value)}

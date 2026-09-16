@@ -1,0 +1,265 @@
+'use client';
+
+import Link from 'next/link';
+import { Star } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRightIcon, ArrowUpRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import type { RoomFacts } from '@/components/rooms/room-facts';
+import type { BuildingSpinnerData, Hotel, RoomOffer } from '@/lib/domain/schemas';
+import { useT } from '@/lib/i18n/context';
+import { pill } from '@/lib/ui';
+import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
+import { HotelScene } from '@/components/hotel/hotel-scene';
+import { RoomCard } from '@/components/rooms/room-card';
+import { RoomStrip } from '@/components/rooms/room-strip';
+import { RoomStripControls, ScrollArrows } from '@/components/rooms/room-strip-controls';
+import { StaySearchBar } from '@/components/search/stay-search-bar';
+import { ParallaxImage } from '@/components/site/parallax-image';
+import { Reveal } from '@/components/site/reveal';
+import { SiteFooter } from '@/components/site/site-footer';
+import { SiteHeader } from '@/components/site/site-header';
+import type { StayCriteria } from '@/lib/domain/schemas';
+
+export interface HomeViewProps {
+  hotel: Hotel;
+  stayQuery: string;
+  today: string;
+  criteria: StayCriteria;
+  highlights: RoomOffer[];
+  rest: RoomOffer[];
+  roomFacts: Record<string, RoomFacts>;
+  spinner: BuildingSpinnerData | undefined;
+  spinnerInitialFrame: number | undefined;
+  spinnerFocusHotspotId: string | null;
+}
+
+export function HomeView({
+  hotel,
+  stayQuery,
+  today,
+  criteria,
+  highlights,
+  rest,
+  roomFacts,
+  spinner,
+  spinnerInitialFrame,
+  spinnerFocusHotspotId,
+}: HomeViewProps) {
+  const t = useT();
+
+  return (
+    <>
+      <SiteHeader
+        stayQuery={stayQuery}
+        search={<StaySearchBar criteria={criteria} minDate={today} size="compact" />}
+      />
+      <main id="main">
+        {/* Arrival */}
+        <section className="mx-auto max-w-page pt-3 sm:px-gutter sm:pt-8 lg:pt-14">
+          {/* What the place is before what it looks like: the name, its
+              classification and where it stands, above the building. Gold
+              for the stars, the same `text-warning` the CMS's own rating
+              picker fills with — a rating reads as that colour everywhere
+              now, not just where it's editable. One image with one label,
+              so a screen reader hears "5-star hotel", not five unnamed
+              marks. */}
+          <header className="px-gutter pb-4 sm:px-0 sm:pb-6">
+            <h1 className="text-display text-4xl sm:text-5xl">{hotel.name}</h1>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground sm:text-base">
+              <span
+                role="img"
+                aria-label={t('home.starRatingAria', { count: hotel.starRating })}
+                className="flex items-center gap-0.5 text-warning"
+              >
+                {Array.from({ length: hotel.starRating }, (_, index) => (
+                  <Star key={index} weight="fill" className="size-4" aria-hidden="true" />
+                ))}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
+                {hotel.location}
+              </span>
+            </p>
+          </header>
+
+          {/* On a phone the arrival photograph is the screen: it runs to both
+              edges and starts straight under the header, rather than sitting
+              in the page's gutter as one more card. The inset card returns at
+              `sm`, where the canvas around it is composition, not waste. */}
+          <HotelScene
+            areas={hotel.areas}
+            location={hotel.location}
+            stayQuery={stayQuery}
+            rooms={roomFacts}
+            spinner={spinner}
+            spinnerInitialFrame={spinnerInitialFrame}
+            spinnerFocusHotspotId={spinnerFocusHotspotId}
+          />
+
+          {/* Its own gutter now: the section gave up its padding so the
+              photograph above could reach the edges. */}
+          <div className="mt-5 px-gutter lg:px-12">
+            <h2 className="sr-only">{t('search.searchRoomsHeading')}</h2>
+            {/* From `lg` the same search rides in the header instead. */}
+            <div className="lg:hidden">
+              <StaySearchBar criteria={criteria} minDate={today} />
+            </div>
+          </div>
+        </section>
+
+        {/* About the hotel. The interactive scene above is where a guest
+            explores; this is the one paragraph that says what the place
+            actually is, for the guest who wants that before anything else. */}
+        <section aria-labelledby="about-heading" className="container-page mt-20">
+          {/* No card, no shadow: this reads as the page's own copy, not one
+              more tile among the room cards. Half the band each — at a third
+              of the width the photograph was a thumbnail sat beside display
+              type, too small to be the view it is meant to sell. */}
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <Reveal>
+              <h2 id="about-heading" className="text-display text-4xl sm:text-5xl">
+                {t('home.aboutHeading', { hotel: hotel.name })}
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+                {hotel.description}
+              </p>
+              <p className="mt-5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <MapPinIcon className="size-4 shrink-0" aria-hidden="true" />
+                {hotel.location}
+              </p>
+            </Reveal>
+            <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[18px]">
+              <img
+                src={hotel.aboutPhoto.url}
+                alt={t('home.aboutHeading', { hotel: hotel.name })}
+                width={hotel.aboutPhoto.width}
+                height={hotel.aboutPhoto.height}
+                loading="lazy"
+                decoding="async"
+                className="size-full object-cover"
+              />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Recommended rooms */}
+        <section aria-labelledby="rooms-heading" className="container-page mt-20">
+          <div className="flex flex-wrap items-end gap-4">
+            <Reveal>
+              <h2 id="rooms-heading" className="text-display text-4xl sm:text-5xl">
+                {t('home.whereToStay')}
+              </h2>
+            </Reveal>
+            {/* `ml-auto` on the row: a wrap on a narrow screen puts this on
+                its own line, where `justify-between` on the row itself would
+                align a lone item to the start instead of the end. Within the
+                pair, though, a full-width `justify-between` once it has that
+                line to itself — the pill left, arrows right — rather than
+                both huddled at one edge with the rest of the line empty. */}
+            <div className="ml-auto flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
+              <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
+                {t('home.viewAll')}
+                <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+              </Link>
+              <ScrollArrows targetId="highlights-rail" />
+            </div>
+          </div>
+
+          {highlights.length === 0 ? (
+            <p className="mt-8 rounded-[18px] border border-dashed border-border p-10 text-center text-muted-foreground">
+              {t('home.noOffersForDates')}
+            </p>
+          ) : (
+            <>
+              {/* A rail, not a grid: fixed-width tiles so the row scrolls
+                  sideways instead of wrapping, with the arrows above paging
+                  it by one tile. The bleed past the section's own padding
+                  matches "The other rooms" rail below. */}
+              <ul
+                id="highlights-rail"
+                className="no-scrollbar -mx-gutter mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-gutter pb-2 scroll-pl-gutter"
+              >
+                {/* Sized from the rail, not in px: exactly four across from
+                    `lg`, three from `sm`, two on a phone — the width is the
+                    section's, minus the gaps between the tiles it holds. One
+                    gap size throughout (20px) rather than a wider one at
+                    `lg`, so the spacing itself never changes, only the count. */}
+                {highlights.map((offer) => (
+                  <li
+                    key={offer.room.id}
+                    className="w-[calc((100%-1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3)] lg:w-[calc((100%-3.75rem)/4)]"
+                  >
+                    <RoomCard offer={offer} stayQuery={stayQuery} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
+        {/* Closing band */}
+        <section aria-labelledby="closing-heading" className="container-page mt-20">
+          {/* Ink under the photograph, not just behind it: the copy here is
+              white and the photo is lazy-loaded, so an unloaded frame would
+              otherwise leave white text on a pale page. */}
+          <div className="relative overflow-hidden rounded-[18px] bg-ink">
+            <ParallaxImage src="/images/hotel/pool.webp" alt="" width={2000} height={1334} />
+            {/* Two scrims rather than one flat wash across the middle. The
+                copy sits bottom-left, so the photograph is darkened hardest
+                exactly there and left alone where nothing is written — the
+                single left-to-right gradient dimmed the whole picture and
+                still left the body copy sitting on open water. */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent"
+            />
+            <div className="relative flex flex-col items-start gap-7 p-8 pt-40 text-[#F7F5F0] sm:p-12 sm:pt-56 lg:min-h-[32rem] lg:justify-end">
+              <Reveal>
+                {/* The section's actual heading, not a paragraph that looks
+                    like one. The emphasis is carried by the italic serif
+                    alone: the accent token behind it is clay by day, and a
+                    dark clay on a dark photograph read as mud. */}
+                <h2
+                  id="closing-heading"
+                  className="text-display max-w-2xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl"
+                >
+                  {t('home.closingHeadingStart')}{' '}
+                  <span className="text-accent-italic sm:whitespace-nowrap">{t('home.closingHeadingEnd')}</span>
+                </h2>
+              </Reveal>
+              <p className="max-w-md text-[15px] leading-relaxed text-white/85">{t('home.closingBody')}</p>
+              <Link href={`/rooms?${stayQuery}`} className={pill('onPhoto', 'min-h-12 px-6')}>
+                {t('home.startWithRooms')}
+                <ArrowRightIcon className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* The rest of the house, on the way out */}
+        {rest.length > 0 ? (
+          <section aria-labelledby="rest-heading" className="container-page mt-20">
+            <div className="flex flex-wrap items-end gap-4">
+              <Reveal>
+                <h2 id="rest-heading" className="text-display text-4xl sm:text-5xl">
+                  {t('home.otherRooms')}
+                </h2>
+              </Reveal>
+              <RoomStripControls
+                targetId="other-rooms-rail"
+                href={`/rooms?${stayQuery}`}
+                className="ml-auto"
+              />
+            </div>
+            <RoomStrip id="other-rooms-rail" offers={rest} stayQuery={stayQuery} className="mt-8" />
+          </section>
+        ) : null}
+      </main>
+      <SiteFooter stayQuery={stayQuery} />
+      <AssistantLauncher />
+    </>
+  );
+}
