@@ -143,7 +143,7 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   return (
                     <li
                       key={amenity}
-                      className="flex min-h-32 w-[calc((100%-0.75rem)/2)] shrink-0 snap-start flex-col items-center justify-center gap-3 rounded-[28px] bg-card p-5 text-center shadow-soft sm:min-h-40 sm:w-[calc((100%-1.5rem)/3)] sm:gap-4 sm:p-6 lg:w-[calc((100%-2.25rem)/4)]"
+                      className="flex min-h-32 w-[calc((100%-0.75rem)/2)] shrink-0 snap-start flex-col items-center justify-center gap-3 rounded-[18px] bg-card p-5 text-center shadow-soft sm:min-h-40 sm:w-[calc((100%-1.5rem)/3)] sm:gap-4 sm:p-6 lg:w-[calc((100%-2.25rem)/4)]"
                     >
                       <Icon
                         weight="fill"
@@ -220,14 +220,14 @@ export default async function RoomDetailPage({ params, searchParams }: PageProps
                   summary uses, so arrival and departure read as the same
                   idea everywhere they appear. */}
               <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-md">
-                <div className={cn('rounded-[20px] p-4', tintSurface.stone)}>
+                <div className={cn('rounded-[14px] p-4', tintSurface.stone)}>
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ArrowRightEndOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
                     Check-in
                   </p>
                   <p className="text-display mt-1 text-xl">From 3:00 PM</p>
                 </div>
-                <div className={cn('rounded-[20px] p-4', tintSurface.stone)}>
+                <div className={cn('rounded-[14px] p-4', tintSurface.stone)}>
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ArrowLeftStartOnRectangleIcon className="size-4 shrink-0" aria-hidden="true" />
                     Check-out

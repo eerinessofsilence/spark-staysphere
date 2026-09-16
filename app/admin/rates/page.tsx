@@ -64,7 +64,7 @@ export default async function RatesPage() {
         price here is the room&apos;s first rate under Rooms — the same field, whichever page you change it on.
       </p>
 
-      <section aria-label="Rates and availability by room type" className="mt-6 rounded-[28px] bg-card shadow-soft">
+      <section aria-label="Rates and availability by room type" className="mt-6 rounded-[18px] bg-card shadow-soft">
         <div
           aria-hidden="true"
           className={cn('hidden gap-4 border-b border-border px-5 py-3 text-sm text-muted-foreground lg:grid', columns)}

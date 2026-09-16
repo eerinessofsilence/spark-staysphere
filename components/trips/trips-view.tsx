@@ -93,7 +93,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
   return (
     <div className="mt-10">
       {trips.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-border p-10 text-center">
+        <div className="rounded-[18px] border border-dashed border-border p-10 text-center">
           <h2 className="text-display text-2xl sm:text-3xl">No trips yet</h2>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
             Bookings you make here are listed on this page. Booked on another device? Find it with
@@ -137,7 +137,7 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
           </div>
 
           {shown.length === 0 ? (
-            <p className="mt-6 rounded-[28px] border border-dashed border-border p-10 text-center text-muted-foreground">
+            <p className="mt-6 rounded-[18px] border border-dashed border-border p-10 text-center text-muted-foreground">
               {tab === 'upcoming'
                 ? 'No stays ahead of you right now.'
                 : tab === 'past'
@@ -179,7 +179,7 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
   return (
     <article
       className={cn(
-        'group relative grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
+        'group relative grid overflow-hidden rounded-[18px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
         'sm:grid-cols-media',
         cancelled && 'opacity-90',
       )}
@@ -398,7 +398,7 @@ function ClaimForm({
   };
 
   return (
-    <section aria-labelledby="claim-heading" className="mt-12 rounded-[28px] bg-card p-6 shadow-soft sm:p-8">
+    <section aria-labelledby="claim-heading" className="mt-12 rounded-[18px] bg-card p-6 shadow-soft sm:p-8">
       <h2 id="claim-heading" className="text-display text-2xl">
         Find a booking
       </h2>

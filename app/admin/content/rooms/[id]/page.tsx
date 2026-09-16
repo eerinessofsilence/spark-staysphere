@@ -107,7 +107,7 @@ export default async function RoomContentPage({
       ) : null}
 
       {room.hidden ? (
-        <section aria-labelledby="readiness-heading" className="mt-6 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+        <section aria-labelledby="readiness-heading" className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
           <h2 id="readiness-heading" className="text-base font-medium">
             Before it goes on the site
           </h2>
@@ -137,7 +137,7 @@ export default async function RoomContentPage({
           <section
             id="room-details"
             aria-labelledby="room-form-heading"
-            className="scroll-mt-6 sm:rounded-[28px] sm:bg-card sm:p-6 sm:shadow-soft"
+            className="scroll-mt-6 sm:rounded-[18px] sm:bg-card sm:p-6 sm:shadow-soft"
           >
             <h2 id="room-form-heading" className="text-display text-2xl">
               The room
@@ -234,7 +234,7 @@ export default async function RoomContentPage({
               {rates.map((rate, index) => {
                 const removal = removals[index]!;
                 return (
-                  <div key={rate.id} className="rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+                  <div key={rate.id} className="rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="text-display text-lg">
                         {rate.name} · {formatMoney(rate.nightlyPrice, rate.currency)}/night
@@ -277,7 +277,7 @@ export default async function RoomContentPage({
               {/* Folded away until asked for — open from the start when the room has no rate yet. */}
               <details
                 open={rates.length === 0}
-                className="rounded-[28px] border border-dashed border-border open:border-solid open:bg-card open:shadow-soft"
+                className="rounded-[18px] border border-dashed border-border open:border-solid open:bg-card open:shadow-soft"
               >
                 <summary
                   className={pill('secondary', 'm-4 w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden')}
@@ -301,17 +301,17 @@ export default async function RoomContentPage({
         </div>
 
         <aside aria-label="How the room reads on the site" className="hidden lg:sticky lg:top-6 lg:block">
-          <div className="overflow-hidden rounded-[28px] bg-card p-3 shadow-soft">
+          <div className="overflow-hidden rounded-[18px] bg-card p-3 shadow-soft">
             {cover ? (
               <img
                 src={cover.url}
                 alt=""
                 width={cover.width}
                 height={cover.height}
-                className="aspect-[4/3] w-full rounded-[20px] bg-stone object-cover"
+                className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
               />
             ) : (
-              <div className="grid aspect-[4/3] place-items-center rounded-[20px] bg-stone text-sm text-muted-foreground">
+              <div className="grid aspect-[4/3] place-items-center rounded-[14px] bg-stone text-sm text-muted-foreground">
                 No photo yet
               </div>
             )}

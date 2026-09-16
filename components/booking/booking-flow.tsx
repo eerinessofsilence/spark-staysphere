@@ -369,7 +369,7 @@ export function BookingFlow({
           </div>
         ) : null}
 
-        <section aria-labelledby="step-heading" className="rounded-[28px] bg-card p-5 shadow-soft sm:p-7">
+        <section aria-labelledby="step-heading" className="rounded-[18px] bg-card p-5 shadow-soft sm:p-7">
           <h2 id="step-heading" className="text-display text-2xl">
             {steps[stepIndex]!.label}
           </h2>
@@ -578,7 +578,7 @@ export function BookingFlow({
                         key={method.id}
                         htmlFor={`pay-${method.id}`}
                         className={cn(
-                          'relative flex cursor-pointer items-start gap-3 rounded-[20px] border bg-card p-4 pr-12 transition-colors',
+                          'relative flex cursor-pointer items-start gap-3 rounded-[14px] border bg-card p-4 pr-12 transition-colors',
                           selected ? 'border-primary' : 'border-border hover:bg-stone/60',
                         )}
                       >
@@ -725,7 +725,7 @@ export function BookingFlow({
       </div>
 
       <aside aria-labelledby="booking-summary-heading" className="lg:sticky lg:top-24 lg:h-fit">
-        <div className="overflow-hidden rounded-[28px] bg-card shadow-soft">
+        <div className="overflow-hidden rounded-[18px] bg-card shadow-soft">
           {/* The property itself, above its own name: the same facade the
               arrival page opens on, so the card is recognisably Asteria Cove
               and not a white receipt. The room's own photograph belongs to

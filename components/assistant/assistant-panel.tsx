@@ -328,7 +328,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           // `will-change` because the panel is frosted: without a layer of its
           // own the browser re-runs the backdrop blur against the page on every
           // frame of the open, and the arrival comes in steps.
-          'glass relative flex w-full flex-col overflow-hidden rounded-[28px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
+          'glass relative flex w-full flex-col overflow-hidden rounded-[18px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
           // Tall enough that a full result — the answer, chips, three tiles and
           // the handoff link — lands without an inner scroll, and still bounded
           // by the window so a short desktop one does not push the CTA off.

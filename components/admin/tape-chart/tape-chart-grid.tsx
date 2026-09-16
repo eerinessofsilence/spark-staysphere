@@ -76,7 +76,7 @@ export function TapeChartGrid({ dates, days, groups, totalRooms, today }: TapeCh
 
   return (
     <>
-      <div className="relative overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
+      <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
         <div style={{ minWidth }} className="text-sm">
           <div className="grid border-b border-border" style={{ gridTemplateColumns: columns }}>
             <div className="sticky left-0 z-20 flex items-end bg-card px-4 py-3 text-xs text-muted-foreground">

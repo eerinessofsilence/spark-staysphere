@@ -24,7 +24,7 @@ export default async function NewRoomPage() {
         description="A new room type starts hidden from the site. Add its rooms under Rooms, give it a rate and a photo, then show it from its own page."
       />
 
-      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type" dock>
           <div className="grid gap-6">
             <div role="group" aria-labelledby="identity-heading">

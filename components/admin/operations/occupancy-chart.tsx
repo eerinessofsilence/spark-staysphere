@@ -26,7 +26,7 @@ export function OccupancyChart({ days, totalRooms }: { days: TapeChartDay[]; tot
   const lift = shown ? Math.min(share(shown.occupied, totalRooms), 70) : 0;
 
   return (
-    <figure className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+    <figure className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
       <figcaption>
         <h3 className="font-medium">Occupied rooms, next {days.length} nights</h3>
         <p className="mt-1 text-sm text-muted-foreground">

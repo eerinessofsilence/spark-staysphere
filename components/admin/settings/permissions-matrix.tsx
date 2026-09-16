@@ -10,7 +10,7 @@ export function PermissionsMatrix() {
       <p className="mt-1 text-sm text-muted-foreground">
         What each role can change. Enforced once sign-in for the admin ships.
       </p>
-      <div className="relative mt-5 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
+      <div className="relative mt-5 overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
         <table className="w-full min-w-[46rem] border-collapse text-sm">
           <caption className="sr-only">Permissions by role</caption>
           <thead>

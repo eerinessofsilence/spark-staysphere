@@ -35,7 +35,7 @@ export default async function PhysicalRoomsPage() {
       <CatalogTabs current="rooms" counts={{ types: types.length, rooms: rooms.length }} />
 
       {types.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
           <div>
             <h2 className="text-display text-2xl">Start with a room type</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
@@ -58,7 +58,7 @@ export default async function PhysicalRoomsPage() {
                 key={type.id}
                 id={anchor}
                 aria-labelledby={`${anchor}-heading`}
-                className="scroll-mt-24 rounded-[28px] bg-card p-5 shadow-soft sm:p-6"
+                className="scroll-mt-24 rounded-[18px] bg-card p-5 shadow-soft sm:p-6"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">

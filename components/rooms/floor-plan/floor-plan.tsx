@@ -57,7 +57,7 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
 
   if (units.length === 0) {
     return (
-      <div className="rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+      <div className="rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
         <h2 className="text-display text-3xl">No rooms on the plan</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
           There are no rooms to show for this stay right now. Try other dates.
@@ -99,7 +99,7 @@ export function FloorPlan({ units, floors, criteria, initialRoom }: FloorPlanPro
           {selectedUnit ? (
             <RoomUnitCard unit={selectedUnit} criteria={criteria} onClose={close} />
           ) : (
-            <p className="rounded-[28px] border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
+            <p className="rounded-[18px] border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
               Pick a room on the plan to see what it is, what it costs for your dates, and book that
               exact room.
             </p>
@@ -141,7 +141,7 @@ function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: Facade
       >
         <span aria-hidden="true" />
         {shown.map((facade) => (
-          <h3 key={facade} className="rounded-t-[28px] bg-card px-4 pt-4 pb-2 text-sm font-medium">
+          <h3 key={facade} className="rounded-t-[18px] bg-card px-4 pt-4 pb-2 text-sm font-medium">
             {facadeLabels[facade]}
           </h3>
         ))}
@@ -160,7 +160,7 @@ function FacadeGrid({ units, floors, shown, selected, onSelect, guests }: Facade
                   className={cn(
                     'flex flex-wrap content-start gap-1 bg-card px-3 py-1.5',
                     index > 0 && 'border-t border-border/60',
-                    last && 'rounded-b-[28px] pb-4',
+                    last && 'rounded-b-[18px] pb-4',
                   )}
                 >
                   {units

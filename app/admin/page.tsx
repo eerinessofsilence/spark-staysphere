@@ -99,7 +99,7 @@ export default async function AdminOverviewPage() {
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-main-aside">
         <OccupancyChart days={board.days} totalRooms={board.totalRooms} />
 
-        <section aria-labelledby="week-heading" className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+        <section aria-labelledby="week-heading" className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
           <h3 id="week-heading" className="font-medium">
             Next 7 days
           </h3>
@@ -133,7 +133,7 @@ export default async function AdminOverviewPage() {
         </div>
 
         {recent.length === 0 ? (
-          <div className="mt-5 flex flex-col items-center gap-3 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+          <div className="mt-5 flex flex-col items-center gap-3 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
             <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
               <CalendarBlank weight="fill" className="size-5" aria-hidden="true" />
             </span>

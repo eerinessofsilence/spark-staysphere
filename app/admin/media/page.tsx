@@ -109,7 +109,7 @@ export default async function MediaLibraryPage({
       </nav>
 
       {tiles.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
           <PhotoIcon className="size-6 text-muted-foreground" aria-hidden="true" />
           <div>
             <h2 className="text-display text-2xl">Nothing in this folder</h2>

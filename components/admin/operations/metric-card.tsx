@@ -19,7 +19,7 @@ export function Metric({
   chart?: ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+    <div className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
       <dt className="text-sm font-medium">{label}</dt>
       <dd className="mt-3">
         <span className="text-display block text-2xl tabular-nums sm:text-4xl">{value}</span>

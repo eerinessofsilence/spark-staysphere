@@ -68,7 +68,7 @@ export function TeamMembers() {
         {status}
       </p>
 
-      <div className="relative mt-2 overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
+      <div className="relative mt-2 overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
         <table className="w-full min-w-[44rem] border-collapse text-sm">
           <caption className="sr-only">Team members and their roles</caption>
           <thead>

@@ -11,12 +11,12 @@ export default function RoomsLoading() {
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-6 h-12 w-72" />
       <Skeleton className="mt-4 h-4 w-96 max-w-full" />
-      <Skeleton className="mt-6 h-20 w-full rounded-[28px]" />
+      <Skeleton className="mt-6 h-20 w-full rounded-[18px]" />
       <div className="mt-8 grid gap-6 lg:grid-cols-sidebar-start lg:gap-8">
-        <Skeleton className="hidden h-[32rem] rounded-[28px] lg:block" />
+        <Skeleton className="hidden h-[32rem] rounded-[18px] lg:block" />
         <div className="grid gap-6">
           {[0, 1, 2].map((index) => (
-            <Skeleton key={index} className="h-72 rounded-[28px]" />
+            <Skeleton key={index} className="h-72 rounded-[18px]" />
           ))}
         </div>
       </div>

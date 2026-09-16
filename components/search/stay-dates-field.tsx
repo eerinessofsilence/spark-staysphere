@@ -255,7 +255,7 @@ export function StayDatesField({
       role="dialog"
       aria-label="Choose your dates"
       className={cn(
-        'z-50 rounded-[28px] border border-border bg-card p-4 shadow-soft-lg sm:p-5',
+        'z-50 rounded-[18px] border border-border bg-card p-4 shadow-soft-lg sm:p-5',
         // Mobile: a sheet pinned to the bottom of the viewport.
         'fixed inset-x-3 bottom-3 max-h-[85dvh] overflow-y-auto',
         // Desktop: anchored under the field it was opened from.

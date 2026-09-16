@@ -57,7 +57,7 @@ These are enforced in review and, where possible, by lint.
    foreground colour. Never blue, never purple, and no second neon beside the lime. Components
    read `bg-primary` / `text-primary-foreground`, never `bg-ink` with a literal, so one pill
    is correct on both schemes.
-7. **Actions are pills; facts are chips; containers are 28px.** Use `pill()`, `tag()`, and
+7. **Actions are pills; facts are chips; containers are 18px.** Use `pill()`, `tag()`, and
    `iconButton()` from `lib/ui.ts` rather than composing new button classes.
 8. **One italic phrase per screen at most**, set in the accent serif. Never body copy, never a
    label, never a button.
@@ -173,7 +173,7 @@ free-hand a `text-*xl` that happens to look right on one screen.
 - Spacing unit 4px; preferred steps 8, 12, 16, 24, 32, 48, 64, 96.
 - Controls are 44px minimum touch targets.
 - Pills for every action and chip (`rounded-full`). Inputs `rounded-2xl`. Cards, panels, and
-  photographs `rounded-[28px]`. Nothing between 8px and 16px except inputs.
+  photographs `rounded-[18px]`. Nothing between 8px and 16px except inputs.
 - Elevation is `.shadow-soft` or `.shadow-soft-lg`, nothing stronger. Reach for a hairline first.
 - Frosted panels over photography use `.glass` (light) or `.glass-dark`.
 
@@ -228,7 +228,7 @@ free-hand a width or a column track.
 
 - **Header**: frosted pill bar — mark and wordmark, text links, ink "Book a room".
 - **Search bar**: one pill on desktop with hairline dividers between fields and an ink search
-  button; stacked 28px card on mobile. It overlaps the bottom edge of the arrival scene.
+  button; stacked 18px card on mobile. It overlaps the bottom edge of the arrival scene.
 - **Dates**: never `input[type=date]` — the browser's own control looks different on every
   platform and cannot show the range. Check-in and check-out are two triggers onto one
   `StayDatesField` panel: two months on desktop, one in a bottom sheet on a phone, ink circles
@@ -250,7 +250,7 @@ free-hand a width or a column track.
   back on click; the current one is an ink disc; ones ahead are an outlined number and inert.
   On a phone only the current step keeps its label and the rail scrolls it into view.
 - **Overlays**: one shape. On a phone every dialog is a sheet rising from the bottom edge,
-  inset 12px, 28px radius, the height of what is on it, capped at 85% of the viewport and
+  inset 12px, 18px radius, the height of what is on it, capped at 85% of the viewport and
   scrolling inside past that — the shared `Modal`, the dates panel and the guest stepper all sit
   at the same inset. A full-height sheet leaves an empty gap between short content and the button
   pinned to the floor, so it is never the default. From `sm` the `Modal` becomes a centred card
@@ -276,20 +276,20 @@ free-hand a width or a column track.
   mark right beside the field, live as it's typed, rather than leaving it invisible until the page
   is saved and reloaded.
 - **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
-  shell rather than the guest header — a 28px card sidebar on a desk (brand, the property,
+  shell rather than the guest header — a 18px card sidebar on a desk (brand, the property,
   navigation grouped as Operations and Content, the guest-site link, the signed-in
   account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
   current page takes the primary fill, the way the catalog's layout segment marks its active
   option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
   `AdminPage` and `AdminPageHeader`. Anything a screen shows without real data behind it carries a
   visible demo label — a `tag()` in the page header's actions, never only a footnote.
-  - **Tables** sit in `TableCard` (`components/admin/operations/table.tsx`): a 28px card that
+  - **Tables** sit in `TableCard` (`components/admin/operations/table.tsx`): a 18px card that
     scrolls sideways inside itself, so the page never does at 390px. Columns get a `min-w-*` on the
     table rather than squeezing. Headers are muted sentence case; the row's key (a reference, a
     room type) is the link.
   - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
     icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
-    on the dashboard are four cards on the same 28px surface as the chart beside them: a short
+    on the dashboard are four cards on the same 18px surface as the chart beside them: a short
     label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
     admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
   - **The tape chart** (`components/admin/tape-chart/`) is one row per door, grouped by room type,
@@ -301,7 +301,7 @@ free-hand a width or a column track.
     × doors, sea side and town side. A cell's surface says its state for the stay being searched —
     sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
     it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
-  - **CMS forms** (`components/admin/content/`) keep their button bar in view: a 28px-radius bar
+  - **CMS forms** (`components/admin/content/`) keep their button bar in view: an 18px-radius bar
     that sticks to the bottom of the screen while its form is on it, holding the primary Save pill
     and one status line — "Unsaved changes" with an accent dot, "Not saved — 1 field needs
     attention" with a "Show me" that jumps to it, or the success message until the next edit. A flag

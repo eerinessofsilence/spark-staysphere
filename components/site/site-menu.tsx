@@ -110,7 +110,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         role="dialog"
         aria-label="Menu"
         className={cn(
-          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[28px] border border-border bg-card shadow-soft-lg',
+          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[18px] border border-border bg-card shadow-soft-lg',
           'sm:inset-auto sm:top-(--panel-top) sm:right-(--panel-right) sm:w-(--panel-width) sm:max-w-[calc(100vw-2rem)] sm:overflow-visible sm:rounded-3xl',
           'transition-[opacity,translate] duration-200 ease-out',
           visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-8 opacity-0 sm:translate-y-0',

@@ -39,7 +39,7 @@ export default async function PhysicalRoomPage({ params }: { params: Promise<{ i
         description={[type?.name ?? room.roomTypeId, formatFloor(room.floor), side].filter(Boolean).join(' · ')}
       />
 
-      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm
           action={updatePhysicalRoomAction.bind(null, room.id)}
           initialVersion={room.version}

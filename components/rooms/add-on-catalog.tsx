@@ -136,7 +136,7 @@ function AddOnTile({ addOn, added, onOpen, onAdd, onRemove }: AddOnTileProps) {
   return (
     <div
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-[20px] border bg-card transition-colors',
+        'group relative flex h-full flex-col overflow-hidden rounded-[14px] border bg-card transition-colors',
         added ? 'border-primary' : 'border-border',
       )}
     >

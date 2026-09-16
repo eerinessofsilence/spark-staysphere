@@ -213,7 +213,7 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <div role="group" aria-labelledby={`${id}-heading`} className="rounded-[28px] bg-card p-6 shadow-soft">
+    <div role="group" aria-labelledby={`${id}-heading`} className="rounded-[18px] bg-card p-6 shadow-soft">
       <h2 id={`${id}-heading`} className="text-lg font-medium">
         {title}
       </h2>

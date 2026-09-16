@@ -107,7 +107,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
       // under 20rem and keeps the smaller scale — one component, no prop.
       <article
         className={cn(
-          'group @container relative flex h-full flex-col overflow-hidden rounded-[20px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
+          'group @container relative flex h-full flex-col overflow-hidden rounded-[14px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
           soldOut && 'opacity-90',
         )}
       >
@@ -138,7 +138,7 @@ export function RoomCard({ offer, stayQuery, layout = 'tile' }: RoomCardProps) {
   return (
     <article
       className={cn(
-        'group relative grid overflow-hidden rounded-[28px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
+        'group relative grid overflow-hidden rounded-[18px] bg-card shadow-soft transition-shadow hover:shadow-soft-lg',
         'sm:grid-cols-media lg:grid-cols-sidebar-start',
         soldOut && 'opacity-90',
       )}

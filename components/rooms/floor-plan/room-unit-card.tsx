@@ -70,7 +70,7 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
         : `This room doesn't match the filters you've set. Clear them to book it.`;
 
   return (
-    <div className={cn(bare ? 'p-5' : 'rounded-[28px] bg-card p-5 shadow-soft sm:p-6')}>
+    <div className={cn(bare ? 'p-5' : 'rounded-[18px] bg-card p-5 shadow-soft sm:p-6')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-display text-3xl">{formatRoomNumber(unit.number)}</p>

@@ -94,7 +94,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
         // held upright that crop would keep only the middle of a landscape
         // shot, and "full size" means seeing all of it.
         className={cn(
-          'relative aspect-[4/3] overflow-hidden rounded-[28px] sm:aspect-[16/10]',
+          'relative aspect-[4/3] overflow-hidden rounded-[18px] sm:aspect-[16/10]',
           fullscreen ? 'bg-ink' : 'bg-stone',
           fakeFullscreen && 'fixed inset-0 z-50 aspect-auto rounded-none sm:aspect-auto',
         )}

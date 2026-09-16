@@ -262,10 +262,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               alt=""
               width={cover.width}
               height={cover.height}
-              className="aspect-[4/3] w-full rounded-[20px] bg-stone object-cover"
+              className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
             />
           ) : (
-            <div className="grid aspect-[4/3] place-items-center rounded-[20px] bg-stone text-sm text-muted-foreground">
+            <div className="grid aspect-[4/3] place-items-center rounded-[14px] bg-stone text-sm text-muted-foreground">
               No photo yet
             </div>
           )}
@@ -408,7 +408,7 @@ function Card({
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className={cn('min-w-0 rounded-[28px] bg-card p-5 shadow-soft sm:p-6', className)}>
+    <section aria-labelledby={id} className={cn('min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6', className)}>
       <div className="flex items-center justify-between gap-4">
         <h2 id={id} className="text-base font-medium">
           {title}

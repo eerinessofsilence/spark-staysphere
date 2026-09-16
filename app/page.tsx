@@ -145,7 +145,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
                 {hotel.location}
               </p>
             </Reveal>
-            <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[28px]">
+            <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[18px]">
               <img
                 src={hotel.aboutPhoto.url}
                 alt={`About ${hotel.name}`}
@@ -183,7 +183,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
           </div>
 
           {highlights.length === 0 ? (
-            <p className="mt-8 rounded-[28px] border border-dashed border-border p-10 text-center text-muted-foreground">
+            <p className="mt-8 rounded-[18px] border border-dashed border-border p-10 text-center text-muted-foreground">
               Nothing is bookable for those dates. Try a different stay above.
             </p>
           ) : (
@@ -219,7 +219,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
           {/* Ink under the photograph, not just behind it: the copy here is
               white and the photo is lazy-loaded, so an unloaded frame would
               otherwise leave white text on a pale page. */}
-          <div className="relative overflow-hidden rounded-[28px] bg-ink">
+          <div className="relative overflow-hidden rounded-[18px] bg-ink">
             <ParallaxImage src="/images/hotel/pool.webp" alt="" width={2000} height={1334} />
             {/* Two scrims rather than one flat wash across the middle. The
                 copy sits bottom-left, so the photograph is darkened hardest

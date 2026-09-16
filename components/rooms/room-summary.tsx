@@ -28,7 +28,7 @@ export function RoomSummary({ roomSlug, criteria, roomsHref, soldOut }: RoomSumm
 
   return (
     <aside aria-labelledby="summary-heading" className="lg:sticky lg:top-28 lg:h-fit">
-      <div className="rounded-[28px] bg-card p-6 shadow-soft">
+      <div className="rounded-[18px] bg-card p-6 shadow-soft">
         <h2 id="summary-heading" className="text-sm font-medium text-muted-foreground">
           Your stay
         </h2>

@@ -65,7 +65,7 @@ export default async function AddOnContentPage({
         </p>
       ) : null}
 
-      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm
           action={boundUpdate}
           initialVersion={addOn.version}

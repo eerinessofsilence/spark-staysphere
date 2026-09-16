@@ -304,7 +304,7 @@ function PreviewCard({
       data-testid="brand-preview"
       data-accent={accent.id}
       style={scheme}
-      className="overflow-hidden rounded-[28px] border border-border bg-card p-3 text-foreground shadow-soft"
+      className="overflow-hidden rounded-[18px] border border-border bg-card p-3 text-foreground shadow-soft"
     >
       <div className="flex items-center justify-between gap-3 px-2 pt-1 pb-3">
         <span className="truncate text-sm font-semibold">{hotel.name}</span>
@@ -317,7 +317,7 @@ function PreviewCard({
           width={preview.photoWidth}
           height={preview.photoHeight}
           loading="lazy"
-          className="aspect-[4/3] w-full rounded-[20px] object-cover"
+          className="aspect-[4/3] w-full rounded-[14px] object-cover"
         />
       ) : null}
       <div className="px-2 pt-4 pb-2">
@@ -351,7 +351,7 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <div role="group" aria-labelledby={`${id}-heading`} className="rounded-[28px] bg-card p-6 shadow-soft">
+    <div role="group" aria-labelledby={`${id}-heading`} className="rounded-[18px] bg-card p-6 shadow-soft">
       <h2 id={`${id}-heading`} className="text-lg font-medium">
         {title}
       </h2>

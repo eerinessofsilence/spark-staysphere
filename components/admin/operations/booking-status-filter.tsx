@@ -37,7 +37,7 @@ export function BookingStatusFilter({ options }: { options: StatusFilterOption[]
               </button>
             }
           />
-          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[28px] border-t border-border">
+          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[18px] border-t border-border">
             <SheetHeader className="border-b border-border px-6 py-4">
               <SheetTitle className="text-display text-xl font-medium">Filter reservations</SheetTitle>
             </SheetHeader>

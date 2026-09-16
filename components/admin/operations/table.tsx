@@ -11,7 +11,7 @@ export function TableCard({
   children: ReactNode;
 }) {
   return (
-    <div className="relative overflow-x-auto rounded-[28px] bg-card shadow-soft contain-inline-size">
+    <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
       <table className={cn('w-full border-collapse text-sm', className)}>
         <caption className="sr-only">{caption}</caption>
         {children}

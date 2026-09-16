@@ -115,7 +115,7 @@ export function SpinnerRoomSheetBody({ hotspot, facts, href }: HotspotContentPro
           alt=""
           width={facts.photo.width}
           height={facts.photo.height}
-          className="aspect-[3/2] w-full rounded-[20px] object-cover"
+          className="aspect-[3/2] w-full rounded-[14px] object-cover"
         />
       ) : null}
 

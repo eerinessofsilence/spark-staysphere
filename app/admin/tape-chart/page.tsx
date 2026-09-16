@@ -114,7 +114,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-5">
         {groups.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+          <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
             <h2 className="text-display text-3xl">No rooms to show</h2>
             <p className="max-w-md text-sm text-muted-foreground">
               {type

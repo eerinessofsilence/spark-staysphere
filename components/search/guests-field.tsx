@@ -117,7 +117,7 @@ export function GuestsField({
         aria-label="Guests"
         className={cn(
           // A sheet pinned to the bottom on a phone, hugging its two rows.
-          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[28px] border border-border bg-card shadow-soft-lg',
+          'fixed inset-x-3 bottom-3 z-50 flex max-h-[85dvh] flex-col overflow-y-auto rounded-[18px] border border-border bg-card shadow-soft-lg',
           // Desktop: anchored under the field it was opened from.
           'sm:inset-auto sm:top-(--panel-top) sm:left-(--panel-left) sm:w-72 sm:max-w-[calc(100vw-2rem)] sm:overflow-visible sm:rounded-3xl',
           // `translate`, not `transform` — that is the property Tailwind sets.

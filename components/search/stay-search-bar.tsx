@@ -101,7 +101,7 @@ export function StaySearchBar({
         // turn sideways for the one-row pill.
         // `surface-raised`, not `bg-card`: this is the one panel that stays
         // light on the night scheme, the way the reference's search does.
-        'surface-raised grid grid-cols-2 rounded-[28px] border border-border p-2 shadow-soft-lg lg:grid-cols-[1.2fr_1.2fr_1fr_auto] lg:rounded-full lg:divide-x lg:divide-border',
+        'surface-raised grid grid-cols-2 rounded-[18px] border border-border p-2 shadow-soft-lg lg:grid-cols-[1.2fr_1.2fr_1fr_auto] lg:rounded-full lg:divide-x lg:divide-border',
         className,
       )}
     >

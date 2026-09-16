@@ -58,7 +58,7 @@ export default async function IntegrationsPage() {
         actions={<span className={tag()}>Mock adapters — nothing is connected to a real system</span>}
       />
 
-      <ul className="mt-10 overflow-hidden rounded-[28px] bg-card shadow-soft">
+      <ul className="mt-10 overflow-hidden rounded-[18px] bg-card shadow-soft">
         {statuses.map((status) => {
           const detail = details[status.adapter];
           return (

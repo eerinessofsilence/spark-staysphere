@@ -51,7 +51,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
               </button>
             }
           />
-          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[28px] border-t border-border">
+          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[18px] border-t border-border">
             <SheetHeader className="border-b border-border px-6 py-4">
               <SheetTitle className="text-display text-xl font-medium">Filter rooms</SheetTitle>
             </SheetHeader>
@@ -76,7 +76,7 @@ export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layou
 
       <aside
         aria-label="Room filters"
-        className="hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:rounded-[28px] lg:bg-card lg:p-6 lg:shadow-soft"
+        className="hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:rounded-[18px] lg:bg-card lg:p-6 lg:shadow-soft"
       >
         <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} layout={layout} />
       </aside>

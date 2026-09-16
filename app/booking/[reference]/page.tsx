@@ -61,7 +61,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
       <RememberTrip reference={booking.reference} />
       <SiteHeader />
       <main id="main" className="container-reading py-10">
-        <div className="rounded-[28px] bg-card p-6 shadow-soft sm:p-10">
+        <div className="rounded-[18px] bg-card p-6 shadow-soft sm:p-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="flex items-center gap-2 text-sm font-medium text-success">

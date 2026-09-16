@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-const card = 'rounded-[28px] bg-card p-5 shadow-soft sm:p-6';
+const card = 'rounded-[18px] bg-card p-5 shadow-soft sm:p-6';
 
 export default async function HotelContentPage() {
   const [{ hotel, version }, assets] = await Promise.all([
@@ -125,7 +125,7 @@ export default async function HotelContentPage() {
                             width={area.photo.width}
                             height={area.photo.height}
                             loading="lazy"
-                            className="aspect-[4/3] w-full rounded-[20px] bg-stone object-cover"
+                            className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
                           />
                           <p className="mt-2 text-xs text-muted-foreground">
                             {area.hotspots.length === 1 ? '1 point' : `${area.hotspots.length} points`} to tap on this

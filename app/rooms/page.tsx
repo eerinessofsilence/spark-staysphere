@@ -141,7 +141,7 @@ function EmptyResults({
   layout: CatalogLayout;
 }) {
   return (
-    <div className="flex flex-col items-center gap-5 rounded-[28px] border border-dashed border-border bg-card p-10 text-center">
+    <div className="flex flex-col items-center gap-5 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
       <span className="grid size-12 place-items-center rounded-full bg-stone text-muted-foreground">
         <MagnifyingGlassIcon className="size-5" aria-hidden="true" />
       </span>

@@ -41,7 +41,7 @@ export function RoomStrip({ offers, stayQuery, className, id }: RoomStripProps) 
         return (
           <li key={room.id} className="w-[15rem] shrink-0 snap-start sm:w-[17rem]">
             <Link href={`/rooms/${room.slug}?${stayQuery}`} className="group block">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-[28px] bg-stone">
+              <div className="relative aspect-[3/4] overflow-hidden rounded-[18px] bg-stone">
                 {cover ? (
                   <img
                     src={cover.url}

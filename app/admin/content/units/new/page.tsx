@@ -33,7 +33,7 @@ export default async function NewPhysicalRoomPage({
         description="A room sells as part of its room type: each one you add is one more of that type on sale every night."
       />
 
-      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm action={createPhysicalRoomAction} initialVersion={0} submitLabel="Create room" dock>
           <NewPhysicalRoomFields
             initialTypeId={initialTypeId}

@@ -17,9 +17,9 @@ export default function BookLoading() {
               <Skeleton key={index} className="h-11 w-28 rounded-xl" />
             ))}
           </div>
-          <Skeleton className="mt-8 h-80 rounded-[28px]" />
+          <Skeleton className="mt-8 h-80 rounded-[18px]" />
         </div>
-        <Skeleton className="h-80 rounded-[28px]" />
+        <Skeleton className="h-80 rounded-[18px]" />
       </div>
     </div>
   );

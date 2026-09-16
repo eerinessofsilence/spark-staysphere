@@ -34,7 +34,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
 
   return (
     <footer className={cn('container-page mt-24 pb-3 sm:pb-6', clearsFloatingBar && 'pb-24 lg:pb-6')}>
-      <div className="rounded-[28px] bg-ink px-6 py-10 text-[#F7F5F0] sm:px-10 sm:py-12 dark:border dark:border-border dark:bg-card">
+      <div className="rounded-[18px] bg-ink px-6 py-10 text-[#F7F5F0] sm:px-10 sm:py-12 dark:border dark:border-border dark:bg-card">
         <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-8">
           <div>
             <img src="/brand/staysphere-logo-footer.svg" alt="StaySphere" className="h-7 w-auto" />

@@ -23,7 +23,7 @@ export default async function NewAddOnPage() {
         description="A service or a dish guests can add to their stay. An extra with a parent is offered inside that add-on."
       />
 
-      <div className="mt-8 rounded-[28px] bg-card p-5 shadow-soft sm:p-6">
+      <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
         <ContentForm action={createAddOnAction} initialVersion={0} submitLabel="Create service" dock>
           <AddOnFields
             initial={{

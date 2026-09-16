@@ -190,7 +190,7 @@ export function HotelScene({
         // there is no scale that fits all of one into the other. Full bleed
         // wins over bars. The 28px card returns from `sm`, where the stage is
         // wider than tall again, and the fallback overlay drops all of it.
-        className="relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[28px]"
+        className="relative h-[calc(100svh-5rem)] overflow-hidden bg-stone sm:aspect-[16/10] sm:h-auto sm:rounded-[18px]"
       >
         {/* All areas are stacked so switching is instant; only one is visible. */}
         {(spinnerOnly ? [area] : areas).map((candidate, candidateIndex) => (
@@ -495,7 +495,7 @@ export function HotelScene({
                     alt={image.alt}
                     width={image.width}
                     height={image.height}
-                    className="aspect-[3/2] w-full rounded-[20px] object-cover"
+                    className="aspect-[3/2] w-full rounded-[14px] object-cover"
                   />
 
                   <h3 className="text-display mt-5 text-2xl">{active.label}</h3>

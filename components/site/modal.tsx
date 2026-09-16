@@ -132,7 +132,7 @@ export function Modal({ open, onClose, title, children, className, chrome = true
           // business animating just because the dialog opened. `translate` and
           // `scale` are named individually because Tailwind writes them to
           // those standalone properties — listing `transform` moves nothing.
-          'relative flex w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
+          'relative flex w-full flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
           'max-h-[85dvh] sm:max-h-[88vh] sm:max-w-lg',
           // A phone gets the sheet's own move, sliding up off the bottom edge
           // it is pinned to; a desk's centred card has no edge to come from,
