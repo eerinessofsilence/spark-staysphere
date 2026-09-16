@@ -19,6 +19,7 @@ import {
   paymentMethodLabels,
   viewLabels,
 } from '@/lib/formatting';
+import { InvoiceButton } from '@/components/booking/invoice-modal';
 import { RememberTrip } from '@/components/trips/remember-trip';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
@@ -209,6 +210,37 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
             <Link href="/rooms" className={pill('primary')}>
               Book another room
             </Link>
+            <InvoiceButton
+              invoice={{
+                reference: booking.reference,
+                issuedOn: booking.createdAt.slice(0, 10),
+                hotelName: hotel.name,
+                hotelLocation: hotel.location,
+                guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
+                guestEmail: booking.guest.email,
+                roomName: room?.name ?? booking.roomTypeId,
+                checkIn: booking.checkIn,
+                checkOut: booking.checkOut,
+                nights,
+                currency: booking.currency,
+                lines: breakdown
+                  ? [
+                      {
+                        label: `${room?.name ?? 'Room'} — ${formatMoney(breakdown.nightlyPrice, breakdown.currency)} × ${formatNights(nights)}`,
+                        amount: breakdown.roomTotal,
+                      },
+                      ...breakdown.addOnLines.map((line) => ({
+                        label: line.quantity > 1 ? `${line.name} × ${line.quantity}` : line.name,
+                        amount: line.total,
+                      })),
+                    ]
+                  : [{ label: room?.name ?? 'Room', amount: booking.total }],
+                taxesAndFees: breakdown?.taxesAndFees ?? 0,
+                total: booking.total,
+                methodLabel,
+                paid: authorized,
+              }}
+            />
             <Link href="/admin" className={pill('secondary')}>
               See it in the hotel admin
             </Link>

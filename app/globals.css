@@ -602,3 +602,21 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* The invoice modal's "Print" button: everything else on the page — the
+   confirmation card behind it, the modal's own backdrop and close button —
+   is hidden, so only the invoice itself comes out of the printer. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-printable,
+  #invoice-printable * {
+    visibility: visible;
+  }
+  #invoice-printable {
+    position: absolute;
+    inset: 0;
+    padding: 1.5rem;
+  }
+}
