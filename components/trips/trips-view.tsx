@@ -53,21 +53,21 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
   React.useEffect(() => {
     let live = true;
     const references = readTrips();
-    if (references.length === 0) {
-      // Nothing this browser has booked or claimed yet — show the standing
-      // demo stays instead of a blank page, and remember them the same way
-      // a real claim would, so a reload does not ask the server again.
-      void getDefaultTrips().then((found) => {
-        if (!live) return;
-        found.forEach((trip) => rememberTrip(trip.reference));
-        setTrips(found);
-      });
-      return () => {
-        live = false;
-      };
-    }
-    void loadTrips(references).then((found) => {
-      if (live) setTrips(found);
+    const known = new Set(references);
+    // The standing demo stays are shown alongside whatever this browser
+    // already holds, not only when it holds nothing — a browser that
+    // remembered an earlier, smaller showcase set (or only a real booking)
+    // still picks up every current one. Any not already known are
+    // remembered the same way a real claim would, so a reload does not ask
+    // the server again.
+    void Promise.all([
+      references.length > 0 ? loadTrips(references) : Promise.resolve([]),
+      getDefaultTrips(),
+    ]).then(([mine, defaults]) => {
+      if (!live) return;
+      const newDefaults = defaults.filter((trip) => !known.has(trip.reference));
+      newDefaults.forEach((trip) => rememberTrip(trip.reference));
+      setTrips([...mine, ...newDefaults]);
     });
     return () => {
       live = false;
