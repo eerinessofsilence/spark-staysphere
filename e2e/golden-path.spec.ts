@@ -608,25 +608,27 @@ test('a trip is claimed by reference and the email it was booked with', async ({
   const reference = await bookAStay(page);
 
   await page.goto('/trips');
-  // A fresh browser: the reference alone must not be a lookup key.
+  // A fresh browser always carries the showcase stays, so "no trips" isn't a
+  // real state to assert on any more — assert on this reference specifically.
+  // The reference alone must not be a lookup key.
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'No trips yet' })).toBeVisible();
+  await expect(page.getByText(reference)).toHaveCount(0);
 
   await page.getByLabel('Booking number').fill(reference);
   await page.getByLabel('Email').fill('someone.else@example.com');
   await page.getByRole('button', { name: 'Find booking' }).click();
   await expect(page.getByText(/No booking matches that reference and email/)).toBeVisible();
   // Nothing was added: a right reference with the wrong email lists no stay.
-  await expect(page.getByRole('heading', { name: 'No trips yet' })).toBeVisible();
+  await expect(page.getByText(reference)).toHaveCount(0);
 
   await page.getByLabel('Email').fill('ada@example.com');
   await page.getByRole('button', { name: 'Find booking' }).click();
-  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
+  await expect(page.getByText(reference)).toBeVisible();
 
   // And it is remembered, so the trip survives a reload.
   await page.reload();
-  await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
+  await expect(page.getByText(reference)).toBeVisible();
 });
 
 test('an admin sell-out immediately blocks that room for guests', async ({ page }) => {
@@ -736,7 +738,10 @@ test('a guest cancels a stay, and the room goes back on sale', async ({ page }) 
   await expect(page.getByRole('tab', { name: /Cancelled/, selected: true })).toBeVisible();
   await expect(page.getByText('Cancelled').last()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
-  await expect(page.getByRole('tab', { name: 'Upcoming 0' })).toBeVisible();
+  // The showcase stays keep Upcoming non-empty, so check this reference left
+  // it specifically, not that the tab's count hit zero.
+  await page.getByRole('tab', { name: /Upcoming/ }).click();
+  await expect(page.getByText(reference)).toHaveCount(0);
 
   // The desk sees the same thing.
   await page.goto('/admin');

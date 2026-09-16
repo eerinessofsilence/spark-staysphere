@@ -261,22 +261,34 @@ test('a negative price and a duplicate page address are both rejected, and nothi
 });
 
 test("a row's menu deletes a CMS add-on after confirming, and won't delete a seed one", async ({ page }) => {
-  await page.goto('/admin/content/add-ons');
+  // A CMS-created add-on of its own — the "creating an add-on" test above
+  // already removes Sunset Kayak Tour as its own last step, so this test
+  // can't reuse it and needs a fixture nothing else touches.
+  await page.goto('/admin/content/add-ons/new');
+  await formReady(page, 'Create service');
+  await page.locator('#addon-name').fill('Stargazing Deck Night');
+  await page.locator('#addon-description').fill('A guided night on the roof deck with a telescope.');
+  await page.locator('#addon-price').fill('40');
+  await page.getByRole('button', { name: 'Create service' }).click();
+  await expect(page).toHaveURL(/\/admin\/content\/add-ons\/addon_stargazing-deck-night\?created=1/, {
+    timeout: 10_000,
+  });
 
-  const kayak = page.getByRole('button', { name: 'Actions for Sunset Kayak Tour' });
+  await page.goto('/admin/content/add-ons');
+  const stargazing = page.getByRole('button', { name: 'Actions for Stargazing Deck Night' });
   const deleteItem = page.getByRole('menuitem', { name: /^Delete/ });
   await actUntil(
-    () => kayak.click(),
+    () => stargazing.click(),
     () => expect(deleteItem).toBeVisible({ timeout: 3_000 }),
   );
   await expect(page.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
     'href',
-    '/admin/content/add-ons/addon_sunset-kayak-tour',
+    '/admin/content/add-ons/addon_stargazing-deck-night',
   );
   await deleteItem.click();
-  const dialog = page.getByRole('dialog', { name: 'Remove Sunset Kayak Tour' });
+  const dialog = page.getByRole('dialog', { name: 'Remove Stargazing Deck Night' });
   await dialog.getByRole('button', { name: 'Remove', exact: true }).click();
-  await expect(kayak).toHaveCount(0);
+  await expect(stargazing).toHaveCount(0);
 
   await actUntil(
     () => page.getByRole('button', { name: 'Actions for Late check-out' }).click(),
