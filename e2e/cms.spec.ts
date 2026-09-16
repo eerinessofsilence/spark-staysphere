@@ -179,7 +179,7 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
   page,
 }) => {
   await page.goto('/admin/content/add-ons/new');
-  await formReady(page, 'Create add-on');
+  await formReady(page, 'Create service');
   await page.locator('#addon-name').fill('Sunset Kayak Tour');
   await page.locator('#addon-description').fill('A guided kayak tour at golden hour, back before dinner.');
   await page.locator('#addon-price').fill('55');
@@ -228,7 +228,7 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
     () => expect(removeDialog).toBeVisible({ timeout: 3_000 }),
   );
   await removeDialog.getByRole('button', { name: 'Remove add-on' }).click();
-  await expect(page).toHaveURL(/\/admin\/content\?removed=/);
+  await expect(page).toHaveURL(/\/admin\/content\/add-ons\?removed=/);
   await expect(page.getByText('“Sunset Kayak Tour” was removed.')).toBeVisible();
 });
 

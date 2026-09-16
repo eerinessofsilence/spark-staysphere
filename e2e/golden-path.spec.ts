@@ -494,13 +494,21 @@ test('on a phone the book bar opens the bill, editable in place', async ({ page 
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
   const firstCard = page.getByRole('region', { name: 'Search results' }).locator('article').first();
   const roomName = (await firstCard.getByRole('heading').innerText()).trim();
-  await firstCard.getByRole('link', { name: roomName }).click();
+  const cardLink = firstCard.getByRole('link', { name: roomName });
+  // The sticky header intercepts a click on a card scrolled right under it —
+  // same trap the `toggle` helper above already dodges for the bottom bar.
+  await cardLink.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await cardLink.click();
   await expect(page.getByRole('heading', { level: 1, name: roomName })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click();
   const bar = page.getByRole('button', { name: /Show what is in your stay/ });
-  // The bar says a service is in, not only that the number moved.
-  await expect(bar).toContainText('1 service');
+  // A click before hydration is lost (see actUntil above); the bar reflecting
+  // the add is this click's own effect, not just a delay to wait out.
+  await actUntil(
+    () => page.getByRole('button', { name: 'Add Airport transfer to your stay' }).click(),
+    // The bar says a service is in, not only that the number moved.
+    () => expect(bar).toContainText('1 service', { timeout: 3_000 }),
+  );
 
   await bar.click();
   const sheet = page.getByRole('dialog', { name: 'Your stay' });
