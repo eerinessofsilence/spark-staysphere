@@ -171,12 +171,20 @@ const SAMPLES: SampleStay[] = [
 ];
 
 /**
- * Two confirmed stays — one upcoming, one already checked out — so a guest
- * who has never booked anything still sees "My trips" hold something real
- * on the first visit, instead of an empty demo. Separate from `SAMPLES`
- * (its own `showcase-` idempotency prefix) so this never depends on, or
- * multiplies with, the admin's own "Add sample bookings" button.
+ * Confirmed and cancelled stays for one guest — upcoming, already checked
+ * out, and cancelled both with and without a refund owed — so a browser
+ * that has never booked anything still sees "My trips" with something in
+ * every tab on the first visit, instead of an empty demo. Separate from
+ * `SAMPLES` (its own `showcase-` idempotency prefix) so this never depends
+ * on, or multiplies with, the admin's own "Add sample bookings" button.
  */
+const SHOWCASE_GUEST: Guest = {
+  firstName: 'Katerina',
+  lastName: 'Ioannou',
+  email: 'katerina.ioannou@example.com',
+  phone: '+357 99 887 214',
+};
+
 const SHOWCASE: SampleStay[] = [
   {
     key: 'upcoming',
@@ -187,7 +195,17 @@ const SHOWCASE: SampleStay[] = [
     addOnIds: ['addon_breakfast_room'],
     method: 'card',
     leadDays: 20,
-    guest: { firstName: 'Katerina', lastName: 'Ioannou', email: 'katerina.ioannou@example.com', phone: '+357 99 887 214' },
+    guest: SHOWCASE_GUEST,
+  },
+  {
+    key: 'upcoming-2',
+    rooms: ['skyline-loft', 'sky-terrace-suite'],
+    checkIn: 30,
+    nights: 2,
+    adults: 2,
+    method: 'apple_pay',
+    leadDays: 15,
+    guest: SHOWCASE_GUEST,
   },
   {
     key: 'past',
@@ -197,7 +215,40 @@ const SHOWCASE: SampleStay[] = [
     adults: 2,
     method: 'apple_pay',
     leadDays: 25,
-    guest: { firstName: 'Katerina', lastName: 'Ioannou', email: 'katerina.ioannou@example.com', phone: '+357 99 887 214' },
+    guest: SHOWCASE_GUEST,
+  },
+  {
+    key: 'past-2',
+    rooms: ['pool-terrace', 'poolside-suite'],
+    checkIn: -25,
+    nights: 5,
+    adults: 2,
+    addOnIds: ['addon_spa'],
+    method: 'card',
+    leadDays: 34,
+    guest: SHOWCASE_GUEST,
+  },
+  {
+    key: 'cancelled-refund',
+    rooms: ['coastal-twin', 'city-view-room'],
+    checkIn: 14,
+    nights: 3,
+    adults: 2,
+    method: 'card',
+    cancelled: true,
+    leadDays: 22,
+    guest: SHOWCASE_GUEST,
+  },
+  {
+    key: 'cancelled-unpaid',
+    rooms: ['panorama-suite', 'terrace-suite'],
+    checkIn: 22,
+    nights: 2,
+    adults: 2,
+    method: 'bank_transfer',
+    cancelled: true,
+    leadDays: 16,
+    guest: SHOWCASE_GUEST,
   },
 ];
 
