@@ -3,6 +3,7 @@ import type { HotelRepository } from '../domain/ports';
 import { buildPriceBreakdown, nightsBetween } from '../domain/pricing';
 import {
   bookingSchema,
+  type AddOn,
   type Booking,
   type Guest,
   type PaymentAttempt,
@@ -169,6 +170,37 @@ const SAMPLES: SampleStay[] = [
   },
 ];
 
+/**
+ * Two confirmed stays — one upcoming, one already checked out — so a guest
+ * who has never booked anything still sees "My trips" hold something real
+ * on the first visit, instead of an empty demo. Separate from `SAMPLES`
+ * (its own `showcase-` idempotency prefix) so this never depends on, or
+ * multiplies with, the admin's own "Add sample bookings" button.
+ */
+const SHOWCASE: SampleStay[] = [
+  {
+    key: 'upcoming',
+    rooms: ['deluxe-sea', 'sea-view-room'],
+    checkIn: 18,
+    nights: 3,
+    adults: 2,
+    addOnIds: ['addon_breakfast_room'],
+    method: 'card',
+    leadDays: 20,
+    guest: { firstName: 'Katerina', lastName: 'Ioannou', email: 'katerina.ioannou@example.com', phone: '+357 99 887 214' },
+  },
+  {
+    key: 'past',
+    rooms: ['garden-studio', 'cove-studio'],
+    checkIn: -12,
+    nights: 4,
+    adults: 2,
+    method: 'apple_pay',
+    leadDays: 25,
+    guest: { firstName: 'Katerina', lastName: 'Ioannou', email: 'katerina.ioannou@example.com', phone: '+357 99 887 214' },
+  },
+];
+
 /** The methods that take the money at booking time — the same split `BookingService.confirm` makes. */
 const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google_pay']);
 
@@ -186,78 +218,108 @@ export class SampleBookingService {
   async seed(hotelSlug: string, today: string): Promise<{ created: number }> {
     const hotel = await this.repository.getHotel(hotelSlug);
     if (!hotel) return { created: 0 };
-
-    const [rooms, addOns] = await Promise.all([
-      this.repository.listRooms(hotel.id),
-      this.repository.listAddOns(hotel.id),
-    ]);
-    const bySlug = new Map(rooms.filter((room) => !room.hidden).map((room) => [room.slug, room]));
-    const base = parseISO(today);
-    const day = (offset: number) => format(addDays(base, offset), 'yyyy-MM-dd');
+    const context = await this.context(hotel.id, today);
 
     let created = 0;
     for (const [index, sample] of SAMPLES.entries()) {
-      const idempotencyKey = `sample-${sample.key}`;
-      if (await this.repository.findBookingByIdempotencyKey(idempotencyKey)) continue;
-
-      const checkIn = day(sample.checkIn);
-      const checkOut = day(sample.checkIn + sample.nights);
-      const room = await this.firstFree(sample, bySlug, checkIn, checkOut);
-      if (!room) continue;
-      const ratePlan = (await this.repository.listRatePlans(room.id))[0];
-      if (!ratePlan) continue;
-
-      const adults = Math.max(1, Math.min(sample.adults, room.capacity));
-      const children = Math.max(0, Math.min(sample.children ?? 0, room.capacity - adults));
-      const chosen = addOns.filter((addOn) => addOn.enabled && sample.addOnIds?.includes(addOn.id));
-      const price = buildPriceBreakdown({
-        ratePlan,
-        addOns: chosen,
-        nights: nightsBetween(checkIn, checkOut),
-        adults,
-        children,
-      });
-
-      const bookedOn = day(Math.min(0, sample.checkIn - sample.leadDays));
-      const hour = String(8 + (index % 11)).padStart(2, '0');
-      const minute = String((index * 17) % 60).padStart(2, '0');
-      const bookingId = `bkg_${crypto.randomUUID()}`;
-
-      const booking: Booking = bookingSchema.parse({
-        id: bookingId,
-        reference: createReference(),
-        idempotencyKey,
-        hotelId: hotel.id,
-        roomTypeId: room.id,
-        ratePlanId: ratePlan.id,
-        checkIn,
-        checkOut,
-        adults,
-        children,
-        guest: sample.guest,
-        addOnIds: chosen.map((addOn) => addOn.id),
-        total: price.total,
-        currency: price.currency,
-        status: 'confirmed',
-        createdAt: `${bookedOn}T${hour}:${minute}:00.000Z`,
-      } satisfies Booking);
-
-      const attempt: PaymentAttempt = {
-        id: `pay_${crypto.randomUUID()}`,
-        bookingId,
-        provider: sample.method,
-        status: AUTHORIZING_METHODS.has(sample.method) ? 'authorized' : 'demo_pending',
-        amount: price.total,
-        currency: price.currency,
-      };
-
-      await this.repository.savePaymentAttempt(attempt);
-      await this.repository.saveBooking(booking);
-      if (sample.cancelled) await this.repository.cancelBooking(booking.reference);
-      created += 1;
+      const booking = await this.ensureStay(hotel.id, `sample-${sample.key}`, sample, context, index);
+      if (booking) created += 1;
     }
-
     return { created };
+  }
+
+  /** Idempotent like `seed`; returns every showcase stay that exists (just-created or already there). */
+  async seedShowcase(hotelSlug: string, today: string): Promise<Booking[]> {
+    const hotel = await this.repository.getHotel(hotelSlug);
+    if (!hotel) return [];
+    const context = await this.context(hotel.id, today);
+
+    const bookings: Booking[] = [];
+    for (const [index, stay] of SHOWCASE.entries()) {
+      const booking = await this.ensureStay(hotel.id, `showcase-${stay.key}`, stay, context, index);
+      if (booking) bookings.push(booking);
+    }
+    return bookings;
+  }
+
+  private async context(hotelId: string, today: string) {
+    const [rooms, addOns] = await Promise.all([
+      this.repository.listRooms(hotelId),
+      this.repository.listAddOns(hotelId),
+    ]);
+    return {
+      bySlug: new Map(rooms.filter((room) => !room.hidden).map((room) => [room.slug, room])),
+      addOns,
+      day: (offset: number) => format(addDays(parseISO(today), offset), 'yyyy-MM-dd'),
+    };
+  }
+
+  /** Returns the existing booking under `idempotencyKey`, or creates and returns it if a room is free. */
+  private async ensureStay(
+    hotelId: string,
+    idempotencyKey: string,
+    sample: SampleStay,
+    context: { bySlug: Map<string, RoomType>; addOns: AddOn[]; day: (offset: number) => string },
+    index: number,
+  ): Promise<Booking | null> {
+    const existing = await this.repository.findBookingByIdempotencyKey(idempotencyKey);
+    if (existing) return existing;
+
+    const checkIn = context.day(sample.checkIn);
+    const checkOut = context.day(sample.checkIn + sample.nights);
+    const room = await this.firstFree(sample, context.bySlug, checkIn, checkOut);
+    if (!room) return null;
+    const ratePlan = (await this.repository.listRatePlans(room.id))[0];
+    if (!ratePlan) return null;
+
+    const adults = Math.max(1, Math.min(sample.adults, room.capacity));
+    const children = Math.max(0, Math.min(sample.children ?? 0, room.capacity - adults));
+    const chosen = context.addOns.filter((addOn) => addOn.enabled && sample.addOnIds?.includes(addOn.id));
+    const price = buildPriceBreakdown({
+      ratePlan,
+      addOns: chosen,
+      nights: nightsBetween(checkIn, checkOut),
+      adults,
+      children,
+    });
+
+    const bookedOn = context.day(Math.min(0, sample.checkIn - sample.leadDays));
+    const hour = String(8 + (index % 11)).padStart(2, '0');
+    const minute = String((index * 17) % 60).padStart(2, '0');
+    const bookingId = `bkg_${crypto.randomUUID()}`;
+
+    const booking: Booking = bookingSchema.parse({
+      id: bookingId,
+      reference: createReference(),
+      idempotencyKey,
+      hotelId,
+      roomTypeId: room.id,
+      ratePlanId: ratePlan.id,
+      checkIn,
+      checkOut,
+      adults,
+      children,
+      guest: sample.guest,
+      addOnIds: chosen.map((addOn) => addOn.id),
+      total: price.total,
+      currency: price.currency,
+      status: 'confirmed',
+      createdAt: `${bookedOn}T${hour}:${minute}:00.000Z`,
+    } satisfies Booking);
+
+    const attempt: PaymentAttempt = {
+      id: `pay_${crypto.randomUUID()}`,
+      bookingId,
+      provider: sample.method,
+      status: AUTHORIZING_METHODS.has(sample.method) ? 'authorized' : 'demo_pending',
+      amount: price.total,
+      currency: price.currency,
+    };
+
+    await this.repository.savePaymentAttempt(attempt);
+    await this.repository.saveBooking(booking);
+    if (sample.cancelled) await this.repository.cancelBooking(booking.reference);
+    return booking;
   }
 
   /**

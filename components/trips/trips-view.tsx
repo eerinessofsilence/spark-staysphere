@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowRightIcon, CalendarIcon, UsersIcon } from '@heroicons/react/24/outline';
-import { cancelTrip, claimTrip, loadTrips } from '@/app/trips/actions';
+import { cancelTrip, claimTrip, getDefaultTrips, loadTrips } from '@/app/trips/actions';
 import type { TripSummary } from '@/lib/application/booking-service';
 import { stayBucket } from '@/lib/domain/availability';
 import { formatDateRange, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
@@ -54,8 +54,17 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
     let live = true;
     const references = readTrips();
     if (references.length === 0) {
-      setTrips([]);
-      return;
+      // Nothing this browser has booked or claimed yet — show the standing
+      // demo stays instead of a blank page, and remember them the same way
+      // a real claim would, so a reload does not ask the server again.
+      void getDefaultTrips().then((found) => {
+        if (!live) return;
+        found.forEach((trip) => rememberTrip(trip.reference));
+        setTrips(found);
+      });
+      return () => {
+        live = false;
+      };
     }
     void loadTrips(references).then((found) => {
       if (live) setTrips(found);

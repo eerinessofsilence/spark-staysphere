@@ -2,7 +2,8 @@
 
 import { z } from 'zod';
 import type { TripSummary } from '@/lib/application/booking-service';
-import { bookingService } from '@/lib/application/container';
+import { bookingService, DEMO_HOTEL_SLUG, sampleBookingService } from '@/lib/application/container';
+import { toIsoDate } from '@/lib/application/search-params';
 import { BOOKING_REFERENCE_PATTERN } from '@/lib/domain/booking';
 
 /**
@@ -25,6 +26,19 @@ export async function loadTrips(references: string[]): Promise<TripSummary[]> {
   const valid = references.filter((reference) => referenceSchema.safeParse(reference).success);
   if (valid.length === 0) return [];
   return bookingService.listTrips(valid);
+}
+
+/**
+ * What a browser with no trips of its own sees instead of a blank page: two
+ * standing demo stays, created once and reused from then on (see
+ * `SampleBookingService.seedShowcase`). Not tied to this browser — every
+ * first-time visitor sees the same two — so this only runs when `readTrips()`
+ * came back empty, never overriding a browser's own list.
+ */
+export async function getDefaultTrips(): Promise<TripSummary[]> {
+  const bookings = await sampleBookingService.seedShowcase(DEMO_HOTEL_SLUG, toIsoDate(new Date()));
+  if (bookings.length === 0) return [];
+  return bookingService.listTrips(bookings.map((booking) => booking.reference));
 }
 
 export type ClaimTripResult =
