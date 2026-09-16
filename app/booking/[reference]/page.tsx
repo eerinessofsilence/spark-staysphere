@@ -69,7 +69,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
                 <CheckCircle weight="fill" className="size-5" aria-hidden="true" />
                 Booking confirmed
               </p>
-              <h1 className="text-display mt-4 text-5xl sm:text-6xl">You are booked in</h1>
+              <h1 className="text-display mt-4 text-4xl sm:text-5xl">You are booked in</h1>
               <p className="mt-4 max-w-lg text-base text-muted-foreground">
                 {booking.guest.firstName}, your {room?.name ?? 'room'} at {hotel.name} is held under
                 the booking number shown here. This is a demo booking — no payment was taken and no real
