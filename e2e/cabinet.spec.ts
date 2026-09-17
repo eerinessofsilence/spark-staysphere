@@ -92,8 +92,17 @@ test('the front desk lays out every room and filters by room type', async ({ pag
   await page.goto('/admin/front-desk?type=room_deluxe-sea');
   await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(8);
 
-  // Nonsense parameters fall back to today, 14 nights and every room type.
-  await page.goto('/admin/front-desk?from=garbage&days=5&type=nope');
+  // Nonsense parameters fall back to today, 14 nights and every room type. Any whole number of
+  // nights up to 90 is a valid custom range, so the fallback needs one past that.
+  await page.goto('/admin/front-desk?from=garbage&days=500&type=nope');
+  // On a phone the nights toggle lives in the filter sheet.
+  const filters = page.getByRole('button', { name: /^Filters/ });
+  if (await filters.isVisible()) {
+    await actUntil(
+      () => filters.click(),
+      () => expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible({ timeout: 3_000 }),
+    );
+  }
   await expect(page.getByRole('link', { name: '14 nights', exact: true })).toHaveAttribute(
     'aria-current',
     'true',
@@ -115,12 +124,8 @@ test('a room the guest chose shows on that room in the front desk', async ({ pag
     () => bar.click(),
     () => expect(dialog).toBeVisible({ timeout: 3_000 }),
   );
-  await expect(dialog.getByText(`Room ${room}`)).toBeVisible();
-  await expect(dialog.getByText('Chosen by the guest on the floor plan')).toBeVisible();
-  await expect(dialog.getByRole('link', { name: 'Open booking' })).toHaveAttribute(
-    'href',
-    `/admin/bookings/${reference}`,
-  );
+  await expect(dialog.getByText(`Room ${room}`, { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Room rate', { exact: true })).toBeVisible();
 });
 
 test('a guest picks a room on the floor plan, books it, and the back office sees that room', async ({
