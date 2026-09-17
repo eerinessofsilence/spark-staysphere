@@ -105,7 +105,6 @@ export function AdminBrand() {
     <Link href="/admin" className="flex min-h-11 items-center gap-2 rounded-full px-2">
       <img src="/brand/staysphere-logo-on-light.svg" alt="StaySphere" className="h-6 w-auto dark:hidden" />
       <img src="/brand/staysphere-logo.svg" alt="" aria-hidden="true" className="hidden h-6 w-auto dark:block" />
-      <span className="hidden text-sm font-medium text-muted-foreground lg:inline">Admin</span>
     </Link>
   );
 }
