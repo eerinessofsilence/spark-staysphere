@@ -1,7 +1,9 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { contentService, DEMO_HOTEL_SLUG, demoControl, sampleBookingService } from '@/lib/application/container';
+import { availableHotels, contentService, demoControl, sampleBookingService } from '@/lib/application/container';
+import { getSelectedHotelSlug, SELECTED_HOTEL_COOKIE } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { roomStatusSchema } from '@/lib/domain/schemas';
 import { z } from 'zod';
@@ -43,7 +45,8 @@ export async function setRoomStatus(input: z.infer<typeof overrideSchema>): Prom
 
 /** A dozen past, in-house, upcoming and cancelled stays, so an empty demo has something to show. */
 export async function addSampleBookings(): Promise<{ created: number }> {
-  const result = await sampleBookingService.seed(DEMO_HOTEL_SLUG, toIsoDate(new Date()));
+  const hotelSlug = await getSelectedHotelSlug();
+  const result = await sampleBookingService.seed(hotelSlug, toIsoDate(new Date()));
   refresh();
   return result;
 }
@@ -51,5 +54,17 @@ export async function addSampleBookings(): Promise<{ created: number }> {
 export async function resetDemoState(): Promise<void> {
   await demoControl.reset();
   await contentService.resetContent();
+  refresh();
+}
+
+/** Switches which seed hotel `/admin` reads and writes through — see `hotel-context.ts`. */
+export async function setSelectedHotelAction(slug: string): Promise<void> {
+  if (!availableHotels.some((hotel) => hotel.slug === slug)) return;
+  const store = await cookies();
+  store.set(SELECTED_HOTEL_COOKIE, slug, { path: '/admin', maxAge: 60 * 60 * 24 * 365 });
+  // The sidebar's own hotel name/location come from app/admin/layout.tsx, which
+  // sits above every page `refresh()` revalidates — without this, the pages
+  // below picked up the new hotel but the shell around them kept showing the old one.
+  revalidatePath('/admin', 'layout');
   refresh();
 }

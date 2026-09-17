@@ -9,6 +9,7 @@ import {
   DEMO_HOTEL_SLUG,
   hotelRepository,
 } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { formatDate } from '@/lib/formatting';
 import { tag } from '@/lib/ui';
@@ -37,8 +38,13 @@ export default async function RatesPage() {
   const dates = Array.from({ length: NIGHTS }, (_, index) => toIsoDate(addDays(parseISO(today), index)));
   const windowEnd = toIsoDate(addDays(parseISO(today), NIGHTS));
 
-  const hotel = await catalogService.getHotel(DEMO_HOTEL_SLUG);
+  const selectedSlug = await getSelectedHotelSlug();
+  const hotel = await catalogService.getHotel(selectedSlug);
   const rooms = await hotelRepository.listRooms(hotel.id);
+  // The CMS (createRate/createRoom) only ever writes against the default hotel — see
+  // content-service.ts's single bound `hotelSlug` — so the add-a-rate shortcut only
+  // appears there; other hotels still edit an existing rate's price inline below.
+  const canAddRate = selectedSlug === DEMO_HOTEL_SLUG;
   const rows = await Promise.all(
     rooms.map(async (room) => {
       const [rates, override, availability] = await Promise.all([
@@ -61,11 +67,13 @@ export default async function RatesPage() {
       <AdminPageHeader
         title="Room Rates"
         actions={
-          <AddRoomRateButton
-            rooms={rows.map(({ room }) => ({ id: room.id, name: room.name }))}
-            currency={hotel.currency}
-            createRateAction={createRateAction}
-          />
+          canAddRate ? (
+            <AddRoomRateButton
+              rooms={rows.map(({ room }) => ({ id: room.id, name: room.name }))}
+              currency={hotel.currency}
+              createRateAction={createRateAction}
+            />
+          ) : null
         }
       />
 

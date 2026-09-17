@@ -38,6 +38,7 @@ export async function updateBaseRateAction(
       cancellationPolicy: rate.cancellationPolicy,
     },
     Number(formData.get('version')),
+    roomTypeId,
   );
 
   if (result.ok) {

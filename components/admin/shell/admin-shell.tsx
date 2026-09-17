@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { HotelOption } from './admin-nav';
 import {
   AdminBrand,
   AdminMobileMenu,
@@ -11,17 +12,19 @@ import { UnsavedChangesGuard } from './unsaved-changes';
 interface AdminShellProps {
   hotelName: string;
   location: string;
+  hotels: HotelOption[];
+  selectedSlug: string;
   children: ReactNode;
 }
 
-export function AdminShell({ hotelName, location, children }: AdminShellProps) {
+export function AdminShell({ hotelName, location, hotels, selectedSlug, children }: AdminShellProps) {
   return (
     <div data-admin-shell className="min-h-dvh lg:grid lg:grid-cols-shell">
       <aside aria-label="Hotel admin" className="sticky top-0 hidden h-dvh p-3 lg:block">
         <div className="flex h-full flex-col rounded-[18px] bg-card p-3 shadow-soft">
           <AdminBrand />
           <div className="mt-3">
-            <PropertyCard hotelName={hotelName} location={location} />
+            <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           </div>
           <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
             <AdminNav />
@@ -37,7 +40,7 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
           <div className="flex h-14 items-center gap-2 rounded-full bg-card pr-2 pl-3 shadow-soft">
             <AdminBrand />
             <div className="min-w-0 flex-1" />
-            <AdminMobileMenu hotelName={hotelName} location={location} />
+            <AdminMobileMenu hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           </div>
         </div>
         {children}

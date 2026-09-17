@@ -17,9 +17,16 @@ import {
   TableCellsIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
+import { setSelectedHotelAction } from '@/app/admin/actions';
 import { Modal } from '@/components/site/modal';
 import { fieldClass, iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+
+export interface HotelOption {
+  slug: string;
+  name: string;
+  location: string;
+}
 
 interface NavItem {
   href: string;
@@ -109,24 +116,36 @@ export function AdminBrand() {
   );
 }
 
-export function PropertyCard({ hotelName, location }: { hotelName: string; location: string }) {
+export function PropertyCard({
+  hotelName,
+  location,
+  hotels,
+  selectedSlug,
+}: {
+  hotelName: string;
+  location: string;
+  hotels: HotelOption[];
+  selectedSlug: string;
+}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
-  // The demo backend only ever serves one property. The rest are display-only
-  // rows so the switcher reads like a real portfolio picker — wiring an
-  // actual switch in means listing real hotels here once the backend can.
-  const properties = [
-    { name: hotelName, location, active: true },
-    { name: 'Marlow House', location: 'Lisbon, Portugal', active: false },
-    { name: 'Nordkapp Fjord Lodge', location: 'Tromsø, Norway', active: false },
-    { name: 'Villa Serrano', location: 'Palma de Mallorca, Spain', active: false },
-    { name: 'The Locke & Vine', location: 'Austin, United States', active: false },
-    { name: 'Kiri Bay Retreat', location: 'Queenstown, New Zealand', active: false },
-  ];
+  const [pending, startTransition] = React.useTransition();
   const close = React.useCallback(() => setOpen(false), []);
-  const matches = properties.filter((property) =>
-    property.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const matches = hotels.filter((hotel) => hotel.name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  function switchTo(slug: string) {
+    if (slug === selectedSlug) {
+      close();
+      return;
+    }
+    startTransition(async () => {
+      // The action's own revalidatePath calls refresh whatever admin page is
+      // already open — an explicit router.refresh() here raced it and left
+      // the sidebar showing the previous hotel.
+      await setSelectedHotelAction(slug);
+      close();
+    });
+  }
 
   return (
     <>
@@ -164,18 +183,19 @@ export function PropertyCard({ hotelName, location }: { hotelName: string; locat
               No hotels found.
             </li>
           ) : (
-            matches.map((property) => (
-              <li key={property.name}>
+            matches.map((hotel) => (
+              <li key={hotel.slug}>
                 <button
                   type="button"
-                  onClick={close}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-stone"
+                  disabled={pending}
+                  onClick={() => switchTo(hotel.slug)}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-stone disabled:opacity-60"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{property.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{property.location}</span>
+                    <span className="block truncate text-sm font-medium">{hotel.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{hotel.location}</span>
                   </span>
-                  {property.active ? (
+                  {hotel.slug === selectedSlug ? (
                     <CheckIcon className="size-4 shrink-0 text-foreground" aria-hidden="true" />
                   ) : null}
                 </button>
@@ -209,7 +229,17 @@ export function DemoAccount({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminMobileMenu({ hotelName, location }: { hotelName: string; location: string }) {
+export function AdminMobileMenu({
+  hotelName,
+  location,
+  hotels,
+  selectedSlug,
+}: {
+  hotelName: string;
+  location: string;
+  hotels: HotelOption[];
+  selectedSlug: string;
+}) {
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
 
@@ -224,7 +254,7 @@ export function AdminMobileMenu({ hotelName, location }: { hotelName: string; lo
         <Bars3Icon className="size-5" aria-hidden="true" />
       </button>
       <Modal open={open} onClose={close} title="Admin menu">
-        <PropertyCard hotelName={hotelName} location={location} />
+        <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
         <div className="mt-4">
           <AdminNav onNavigate={close} />
         </div>

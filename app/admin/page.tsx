@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { addDays, parseISO } from 'date-fns';
 import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import { DEMO_HOTEL_SLUG, hotelRepository, inventoryService } from '@/lib/application/container';
+import { hotelRepository, inventoryService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import { roomCategory, type RoomCategory } from '@/lib/domain/room-attributes';
@@ -26,11 +27,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminOverviewPage() {
   const today = toIsoDate(new Date());
-  const [board, bookings] = await Promise.all([
-    inventoryService.getFrontDesk(DEMO_HOTEL_SLUG, today, 14),
+  const [board, allBookings] = await Promise.all([
+    inventoryService.getFrontDesk(await getSelectedHotelSlug(), today, 14),
     hotelRepository.listBookings(),
   ]);
   const { hotel } = board;
+  const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
   const rooms = await hotelRepository.listRooms(hotel.id);
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
 

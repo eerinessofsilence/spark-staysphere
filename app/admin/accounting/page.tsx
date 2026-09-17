@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowCounterClockwise, CheckCircle, Clock, MinusCircle, Receipt, XCircle } from '@phosphor-icons/react/dist/ssr';
 import { buildLedger, type LedgerState } from '@/lib/application/accounting';
-import { catalogService, DEMO_HOTEL_SLUG, hotelRepository } from '@/lib/application/container';
+import { catalogService, hotelRepository } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { formatDateShort, formatMoney } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
@@ -29,10 +30,11 @@ function plural(count: number, one: string, many: string): string {
 }
 
 export default async function AccountingPage() {
-  const [hotel, bookings] = await Promise.all([
-    catalogService.getHotel(DEMO_HOTEL_SLUG),
+  const [hotel, allBookings] = await Promise.all([
+    catalogService.getHotel(await getSelectedHotelSlug()),
     hotelRepository.listBookings(),
   ]);
+  const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
   const entries = await Promise.all(
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );

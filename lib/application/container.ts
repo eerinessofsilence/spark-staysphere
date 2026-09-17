@@ -5,12 +5,13 @@ import type {
   RoomSearchInterpreter,
   SpeechTranscriber,
 } from '../domain/ports';
+import type { Hotel } from '../domain/schemas';
 import { getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
-import { demoAddOns, demoHotel, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
+import { demoAddOns, demoHotel, demoHotels, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
 import { createOpenAiTranscriber } from '../infrastructure/openai-transcriber';
@@ -36,6 +37,18 @@ export const demoControl: DemoControlPort = durableDemoControlPort;
 
 /** The demo tenant. A white-label deployment resolves this per host or per route. */
 export const DEMO_HOTEL_SLUG = 'asteria-cove';
+
+/**
+ * Every hotel the admin's property switcher can actually switch to — real
+ * seed data behind each one, not the decorative rows the switcher used to
+ * show. The guest site stays pinned to `DEMO_HOTEL_SLUG`; only `/admin`
+ * reads the switcher's current pick (see `hotel-context.ts`).
+ */
+export const availableHotels: Array<Pick<Hotel, 'slug' | 'name' | 'location'>> = demoHotels.map((hotel) => ({
+  slug: hotel.slug,
+  name: hotel.name,
+  location: hotel.location,
+}));
 
 const bookingEngineAdapter = createBookingEngineAdapter(hotelRepository);
 

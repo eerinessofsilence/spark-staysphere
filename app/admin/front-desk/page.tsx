@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { contentService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { addIsoDays } from '@/lib/domain/dates';
 import { formatDateShort, formatNights } from '@/lib/formatting';
@@ -37,17 +38,24 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
   const rawDays = Number(first(params.days));
   const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
 
-  const board = await inventoryService.getFrontDesk(DEMO_HOTEL_SLUG, from, days);
+  const selectedSlug = await getSelectedHotelSlug();
+  const board = await inventoryService.getFrontDesk(selectedSlug, from, days);
   const rawType = first(params.type);
   const type = rawType && board.groups.some((group) => group.roomTypeId === rawType) ? rawType : null;
   const groups = type ? board.groups.filter((group) => group.roomTypeId === type) : board.groups;
 
   const lastNight = board.dates.at(-1) ?? from;
-  const roomTypes = await contentService.listRoomsContent();
+  // The CMS only ever writes against the default hotel — see content-service.ts's
+  // single bound `hotelSlug` — so the shortcut to add a room type only appears there.
+  const canAddProperty = selectedSlug === DEMO_HOTEL_SLUG;
+  const roomTypes = canAddProperty ? await contentService.listRoomsContent() : [];
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Front Desk" actions={<AddRoomTypeButton roomTypes={roomTypes} />} />
+      <AdminPageHeader
+        title="Front Desk"
+        actions={canAddProperty ? <AddRoomTypeButton roomTypes={roomTypes} /> : null}
+      />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
