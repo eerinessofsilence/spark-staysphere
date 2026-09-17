@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowsPointingInIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { PanoramaViewer } from '@/components/view-360';
 import type { RoomType } from '@/lib/domain/schemas';
@@ -158,7 +158,7 @@ export function RoomGallery({ room }: { room: RoomType }) {
           className={iconButton('glass', 'absolute top-4 right-4 z-10')}
         >
           {fullscreen ? (
-            <ArrowsPointingInIcon className="size-5" aria-hidden="true" />
+            <XMarkIcon className="size-5" aria-hidden="true" />
           ) : (
             <ArrowsPointingOutIcon className="size-5" aria-hidden="true" />
           )}
