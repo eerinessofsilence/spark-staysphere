@@ -76,8 +76,6 @@ export function RoomSummary({ roomSlug, criteria, roomsHref, soldOut }: RoomSumm
             {t('rooms.bookThisRoom')}
           </Link>
         )}
-
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t('room.demoBookingNotice')}</p>
       </div>
     </aside>
   );
