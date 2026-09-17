@@ -47,6 +47,23 @@ export function nextStop(keyAngles: number[], from: number, direction: 1 | -1, f
 }
 
 /**
+ * The closest key-angle stop to `from`, either direction — used to settle a
+ * free drag onto a frame that can actually carry spinner-markup zones (see
+ * `docs/decisions/0006-spinner-markup.md`: a zone only exists on a key
+ * angle). `null` when there are no key angles to settle on.
+ */
+export function nearestKeyAngle(keyAngles: number[], from: number, frameCount: number): number | null {
+  if (keyAngles.includes(from)) return from;
+  const forward = nextStop(keyAngles, from, 1, frameCount);
+  const backward = nextStop(keyAngles, from, -1, frameCount);
+  if (forward === null) return backward;
+  if (backward === null) return forward;
+  const forwardDistance = wrap(forward - from, frameCount);
+  const backwardDistance = wrap(from - backward, frameCount);
+  return forwardDistance <= backwardDistance ? forward : backward;
+}
+
+/**
  * A hotspot's keyframes, prepared once. Sorting and filtering them per frame —
  * for every hotspot, twice, on every step of a drag — was throwing away a few
  * hundred objects a frame and showed up as a stutter as soon as the facade had

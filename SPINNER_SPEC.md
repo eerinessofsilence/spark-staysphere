@@ -11,6 +11,14 @@ not repeat. A same-day detour into a live three.js scene (`Hotel.model`, procedu
 was tried and replaced by this spinner hours later — see CLAUDE.md's roadmap and TECH.md's
 Photography section for that history.
 
+**Since this was written, `/admin` has grown a markup pass for the spinner** —
+`/admin/content/spinner`, drawing zones on the frames below and binding each to a room, a floor, or
+a link. It is a separate, additive layer (its own storage, its own domain module) rather than a
+change to anything this document describes: `Hotel.spinner`'s frames and hotspots stay exactly the
+static seed data this spec calls for, and the CMS never writes through `HotelRepository`'s durable
+path any more than it did before. See `docs/decisions/0006-spinner-markup.md` and TECH.md's
+"Content management (CMS)" section.
+
 ## Why this document exists
 
 We compared SPARK StaySphere 360's arrival page against a reference product (a real-estate

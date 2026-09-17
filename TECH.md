@@ -89,7 +89,9 @@ with one prepared statement per table instead.
 
 The room/rate/add-on *catalog* (names, prices, descriptions) is never written directly — the seed
 in `mock-data.ts` stays fixed in every backend. What `/admin/content` edits is an overlay on top of
-it: see "Content management (CMS)" below.
+it: see "Content management (CMS)" below. Spinner-markup zones are durable the same D1-or-in-memory
+way, but in their own table (`spinner_zones`) rather than the `catalog_entries` overlay — see that
+section's own note on why.
 
 ## Content management (CMS)
 
@@ -196,6 +198,22 @@ because the room page shows it as the name of that view. The media picker is the
 searches by name, and marks photos already added. The content list searches by name and filters to
 room types, add-ons, or only what is hidden or withdrawn.
 
+**Spinner markup** (`/admin/content/spinner`) is the one CMS tab that isn't a `catalog_entries`
+overlay. A zone — a polygon drawn on one of the building spinner's key-angle frames, bound to a
+physical room, a floor (optionally one facade), a room type, or a plain link — has no seed value
+to overlay and autosaves polygon-by-polygon, so it's stored in its own table instead:
+`spinner_zones (id, hotel_id, frame_index, polygon, target, updated_at)`, written through
+`SpinnerMarkupPort`'s plain `applyZoneBatch(hotelId, {upserts, deletes})`, scoped by `hotel_id`
+alone — no version, no conflict to resolve, the same as the ported polygon editor's own reference
+`saveBatch`. `ContentService.saveSpinnerZones` rejects a frame that isn't one of the spinner's
+`keyAngles` and a target that doesn't currently exist; `CatalogService.getSpinnerZones` resolves
+each zone's target through the live catalog for the guest and silently drops one that no longer
+resolves. The editor itself (`components/admin/spinner-markup/`) is a port of a general-purpose
+polygon editor built outside this repo — geometry and validation live in `lib/domain/polygon/`,
+carrying over that project's own test suite. Frames and key angles are still read straight off
+`Hotel.spinner`; uploading the property's own frames is still roadmap step 8, not this tab's job.
+See `docs/decisions/0006-spinner-markup.md`.
+
 ## Physical rooms, the floor plan and the front desk
 
 The catalog sells room types; a floor plan and a PMS front desk need doors. Physical rooms are
@@ -250,6 +268,7 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 | `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
 | `/admin/content` — Rooms | Two tabs: Room types (`/admin/content`: cover, price, room count) and Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one); room type, room and rate editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 | `/admin/content/add-ons` — Services | Its own nav item: every add-on by category, with the on-sale switch, and the add-on editors under it | `ContentService` — live |
+| `/admin/content/spinner` — 360 Orbit | Overview (key-angle frames, zone coverage) and `/admin/content/spinner/markup` (draw and bind zones per frame) | `ContentService.getSpinnerMarkupContent`/`saveSpinnerZones` — live |
 
 An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
 `lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,

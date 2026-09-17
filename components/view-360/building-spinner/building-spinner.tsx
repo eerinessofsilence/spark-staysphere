@@ -7,6 +7,7 @@ import { Modal } from '@/components/site/modal';
 import { useAnchoredCard, useMarkerAnchor } from '@/components/site/use-anchored-card';
 import { useElementSize } from '@/components/site/use-element-size';
 import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
+import type { GuestSpinnerZone } from '@/lib/application/catalog-service';
 import { withStayQuery } from '@/lib/application/search-params';
 import type { BuildingSpinnerData, SpinnerHotspot } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { buildTrack, frontOnPoint, hotspotPosition, openingFrame } from './orbit';
 import { SpinnerMarker } from './spinner-marker';
 import { SpinnerRoomCard, SpinnerRoomSheetBody } from './spinner-room-card';
+import { SpinnerZonesOverlay } from './spinner-zones-overlay';
 import { TurnControls } from './turn-controls';
 import { useCanvasFrame, useFrameSequence } from './use-frame-sequence';
 import { useFrameUrlSync } from './use-frame-url-sync';
@@ -22,6 +24,8 @@ import { useOrbit } from './use-orbit';
 
 export interface BuildingSpinnerProps {
   spinner: BuildingSpinnerData;
+  /** Zones drawn in `/admin/content/spinner` — see `SpinnerZonesOverlay`. Only ever shown on a key-angle frame. */
+  zones?: GuestSpinnerZone[];
   /** The flat photo of the same view — shown, markers pinned front-on, if the frame sequence fails to load. */
   fallbackPhoto: { url: string; width: number; height: number; alt: string };
   title: string;
@@ -51,6 +55,7 @@ export interface BuildingSpinnerProps {
  */
 export function BuildingSpinner({
   spinner,
+  zones,
   fallbackPhoto,
   title,
   stayQuery,
@@ -104,6 +109,14 @@ export function BuildingSpinner({
         return position ? [{ hotspot, position }] : [];
       }),
     [tracks, frameIndex, frameCount],
+  );
+
+  // A zone only ever carries a polygon on the key-angle frame it was drawn
+  // on (see `docs/decisions/0006-spinner-markup.md`) — no interpolation
+  // between frames the way a marker's position gets.
+  const zonesOnFrame = React.useMemo(
+    () => (zones ?? []).filter((zone) => zone.frameIndex === frameIndex),
+    [zones, frameIndex],
   );
 
   // A pinned card closes once its storey turns out of view.
@@ -205,6 +218,15 @@ export function BuildingSpinner({
       {...orbit.stageHandlers}
     >
       <canvas ref={canvasRef} aria-label={title} className="pointer-events-none absolute inset-0 size-full" />
+
+      <SpinnerZonesOverlay
+        zones={zonesOnFrame}
+        frameSize={frameSize}
+        stage={stage}
+        hidden={orbit.isTurning}
+        stayQuery={stayQuery}
+        rooms={rooms}
+      />
 
       {orbit.isTurning ? null : visible.map(({ hotspot, position }) => renderMarker(hotspot, position))}
 

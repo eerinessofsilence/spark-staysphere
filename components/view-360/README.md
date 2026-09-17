@@ -18,6 +18,7 @@ import { BuildingSpinner, PanoramaViewer } from '@/components/view-360';
 
 <BuildingSpinner
   spinner={hotel.spinner}          // Hotel.spinner, already filtered by CatalogService
+  zones={spinnerZones}             // GuestSpinnerZone[] from catalogService.getSpinnerZones — optional
   fallbackPhoto={area.photo}       // shown if the frames can't load
   title={area.name}
   stayQuery={stayQuery}            // the guest's dates, carried into every hotspot link
@@ -49,6 +50,7 @@ components/view-360/
 │   ├── use-frame-url-sync.ts     keeps ?frame=N in the address bar
 │   ├── spinner-marker.tsx        one storey's lens marker
 │   ├── spinner-room-card.tsx     the desk card and the phone sheet body for a hotspot
+│   ├── spinner-zones-overlay.tsx CMS-drawn zones (GuestSpinnerZone[]) — see below
 │   └── turn-controls.tsx         the ink "‹ 360° ›" pill
 └── panorama-viewer/
     ├── panorama-viewer.tsx       sphere lifecycle + outline hover/click
@@ -74,6 +76,9 @@ The module depends only on shared, lower-level code — never on the screens tha
 - `components/rooms/room-facts.tsx` — the `RoomFacts` shape and the fact chips
 - `lib/domain/schemas.ts` — `BuildingSpinnerData`, `SpinnerHotspot`, `SpinnerFrame` (Zod is the
   contract; the schemas stay there with every other schema)
+- `lib/domain/polygon/geometry.ts` — `toPathData`/`centroid`, for drawing a zone's outline
+- `lib/application/catalog-service.ts` — the `GuestSpinnerZone` type (`getSpinnerZones`'s resolved
+  output; see `docs/decisions/0006-spinner-markup.md`), type-only
 - `lib/application/search-params.ts` — `withStayQuery`
 - `lib/formatting.ts`, `lib/ui.ts`, `lib/utils.ts`
 
@@ -98,11 +103,16 @@ the catalog offer's own, passed in through `rooms`.
 5. **A hotspot exists only across the frames where it faces the camera** — `keyframes` authored
    in sweep order (they may wrap through frame 0), interpolated by `hotspotPosition`. Positions
    are fractions of the frame, projected through the cover crop.
-6. **Pannellum is vendored** (`public/vendor/pannellum`) and loaded once per page from
+6. **A zone (`SpinnerZonesOverlay`, `zones` prop) exists only on the exact key-angle frame it was
+   drawn on** — no interpolation, unlike a hotspot's marker position. `use-orbit.ts` settles a
+   free drag onto the nearest key angle (`nearestKeyAngle`) for exactly this reason: it's the only
+   way a guest reliably lands somewhere a zone can show. See
+   `docs/decisions/0006-spinner-markup.md`.
+7. **Pannellum is vendored** (`public/vendor/pannellum`) and loaded once per page from
    `pannellum.ts` — no CDN, no npm dependency. Its own controls are switched off.
-7. **Deep links** — `app/page.tsx` reads `?frame=N` and `?unit=` and passes them in;
+8. **Deep links** — `app/page.tsx` reads `?frame=N` and `?unit=` and passes them in;
    `useFrameUrlSync` writes the frame back with `replaceState`, at most once per animation frame.
-8. **Phone vs desk** — below `sm` (`PHONE_QUERY`) a hotspot opens the product's `Modal` sheet;
+9. **Phone vs desk** — below `sm` (`PHONE_QUERY`) a hotspot opens the product's `Modal` sheet;
    from `sm` up, a card beside the marker, placed by `useAnchoredCard`.
 
 ## Common changes
@@ -119,6 +129,10 @@ Check at 1440px and 390px.
 `description`, `href`, `cta`, optional `roomSlug` (adds the floor and price line, and is hidden
 automatically when the CMS hides that room type — `CatalogService.getHotel`), and at least two
 `keyframes`.
+
+**Draw or rebind a zone.** No code change — `/admin/content/spinner/markup`, one tab per key-angle
+frame. See `docs/decisions/0006-spinner-markup.md` and `components/admin/spinner-markup/`, the
+ported polygon editor itself.
 
 **Give a room a 360° view.** In the CMS, `/admin/content/rooms/[id]` → Photos and views → pick an
 equirectangular (2:1) file from `public/images/panoramas`; `mediaTypeOf` makes it a `360` item and
@@ -142,6 +156,8 @@ the schema (`Hotspot.yaw`/`pitch`/`sphereOutline`, `HotelArea.panorama`/`panoram
 - **E2E** (`npm run test:e2e`, both 1440px and 390px) in `e2e/golden-path.spec.ts`: the arrival
   screen turns the building and a hotspot leads into the catalog; a `?frame=` deep link opens
   there and the turn controls move it; a room page opens its 360° view and returns to the photos.
+  `e2e/spinner-markup.spec.ts` (desktop only — see its own note) covers drawing and binding a zone
+  in the CMS and the same zone showing up on the guest orbit.
 - **By hand, after any change to the spinner**: drag with a mouse and a finger; arrow keys and the
   turn buttons, including several quick presses; a tap on a marker opens its card (desk) or sheet
   (phone) while a drag starting on a marker still turns; the card stays on screen near every edge;

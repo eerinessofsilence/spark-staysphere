@@ -72,6 +72,7 @@ export const hr: Record<TranslationKey, string> = {
   'home.turnLeft': "Okreni lijevo",
   'home.turnRight': "Okreni desno",
   'home.spinnerDragHint': "povucite ili koristite tipke sa strelicama za okretanje zgrade",
+  'home.spinnerFloorZone': "Kat {floor}",
 
   'rooms.chooseYourRoom': 'Odaberite sobu',
   'rooms.subtitle': '{dateRange} za {nights}, {guests}',
