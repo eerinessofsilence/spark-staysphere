@@ -181,6 +181,11 @@ export const EDITOR_STYLES = `
     padding: 10px 12px;
     border-top: 1px solid var(--pe-border);
   }
+  /* Docked in the header instead of the sidebar, when the caller has no zone list to dock it above. */
+  .pe-toolbar > .pe-side-toolbar {
+    padding: 0;
+    border-top: 0;
+  }
 
   .pe-target {
     flex: 1;
@@ -189,7 +194,7 @@ export const EDITOR_STYLES = `
     flex-direction: column;
     margin: 10px;
     border: 1px solid var(--pe-border);
-    border-radius: 14px;
+    border-radius: 18px;
     background: var(--pe-hover);
     overflow: hidden;
   }

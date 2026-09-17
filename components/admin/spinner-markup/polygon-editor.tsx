@@ -843,6 +843,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       <style>{EDITOR_STYLES}</style>
 
       <header className="pe-toolbar">
+        {showList ? null : sidebarToolbar}
         {toolbarStart}
 
         <div className="pe-toolbar-end">
