@@ -12,6 +12,8 @@ export interface Channel {
   kind: string;
   commission: number;
   markets: string;
+  /** Only set for a hotel's own custom channel — how it actually gets rates, availability and bookings. */
+  connection?: { method: ConnectionMethod; endpoint?: string; email?: string };
 }
 
 export const channels: Channel[] = [
