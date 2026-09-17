@@ -177,6 +177,42 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                 </div>
               </div>
 
+              <div className="grid border-b border-border" style={{ gridTemplateColumns: columns }}>
+                <div className="sticky left-0 z-20 flex items-center bg-card px-4 py-1.5 text-xs text-muted-foreground">
+                  Available
+                </div>
+                {availableByNight(group, dates.length).map((free, index) => {
+                  const total = group.rooms.length;
+                  return (
+                    <div
+                      key={dates[index]}
+                      title={`${free} of ${total} ${group.roomName} left`}
+                      className={cn(
+                        'flex items-center justify-center border-l border-border py-1.5',
+                        weekends.has(index) && 'bg-stone/50',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'min-w-7 rounded-full px-1.5 py-0.5 text-center text-xs font-medium tabular-nums',
+                          free === 0
+                            ? 'bg-danger/10 text-danger'
+                            : free <= Math.max(1, Math.floor(total * 0.25))
+                              ? 'bg-tint-sand text-tint-sand-ink'
+                              : 'bg-tint-sage text-tint-sage-ink',
+                        )}
+                      >
+                        {free}
+                        <span className="sr-only">
+                          {' '}
+                          of {total} left{free === 0 ? ', sold out' : ''}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
               {isCollapsed ? null : group.rooms.map((room) => {
                 const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
                 return (
@@ -241,6 +277,21 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       </Modal>
     </>
   );
+}
+
+/** Rooms of a type with nothing on them each night — closed-to-sale rooms count as taken. */
+function availableByNight(group: FrontDeskGroup, nights: number): number[] {
+  const taken = Array.from({ length: nights }, () => 0);
+  for (const room of group.rooms) {
+    const busy = new Set<number>();
+    for (const segment of room.segments) {
+      for (let night = segment.start; night < segment.start + segment.span && night < nights; night += 1) {
+        busy.add(night);
+      }
+    }
+    for (const night of busy) taken[night] = (taken[night] ?? 0) + 1;
+  }
+  return taken.map((count) => group.rooms.length - count);
 }
 
 function SegmentBar({
