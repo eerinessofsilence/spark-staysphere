@@ -5,15 +5,15 @@ import { addDays, parseISO } from 'date-fns';
 import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { DEMO_HOTEL_SLUG, hotelRepository, inventoryService } from '@/lib/application/container';
-import type { FrontDeskDay } from '@/lib/application/inventory-service';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
-import type { Booking } from '@/lib/domain/schemas';
+import { roomCategory, type RoomCategory } from '@/lib/domain/room-attributes';
+import type { Booking, Currency } from '@/lib/domain/schemas';
 import { formatDateRange, formatDateShort, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
-import { cn } from '@/lib/utils';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
-import { Meter, Metric } from '@/components/admin/operations/metric-card';
+import { Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
+import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -47,10 +47,16 @@ export default async function AdminOverviewPage() {
   const recent = sorted.slice(0, 5);
   const cancelled = sorted.filter((booking) => booking.status === 'cancelled');
   const tonight = board.days[0];
-  const occupancy = tonight && board.totalRooms > 0 ? Math.round((tonight.occupied / board.totalRooms) * 100) : 0;
   const onSite = rooms.filter((room) => !room.hidden).length;
-  const cancelledRevenue = cancelled.reduce((sum, booking) => sum + booking.total, 0);
-  const grossRevenue = revenue + cancelledRevenue;
+  const tomorrow = board.days[1];
+  const roomMix = Object.entries(
+    board.groups.reduce<Record<string, number>>((mix, group) => {
+      const label = CATEGORY_PLURAL[roomCategory({ name: group.roomName })];
+      mix[label] = (mix[label] ?? 0) + group.rooms.length;
+      return mix;
+    }, {}),
+  ).map(([label, value]) => ({ label, value }));
+  const revenueBars = revenueByQuarter(confirmed, today, hotel.currency);
 
   return (
     <AdminPage>
@@ -63,36 +69,47 @@ export default async function AdminOverviewPage() {
         }
       />
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Occupied tonight"
           value={`${tonight?.occupied ?? 0} / ${board.totalRooms}`}
-          detail={`${occupancy}% · ${tonight?.arrivals ?? 0} arriving, ${tonight?.departures ?? 0} leaving`}
-          chart={<Sparkline days={board.days} totalRooms={board.totalRooms} />}
+          detail="Rooms with a guest in them tonight"
+          chart={
+            <OccupancyGauge
+              share={board.totalRooms > 0 ? (tonight?.occupied ?? 0) / board.totalRooms : 0}
+              arrivals={tonight?.arrivals ?? 0}
+              departures={tonight?.departures ?? 0}
+              tomorrowShare={tomorrow && board.totalRooms > 0 ? tomorrow.occupied / board.totalRooms : null}
+            />
+          }
         />
         <Metric
           label="Rooms in the building"
           value={String(board.totalRooms)}
           detail={`${onSite} of ${rooms.length} room types on the site`}
-          chart={<Meter share={rooms.length > 0 ? onSite / rooms.length : 1} />}
+          chart={<MixBar segments={roomMix} />}
         />
         <Metric
           label="Confirmed bookings"
           value={String(confirmed.length)}
-          detail={
-            cancelled.length === 0
-              ? 'No cancellations'
-              : cancelled.length === 1
-                ? '1 cancelled'
-                : `${cancelled.length} cancelled`
+          detail={`${sorted.length} made in total`}
+          chart={
+            <Donut
+              centre={`${sorted.length > 0 ? Math.round((confirmed.length / sorted.length) * 100) : 0}%`}
+              caption="confirmed"
+              slices={[
+                { label: 'Confirmed', value: confirmed.length, tone: 'accent' },
+                { label: 'Cancelled', value: cancelled.length, tone: 'rose' },
+                { label: 'Not finished', value: sorted.length - confirmed.length - cancelled.length, tone: 'stone' },
+              ]}
+            />
           }
-          chart={<Meter share={sorted.length > 0 ? confirmed.length / sorted.length : 1} />}
         />
         <Metric
           label="Revenue"
           value={formatMoney(revenue, hotel.currency)}
-          detail="From confirmed demo stays"
-          chart={<Meter share={grossRevenue > 0 ? revenue / grossRevenue : 1} />}
+          detail="Confirmed demo stays, by arrival quarter"
+          chart={<ValueBars bars={revenueBars} />}
         />
       </dl>
 
@@ -201,22 +218,47 @@ export default async function AdminOverviewPage() {
   );
 }
 
-/** 14-point trend, tonight in the accent and the rest in the de-emphasis hue — same marks as `OccupancyChart` below it. */
-function Sparkline({ days, totalRooms }: { days: FrontDeskDay[]; totalRooms: number }) {
-  return (
-    <div aria-hidden="true" className="mt-4 flex h-8 items-end gap-0.5">
-      {days.map((day, index) => {
-        const value = totalRooms > 0 ? Math.round((day.occupied / totalRooms) * 100) : 0;
-        return (
-          <span
-            key={day.date}
-            className={cn('min-w-0 flex-1 rounded-t-[2px]', index === 0 ? 'bg-accent' : 'bg-tint-stone-ink/40')}
-            style={{ height: `${Math.max(value, 4)}%` }}
-          />
-        );
-      })}
-    </div>
-  );
+const CATEGORY_PLURAL: Record<RoomCategory, string> = {
+  room: 'Rooms',
+  studio: 'Studios',
+  suite: 'Suites',
+  loft: 'Lofts',
+  residence: 'Residences',
+  penthouse: 'Penthouses',
+};
+
+/**
+ * Confirmed revenue by arrival quarter, as an unbroken run of quarters so a gap
+ * reads as a quarter with nothing booked rather than being skipped. Kept to the
+ * last six; anything earlier folds into the first bar so the bars still add up
+ * to the headline total.
+ */
+function revenueByQuarter(bookings: Booking[], today: string, currency: Currency): ValueBar[] {
+  const compact = new Intl.NumberFormat('en-GB', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 });
+  const index = (iso: string) => Number(iso.slice(0, 4)) * 4 + Math.floor((Number(iso.slice(5, 7)) - 1) / 3);
+  const now = index(today);
+  if (bookings.length === 0) return [];
+  const totals = new Map<number, number>();
+  for (const booking of bookings) {
+    const key = index(booking.checkIn);
+    totals.set(key, (totals.get(key) ?? 0) + booking.total);
+  }
+  const last = Math.max(now, ...totals.keys());
+  const first = last - 5;
+  return Array.from({ length: 6 }, (_, offset) => {
+    const key = first + offset;
+    const value =
+      offset === 0
+        ? [...totals].filter(([quarter]) => quarter <= key).reduce((sum, [, total]) => sum + total, 0)
+        : (totals.get(key) ?? 0);
+    const year = Math.floor(key / 4);
+    return {
+      label: `Q${(key % 4) + 1} ${String(year).slice(2)}`,
+      value,
+      display: compact.format(value),
+      current: key === now,
+    };
+  });
 }
 
 function Movements({
