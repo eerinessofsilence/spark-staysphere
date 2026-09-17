@@ -24,12 +24,15 @@ export function ZoneList({
   selected,
   dispatch,
   zoneLabel,
+  toolbar,
   children,
 }: {
   zones: EditorZone[];
   selected: EditorZone | null;
   dispatch: (action: EditorAction) => void;
   zoneLabel?: (zone: EditorZone) => string | null;
+  /** The draw tools (select/polygon/rect, snap, undo/redo), docked above `children` instead of over the canvas. */
+  toolbar?: React.ReactNode;
   /** `ZoneTargetEditor`, rendered below the list — see `polygon-editor.tsx`. */
   children?: React.ReactNode;
 }) {
@@ -77,6 +80,7 @@ export function ZoneList({
         </ul>
       )}
 
+      {toolbar}
       {children}
     </aside>
   );
