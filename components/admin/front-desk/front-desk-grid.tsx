@@ -16,7 +16,7 @@ import { facadeLabels, formatDateRange } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
-import { demandPattern } from './front-desk-shared';
+import { stayStatus, stayStatusMeta, unavailablePattern } from './front-desk-shared';
 
 interface FrontDeskGridProps {
   dates: string[];
@@ -42,15 +42,17 @@ function segmentRange(segment: FrontDeskSegment, dates: string[]): { from: strin
   return { from: dates[segment.start]!, to: addIsoDays(dates[segment.start]!, segment.span) };
 }
 
-function segmentLabel(segment: FrontDeskSegment, dates: string[], roomNumber: string): string {
-  if (segment.kind === 'booking') {
-    return `Booking ${segment.reference}, ${segment.guestName}, ${formatDateRange(segment.checkIn, segment.checkOut)}, ${
-      segment.chosenByGuest ? 'room chosen by guest' : 'room assigned automatically'
-    }`;
+function segmentLabel(segment: FrontDeskSegment, dates: string[], roomNumber: string, today: string): string {
+  if (segment.kind === 'closed') {
+    const { from, to } = segmentRange(segment, dates);
+    return `Closed to sale, room ${roomNumber}, ${formatDateRange(from, to)}`;
   }
-  const { from, to } = segmentRange(segment, dates);
-  const what = segment.kind === 'demand' ? 'Simulated demand' : 'Closed to sale';
-  return `${what}, room ${roomNumber}, ${formatDateRange(from, to)}`;
+  const status = stayStatusMeta[stayStatus(segment.checkIn, segment.checkOut, today)].label;
+  const stay = `${status}, ${segment.guestName}, room ${roomNumber}, ${formatDateRange(segment.checkIn, segment.checkOut)}`;
+  if (segment.kind === 'demand') return `${stay}, simulated demand`;
+  return `Booking ${segment.reference}, ${stay}, ${
+    segment.chosenByGuest ? 'room chosen by guest' : 'room assigned automatically'
+  }`;
 }
 
 export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontDeskGridProps) {
@@ -209,7 +211,8 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                       <SegmentBar
                         key={`${segment.kind}-${segment.start}`}
                         segment={segment}
-                        label={segmentLabel(segment, dates, room.number)}
+                        label={segmentLabel(segment, dates, room.number, today)}
+                        today={today}
                         onSelect={() => select(segment, room, group)}
                       />
                     ))}
@@ -243,46 +246,21 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
 function SegmentBar({
   segment,
   label,
+  today,
   onSelect,
 }: {
   segment: FrontDeskSegment;
   label: string;
+  today: string;
   onSelect: () => void;
 }) {
   const style: React.CSSProperties = {
     gridColumn: `${segment.start + 2} / span ${segment.span}`,
     gridRow: 1,
-    ...(segment.kind === 'demand' ? demandPattern : {}),
   };
 
   const base =
     'relative z-10 mx-0.5 flex h-9 min-w-0 cursor-pointer items-center gap-1 self-center overflow-hidden rounded-full px-2.5 text-left text-xs font-medium transition-[filter] hover:brightness-95';
-
-  if (segment.kind === 'booking') {
-    const lastName = segment.guestName.split(' ').at(-1) ?? segment.guestName;
-    const initials = segment.guestName
-      .split(' ')
-      .map((part) => part[0])
-      .join('');
-    return (
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-label={label}
-        title={label}
-        style={style}
-        className={cn(
-          base,
-          'bg-primary text-primary-foreground',
-          segment.continuesBefore && 'ml-0 rounded-l-none',
-          segment.continuesAfter && 'mr-0 rounded-r-none',
-        )}
-      >
-        {segment.chosenByGuest ? <PushPin weight="fill" className="size-3.5 shrink-0" aria-hidden="true" /> : null}
-        <span className="truncate">{segment.span >= 2 ? lastName : initials}</span>
-      </button>
-    );
-  }
 
   if (segment.kind === 'closed') {
     return (
@@ -291,7 +269,7 @@ function SegmentBar({
         onClick={onSelect}
         aria-label={label}
         title={label}
-        style={style}
+        style={{ ...style, ...unavailablePattern }}
         className={cn(base, 'bg-danger/10 text-danger')}
       >
         <Prohibit weight="fill" className="size-3.5 shrink-0" aria-hidden="true" />
@@ -300,6 +278,15 @@ function SegmentBar({
     );
   }
 
+  const status = stayStatus(segment.checkIn, segment.checkOut, today);
+  const lastName = segment.guestName.split(' ').at(-1) ?? segment.guestName;
+  const initials = segment.guestName
+    .split(' ')
+    .map((part) => part[0])
+    .join('');
+  const continuesBefore = segment.kind === 'booking' && segment.continuesBefore;
+  const continuesAfter = segment.kind === 'booking' && segment.continuesAfter;
+
   return (
     <button
       type="button"
@@ -307,9 +294,17 @@ function SegmentBar({
       aria-label={label}
       title={label}
       style={style}
-      className={cn(base, 'bg-stone text-muted-foreground')}
+      className={cn(
+        base,
+        stayStatusMeta[status].className,
+        continuesBefore && 'ml-0 rounded-l-none',
+        continuesAfter && 'mr-0 rounded-r-none',
+      )}
     >
-      {segment.span >= 3 ? <span className="truncate">Demand</span> : null}
+      {segment.kind === 'booking' && segment.chosenByGuest ? (
+        <PushPin weight="fill" className="size-3.5 shrink-0" aria-hidden="true" />
+      ) : null}
+      <span className="truncate">{segment.span >= 2 ? lastName : initials}</span>
     </button>
   );
 }

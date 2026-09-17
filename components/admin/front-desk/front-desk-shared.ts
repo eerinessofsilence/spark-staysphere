@@ -17,8 +17,29 @@ export function frontDeskHref({ from, days, type }: FrontDeskQuery): string {
   return `/admin/front-desk?${params.toString()}`;
 }
 
-/** A hatch drawn from the foreground token, so demand reads as a pattern, not only a colour. */
-export const demandPattern: CSSProperties = {
+/** A hatch for rooms that can't be sold — the one place a pattern means "unavailable". */
+export const unavailablePattern: CSSProperties = {
   backgroundImage:
-    'repeating-linear-gradient(135deg, color-mix(in oklab, var(--foreground) 14%, transparent) 0 1.5px, transparent 1.5px 6px)',
+    'repeating-linear-gradient(135deg, color-mix(in oklab, var(--danger) 18%, transparent) 0 1.5px, transparent 1.5px 6px)',
 };
+
+export type StayStatus = 'confirmed' | 'due_in' | 'in_house' | 'due_out' | 'checked_out';
+
+/** Where a stay is relative to today, the way a PMS tape chart colours it. */
+export function stayStatus(checkIn: string, checkOut: string, today: string): StayStatus {
+  if (checkOut === today) return 'due_out';
+  if (checkOut < today) return 'checked_out';
+  if (checkIn === today) return 'due_in';
+  if (checkIn < today) return 'in_house';
+  return 'confirmed';
+}
+
+export const stayStatusMeta: Record<StayStatus, { label: string; className: string }> = {
+  confirmed: { label: 'Confirmed', className: 'bg-stay-confirmed text-stay-confirmed-ink' },
+  due_in: { label: 'Due in', className: 'bg-stay-due-in text-white' },
+  in_house: { label: 'In house', className: 'bg-stay-in-house text-white' },
+  due_out: { label: 'Due out', className: 'bg-stay-due-out text-white' },
+  checked_out: { label: 'Checked out', className: 'bg-stay-checked-out text-stay-checked-out-ink' },
+};
+
+export const stayStatusOrder: StayStatus[] = ['confirmed', 'due_in', 'in_house', 'due_out', 'checked_out'];
