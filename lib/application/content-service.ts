@@ -1036,6 +1036,12 @@ export class ContentService {
     bytes: ArrayBuffer,
   ): Promise<ContentResult<{ url: string }>> {
     assertCanEditContent();
+    // A well-formed id, not just "truthy": it is embedded verbatim in the R2
+    // key (`frameKey` in spinner-frame-storage-r2.ts) and later used as a
+    // `deleteFrameSet` prefix — an id containing a `/` would let one frame
+    // set's key collide with, and later be swept by, an unrelated shorter
+    // one's delete.
+    if (!/^[a-zA-Z0-9-]{1,64}$/.test(frameSetId)) return ruleError('Malformed frame set id.');
     if (!/^image\/(webp|jpeg|png)$/.test(contentType)) {
       return ruleError('Only WebP, JPEG or PNG frames are supported.');
     }
@@ -1059,11 +1065,15 @@ export class ContentService {
    * leaves both alone; a hotspot or a zone is only ever visible when its
    * frame is a key angle, so nothing already relied on a stop this call
    * removes.
+   *
+   * Which frame set gets swept from R2 when frames are replaced is derived
+   * here from `current` — the same way `resetContent` derives it — never
+   * taken as an argument: trusting a caller-supplied id would delete
+   * whatever frame set it named, live or not, on nothing more than its say-so.
    */
   async updateSpinnerScene(
     input: { frameWidth: number; frameHeight: number; frames: SpinnerFrame[]; keyAngles: number[]; startFrame?: number },
     expectedVersion: number,
-    previousFrameSetId?: string,
   ): Promise<ContentResult<Versioned>> {
     assertCanEditContent();
     const hotel = await this.hotel();
@@ -1073,8 +1083,13 @@ export class ContentService {
     if (input.keyAngles.some((angle) => angle < 0 || angle >= input.frames.length)) {
       return ruleError('A key angle must point at one of the uploaded frames.');
     }
-    if (input.startFrame !== undefined && (input.startFrame < 0 || input.startFrame >= input.frames.length)) {
-      return ruleError('The start frame must be one of the uploaded frames.');
+    if (input.startFrame !== undefined) {
+      if (input.startFrame < 0 || input.startFrame >= input.frames.length) {
+        return ruleError('The start frame must be one of the uploaded frames.');
+      }
+      if (!input.keyAngles.includes(input.startFrame)) {
+        return ruleError('The start frame must be one of the key angles.');
+      }
     }
 
     const framesReplaced =
@@ -1095,6 +1110,7 @@ export class ContentService {
     });
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
 
+    const previousFrameSetId = framesReplaced ? frameSetIdOf(current?.frames[0]?.imageUrl ?? '') : null;
     const next: Hotel = { ...hotel, spinner: parsed.data };
     const saved = await this.save('hotel', hotel.id, hotel.id, next, expectedVersion);
     if (saved.ok && framesReplaced) {
@@ -1162,6 +1178,20 @@ export class ContentService {
   }
 
   // ----------------------------------------------------------------- Reset
+
+  /**
+   * Sweeps one uploaded-but-never-applied frame set from R2 — the picker
+   * calls this when a fresh upload replaces one that was never carried
+   * through to `updateSpinnerScene`, so an abandoned choice doesn't sit in
+   * storage forever. A malformed id is ignored rather than erroring: this is
+   * best-effort cleanup, not a step the picker's own flow depends on.
+   */
+  async discardSpinnerFrameSet(frameSetId: string): Promise<void> {
+    assertCanEditContent();
+    if (!/^[a-zA-Z0-9-]{1,64}$/.test(frameSetId)) return;
+    const hotel = await this.hotel();
+    await this.frameStorage.deleteFrameSet(hotel.id, frameSetId);
+  }
 
   async resetContent(): Promise<void> {
     assertCanEditContent();

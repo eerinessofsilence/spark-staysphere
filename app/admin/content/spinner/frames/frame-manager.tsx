@@ -1,14 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { CloudArrowUp, Star } from '@phosphor-icons/react/dist/ssr';
+import { ArrowUpTrayIcon, StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
 import type { SpinnerFrame } from '@/lib/domain/schemas';
-import { frameSetIdOf } from '@/lib/domain/spinner-markup';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { applySpinnerSceneAction, uploadSpinnerFrameAction, type SpinnerSceneInput } from './actions';
+import {
+  applySpinnerSceneAction,
+  discardSpinnerFrameSetAction,
+  uploadSpinnerFrameAction,
+  type SpinnerSceneInput,
+} from './actions';
 
 /** How many uploads run at once — fast enough for a few hundred frames, gentle enough not to flood R2. */
 const UPLOAD_CONCURRENCY = 4;
@@ -21,14 +26,27 @@ function naturalCompare(a: File, b: File): number {
   return numberOf(a.name) - numberOf(b.name) || a.name.localeCompare(b.name);
 }
 
+/**
+ * A worker that hits an error stops pulling new items immediately — without
+ * this, the other workers keep uploading frames to R2 in the background
+ * after the batch has already been reported as failed and discarded, orphaning
+ * whatever they finish.
+ */
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results: R[] = Array.from({ length: items.length });
   let next = 0;
+  let stopped = false;
   async function worker() {
     for (;;) {
+      if (stopped) return;
       const index = next++;
       if (index >= items.length) return;
-      results[index] = await fn(items[index]!, index);
+      try {
+        results[index] = await fn(items[index]!, index);
+      } catch (error) {
+        stopped = true;
+        throw error;
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
@@ -97,6 +115,10 @@ export function FrameManager({
     setError('');
     setUploading({ done: 0, total: files.length });
 
+    // Replacing a set that was uploaded but never applied — sweep it rather
+    // than leave it orphaned in R2.
+    if (pendingFrameSetIdRef.current) void discardSpinnerFrameSetAction(pendingFrameSetIdRef.current);
+
     const frameSetId = crypto.randomUUID();
 
     try {
@@ -155,7 +177,7 @@ export function FrameManager({
           return current;
         }
         next.delete(index);
-        if (startFrame === index) setStartFrame([...next][0] ?? 0);
+        if (startFrame === index) setStartFrame(next.size > 0 ? Math.min(...next) : 0);
       } else {
         next.add(index);
       }
@@ -185,8 +207,7 @@ export function FrameManager({
       keyAngles: [...keyAngles].sort((a, b) => a - b),
       startFrame,
     };
-    const previousFrameSetId = framesReplaced ? (frameSetIdOf(initialFrames[0]?.imageUrl ?? '') ?? undefined) : undefined;
-    const result = await applySpinnerSceneAction(input, version, previousFrameSetId);
+    const result = await applySpinnerSceneAction(input, version);
     setSaving(false);
     if (result.ok) {
       toast.success('Spinner updated.');
@@ -222,7 +243,7 @@ export function FrameManager({
             disabled={Boolean(uploading)}
             onClick={() => fileInputRef.current?.click()}
           >
-            <CloudArrowUp weight="fill" className="size-4" aria-hidden="true" />
+            <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
             Choose frame images…
           </button>
           {uploading ? (
@@ -274,7 +295,11 @@ export function FrameManager({
                       isStart ? 'bg-primary text-primary-foreground' : 'bg-black/40 text-white/80 hover:bg-black/60',
                     )}
                   >
-                    <Star weight={isStart ? 'fill' : 'regular'} className="size-3.5" />
+                    {isStart ? (
+                      <StarSolidIcon className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <StarOutlineIcon className="size-3.5" aria-hidden="true" />
+                    )}
                   </button>
                 ) : null}
               </li>

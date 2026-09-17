@@ -74,23 +74,27 @@ describe('ContentService.updateSpinnerScene', () => {
   });
 
   it('replacing the frames resets hotspots, clears every zone, and sweeps the old frame set', async () => {
+    // First, an uploaded set actually goes live — `updateSpinnerScene` derives
+    // what to sweep next time from the *current* frames, never from a
+    // caller-supplied id, so there has to be a real previous set to derive it from.
+    const seed = await service.getSpinnerMarkupContent();
+    const firstUpload = await service.uploadSpinnerFrame('old-set', 0, 'image/webp', new ArrayBuffer(4));
+    expect(firstUpload.ok).toBe(true);
+    if (!firstUpload.ok) throw new Error('unreachable');
+    await service.updateSpinnerScene(
+      { frameWidth: 640, frameHeight: 360, frames: [{ index: 0, imageUrl: firstUpload.value.url }], keyAngles: [0, 0] },
+      seed!.version,
+    );
+
     const before = await service.getSpinnerMarkupContent();
     const keyAngle = before!.keyAngles[0]!;
     await service.saveSpinnerZones(keyAngle, { upserts: [{ id: ZONE_ID, polygon: SQUARE, target: null }], deletes: [] });
-
-    await mockSpinnerFrameStoragePort.putFrame({
-      hotelId: demoHotel.id,
-      frameSetId: 'old-set',
-      index: 0,
-      contentType: 'image/webp',
-      bytes: new ArrayBuffer(4),
-    });
+    expect(readMockFrame(`spinner/${demoHotel.id}/old-set/000.webp`)).not.toBeNull();
 
     const newFrames = framesOf(24, 'new-set');
     const result = await service.updateSpinnerScene(
       { frameWidth: 1280, frameHeight: 720, frames: newFrames, keyAngles: [0, 6, 12, 18], startFrame: 0 },
       before!.version,
-      'old-set',
     );
     expect(result.ok).toBe(true);
 
@@ -99,7 +103,7 @@ describe('ContentService.updateSpinnerScene', () => {
     expect(after!.frameWidth).toBe(1280);
     expect(after!.zones).toHaveLength(0);
 
-    // The old frame set's objects are gone from the store.
+    // The old (now-superseded) frame set's objects are gone from the store.
     expect(readMockFrame(`spinner/${demoHotel.id}/old-set/000.webp`)).toBeNull();
   });
 
@@ -176,5 +180,58 @@ describe('ContentService.uploadSpinnerFrame', () => {
   it('rejects an empty file', async () => {
     const result = await service.uploadSpinnerFrame('set-1', 0, 'image/webp', new ArrayBuffer(0));
     expect(result.ok).toBe(false);
+  });
+
+  it('rejects a frame set id that would let a delete escape its own prefix', async () => {
+    // Embedded verbatim in the R2 key and later used as a deleteFrameSet
+    // prefix — a `/` would make one frame set's key collide with another's delete.
+    const result = await service.uploadSpinnerFrame('abc/../etc', 0, 'image/webp', new ArrayBuffer(8));
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('ContentService.updateSpinnerScene start frame', () => {
+  let service: ContentService;
+
+  beforeEach(async () => {
+    service = makeService();
+    await service.resetContent();
+  });
+
+  it('rejects a start frame that is not one of the key angles', async () => {
+    const before = await service.getSpinnerMarkupContent();
+    const result = await service.updateSpinnerScene(
+      {
+        frameWidth: before!.frameWidth,
+        frameHeight: before!.frameHeight,
+        frames: before!.frames,
+        keyAngles: before!.keyAngles,
+        startFrame: before!.keyAngles[0]! + 1, // a real frame, just not a key angle
+      },
+      before!.version,
+    );
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('ContentService.discardSpinnerFrameSet', () => {
+  let service: ContentService;
+
+  beforeEach(async () => {
+    service = makeService();
+    await service.resetContent();
+  });
+
+  it('sweeps an uploaded-but-never-applied frame set', async () => {
+    await service.uploadSpinnerFrame('abandoned', 0, 'image/webp', new ArrayBuffer(4));
+    expect(readMockFrame(`spinner/${demoHotel.id}/abandoned/000.webp`)).not.toBeNull();
+
+    await service.discardSpinnerFrameSet('abandoned');
+
+    expect(readMockFrame(`spinner/${demoHotel.id}/abandoned/000.webp`)).toBeNull();
+  });
+
+  it('ignores a malformed id rather than throwing', async () => {
+    await expect(service.discardSpinnerFrameSet('../etc')).resolves.toBeUndefined();
   });
 });

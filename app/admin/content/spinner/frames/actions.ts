@@ -14,8 +14,10 @@ export async function uploadSpinnerFrameAction(
   formData: FormData,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const frameSetId = String(formData.get('frameSetId') ?? '');
-  const index = Number(formData.get('index'));
+  const rawIndex = formData.get('index');
   const file = formData.get('file');
+  if (typeof rawIndex !== 'string' || rawIndex === '') return { ok: false, error: 'Missing frame index.' };
+  const index = Number(rawIndex);
   if (!(file instanceof Blob)) return { ok: false, error: 'No file received.' };
 
   const result = await contentService.uploadSpinnerFrame(frameSetId, index, file.type, await file.arrayBuffer());
@@ -23,6 +25,15 @@ export async function uploadSpinnerFrameAction(
     return { ok: false, error: result.error.kind === 'rule' ? result.error.message : 'Upload failed.' };
   }
   return { ok: true, url: result.value.url };
+}
+
+/**
+ * Best-effort cleanup for a frame set that was uploaded but abandoned —
+ * `frame-manager.tsx` calls this when a new upload replaces one that was
+ * never carried through to `applySpinnerSceneAction`.
+ */
+export async function discardSpinnerFrameSetAction(frameSetId: string): Promise<void> {
+  await contentService.discardSpinnerFrameSet(frameSetId);
 }
 
 export interface SpinnerSceneInput {
@@ -36,16 +47,14 @@ export interface SpinnerSceneInput {
 /**
  * Points `Hotel.spinner` at the frames just uploaded (or just changes which
  * of the current ones are key angles) — see `ContentService.updateSpinnerScene`
- * for what resets and what doesn't. `previousFrameSetId` is passed only when
- * this call is replacing an uploaded set, so the old one can be swept from
- * storage once the new one is live.
+ * for what resets and what doesn't, and for how it decides on its own,
+ * server-side, whether a previous uploaded frame set needs sweeping from R2.
  */
 export async function applySpinnerSceneAction(
   input: SpinnerSceneInput,
   expectedVersion: number,
-  previousFrameSetId?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const result = await contentService.updateSpinnerScene(input, expectedVersion, previousFrameSetId);
+  const result = await contentService.updateSpinnerScene(input, expectedVersion);
   if (result.ok) {
     revalidateContent();
     return { ok: true };
