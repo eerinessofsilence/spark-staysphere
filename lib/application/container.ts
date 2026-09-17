@@ -9,6 +9,7 @@ import type { Hotel } from '../domain/schemas';
 import { getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
+import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
@@ -82,6 +83,7 @@ export const contentService = new ContentService(
   durableCatalogContentPort,
   mediaLibraryPort,
   durableSpinnerMarkupPort,
+  durableSpinnerFrameStoragePort,
   DEMO_HOTEL_SLUG,
   seedIds,
 );

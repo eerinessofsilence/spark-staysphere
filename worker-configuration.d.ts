@@ -9,5 +9,7 @@ declare namespace Cloudflare {
     DB?: D1Database;
     /** Resolved by lib/infrastructure/cloudflare-env.ts#getOpenAiKey; see .dev.vars locally. */
     OPENAI_API_KEY?: string;
+    /** Resolved by lib/infrastructure/cloudflare-env.ts#getMediaBucket. Spinner frames and, later, uploaded media. */
+    MEDIA?: R2Bucket;
   }
 }

@@ -135,6 +135,13 @@ export const buildingSpinnerSchema = z.object({
    * in between.
    */
   keyAngles: z.array(z.number().int().nonnegative()).min(2),
+  /**
+   * The frame the orbit opens on when nothing in the URL says otherwise.
+   * Optional so this ships without touching every existing fixture — falls
+   * back to the lowest `keyAngles` value, as it always has (`openingFrame`
+   * in `orbit.ts`).
+   */
+  startFrame: z.number().int().nonnegative().optional(),
   frames: z.array(spinnerFrameSchema),
   hotspots: z.array(spinnerHotspotSchema),
 });

@@ -63,6 +63,16 @@ export const spinnerZoneSchema = z.object({
 });
 export type SpinnerZone = z.infer<typeof spinnerZoneSchema>;
 
+/**
+ * Pulls a previously uploaded frame's `frameSetId` back out of its own URL —
+ * see `lib/infrastructure/spinner-frame-storage-r2.ts#frameKey`, which built
+ * it. `null` for a seed frame (a static `/images/...` path, never uploaded),
+ * which has nothing in R2 to sweep.
+ */
+export function frameSetIdOf(url: string): string | null {
+  return /\/media\/spinner\/[^/]+\/([^/]+)\//.exec(url)?.[1] ?? null;
+}
+
 /** One zone as the editor's autosave batch carries it — no `hotelId`/`updatedAt`, those are the store's job. */
 export const spinnerZoneUpsertSchema = z.object({
   id: z.string(),
