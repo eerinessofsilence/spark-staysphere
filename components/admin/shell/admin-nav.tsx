@@ -13,6 +13,7 @@ import {
   DocumentTextIcon,
   HomeIcon,
   MagnifyingGlassIcon,
+  PuzzlePieceIcon,
   ShoppingBagIcon,
   TableCellsIcon,
   TagIcon,
@@ -44,6 +45,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
       { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/rates', label: 'Room Rates', icon: TagIcon },
       { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },
+      { href: '/admin/channel-manager', label: 'Channel Manager', icon: PuzzlePieceIcon },
     ],
   },
   {
