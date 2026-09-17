@@ -158,12 +158,15 @@ export default async function AccountingPage() {
                 {ledger.rows.map(({ booking, method, state, amount }) => {
                   const meta = states[state];
                   return (
-                    <tr key={booking.id} className="border-b border-border last:border-b-0">
+                    <tr
+                      key={booking.id}
+                      className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                    >
                       <Td className="whitespace-nowrap">{formatDateShort(booking.createdAt.slice(0, 10))}</Td>
                       <Td className="whitespace-nowrap">
                         <Link
                           href={`/admin/bookings/${booking.reference}`}
-                          className="font-medium hover:text-accent-strong"
+                          className="font-medium hover:text-accent-strong before:absolute before:inset-0"
                         >
                           {booking.reference}
                         </Link>

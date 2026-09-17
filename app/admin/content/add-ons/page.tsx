@@ -92,12 +92,18 @@ export default async function ServicesPage({
                       {rows.map((addOn) => {
                         const href = `/admin/content/add-ons/${addOn.id}`;
                         return (
-                          <tr key={addOn.id} className="border-b border-border last:border-b-0">
+                          <tr
+                            key={addOn.id}
+                            className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                          >
                             <Td className="align-middle">
+                              {/* Stretched: the row opens the add-on's own page from anywhere
+                                  in it — the switch and row menu sit at a higher stacking level
+                                  so their own clicks still reach them. */}
                               <Link
                                 href={href}
                                 className={cn(
-                                  'block hover:text-accent-strong',
+                                  'block hover:text-accent-strong before:absolute before:inset-0',
                                   addOn.parentId ? 'pl-4 sm:pl-6' : 'font-medium',
                                 )}
                               >
@@ -115,13 +121,13 @@ export default async function ServicesPage({
                                 {formatPricingUnit(addOn.pricingUnit)}
                               </span>
                             </Td>
-                            <Td className="align-middle">
+                            <Td className="relative z-10 align-middle">
                               {/* The 44px switch target sits on the row's text line, not below it. */}
                               <div className="-my-2.5">
                                 <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
                               </div>
                             </Td>
-                            <Td className="align-middle text-right">
+                            <Td className="relative z-10 align-middle text-right">
                               <RowActions
                                 id={addOn.id}
                                 version={addOn.version}
