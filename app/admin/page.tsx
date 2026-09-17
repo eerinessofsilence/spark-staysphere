@@ -180,11 +180,14 @@ export default async function AdminOverviewPage() {
               </thead>
               <tbody>
                 {recent.map((booking) => (
-                  <tr key={booking.id} className="border-b border-border last:border-b-0">
+                  <tr
+                    key={booking.id}
+                    className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                  >
                     <Td className="whitespace-nowrap">
                       <Link
                         href={`/admin/bookings/${booking.reference}`}
-                        className="text-display text-base hover:text-accent-strong"
+                        className="text-display text-base hover:text-accent-strong before:absolute before:inset-0"
                       >
                         {booking.reference}
                       </Link>
