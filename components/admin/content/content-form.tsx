@@ -8,6 +8,7 @@ import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { discardUnsavedChanges, useUnsavedChanges } from '@/components/admin/shell/unsaved-changes';
+import { toast } from '@/components/admin/shell/toast';
 import { announceVersion, useSharedVersion } from './version-channel';
 
 const FieldErrorsContext = React.createContext<Record<string, string[]>>({});
@@ -202,7 +203,9 @@ export function ContentForm({
         setDirty(false);
       }
       onSuccess?.(state);
+      toast.success(state.message || 'Saved.');
     } else if (state.status === 'error') {
+      toast.error('Not saved. Check the form and try again.');
       revealFirstError(formRef.current, bannerRef.current);
     }
     // Runs once per submit result, not per render: `state` is a fresh object each dispatch.
@@ -249,7 +252,8 @@ export function ContentForm({
     statusText = 'Unsaved changes';
   } else if (state.status === 'success') {
     statusTone = 'success';
-    statusText = state.message;
+    // The full message goes out as a toast; beside the button a short word is enough.
+    statusText = 'Saved';
   }
 
   return (

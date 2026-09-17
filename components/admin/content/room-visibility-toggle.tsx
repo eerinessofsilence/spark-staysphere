@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { announceVersion, useSharedVersion } from './version-channel';
 import { useUndoableToggle } from './use-undoable-toggle';
@@ -45,11 +46,13 @@ export function RoomVisibilityToggle({ hidden, version: savedVersion, action, ro
       announceVersion(versionKey, version, result.version);
       setVersion(result.version);
       setUndoTo(offerUndo ? !nextHidden : null);
+      toast.success(result.message);
       router.refresh();
     } else {
       setUndoTo(null);
+      toast.error(result.message);
     }
-    setMessage(result.message);
+    setMessage(result.status === 'success' ? '' : result.message);
     setPending(false);
   };
 

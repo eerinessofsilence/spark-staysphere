@@ -8,6 +8,7 @@ import { ArrowPathIcon, EllipsisHorizontalIcon, PencilSquareIcon, XCircleIcon } 
 import { cancelBookingAction } from '@/app/admin/bookings/actions';
 import { Modal } from '@/components/site/modal';
 import { pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 import { cn } from '@/lib/utils';
 
 const itemClass =
@@ -47,9 +48,11 @@ export function BookingRowActions({
     setPending(false);
     if (result.ok) {
       setConfirming(false);
+      toast.success(result.message);
       router.refresh();
     } else {
       setError(result.message);
+      toast.error(result.message);
     }
   };
 

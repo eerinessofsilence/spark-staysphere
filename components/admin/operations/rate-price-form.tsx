@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useActionState } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
+import { toast } from '@/components/admin/shell/toast';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +32,13 @@ export function RatePriceForm({
   const [currentVersion, setCurrentVersion] = React.useState(version);
 
   React.useEffect(() => {
-    if (state.status === 'success' && state.version !== undefined) setCurrentVersion(state.version);
-  }, [state]);
+    if (state.status === 'success') {
+      if (state.version !== undefined) setCurrentVersion(state.version);
+      toast.success(`${roomName}: ${state.message}`);
+    } else if (state.status === 'error') {
+      toast.error(`${roomName}: ${state.message}`);
+    }
+  }, [state, roomName]);
 
   const priceError = state.fieldErrors?.nightlyPrice?.[0];
   const otaError = state.fieldErrors?.otaComparisonPrice?.[0];
@@ -103,9 +109,6 @@ export function RatePriceForm({
           {formError}
         </p>
       ) : null}
-      <p role="status" aria-live="polite" className="text-xs font-medium text-success">
-        {state.status === 'success' ? state.message : ''}
-      </p>
     </form>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { setSelectedHotelAction } from '@/app/admin/actions';
 import { Modal } from '@/components/site/modal';
+import { toast } from './toast';
 import { fieldClass, iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -146,6 +147,7 @@ export function PropertyCard({
       // the sidebar showing the previous hotel.
       await setSelectedHotelAction(slug);
       close();
+      toast.success(`Switched to ${hotels.find((hotel) => hotel.slug === slug)?.name ?? 'that property'}.`);
     });
   }
 

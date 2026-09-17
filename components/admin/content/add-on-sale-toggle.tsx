@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Switch } from '@/components/ui/switch';
+import { toast } from '@/components/admin/shell/toast';
 import { announceVersion } from './version-channel';
 import { useUndoableToggle } from './use-undoable-toggle';
 
@@ -36,11 +37,13 @@ export function AddOnSaleToggle({ addOnId, enabled, action }: AddOnSaleTogglePro
     if (result.ok && result.version !== undefined && result.previousVersion !== undefined) {
       announceVersion(`addon:${addOnId}`, result.previousVersion, result.version);
       setUndoTo(offerUndo ? !next : null);
+      toast.success(result.message);
       router.refresh();
     } else {
       setUndoTo(null);
+      toast.error(result.message);
     }
-    setMessage(result.message);
+    setMessage(result.ok ? '' : result.message);
     setPending(false);
   };
 

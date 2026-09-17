@@ -8,6 +8,7 @@ import { ArrowPathIcon, EllipsisHorizontalIcon, PencilSquareIcon, TrashIcon } fr
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { Modal } from '@/components/site/modal';
 import { pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 import { cn } from '@/lib/utils';
 
 interface RowActionsProps {
@@ -49,9 +50,11 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
     setPending(false);
     if (result.status === 'success') {
       setConfirming(false);
+      toast.success(result.message || `${label} removed.`);
       router.refresh();
     } else {
       setError(result.message);
+      toast.error(result.message);
     }
   };
 

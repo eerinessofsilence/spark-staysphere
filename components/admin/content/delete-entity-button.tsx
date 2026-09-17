@@ -6,6 +6,7 @@ import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/site/modal';
 import { discardUnsavedChanges } from '@/components/admin/shell/unsaved-changes';
 import { iconButton, pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 
 type DeleteAction =
@@ -59,6 +60,7 @@ export function DeleteEntityButton({
 
   const finish = async (result: ContentFormState) => {
     if (result.status === 'success') {
+      toast.success(result.message || `${label} removed.`);
       if (afterDeleteHref) {
         discardUnsavedChanges();
         router.replace(afterDeleteHref);
@@ -70,6 +72,7 @@ export function DeleteEntityButton({
       setOpen(false);
     } else {
       setError(result.message);
+      toast.error(result.message);
     }
     setPending(false);
   };

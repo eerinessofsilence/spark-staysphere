@@ -8,6 +8,7 @@ import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { toast } from '@/components/admin/shell/toast';
 import { channels, channexPropertyId, initiallyConnected, type Channel } from './channel-data';
 
 /**
@@ -20,7 +21,6 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
   const [adding, setAdding] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [viewing, setViewing] = React.useState<Channel | null>(null);
-  const [notice, setNotice] = React.useState('');
 
   const connectedChannels = channels.filter((channel) => connected.includes(channel.id));
   const available = channels.filter(
@@ -30,14 +30,14 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
 
   const connect = (channel: Channel) => {
     setConnected((current) => [...current, channel.id]);
-    setNotice(`${channel.name} connected — demo only, nothing was sent to ${channel.name}.`);
+    toast.success(`${channel.name} connected.`);
     setAdding(false);
     setQuery('');
   };
 
   const disconnect = (channel: Channel) => {
     setConnected((current) => current.filter((id) => id !== channel.id));
-    setNotice(`${channel.name} disconnected — demo only.`);
+    toast.success(`${channel.name} disconnected.`);
     setViewing(null);
   };
 
@@ -54,11 +54,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         }
       />
 
-      <p role="status" aria-live="polite" className="mt-3 min-h-5 text-sm text-success">
-        {notice}
-      </p>
-
-      <section aria-labelledby="channex-heading" className="mt-3 overflow-hidden rounded-[18px] bg-card shadow-soft">
+      <section aria-labelledby="channex-heading" className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4 sm:px-6">
           <h2 id="channex-heading" className="font-medium">
             Channex connection

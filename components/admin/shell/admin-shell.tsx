@@ -7,6 +7,7 @@ import {
   DemoAccount,
   PropertyCard,
 } from './admin-nav';
+import { Toaster } from './toast';
 import { UnsavedChangesGuard } from './unsaved-changes';
 
 interface AdminShellProps {
@@ -46,6 +47,7 @@ export function AdminShell({ hotelName, location, hotels, selectedSlug, children
         {children}
       </div>
       <UnsavedChangesGuard />
+      <Toaster />
     </div>
   );
 }
