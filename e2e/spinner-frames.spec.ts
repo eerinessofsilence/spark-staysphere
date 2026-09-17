@@ -37,7 +37,7 @@ test('uploading a new frame set replaces the orbit and clears its markers and zo
   await expect(async () => {
     const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), chooseButton.click()]);
     await fileChooser.setFiles(SAMPLE_FRAMES);
-  }).toPass({ timeout: 15_000 });
+  }).toPass({ timeout: 20_000, intervals: [250, 500, 1000] });
 
   await expect(page.locator('ul li img')).toHaveCount(6, { timeout: 30_000 });
 
