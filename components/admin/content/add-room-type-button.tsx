@@ -26,7 +26,8 @@ export function AddRoomTypeButton({ assets }: { assets: MediaAsset[] }) {
     <>
       <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
         <PlusIcon className="size-4" aria-hidden="true" />
-        Add room type
+        {/* Label only — this still creates a room type; there's no multi-property support yet. */}
+        Add property
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="New room type" className="sm:max-w-2xl">
