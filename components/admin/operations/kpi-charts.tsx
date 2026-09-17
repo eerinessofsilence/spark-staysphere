@@ -202,7 +202,7 @@ export function ValueBars({ bars }: { bars: ValueBar[] }) {
             <div key={bar.label} className="flex h-full min-w-0 flex-1 flex-col justify-end">
               <span
                 className={cn(
-                  'mb-1 truncate text-center text-[10px] tabular-nums',
+                  'mb-1 -mx-2 text-center text-[10px] whitespace-nowrap tabular-nums',
                   bar.current ? 'font-semibold text-foreground' : 'text-muted-foreground',
                 )}
               >
@@ -224,7 +224,7 @@ export function ValueBars({ bars }: { bars: ValueBar[] }) {
           <span
             key={bar.label}
             className={cn(
-              'min-w-0 flex-1 truncate text-center text-[10px]',
+              'min-w-0 flex-1 text-center text-[10px] whitespace-nowrap',
               bar.current ? 'font-semibold text-foreground' : 'text-muted-foreground',
             )}
           >
