@@ -128,10 +128,6 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <div className="mt-6 hidden sm:block">
-        <FrontDeskLegend />
-      </div>
-
       <div className="mt-5">
         {groups.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
@@ -157,6 +153,10 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
             today={today}
           />
         )}
+      </div>
+
+      <div className="mt-5 hidden sm:block">
+        <FrontDeskLegend />
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
