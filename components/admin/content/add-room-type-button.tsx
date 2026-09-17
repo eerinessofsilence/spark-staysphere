@@ -2,15 +2,21 @@
 
 import * as React from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import type { RoomType } from '@/lib/domain/schemas';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { bedLabels, viewLabels } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 import { createRoomAction } from '@/app/admin/content/rooms/new/actions';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
-import { MediaListEditor } from '@/components/admin/content/media-list-editor';
+import { MediaListEditor, type MediaItemDraft } from '@/components/admin/content/media-list-editor';
 import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
 import { Modal } from '@/components/site/modal';
+
+type RoomTypeTemplate = Pick<
+  RoomType,
+  'id' | 'name' | 'description' | 'areaM2' | 'floor' | 'capacity' | 'bedType' | 'view' | 'media'
+>;
 
 /**
  * A compact version of `/admin/content/rooms/new`'s form, for adding a room
@@ -19,8 +25,13 @@ import { Modal } from '@/components/site/modal';
  * own page — the same place the full page lands — to add a rate, more
  * photos, and its physical rooms.
  */
-export function AddRoomTypeButton({ assets }: { assets: MediaAsset[] }) {
+export function AddRoomTypeButton({ assets, roomTypes }: { assets: MediaAsset[]; roomTypes: RoomTypeTemplate[] }) {
   const [open, setOpen] = React.useState(false);
+  const [templateId, setTemplateId] = React.useState('');
+  const template = roomTypes.find((room) => room.id === templateId) ?? null;
+  const templateMedia: MediaItemDraft[] = (template?.media ?? [])
+    .filter((item): item is MediaItemDraft & { type: 'image' | '360' } => item.type === 'image' || item.type === '360')
+    .map((item) => ({ type: item.type, url: item.url, label: item.label }));
 
   return (
     <>
@@ -40,47 +51,90 @@ export function AddRoomTypeButton({ assets }: { assets: MediaAsset[] }) {
             <div className="grid gap-5">
               <NewRoomIdentityFields />
 
-              <Field id="room-description" name="description" label="Description" hint="Plain text, no formatting.">
-                <TextArea id="room-description" name="description" required />
-              </Field>
+              {roomTypes.length > 0 ? (
+                <Field
+                  id="new-room-template"
+                  label="Room type"
+                  hint="Optional — copies its size, view, description, and photos, so you only change what's different."
+                >
+                  <Select id="new-room-template" value={templateId} onChange={setTemplateId}>
+                    <option value="">Start blank</option>
+                    {roomTypes.map((room) => (
+                      <option key={room.id} value={room.id}>
+                        {room.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
 
-              <div className="grid gap-4 sm:grid-cols-4">
-                <Field id="room-areaM2" name="areaM2" label="Size (m²)">
-                  <TextInput id="room-areaM2" name="areaM2" type="number" min={1} step="0.1" required />
+              <div className="grid gap-5" key={templateId}>
+                <Field id="room-description" name="description" label="Description" hint="Plain text, no formatting.">
+                  <TextArea id="room-description" name="description" defaultValue={template?.description} required />
                 </Field>
-                <Field id="room-floor" name="floor" label="Floor">
-                  <TextInput id="room-floor" name="floor" type="number" min={0} step="1" required />
-                </Field>
-                <Field id="room-capacity" name="capacity" label="Sleeps">
-                  <TextInput id="room-capacity" name="capacity" type="number" min={1} step="1" required />
-                </Field>
-                <Field id="room-bedType" name="bedType" label="Bed">
-                  <Select id="room-bedType" name="bedType" defaultValue="king" required>
-                    {Object.entries(bedLabels).map(([value, label]) => (
+
+                <div className="grid gap-4 sm:grid-cols-4">
+                  <Field id="room-areaM2" name="areaM2" label="Size (m²)">
+                    <TextInput
+                      id="room-areaM2"
+                      name="areaM2"
+                      type="number"
+                      min={1}
+                      step="0.1"
+                      defaultValue={template?.areaM2}
+                      required
+                    />
+                  </Field>
+                  <Field id="room-floor" name="floor" label="Floor">
+                    <TextInput
+                      id="room-floor"
+                      name="floor"
+                      type="number"
+                      min={0}
+                      step="1"
+                      defaultValue={template?.floor}
+                      required
+                    />
+                  </Field>
+                  <Field id="room-capacity" name="capacity" label="Sleeps">
+                    <TextInput
+                      id="room-capacity"
+                      name="capacity"
+                      type="number"
+                      min={1}
+                      step="1"
+                      defaultValue={template?.capacity}
+                      required
+                    />
+                  </Field>
+                  <Field id="room-bedType" name="bedType" label="Bed">
+                    <Select id="room-bedType" name="bedType" defaultValue={template?.bedType ?? 'king'} required>
+                      {Object.entries(bedLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+
+                <Field id="room-view" name="view" label="View">
+                  <Select id="room-view" name="view" defaultValue={template?.view ?? 'sea'} required className="sm:w-56">
+                    {Object.entries(viewLabels).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
                       </option>
                     ))}
                   </Select>
                 </Field>
-              </div>
 
-              <Field id="room-view" name="view" label="View">
-                <Select id="room-view" name="view" defaultValue="sea" required className="sm:w-56">
-                  {Object.entries(viewLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <div role="group" aria-labelledby="room-media-heading">
-                <h3 id="room-media-heading" className="text-sm font-medium">
-                  Photo
-                </h3>
-                <div className="mt-2">
-                  <MediaListEditor name="media" initial={[]} assets={assets} />
+                <div role="group" aria-labelledby="room-media-heading">
+                  <h3 id="room-media-heading" className="text-sm font-medium">
+                    Photo
+                  </h3>
+                  <div className="mt-2">
+                    <MediaListEditor name="media" initial={templateMedia} assets={assets} />
+                  </div>
                 </div>
               </div>
             </div>

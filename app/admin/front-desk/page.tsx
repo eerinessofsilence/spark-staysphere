@@ -44,10 +44,11 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
 
   const lastNight = board.dates.at(-1) ?? from;
   const assets = contentService.listMedia();
+  const roomTypes = await contentService.listRoomsContent();
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Front desk" actions={<AddRoomTypeButton assets={assets} />} />
+      <AdminPageHeader title="Front desk" actions={<AddRoomTypeButton assets={assets} roomTypes={roomTypes} />} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
