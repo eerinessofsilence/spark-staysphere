@@ -34,6 +34,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
       { href: '/admin', label: 'Dashboard', icon: HomeIcon },
       { href: '/admin/front-desk', label: 'Front Desk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Reservations', icon: CalendarDaysIcon },
+      { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/rates', label: 'Room Rates', icon: TagIcon },
       { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },
     ],
@@ -42,7 +43,6 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Content',
     items: [
       { href: '/admin/content', label: 'Rooms', icon: DocumentTextIcon },
-      { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/content/hotel', label: 'Hotel Settings', icon: BuildingOffice2Icon },
     ],
   },
