@@ -273,7 +273,10 @@ export class SampleBookingService {
 
     let created = 0;
     for (const [index, sample] of SAMPLES.entries()) {
-      const booking = await this.ensureStay(hotel.id, `sample-${sample.key}`, sample, context, index);
+      // Scoped to this hotel: the key alone collided across hotels once a
+      // second one existed, so seeding it found the first hotel's booking
+      // under the same key and counted it as this one's without creating one.
+      const booking = await this.ensureStay(hotel.id, `sample-${hotel.id}-${sample.key}`, sample, context, index);
       if (booking) created += 1;
     }
     return { created };
@@ -287,7 +290,7 @@ export class SampleBookingService {
 
     const bookings: Booking[] = [];
     for (const [index, stay] of SHOWCASE.entries()) {
-      const booking = await this.ensureStay(hotel.id, `showcase-${stay.key}`, stay, context, index);
+      const booking = await this.ensureStay(hotel.id, `showcase-${hotel.id}-${stay.key}`, stay, context, index);
       if (booking) bookings.push(booking);
     }
     return bookings;
