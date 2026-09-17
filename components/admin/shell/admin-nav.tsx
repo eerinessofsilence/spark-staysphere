@@ -32,7 +32,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { href: '/admin', label: 'Dashboard', icon: HomeIcon },
-      { href: '/admin/front-desk', label: 'Front desk', icon: TableCellsIcon },
+      { href: '/admin/front-desk', label: 'Front Desk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Reservations', icon: CalendarDaysIcon },
       { href: '/admin/rates', label: 'Room Rates', icon: TagIcon },
       { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },

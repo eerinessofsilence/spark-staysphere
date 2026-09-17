@@ -82,7 +82,7 @@ test.describe.configure({ mode: 'serial' });
 
 test('the front desk lays out every room and filters by room type', async ({ page }) => {
   await page.goto('/admin/front-desk');
-  await expect(page.getByRole('heading', { level: 1, name: 'Front desk' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Front Desk' })).toBeVisible();
 
   const rows = page.getByRole('group', { name: roomLabel });
   await expect(rows.first()).toBeVisible();
