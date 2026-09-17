@@ -1025,33 +1025,41 @@ export class ContentService {
    * Makes one more frame of the orbit markable. A key angle is both the
    * frames a zone may live on and the frames the guest's arrows stop on, so
    * this is an edit to the hotel itself and goes to the same overlay row the
-   * rest of its copy does. The version is read here rather than passed in:
-   * the caller is adding to a list, not overwriting a form it has been
-   * holding, and a concurrent Hotel Settings save still conflicts on its own
-   * `expectedVersion` the usual way.
+   * rest of its copy does. The caller holds no version of its own to pass
+   * in — it is adding to a list, not overwriting a form — so `current` and
+   * its version are read together on each attempt, the same retry-on-conflict
+   * shape as `setAddOnEnabled`: a concurrent write to the same overlay row
+   * (another `addSpinnerKeyAngle`, or a Hotel Settings save) between the read
+   * and the save is retried against the row's new state instead of silently
+   * overwriting it with a `next` built from a stale `current`.
    */
   async addSpinnerKeyAngle(frameIndex: number): Promise<ContentResult<Versioned>> {
     assertCanEditContent();
-    const current = await this.hotel();
-    if (!current.spinner) return ruleError('This hotel has no building spinner configured.', 'frame');
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const current = await this.hotel();
+      if (!current.spinner) return ruleError('This hotel has no building spinner configured.', 'frame');
 
-    const frameCount = current.spinner.frames.length;
-    if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= frameCount) {
-      return ruleError(`Pick a frame between 0 and ${frameCount - 1}.`, 'frame');
+      const frameCount = current.spinner.frames.length;
+      if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= frameCount) {
+        return ruleError(`Pick a frame between 0 and ${frameCount - 1}.`, 'frame');
+      }
+      if (current.spinner.keyAngles.includes(frameIndex)) {
+        return ruleError('That frame is already one of the key angles.', 'frame');
+      }
+
+      const next = hotelSchema.parse({
+        ...current,
+        spinner: {
+          ...current.spinner,
+          keyAngles: [...current.spinner.keyAngles, frameIndex].sort((a, b) => a - b),
+        },
+      } satisfies Hotel);
+
+      const version = await this.versionOf('hotel', current.id);
+      const saved = await this.save('hotel', current.id, current.id, next, version);
+      if (saved.ok) return saved;
     }
-    if (current.spinner.keyAngles.includes(frameIndex)) {
-      return ruleError('That frame is already one of the key angles.', 'frame');
-    }
-
-    const next = hotelSchema.parse({
-      ...current,
-      spinner: {
-        ...current.spinner,
-        keyAngles: [...current.spinner.keyAngles, frameIndex].sort((a, b) => a - b),
-      },
-    } satisfies Hotel);
-
-    return this.save('hotel', current.id, current.id, next, await this.versionOf('hotel', current.id));
+    return fail({ kind: 'conflict', currentVersion: await this.versionOf('hotel', (await this.hotel()).id) });
   }
 
   /**
