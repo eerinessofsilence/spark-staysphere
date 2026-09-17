@@ -56,7 +56,13 @@ export default async function AccountingPage() {
         <Metric
           label="Awaiting payment"
           value={money(ledger.awaiting)}
-          detail={unpaid === 0 ? 'Every stay is paid' : plural(unpaid, 'stay not yet paid', 'stays not yet paid')}
+          detail={
+            ledger.rows.length === 0
+              ? 'No stays yet'
+              : unpaid === 0
+                ? 'Every stay is paid'
+                : plural(unpaid, 'stay not yet paid', 'stays not yet paid')
+          }
         />
         <Metric
           label="Owed back"
@@ -93,7 +99,7 @@ export default async function AccountingPage() {
               {ledger.byMethod.length === 0 ? (
                 <tr>
                   <Td colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No stays yet.
+                    {ledger.rows.length === 0 ? 'No stays yet.' : 'No stays currently stand — every one on file was cancelled.'}
                   </Td>
                 </tr>
               ) : null}
