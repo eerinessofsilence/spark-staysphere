@@ -9,7 +9,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteRoomAction } from './rooms/[id]/actions';
@@ -38,11 +38,11 @@ export default async function RoomTypesPage({
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
-  const rates = await Promise.all(rooms.map((room) => contentService.listRatesContent(room.id)));
   const onSite = rooms.filter((room) => !room.hidden).length;
-  const pairs = rooms.map((room, index) => ({ room, rates: rates[index]! }));
-  const { pageItems, page: currentPage, totalPages } = paginate(pairs, page);
-  const pageHref = (next: number) => (next > 1 ? `/admin/content?page=${next}` : '/admin/content');
+  const { pageItems: pageRooms, page: currentPage, totalPages } = paginate(rooms, page);
+  const pageRates = await Promise.all(pageRooms.map((room) => contentService.listRatesContent(room.id)));
+  const pageItems = pageRooms.map((room, index) => ({ room, rates: pageRates[index]! }));
+  const pageHref = simplePageHref('/admin/content');
 
   return (
     <AdminPage>
