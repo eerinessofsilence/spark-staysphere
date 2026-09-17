@@ -21,6 +21,11 @@ export function paginate<T>(items: T[], page: number, pageSize: number = PAGE_SI
   return { pageItems: items.slice(start, start + pageSize), page: current, totalPages };
 }
 
+/** A `Pagination` `hrefFor` for a page with no other query params to preserve. */
+export function simplePageHref(basePath: string): (page: number) => string {
+  return (page) => (page > 1 ? `${basePath}?page=${page}` : basePath);
+}
+
 /**
  * Prev/next and a page count, the one pattern every admin grid past a
  * handful of rows shares. Hidden entirely at one page, so an empty or
@@ -53,18 +58,28 @@ export function Pagination({
             <ChevronLeftIcon className="size-4" aria-hidden="true" />
           </Link>
         ) : (
-          <span aria-hidden="true" className={cn(iconButton('light'), 'pointer-events-none opacity-40')}>
-            <ChevronLeftIcon className="size-4" />
-          </span>
+          <button
+            type="button"
+            disabled
+            aria-label="Previous page"
+            className={cn(iconButton('light'), 'disabled:pointer-events-none disabled:opacity-40')}
+          >
+            <ChevronLeftIcon className="size-4" aria-hidden="true" />
+          </button>
         )}
         {page < totalPages ? (
           <Link href={hrefFor(page + 1)} aria-label="Next page" className={iconButton('light')}>
             <ChevronRightIcon className="size-4" aria-hidden="true" />
           </Link>
         ) : (
-          <span aria-hidden="true" className={cn(iconButton('light'), 'pointer-events-none opacity-40')}>
-            <ChevronRightIcon className="size-4" />
-          </span>
+          <button
+            type="button"
+            disabled
+            aria-label="Next page"
+            className={cn(iconButton('light'), 'disabled:pointer-events-none disabled:opacity-40')}
+          >
+            <ChevronRightIcon className="size-4" aria-hidden="true" />
+          </button>
         )}
       </div>
     </nav>
