@@ -59,6 +59,7 @@ export function AddRoomRateButton({
             currency={currency}
             submitLabel="Add rate"
             resetOnSuccess
+            bare
           />
         </div>
       </Modal>

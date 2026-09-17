@@ -51,6 +51,12 @@ interface ContentFormProps {
    * "Save" pill stacked on top of the last.
    */
   dock?: boolean;
+  /**
+   * Skips the sticky card (border, background, shadow) around the action
+   * row — for a form already sitting inside its own card, like a `Modal`,
+   * where that framing would just double up.
+   */
+  bare?: boolean;
 }
 
 /** What the form holds, minus its version — compared against the last saved state to know it changed. */
@@ -103,6 +109,7 @@ export function ContentForm({
   resetOnSuccess = false,
   versionKey,
   dock = false,
+  bare = false,
 }: ContentFormProps) {
   const formId = React.useId();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -323,7 +330,12 @@ export function ContentForm({
               </div>
             </>
           ) : (
-            <div className="sticky bottom-3 z-20 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md">
+            <div
+              className={cn(
+                'mt-8 flex flex-wrap items-center gap-x-4 gap-y-2',
+                bare ? 'pr-4' : 'sticky bottom-3 z-20 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md',
+              )}
+            >
               <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
                 {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                 {submitLabel}

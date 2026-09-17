@@ -53,7 +53,7 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add property">
-        <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Add property">
+        <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Add property" bare>
           <div className="grid gap-5">
             <Field id="property-name" name="name" label="Name">
               <TextInput
