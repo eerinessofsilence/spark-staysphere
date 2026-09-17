@@ -1,6 +1,8 @@
 'use client';
 
-import { PolygonEditor, type EditorZone, type SpinnerMarkupCatalog } from '@/components/admin/spinner-markup';
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { PolygonEditor, type EditorZone, type PolygonEditorHandle, type SpinnerMarkupCatalog } from '@/components/admin/spinner-markup';
 import { toast } from '@/components/admin/shell/toast';
 import { saveSpinnerZonesAction } from './actions';
 
@@ -33,19 +35,40 @@ export function MarkupEditor({
   image,
   initialZones,
   catalog,
+  frames,
+  keyAngles,
 }: {
   frameIndex: number;
   image: { url: string; width: number; height: number };
   initialZones: EditorZone[];
   catalog: SpinnerMarkupCatalog;
+  /** The whole orbit, so the canvas can be dragged around the building. */
+  frames: Array<{ index: number; imageUrl: string }>;
+  keyAngles: number[];
 }) {
+  const router = useRouter();
+  const editorRef = React.useRef<PolygonEditorHandle>(null);
+
+  /**
+   * A drag around the building settles on a key angle, and that frame's own
+   * zones come from the server. Anything still waiting on the autosave timer
+   * is written first: the editor remounts on the new frame, and an unflushed
+   * edit would go down with it.
+   */
+  async function openFrame(next: number) {
+    await editorRef.current?.flush();
+    router.push(`/admin/content/spinner/markup?frame=${next}`);
+  }
+
   return (
     <PolygonEditor
       key={frameIndex}
+      ref={editorRef}
       image={image}
       initialZones={initialZones}
       catalog={catalog}
       zoneLabel={zoneLabelFor(catalog)}
+      sequence={{ frames, stops: keyAngles, index: frameIndex, onSettle: openFrame }}
       onNotify={({ variant, title, description }) => {
         const message = description ? `${title}: ${description}` : title;
         if (variant === 'error') toast.error(message);

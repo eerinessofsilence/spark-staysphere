@@ -1,9 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { IconPanelClose, IconPanelOpen } from './icons';
-
-const STORAGE_KEY = 'spinner-markup.shortcuts-open';
+import { IconClose, IconHelp } from './icons';
 
 const SECTIONS: Array<{ title: string; rows: Array<[string[], string]> }> = [
   {
@@ -12,6 +10,7 @@ const SECTIONS: Array<{ title: string; rows: Array<[string[], string]> }> = [
       [['V'], 'Select'],
       [['P'], 'Polygon'],
       [['R'], 'Rectangle'],
+      [['S'], 'Spin the building'],
       [['Space'], 'Pan (or the middle button)'],
       [['Wheel'], 'Zoom 1×–4×'],
     ],
@@ -56,91 +55,75 @@ const SECTIONS: Array<{ title: string; rows: Array<[string[], string]> }> = [
   },
 ];
 
-// localStorage can throw: private mode, cookies blocked, a cross-origin
-// iframe. Whether the panel is collapsed is a convenience, not worth
-// crashing over.
-function readOpen(): boolean {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) !== 'false';
-  } catch {
-    return true;
-  }
-}
-
-function writeOpen(open: boolean): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(open));
-  } catch {
-    // Not remembered — not a problem.
-  }
-}
-
 function Key({ children }: { children: React.ReactNode }) {
   return <kbd className="pe-kbd">{children}</kbd>;
 }
 
-/** Ported from `svg-editor-kit`'s `client/shortcuts-panel.jsx`, in English. */
+/**
+ * A "?" in the canvas's bottom-right corner that opens the shortcut list over
+ * the image, the way a design tool keeps help out of the working area until
+ * it is asked for. Ported from `svg-editor-kit`'s `client/shortcuts-panel.jsx`.
+ */
 export function ShortcutsPanel() {
-  // The panel eats into the canvas's own width, so whether it is collapsed is remembered.
-  const [open, setOpen] = React.useState(true);
-
-  React.useEffect(() => {
-    setOpen(readOpen());
-  }, []);
-
-  function toggle() {
-    const next = !open;
-    setOpen(next);
-    writeOpen(next);
-  }
-
-  if (!open) {
-    return (
-      <div className="pe-side-collapsed">
-        <button type="button" className="pe-btn" aria-label="Show shortcuts" title="Show shortcuts" onClick={toggle}>
-          <IconPanelOpen />
-        </button>
-      </div>
-    );
-  }
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <aside className="pe-side pe-side-left">
-      <div className="pe-side-head">
-        <h2 className="pe-side-title">Controls</h2>
-        <button type="button" className="pe-btn" aria-label="Collapse shortcuts" title="Collapse shortcuts" onClick={toggle}>
-          <IconPanelClose />
-        </button>
-      </div>
+    <>
+      <button
+        type="button"
+        className="pe-float pe-help-toggle"
+        aria-expanded={open}
+        aria-controls="pe-shortcuts"
+        aria-label={open ? 'Hide shortcuts' : 'Show shortcuts'}
+        title="Keyboard shortcuts"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <IconHelp className="pe-icon" />
+      </button>
 
-      <div className="pe-scroll">
-        {SECTIONS.map((section) => (
-          <div key={section.title} className="pe-section">
-            <p className="pe-section-title">{section.title}</p>
-            <dl className="pe-rows">
-              {section.rows.map(([keys, label]) => (
-                <div key={label + keys.join()} className="pe-row">
-                  <dt>
-                    {keys.map((key) => (
-                      <Key key={key}>{key}</Key>
-                    ))}
-                  </dt>
-                  <dd>{label}</dd>
-                </div>
-              ))}
-            </dl>
+      {open ? (
+        <aside id="pe-shortcuts" className="pe-float pe-help" aria-label="Keyboard shortcuts">
+          <div className="pe-side-head">
+            <h2 className="pe-side-title">Shortcuts</h2>
+            <button type="button" className="pe-btn" aria-label="Close shortcuts" title="Close" onClick={() => setOpen(false)}>
+              <IconClose className="pe-icon" />
+            </button>
           </div>
-        ))}
 
-        <div className="pe-note">
-          <p>■ — a vertex, ● — the middle of a side. Handles show on the selected polygon.</p>
-          <p>
-            <Key>M</Key> pulls the selected polygon's vertices to its neighbours' vertices and sides when
-            they're within 8 px — that's how a gap between neighbouring polygons closes.
-          </p>
-          <p>Keys work while focus is inside the editor — click the image first.</p>
-        </div>
-      </div>
-    </aside>
+          <div className="pe-scroll">
+            {SECTIONS.map((section) => (
+              <div key={section.title} className="pe-section">
+                <p className="pe-section-title">{section.title}</p>
+                <dl className="pe-rows">
+                  {section.rows.map(([keys, label]) => (
+                    <div key={label + keys.join()} className="pe-row">
+                      <dt>
+                        {keys.map((key) => (
+                          <Key key={key}>{key}</Key>
+                        ))}
+                      </dt>
+                      <dd>{label}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+
+            <div className="pe-note">
+              <p>■ — a vertex, ● — the middle of a side. Handles show on the selected polygon.</p>
+              <p>
+                <Key>M</Key> pulls the selected polygon's vertices to its neighbours' vertices and sides when
+                they're within 8 px — that's how a gap between neighbouring polygons closes.
+              </p>
+              <p>
+        <Key>S</Key> then drag turns the building. Letting go settles it on the nearest key angle and
+        opens that frame — zones live only on those.
+      </p>
+      <p>Keys work while focus is inside the editor — click the image first.</p>
+            </div>
+          </div>
+        </aside>
+      ) : null}
+    </>
   );
 }

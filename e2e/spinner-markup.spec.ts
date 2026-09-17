@@ -7,12 +7,11 @@ import { expect, test, type Page } from '@playwright/test';
  * same dev server as the rest of the CMS suite — see `cms.spec.ts`'s own
  * note on why the demo state is process-local.
  *
- * Desktop only: the ported editor's three-column layout (shortcuts, canvas,
- * zone list) is a professional drawing tool, the same shape as the
- * reference `svg-editor-kit` it was ported from, and needs real width to
- * work — at 390px its fixed-width side panels alone exceed the viewport,
- * leaving no canvas to draw on. Making it usable one-handed is future work,
- * not something this pass claims.
+ * Desktop only: the ported editor is laid out like a design tool — the zone
+ * list and the zone's properties float over the canvas on either side, the
+ * draw tools in a dock below — and needs real width to work: at 390px the
+ * two panels alone cover the image, leaving nothing to draw on. Making it
+ * usable one-handed is future work, not something this pass claims.
  */
 
 const KEY_ANGLE = 25; // one of the seed spinner's `keyAngles` (mock-data.ts)
@@ -47,8 +46,9 @@ test('drawing a zone, binding it to a room type, autosaves and reaches the guest
     await expect(rectButton).toHaveAttribute('aria-pressed', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  // Scoped to `.pe-canvas` specifically: the toolbar's own tool icons are
-  // also `<svg>` elements and sit earlier in the DOM.
+  // Scoped to `.pe-canvas` specifically: the dock's own tool icons are also
+  // `<svg>` elements. The drag stays in the middle of the canvas, clear of
+  // the panels floating over its corners.
   const box = (await page.locator('.pe-canvas svg').boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
   await page.mouse.down();

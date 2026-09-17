@@ -67,11 +67,11 @@ export function ZoneTargetEditor({
   const floors = [...new Set(catalog.roomTypes.map((room) => room.floor))].sort((a, b) => a - b);
 
   return (
-    <div className="pe-target">
-      <div className="pe-side-head">
-        <h2 className="pe-side-title">Points to</h2>
-      </div>
-      <div className="pe-scroll">
+    <section className="pe-panel-section" aria-labelledby="pe-target-heading">
+      <h3 id="pe-target-heading" className="pe-section-heading">
+        Points to
+      </h3>
+      <div>
         <div className="grid grid-cols-2 gap-1 rounded-full border border-border p-1 sm:grid-cols-5" role="radiogroup" aria-label="Target kind">
           {(['unit', 'floor', 'roomType', 'link'] as TargetKind[]).map((kind) => (
             <button
@@ -221,6 +221,6 @@ export function ZoneTargetEditor({
           </div>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }

@@ -24,14 +24,27 @@ import {
   withoutVertex,
   type EditorZone,
 } from './editor-state';
-import { IconMagnet, IconPencil, IconPointer, IconRedo, IconSquare, IconUndo } from './icons';
+import { dragSteps, loadOrder, nearestKeyAngle, nextStop, ringDelta, wrap } from '@/components/view-360';
+import {
+  IconMagnet,
+  IconPencil,
+  IconPointer,
+  IconRedo,
+  IconSpin,
+  IconSquare,
+  IconTurnLeft,
+  IconTurnRight,
+  IconUndo,
+} from './icons';
 import { ShortcutsPanel } from './shortcuts-panel';
 import { EDITOR_STYLES } from './styles';
-import { ZoneList } from './zone-list';
+import { ContourSummary, ZoneList } from './zone-list';
 import { ZoneTargetEditor, type SpinnerMarkupCatalog } from './zone-target-editor';
 
-// The polygon editor over an image. The canvas centred, shortcuts on the
-// left, the zone list (and its target editor) on the right.
+// The polygon editor over an image, laid out like a design tool: the canvas
+// fills the editor, the zone list floats on the left, the selected zone's
+// properties on the right, the draw tools in a dock at the bottom centre and
+// the shortcuts behind a "?" in the bottom-right corner.
 //
 // Every edit is local state. Autosave, if `onSave` is passed, carries it to
 // the database: 2 seconds after the last edit, one batch
@@ -61,9 +74,16 @@ const TOOLS = [
   { id: 'select', label: 'Select', key: 'V', Icon: IconPointer },
   { id: 'polygon', label: 'Polygon', key: 'P', Icon: IconPencil },
   { id: 'rect', label: 'Rectangle', key: 'R', Icon: IconSquare },
+  { id: 'spin', label: 'Spin', key: 'S', Icon: IconSpin },
 ] as const;
 
 type Tool = (typeof TOOLS)[number]['id'];
+
+/** How many frames are asked for at once while the rest of the sequence loads behind the drag. */
+const PRELOAD_BATCH = 12;
+const PRELOAD_INTERVAL = 120;
+/** Frames a second a turn runs at — the pace of the guest spinner's own (`use-orbit.ts`'s STEP_FPS). */
+const TURN_FPS = 60;
 
 const SAVE_LABELS: Record<SaveStatus, string> = {
   saved: 'Saved',
@@ -111,6 +131,19 @@ export interface PolygonEditorProps {
   onNotify?: (notice: Notice) => void;
   /** A zone's label in the list and in messages — usually what its target resolves to. */
   zoneLabel?: (zone: EditorZone) => string | null;
+  /**
+   * An image sequence this canvas can be dragged through — the property's
+   * own orbit, on the admin side. `index` is the frame being marked up;
+   * a drag settles on the nearest `stop` and reports it through `onSettle`,
+   * which is where the caller swaps in that frame's own zones.
+   */
+  sequence?: {
+    frames: Array<{ index: number; imageUrl: string }>;
+    /** The frames a drag may settle on — the only ones a zone can live on. */
+    stops: number[];
+    index: number;
+    onSettle: (index: number) => void;
+  };
   autosaveDelay?: number;
   showShortcuts?: boolean;
   showList?: boolean;
@@ -130,6 +163,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     onSelectionChange,
     onNotify,
     zoneLabel,
+    sequence,
     autosaveDelay = AUTOSAVE_DELAY,
     showShortcuts = true,
     showList = true,
@@ -145,6 +179,9 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   const [draft, setDraft] = React.useState<{ points: Point[]; cursor: Point } | null>(null); // the P tool
   const [rectDraft, setRectDraft] = React.useState<{ start: Point; current: Point; pointerId: number } | null>(null); // the R tool
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved');
+  // Which frame of `sequence` the canvas is showing: null while it shows the
+  // frame being marked up, a frame index while a drag is turning the building.
+  const [spinFrame, setSpinFrame] = React.useState<number | null>(null);
   const [notice, setNotice] = React.useState<Notice | null>(null);
 
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -153,6 +190,9 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   const draftRef = React.useRef<{ points: Point[]; cursor: Point } | null>(null);
   const vertexDragRef = React.useRef<{ kind: 'body' | 'vertex' | 'edge'; hotspotId: string; index?: number; last?: Point; started: boolean } | null>(null);
   const nudgeAtRef = React.useRef(0);
+  const spinDragRef = React.useRef<{ startX: number; startFrame: number } | null>(null);
+  const turnRef = React.useRef<number | null>(null);
+  const spinFrameRef = React.useRef<number | null>(null);
   const savedRef = React.useRef(new Map(initialZones.map((z) => [z.id, serializeZone(z)])));
   const warnedInvalidRef = React.useRef('');
 
@@ -321,7 +361,14 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     if (!autosave) return undefined;
 
     const { upserts, deletes, invalid } = computeDiff();
-    if (upserts.length === 0 && deletes.length === 0 && invalid.length === 0) return undefined;
+    if (upserts.length === 0 && deletes.length === 0 && invalid.length === 0) {
+      // Every change has been taken back — a zone drawn and deleted again
+      // before the timer fired. There is nothing to write, so the status has
+      // to stop saying there is: it gates `beforeunload` and the flush before
+      // a frame change.
+      setSaveStatus((current) => (current === 'saving' ? current : 'saved'));
+      return undefined;
+    }
 
     setSaveStatus('pending');
     const timer = setTimeout(() => flushRef.current(), autosaveDelay);
@@ -349,6 +396,123 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       select: (id: string | null) => dispatch({ type: 'select', id }),
     }),
     [],
+  );
+
+  // ── the orbit ─────────────────────────────────────────────────────────────
+
+  const frameCount = sequence?.frames.length ?? 0;
+  const sequenceIndex = sequence?.index ?? 0;
+  spinFrameRef.current = spinFrame;
+
+  const stopTurn = React.useCallback(() => {
+    if (turnRef.current === null) return;
+    cancelAnimationFrame(turnRef.current);
+    turnRef.current = null;
+  }, []);
+
+  React.useEffect(() => stopTurn, [stopTurn]);
+
+  /**
+   * Turns the building to `target` frame by frame instead of cutting to it,
+   * the way the guest spinner turns: stepping on the clock rather than once
+   * per tick, so the journey takes the same time on a 120Hz screen as on a
+   * 60Hz one, and never more than one frame at a time so a late tick holds
+   * the turn where it is instead of jumping across the facade.
+   */
+  const turnTo = React.useCallback(
+    (target: number, onArrive: () => void) => {
+      stopTurn();
+      const from = spinFrameRef.current ?? sequenceIndex;
+      const delta = ringDelta(from, target, frameCount);
+      if (delta === 0) {
+        onArrive();
+        return;
+      }
+
+      const direction = delta > 0 ? 1 : -1;
+      const total = Math.abs(delta);
+      const startedAt = performance.now();
+      let stepped = 0;
+
+      const tick = (now: number) => {
+        const due = Math.floor(((now - startedAt) / 1000) * TURN_FPS);
+        stepped = Math.min(total, Math.max(stepped, Math.min(due, stepped + 1)));
+        setSpinFrame(wrap(from + direction * stepped, frameCount));
+        if (stepped >= total) {
+          turnRef.current = null;
+          onArrive();
+          return;
+        }
+        turnRef.current = requestAnimationFrame(tick);
+      };
+      turnRef.current = requestAnimationFrame(tick);
+    },
+    [frameCount, sequenceIndex, stopTurn],
+  );
+
+  /**
+   * The frames are pulled in behind the drag, nearest to the one on screen
+   * first, in small batches: asking for all 160 at once stalls the first turn
+   * behind its own requests. Same order the guest spinner loads in
+   * (`loadOrder`), so both surfaces warm the same cache.
+   */
+  React.useEffect(() => {
+    if (!sequence || frameCount === 0) return undefined;
+
+    const urls = new Map(sequence.frames.map((frame) => [frame.index, frame.imageUrl]));
+    const order = loadOrder(sequenceIndex, frameCount);
+    const images: HTMLImageElement[] = [];
+    let at = 0;
+
+    const timer = setInterval(() => {
+      for (let taken = 0; taken < PRELOAD_BATCH && at < order.length; taken += 1, at += 1) {
+        const url = urls.get(order[at]!);
+        if (!url) continue;
+        const image = new Image();
+        image.src = url;
+        images.push(image);
+      }
+      if (at >= order.length) clearInterval(timer);
+    }, PRELOAD_INTERVAL);
+
+    return () => {
+      clearInterval(timer);
+      // Dropping the src cancels whatever is still in flight when the frame changes.
+      for (const image of images) image.src = '';
+    };
+  }, [sequence, frameCount, sequenceIndex]);
+
+  /** A drag turns the building; letting go glides on to the nearest markable frame. */
+  const endSpin = React.useCallback(() => {
+    const drag = spinDragRef.current;
+    spinDragRef.current = null;
+    if (!drag || !sequence) return;
+
+    const current = spinFrameRef.current;
+    if (current === null) return;
+    const target = nearestKeyAngle(sequence.stops, current, frameCount);
+    if (target === null) return;
+
+    turnTo(target, () => {
+      if (target !== sequence.index) sequence.onSettle(target);
+    });
+  }, [sequence, frameCount, turnTo]);
+
+  /**
+   * The guest's own turn control, on the admin side: one press jumps to the
+   * next frame that can carry zones, in that direction, and opens it.
+   */
+  const turn = React.useCallback(
+    (direction: 1 | -1) => {
+      if (!sequence) return;
+      const from = spinFrameRef.current ?? sequence.index;
+      const target = nextStop(sequence.stops, from, direction, frameCount);
+      if (target === null || target === from) return;
+      turnTo(target, () => {
+        if (target !== sequence.index) sequence.onSettle(target);
+      });
+    },
+    [sequence, frameCount, turnTo],
   );
 
   // ── operations ────────────────────────────────────────────────────────────
@@ -486,6 +650,9 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       case 'KeyR':
         setTool('rect');
         break;
+      case 'KeyS':
+        if (sequence) setTool('spin');
+        break;
       case 'KeyM':
         snapSelected();
         break;
@@ -526,6 +693,14 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
 
   function onBackgroundPointerDown(event: React.PointerEvent) {
     if (event.button !== 0) return;
+
+    if (tool === 'spin' && sequence) {
+      // A drag takes over from a turn in progress, from wherever it reached.
+      stopTurn();
+      spinDragRef.current = { startX: event.clientX, startFrame: spinFrameRef.current ?? sequence.index };
+      return;
+    }
+
     const point = normFromEvent(event);
     if (!point) return;
 
@@ -578,6 +753,12 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   }
 
   function onPointerMoveCanvas(event: React.PointerEvent) {
+    const spin = spinDragRef.current;
+    if (spin) {
+      setSpinFrame(wrap(spin.startFrame + dragSteps(event.clientX - spin.startX, frameCount), frameCount));
+      return;
+    }
+
     const drag = vertexDragRef.current;
 
     if (drag) {
@@ -641,6 +822,11 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   }
 
   function onPointerUpCanvas() {
+    if (spinDragRef.current) {
+      endSpin();
+      return;
+    }
+
     if (vertexDragRef.current) {
       vertexDragRef.current = null;
       return;
@@ -700,26 +886,53 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     [tool],
   );
 
-  // Docked in the sidebar, above the target editor, rather than over the
-  // canvas: the draw tools act on the selected zone shown right below them.
-  const sidebarToolbar = (
-    <div className="pe-side-toolbar">
-      <div className="pe-group" role="group" aria-label="Tools">
-        {TOOLS.map(({ id, label, key, Icon }) => (
+  // The draw tools float at the bottom centre of the canvas, the way a
+  // design tool docks its toolbar: the image keeps the full working area.
+  const dock = (
+    <div className="pe-float pe-dock" role="toolbar" aria-label="Drawing tools">
+      {TOOLS.filter((item) => item.id !== 'spin' || sequence).map(({ id, label, key, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          className="pe-btn"
+          data-active={tool === id || undefined}
+          aria-pressed={tool === id}
+          aria-label={`${label} (${key})`}
+          title={`${label} — ${key}`}
+          onClick={() => setTool(id)}
+        >
+          <Icon className="pe-icon" />
+        </button>
+      ))}
+
+      {sequence ? (
+        <>
+          <span className="pe-dock-sep" aria-hidden="true" />
           <button
-            key={id}
             type="button"
             className="pe-btn"
-            data-active={tool === id || undefined}
-            aria-pressed={tool === id}
-            aria-label={`${label} (${key})`}
-            title={`${label} — ${key}`}
-            onClick={() => setTool(id)}
+            aria-label="Turn left, to the previous key angle"
+            title="Turn left — the previous frame that can carry zones"
+            disabled={sequence.stops.length < 2}
+            onClick={() => turn(-1)}
           >
-            <Icon className="pe-icon" />
+            <IconTurnLeft className="pe-icon" />
           </button>
-        ))}
-      </div>
+          <span className="pe-dock-label">360°</span>
+          <button
+            type="button"
+            className="pe-btn"
+            aria-label="Turn right, to the next key angle"
+            title="Turn right — the next frame that can carry zones"
+            disabled={sequence.stops.length < 2}
+            onClick={() => turn(1)}
+          >
+            <IconTurnRight className="pe-icon" />
+          </button>
+        </>
+      ) : null}
+
+      <span className="pe-dock-sep" aria-hidden="true" />
 
       <button
         type="button"
@@ -731,7 +944,6 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       >
         <IconMagnet className="pe-icon" />
       </button>
-
       <button
         type="button"
         className="pe-btn"
@@ -838,59 +1050,75 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     </>
   );
 
+  const selectedIndex = selected ? zones.indexOf(selected) : -1;
+
+  // Mid-turn the canvas is showing a frame these zones were not drawn on, so
+  // they are hidden until it settles — the same rule the guest spinner follows.
+  const turning = Boolean(sequence) && spinFrame !== null && spinFrame !== sequenceIndex;
+  const shownFrame = sequence && spinFrame !== null ? sequence.frames.find((frame) => frame.index === spinFrame) : undefined;
+  const shownImage = shownFrame ? { ...image, url: shownFrame.imageUrl } : image;
+
   return (
     <div data-pe-root tabIndex={-1} className={`pe-root ${className}`} style={style} onKeyDown={onKeyDown}>
       <style>{EDITOR_STYLES}</style>
 
-      <header className="pe-toolbar">
-        {toolbarStart}
+      <MarkupCanvas
+        editable
+        image={shownImage}
+        items={turning ? [] : zones}
+        selectedId={selectedId}
+        svgRef={svgRef}
+        itemClassName={zoneClassName}
+        onItemClick={onZoneClick}
+        onBackgroundPointerDown={onBackgroundPointerDown}
+        onPointerMoveCanvas={onPointerMoveCanvas}
+        onPointerUpCanvas={onPointerUpCanvas}
+        onViewChange={onViewChange}
+        cursor={tool === 'spin' ? 'grab' : tool === 'select' ? undefined : 'crosshair'}
+        className="pe-canvas"
+      >
+        {turning ? null : editorChildren}
+      </MarkupCanvas>
 
-        <div className="pe-toolbar-end">
-          {notice ? (
-            <span className="pe-notice" data-variant={notice.variant} role="status" title={notice.description}>
-              {notice.title}
-              {notice.description ? `: ${notice.description}` : ''}
-            </span>
-          ) : null}
+      {showList ? <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel} /> : null}
 
-          {autosave ? <span className="pe-save" data-error={saveStatus === 'error' || undefined}>{SAVE_LABELS[saveStatus]}</span> : null}
-          {autosave && saveStatus === 'error' ? (
-            <button type="button" className="pe-btn pe-btn-outline" onClick={() => flushRef.current()}>
-              Retry
-            </button>
-          ) : null}
-
-          {toolbarEnd}
+      <aside className="pe-float pe-float-right" aria-label="Zone properties">
+        <div className="pe-side-head">
+          {toolbarStart}
+          <h2 className="pe-side-title pe-truncate">{selected ? nameOf(selected, selectedIndex) : 'Frame'}</h2>
+          <div className="pe-head-end">
+            {autosave ? <span className="pe-save" data-error={saveStatus === 'error' || undefined}>{SAVE_LABELS[saveStatus]}</span> : null}
+            {autosave && saveStatus === 'error' ? (
+              <button type="button" className="pe-btn pe-btn-outline" onClick={() => flushRef.current()}>
+                Retry
+              </button>
+            ) : null}
+            {toolbarEnd}
+          </div>
         </div>
-      </header>
 
-      <div className="pe-body">
-        {showShortcuts ? <ShortcutsPanel /> : null}
-
-        <MarkupCanvas
-          editable
-          image={image}
-          items={zones}
-          selectedId={selectedId}
-          svgRef={svgRef}
-          itemClassName={zoneClassName}
-          onItemClick={onZoneClick}
-          onBackgroundPointerDown={onBackgroundPointerDown}
-          onPointerMoveCanvas={onPointerMoveCanvas}
-          onPointerUpCanvas={onPointerUpCanvas}
-          onViewChange={onViewChange}
-          cursor={tool === 'select' ? undefined : 'crosshair'}
-          className="pe-canvas"
-        >
-          {editorChildren}
-        </MarkupCanvas>
-
-        {showList ? (
-          <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel} toolbar={sidebarToolbar}>
-            <ZoneTargetEditor zone={selected} dispatch={dispatch} catalog={catalog} />
-          </ZoneList>
+        {notice ? (
+          <p className="pe-notice" data-variant={notice.variant} role="status">
+            {notice.title}
+            {notice.description ? `: ${notice.description}` : ''}
+          </p>
         ) : null}
-      </div>
+
+        <div className="pe-panel-body">
+          {selected ? (
+            <>
+              <ContourSummary selected={selected} dispatch={dispatch} />
+              <ZoneTargetEditor zone={selected} dispatch={dispatch} catalog={catalog} />
+            </>
+          ) : (
+            <p className="pe-empty">Select a zone on the image or in the list to set what it points to.</p>
+          )}
+        </div>
+      </aside>
+
+      {dock}
+
+      {showShortcuts ? <ShortcutsPanel /> : null}
     </div>
   );
 });

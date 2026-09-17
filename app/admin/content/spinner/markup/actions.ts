@@ -22,3 +22,18 @@ export async function saveSpinnerZonesAction(
   }
   return result;
 }
+
+/**
+ * Adds one frame of the orbit to the hotel's key angles, so it can carry
+ * zones (and so the guest's arrows stop on it). Same result shape as the
+ * autosave above, for the same reason.
+ */
+export async function addSpinnerFrameAction(frameIndex: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await contentService.addSpinnerKeyAngle(frameIndex);
+  if (result.ok) {
+    revalidateContent();
+    return { ok: true };
+  }
+  const error = result.error;
+  return { ok: false, error: error.kind === 'rule' ? error.message : 'That frame could not be added.' };
+}
