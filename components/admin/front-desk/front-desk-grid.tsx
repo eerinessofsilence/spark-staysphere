@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
+import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
 import type {
   FrontDeskDay,
@@ -56,6 +57,18 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
   const [selection, setSelection] = React.useState<Selection | null>(null);
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
+  // Collapsed by room-type id rather than an allow-list, so a room type added
+  // after the page loaded (a fresh CMS room type, another day's fetch) opens
+  // expanded by default instead of silently starting hidden.
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(() => new Set());
+  const toggleGroup = (roomTypeId: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(roomTypeId)) next.delete(roomTypeId);
+      else next.add(roomTypeId);
+      return next;
+    });
+  };
 
   const columns = `minmax(${LABEL_WIDTH}, ${LABEL_WIDTH}) repeat(${dates.length}, minmax(${NIGHT_WIDTH}, 1fr))`;
   const minWidth = `calc(${LABEL_WIDTH} + ${dates.length} * ${NIGHT_WIDTH})`;
@@ -130,11 +143,24 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
             ))}
           </div>
 
-          {groups.map((group) => (
+          {groups.map((group) => {
+            const isCollapsed = collapsed.has(group.roomTypeId);
+            return (
             <div key={group.roomTypeId} role="group" aria-label={group.roomName}>
               <div className="border-b border-border bg-stone/40">
                 <div className="sticky left-0 flex w-fit max-w-[calc(100vw-4rem)] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-                  <span className="font-medium">{group.roomName}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.roomTypeId)}
+                    aria-expanded={!isCollapsed}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full py-0.5 pr-2 pl-1 -ml-1 hover:bg-stone"
+                  >
+                    <ChevronRightIcon
+                      className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', !isCollapsed && 'rotate-90')}
+                      aria-hidden="true"
+                    />
+                    <span className="font-medium">{group.roomName}</span>
+                  </button>
                   <span className="text-xs text-muted-foreground">
                     {group.rooms.length === 1 ? '1 room' : `${group.rooms.length} rooms`}
                   </span>
@@ -149,7 +175,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                 </div>
               </div>
 
-              {group.rooms.map((room) => {
+              {isCollapsed ? null : group.rooms.map((room) => {
                 const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
                 return (
                   <div
@@ -191,7 +217,8 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                 );
               })}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
