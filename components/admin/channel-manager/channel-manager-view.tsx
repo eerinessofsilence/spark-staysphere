@@ -29,6 +29,26 @@ function monogramFrom(name: string): string {
   return (words[0]![0]! + words[1]![0]!).toUpperCase();
 }
 
+/** Appends `-2`, `-3`, … until the id is free of every channel already on the page, built-in or custom. */
+function uniqueChannelId(base: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+/** What "Bookings pulled" says for a channel, by how it actually connects — built-in demo channels have no `connection` and keep the original copy. */
+function bookingsPulledLabel(channel: Channel): string {
+  switch (channel.connection?.method) {
+    case 'one_way':
+      return 'Not pulled — availability only';
+    case 'feed':
+      return 'By email, as they come in';
+    default:
+      return 'Every 5 minutes';
+  }
+}
+
 /**
  * The channel manager, the way a hotel team meets it in a PMS: one setup
  * card for the connection itself, then a tile per OTA it sells through.
@@ -192,9 +212,9 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
           />
         </div>
         <ul className="mt-4 grid gap-1">
-          {available.length === 0 && query ? (
+          {available.length === 0 ? (
             <li className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-              No channels match.
+              {query ? 'No channels match.' : 'Every channel is already connected.'}
             </li>
           ) : (
             available.map((channel) => (
@@ -216,7 +236,12 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         </ul>
       </Modal>
 
-      <CustomChannelModal open={customOpen} onClose={() => setCustomOpen(false)} onAdd={addCustom} />
+      <CustomChannelModal
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        onAdd={addCustom}
+        existingIds={new Set(channels.map((channel) => channel.id))}
+      />
 
       <Modal open={viewing !== null} onClose={() => setViewing(null)} title={viewing?.name ?? 'Channel'}>
         {viewing ? (
@@ -241,7 +266,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
               <Fact label="Rate plans mapped">
                 {rateCount} of {rateCount}
               </Fact>
-              <Fact label="Bookings pulled">Every 5 minutes</Fact>
+              <Fact label="Bookings pulled">{bookingsPulledLabel(viewing)}</Fact>
             </dl>
             <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
               <button
@@ -309,10 +334,13 @@ function CustomChannelModal({
   open,
   onClose,
   onAdd,
+  existingIds,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (channel: Channel) => void;
+  /** Every id already on the page, built-in or custom — so a second channel with the same name gets its own id. */
+  existingIds: ReadonlySet<string>;
 }) {
   const [name, setName] = React.useState('');
   const [kind, setKind] = React.useState<(typeof CHANNEL_KINDS)[number]>('OTA');
@@ -361,7 +389,8 @@ function CustomChannelModal({
       setError('Enter where booking notifications should go.');
       return;
     }
-    const id = `custom-${trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || Date.now()}`;
+    const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'channel';
+    const id = uniqueChannelId(`custom-${slug}`, existingIds);
     const hue = CUSTOM_HUES[Math.abs(id.length + trimmedName.length) % CUSTOM_HUES.length]!;
     onAdd({
       id,
@@ -371,6 +400,9 @@ function CustomChannelModal({
       kind,
       commission: Number(commission) || 0,
       markets: markets.trim() || 'Worldwide',
+      connection: needsCredentials
+        ? { method, endpoint: endpoint.trim() }
+        : { method, email: email.trim() },
     });
     reset();
   };

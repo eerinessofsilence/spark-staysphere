@@ -63,14 +63,22 @@ export function RoomDetailView({ offer, hotel, addOns, quote, criteria }: RoomDe
 
   return (
     <RoomPricing roomSlug={room.slug} criteria={criteria} quote={quote}>
-      <SiteHeader stayQuery={stayQuery} />
-      {/* No bottom clearance for the mobile book bar here: the footer right
-          below already reserves it at the true bottom of the page
-          (`clearsFloatingBar`), so adding it here too just doubled the gap
-          between the summary card and the footer, with nothing in it. */}
-      {/* Half the usual gutter up to `lg`, where the two-column layout starts and the full
-          gutter both frames the page and separates the gallery from the sidebar. */}
-      <main id="main" className="container-page py-8 [--gutter:0.5rem] sm:[--gutter:0.75rem] lg:py-12 lg:[--gutter:2rem]">
+      {/* Half the usual gutter up to `lg`, where the two-column layout starts
+          and the full gutter both frames the page and separates the gallery
+          from the sidebar. Set on a wrapper around the header and footer too,
+          not just `<main>`: `--gutter` only reaches a sibling that reads it,
+          and `SiteHeader`/`SiteFooter` read it themselves (via
+          `container-page`) — overriding it on `<main>` alone left their edges
+          at the site's normal gutter while this page's own content sat inset
+          by half of it, breaking the shared-edge alignment
+          DESIGN_SYSTEM.md's gutter token exists for. */}
+      <div className="[--gutter:0.5rem] sm:[--gutter:0.75rem] lg:[--gutter:2rem]">
+        <SiteHeader stayQuery={stayQuery} />
+        {/* No bottom clearance for the mobile book bar here: the footer right
+            below already reserves it at the true bottom of the page
+            (`clearsFloatingBar`), so adding it here too just doubled the gap
+            between the summary card and the footer, with nothing in it. */}
+        <main id="main" className="container-page py-8 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <Link href={`/rooms?${stayQuery}`} className={pill('secondary')}>
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
@@ -286,8 +294,9 @@ export function RoomDetailView({ offer, hotel, addOns, quote, criteria }: RoomDe
           />
         </div>
       </main>
-      <MobileBookBar roomSlug={room.slug} criteria={criteria} roomsHref={`/rooms?${stayQuery}`} />
-      <SiteFooter stayQuery={stayQuery} clearsFloatingBar />
+        <MobileBookBar roomSlug={room.slug} criteria={criteria} roomsHref={`/rooms?${stayQuery}`} />
+        <SiteFooter stayQuery={stayQuery} clearsFloatingBar />
+      </div>
       <AssistantLauncher mobileOffset="above-book-bar" />
     </RoomPricing>
   );

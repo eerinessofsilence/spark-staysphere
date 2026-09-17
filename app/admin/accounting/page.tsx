@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -48,7 +48,7 @@ export default async function AccountingPage({
   const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, page);
   const money = (value: number) => formatMoney(value, hotel.currency);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
-  const pageHref = (next: number) => (next > 1 ? `/admin/accounting?page=${next}` : '/admin/accounting');
+  const pageHref = simplePageHref('/admin/accounting');
 
   return (
     <AdminPage>
@@ -64,7 +64,13 @@ export default async function AccountingPage({
         <Metric
           label="Awaiting payment"
           value={money(ledger.awaiting)}
-          detail={unpaid === 0 ? 'Every stay is paid' : plural(unpaid, 'stay not yet paid', 'stays not yet paid')}
+          detail={
+            ledger.rows.length === 0
+              ? 'No stays yet'
+              : unpaid === 0
+                ? 'Every stay is paid'
+                : plural(unpaid, 'stay not yet paid', 'stays not yet paid')
+          }
         />
         <Metric
           label="Owed back"
@@ -101,7 +107,7 @@ export default async function AccountingPage({
               {ledger.byMethod.length === 0 ? (
                 <tr>
                   <Td colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No stays yet.
+                    {ledger.rows.length === 0 ? 'No stays yet.' : 'No stays currently stand — every one on file was cancelled.'}
                   </Td>
                 </tr>
               ) : null}

@@ -26,7 +26,7 @@ export default async function HotelContentPage() {
   ]);
 
   return (
-    <AdminPage>
+    <AdminPage width="narrow">
       <AdminPageHeader
         title="Hotel Settings"
         actions={
