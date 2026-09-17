@@ -83,7 +83,14 @@ export function BuildingSpinner({
 
   // Decided once, at mount: the deep link picks where the guest arrives, not where they are.
   const [opening] = React.useState(() =>
-    openingFrame({ frameCount, keyAngles, hotspots: spinner.hotspots, initialFrame, focusHotspotId }),
+    openingFrame({
+      frameCount,
+      keyAngles,
+      hotspots: spinner.hotspots,
+      initialFrame,
+      focusHotspotId,
+      startFrame: spinner.startFrame,
+    }),
   );
   const frames = useFrameSequence(spinner.frames, frameCount, opening);
   const orbit = useOrbit({

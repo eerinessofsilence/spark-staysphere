@@ -40,9 +40,14 @@ export default async function SpinnerContentPage() {
         title="360 Orbit"
         description="The building spinner on the arrival screen: its key-angle frames, and the zones drawn on them."
         actions={
-          <Link href="/admin/content/spinner/markup" className={pill('primary')}>
-            Open markup
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/admin/content/spinner/frames" className={pill('secondary')}>
+              Frames & key angles
+            </Link>
+            <Link href="/admin/content/spinner/markup" className={pill('primary')}>
+              Open markup
+            </Link>
+          </div>
         }
       />
 

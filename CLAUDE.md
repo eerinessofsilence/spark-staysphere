@@ -18,9 +18,10 @@ The hotel's back office (`/admin`) has its own shell and two groups of screens, 
 live on demo data. Operations: an overview, a rooms × nights front desk, bookings with detail and
 cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
 rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, the
-hotel's own copy, and the building spinner's markup (`/admin/content/spinner`: zones drawn on its
-key-angle frames, each bound to a room, a floor, a room type, or a link — see
-`docs/decisions/0006-spinner-markup.md`) (see TECH.md's "Content management (CMS)" and "Back office").
+hotel's own copy, and the building spinner (`/admin/content/spinner`: its frames, key angles and
+start frame, and the zones drawn on those key-angle frames, each bound to a room, a floor, a room
+type, or a link — see `docs/decisions/0006-spinner-markup.md`) (see TECH.md's "Content management
+(CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
@@ -29,9 +30,10 @@ replaced by a draggable building spinner (`Hotel.spinner`, `BuildingSpinner`)
 on each floor; see `SPINNER_SPEC.md` for why a baked sequence replaced an earlier, same-day
 three.js attempt. That spinner and the room gallery's panorama sphere (`PanoramaViewer`) are one
 module, `components/view-360/`, whose README.md is the handoff doc for both. On top of it, a hotel
-team can draw and bind zones — polygons that only exist on the spinner's key-angle frames — in
-`/admin/content/spinner`; see `docs/decisions/0006-spinner-markup.md`. Playwright covers the
-golden path at 1440px and 390px.
+team can upload the orbit's own frames and choose its key angles and start frame
+(`/admin/content/spinner/frames`), and draw and bind zones — polygons that only exist on those
+key-angle frames — in `/admin/content/spinner/markup`; see
+`docs/decisions/0006-spinner-markup.md`. Playwright covers the golden path at 1440px and 390px.
 
 Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
 in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
@@ -93,17 +95,22 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) in the
    availability, and the CMS in the same shell; physical rooms and the guest floor plan.~~ Done.
 8. ~~CMS markup for the building spinner: `/admin/content/spinner`, drawing and binding zones on
    its key-angle frames (`docs/decisions/0006-spinner-markup.md`).~~ Done.
-9. Replace stock photography with the property's own, add real 360 tiles if the property has them,
-   and the property's own rendered orbit frames — and, in the CMS, an upload path for them — in
-   place of the demo `Hotel.spinner` sequence and its fixed key angles.
-10. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
+9. ~~Upload path for the spinner's own orbit frames, and CMS control of key angles and the start
+   frame: `/admin/content/spinner/frames`, re-encoding to WebP in the browser and writing to R2
+   (`docs/decisions/0006-spinner-markup.md`).~~ Done.
+10. Replace stock photography with the property's own throughout the rest of the site (hero areas,
+    room galleries), and add real 360 tiles if the property has them — the spinner's own frames
+    already have an upload path (step 9); the general photo library still does not
+    (`MediaStoragePort` is declared, not implemented).
+11. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
     one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
     behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,
     rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
     enforce.
-11. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
-12. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
-    saved brand settings, draft/versioned content, multi-hotel support (`hotel_id` is already in
-    every overlay row).
+12. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
+13. CMS v2, if ever needed: file uploads to R2 for the general media library
+    (`MediaStoragePort` is declared, not implemented — the spinner's own frames already upload to
+    R2 through a separate, narrower port, step 9), saved brand settings, draft/versioned content,
+    multi-hotel support (`hotel_id` is already in every overlay row).
 
 Read `AGENTS.md`, `TECH.md`, and `DESIGN_SYSTEM.md` before changing architecture or UI.
