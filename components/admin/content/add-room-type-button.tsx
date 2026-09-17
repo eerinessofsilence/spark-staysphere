@@ -53,7 +53,22 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add property">
-        <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Add property" bare>
+        <ContentForm
+          action={createRoomAction}
+          initialVersion={0}
+          submitLabel="Add property"
+          bare
+          extraActions={
+            <Link
+              href="/admin/content/rooms/new"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-accent-strong"
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+              Create Property
+            </Link>
+          }
+        >
           <div className="grid gap-5">
             <Field id="property-name" name="name" label="Name">
               <TextInput
@@ -79,15 +94,6 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
                 ))}
               </Select>
             </Field>
-
-            <Link
-              href="/admin/content/rooms/new"
-              onClick={() => setOpen(false)}
-              className="-mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-accent-strong"
-            >
-              <PlusIcon className="size-4" aria-hidden="true" />
-              Create Property
-            </Link>
 
             <input type="hidden" name="slug" value={kebabSuggestion(name)} />
             <input type="hidden" name="description" value={template.description} />
