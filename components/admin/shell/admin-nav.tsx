@@ -37,7 +37,19 @@ interface NavItem {
   icon: typeof HomeIcon;
 }
 
-const groups: { heading: string; items: NavItem[] }[] = [
+interface NavGroup {
+  heading: string;
+  items: NavItem[];
+  /**
+   * Set off from the menu by a hairline and its own visible lead-in, rather
+   * than sitting in the run of plain rows: the orbit is the product's own
+   * promise ("see the stay"), not another CMS screen — see
+   * `DESIGN_SYSTEM.md › Rules` 1 and 4.
+   */
+  featured?: boolean;
+}
+
+const groups: NavGroup[] = [
   {
     heading: 'Operations',
     items: [
@@ -54,9 +66,13 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Content',
     items: [
       { href: '/admin/content', label: 'Rooms', icon: DocumentTextIcon },
-      { href: '/admin/content/spinner', label: '360 Orbit', icon: ArrowPathRoundedSquareIcon },
       { href: '/admin/content/hotel', label: 'Hotel Settings', icon: BuildingOffice2Icon },
     ],
+  },
+  {
+    heading: 'Immersive',
+    featured: true,
+    items: [{ href: '/admin/content/spinner', label: '360 Orbit', icon: ArrowPathRoundedSquareIcon }],
   },
 ];
 
@@ -79,8 +95,19 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Admin" className="grid gap-0.5">
       {groups.map((group) => (
-        <div key={group.heading} role="group" aria-labelledby={`admin-nav-${group.heading}`}>
-          <h2 id={`admin-nav-${group.heading}`} className="sr-only">
+        <div
+          key={group.heading}
+          role="group"
+          aria-labelledby={`admin-nav-${group.heading}`}
+          className={cn(group.featured && 'mt-2 border-t border-border pt-3')}
+        >
+          <h2
+            id={`admin-nav-${group.heading}`}
+            className={cn(
+              group.featured ? 'mb-1 flex items-center gap-2 px-3 text-xs text-muted-foreground' : 'sr-only',
+            )}
+          >
+            {group.featured ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-accent" /> : null}
             {group.heading}
           </h2>
           <ul className="grid gap-0.5">
@@ -94,9 +121,12 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                     aria-current={current ? 'page' : undefined}
                     className={cn(
                       itemClass,
+                      group.featured && 'border',
                       current
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-stone hover:text-foreground',
+                        ? 'border-transparent bg-primary text-primary-foreground'
+                        : group.featured
+                          ? 'border-border text-foreground hover:bg-stone'
+                          : 'text-muted-foreground hover:bg-stone hover:text-foreground',
                     )}
                   >
                     <item.icon className="size-5 shrink-0" aria-hidden="true" />
