@@ -239,6 +239,22 @@ body {
   }
 }
 
+/*
+ * The back office's own accent: a clear blue in place of the guest site's
+ * clay, so operator screens read as a tool rather than as the brochure.
+ * Keyed off the admin shell being on the page with `:has()` rather than a
+ * wrapper class, because dialogs portal to <body> — outside the shell — and
+ * must pick the blue up too. The clay tint follows the accent so no warm
+ * chip is left behind on an admin screen.
+ */
+html:has([data-admin-shell]) {
+  --accent: #1f6fe0;
+  --accent-strong: #1757b8;
+  --accent-soft: #e3eefc;
+  --tint-clay: #e3eefc;
+  --tint-clay-ink: #1757b8;
+}
+
 .dark {
   /*
    * The night scheme. Not the cold shadcn greys this block shipped with: a

@@ -54,10 +54,10 @@ export function OccupancyGauge({
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs">
-        <Chip tone="sage">↓ {arrivals} in</Chip>
+        <Chip tone="blue">↓ {arrivals} in</Chip>
         <Chip tone="stone">↑ {departures} out</Chip>
         {delta !== null ? (
-          <Chip tone={delta > 0 ? 'sage' : delta < 0 ? 'rose' : 'stone'}>
+          <Chip tone={delta > 0 ? 'blue' : delta < 0 ? 'rose' : 'stone'}>
             {delta > 0 ? '+' : ''}
             {delta} pt tomorrow
           </Chip>
@@ -74,11 +74,11 @@ export interface MixSegment {
 
 const MIX_TONES = [
   'bg-accent',
-  'bg-tint-sand-ink',
-  'bg-tint-sage-ink',
-  'bg-tint-clay-ink/60',
-  'bg-tint-rose-ink/70',
-  'bg-tint-stone-ink/50',
+  'bg-accent/70',
+  'bg-accent/45',
+  'bg-accent/25',
+  'bg-tint-stone-ink/45',
+  'bg-tint-stone-ink/20',
 ];
 
 /** A whole split into its parts, largest first, with a legend that carries the counts. */
@@ -116,21 +116,19 @@ export function MixBar({ segments }: { segments: MixSegment[] }) {
 export interface DonutSlice {
   label: string;
   value: number;
-  tone: 'accent' | 'stone' | 'sand' | 'rose';
+  tone: 'accent' | 'light' | 'stone';
 }
 
 const DONUT_STROKE: Record<DonutSlice['tone'], string> = {
   accent: 'stroke-accent',
-  stone: 'stroke-tint-stone-ink/35',
-  sand: 'stroke-tint-sand-ink',
-  rose: 'stroke-tint-rose-ink/70',
+  light: 'stroke-accent/35',
+  stone: 'stroke-tint-stone-ink/30',
 };
 
 const DONUT_DOT: Record<DonutSlice['tone'], string> = {
   accent: 'bg-accent',
-  stone: 'bg-tint-stone-ink/35',
-  sand: 'bg-tint-sand-ink',
-  rose: 'bg-tint-rose-ink/70',
+  light: 'bg-accent/35',
+  stone: 'bg-tint-stone-ink/30',
 };
 
 /** Outcomes of one set, the headline share in the hole. */
@@ -236,12 +234,12 @@ export function ValueBars({ bars }: { bars: ValueBar[] }) {
   );
 }
 
-function Chip({ tone, children }: { tone: 'sage' | 'stone' | 'rose'; children: React.ReactNode }) {
+function Chip({ tone, children }: { tone: 'blue' | 'stone' | 'rose'; children: React.ReactNode }) {
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2 py-0.5 font-medium whitespace-nowrap tabular-nums',
-        tone === 'sage' && 'bg-tint-sage text-tint-sage-ink',
+        tone === 'blue' && 'bg-accent-soft text-accent-strong',
         tone === 'stone' && 'bg-stone text-muted-foreground',
         tone === 'rose' && 'bg-tint-rose text-tint-rose-ink',
       )}

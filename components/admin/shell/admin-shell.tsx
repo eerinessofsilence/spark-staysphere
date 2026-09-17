@@ -16,7 +16,7 @@ interface AdminShellProps {
 
 export function AdminShell({ hotelName, location, children }: AdminShellProps) {
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-shell">
+    <div data-admin-shell className="min-h-dvh lg:grid lg:grid-cols-shell">
       <aside aria-label="Hotel admin" className="sticky top-0 hidden h-dvh p-3 lg:block">
         <div className="flex h-full flex-col rounded-[18px] bg-card p-3 shadow-soft">
           <AdminBrand />

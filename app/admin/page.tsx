@@ -99,7 +99,7 @@ export default async function AdminOverviewPage() {
               caption="confirmed"
               slices={[
                 { label: 'Confirmed', value: confirmed.length, tone: 'accent' },
-                { label: 'Cancelled', value: cancelled.length, tone: 'rose' },
+                { label: 'Cancelled', value: cancelled.length, tone: 'light' },
                 { label: 'Not finished', value: sorted.length - confirmed.length - cancelled.length, tone: 'stone' },
               ]}
             />
