@@ -72,6 +72,7 @@ export const es: Record<TranslationKey, string> = {
   'home.turnLeft': "Girar a la izquierda",
   'home.turnRight': "Girar a la derecha",
   'home.spinnerDragHint': "arrastra o usa las flechas para girar el edificio",
+  'home.spinnerFloorZone': "Planta {floor}",
 
   'rooms.chooseYourRoom': 'Elige tu habitación',
   'rooms.subtitle': '{dateRange} durante {nights}, {guests}',

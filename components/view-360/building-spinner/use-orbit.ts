@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { dragSteps, nextStop, ringDelta, wrap } from './orbit';
+import { dragSteps, nearestKeyAngle, nextStop, ringDelta, wrap } from './orbit';
 
 /** A mouse needs a deliberate push before the building moves; a finger is allowed to be twitchier. */
 const DRAG_THRESHOLD_MOUSE_PX = 50;
@@ -174,8 +174,20 @@ export function useOrbit({ frameCount, keyAngles, openingFrame, enabled, onTurnS
   const endDrag = () => {
     const drag = dragRef.current;
     dragRef.current = null;
-    // A press that never became a drag leaves an arrow turn running — and its markers hidden.
-    if (drag?.moved) setIsTurning(false);
+    if (!drag?.moved) return; // A press that never became a drag leaves an arrow turn running — and its markers hidden.
+
+    // Settle a free drag onto the nearest key angle: a spinner-markup zone
+    // only ever exists on one of those frames (see
+    // docs/decisions/0006-spinner-markup.md), so a drag left anywhere else
+    // would strand the guest somewhere no zone could ever show.
+    const target = nearestKeyAngle(keyAngles, frameRef.current, frameCount);
+    if (target === null || target === frameRef.current) {
+      setIsTurning(false);
+      return;
+    }
+    intendedRef.current = target;
+    queueRef.current.push(target);
+    runQueue();
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {

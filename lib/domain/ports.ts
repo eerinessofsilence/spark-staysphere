@@ -13,6 +13,7 @@ import type {
   RoomType,
   StayCriteria,
 } from './schemas';
+import type { SpinnerZone, SpinnerZoneUpsert } from './spinner-markup';
 // Type-only: `RoomFilters`/`CatalogFacets` are application-layer shapes, but
 // the assistant's contract is stated in terms of them rather than a second,
 // domain-owned copy. A type import has no runtime edge, so this does not
@@ -237,6 +238,22 @@ export interface CatalogContentPort {
    */
   deleteEntry(kind: CatalogEntryKind, id: string, expectedVersion: number): Promise<CatalogDeleteResult>;
   /** Clears every overlay row for the hotel; the catalog reverts to seed. */
+  reset(hotelId: string): Promise<void>;
+}
+
+/**
+ * Storage for the zones drawn in `/admin/content/spinner` — see
+ * `lib/domain/spinner-markup.ts` for what a zone is and why it isn't a
+ * `CatalogContentPort` overlay row. No optimistic concurrency here: a zone
+ * is one polygon a hotel team draws from scratch (there's no seed value to
+ * conflict with), and `applyZoneBatch` — like the reference editor's own
+ * `saveBatch` — is a plain scoped upsert/delete, guarded only by `hotelId`
+ * so one hotel's batch can never touch another's rows.
+ */
+export interface SpinnerMarkupPort {
+  listZones(hotelId: string): Promise<SpinnerZone[]>;
+  applyZoneBatch(hotelId: string, batch: { upserts: SpinnerZoneUpsert[]; deletes: string[] }): Promise<void>;
+  /** Clears every zone for the hotel — paired with `ContentService.resetContent()`. */
   reset(hotelId: string): Promise<void>;
 }
 
