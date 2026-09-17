@@ -101,7 +101,17 @@ export function AdminPageHeader({
   return (
     <header>
       {breadcrumbs && breadcrumbs.length > 0 ? <AdminBreadcrumbs items={breadcrumbs} /> : null}
-      <div className={cn('flex flex-wrap items-start justify-between gap-4', breadcrumbs && 'mt-3')}>
+      <div
+        className={cn(
+          'flex flex-wrap justify-between gap-4',
+          // Top-aligned when there's a second line underneath the title for
+          // actions to line up with; centred against the title alone
+          // otherwise, so a button isn't left hanging below a bare h1's
+          // shorter box.
+          description ? 'items-start' : 'items-center',
+          breadcrumbs && 'mt-3',
+        )}
+      >
         <div className="min-w-0">
           <h1 className="text-display text-2xl">{title}</h1>
           {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
