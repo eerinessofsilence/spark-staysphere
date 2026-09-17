@@ -12,6 +12,7 @@ import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-butt
 import { FrontDeskGrid } from '@/components/admin/front-desk/front-desk-grid';
 import { FrontDeskLegend } from '@/components/admin/front-desk/front-desk-legend';
 import { FrontDeskDateFilter } from '@/components/admin/front-desk/front-desk-date-filter';
+import { FrontDeskMobileFilters } from '@/components/admin/front-desk/front-desk-mobile-filters';
 import {
   frontDeskHref,
   DEFAULT_WINDOW,
@@ -58,7 +59,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Link
             href={frontDeskHref({ from: addIsoDays(from, -days), days, type })}
             aria-label={`Previous ${days} nights`}
@@ -80,13 +81,21 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
           >
             <ChevronRightIcon className="size-5" aria-hidden="true" />
           </Link>
+          <div className="ml-auto sm:hidden">
+            <FrontDeskMobileFilters
+              from={from}
+              days={days}
+              type={type}
+              roomTypes={board.groups.map((group) => ({ id: group.roomTypeId, name: group.roomName }))}
+            />
+          </div>
         </div>
         <p className="text-sm font-medium">
           {formatDateShort(from)} – {formatDateShort(lastNight)}
           <span className="font-normal text-muted-foreground"> · {formatNights(board.dates.length)}</span>
         </p>
 
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+        <div className="hidden flex-wrap items-center gap-2 sm:ml-auto sm:flex">
           <div
             role="group"
             aria-label="Nights shown"
@@ -119,7 +128,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 hidden sm:block">
         <FrontDeskLegend />
       </div>
 

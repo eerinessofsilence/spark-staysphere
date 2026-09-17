@@ -27,13 +27,25 @@ export function FrontDeskDateFilter({
   from,
   days,
   type,
+  open: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
 }: {
   from: string;
   days: number;
   type: string | null;
+  /** Controlled from the phone's filter sheet, which has its own button for this. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const [ownOpen, setOwnOpen] = React.useState(false);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => (onOpenChange ? onOpenChange(next) : setOwnOpen(next)),
+    [onOpenChange],
+  );
   const [draft, setDraft] = React.useState<DateRange | undefined>(undefined);
   const [months, setMonths] = React.useState(1);
   const isCustom = !(WINDOW_OPTIONS as readonly number[]).includes(days);
@@ -54,7 +66,7 @@ export function FrontDeskDateFilter({
     setDraft(isCustom ? { from: parseISO(from), to: parseISO(addIsoDays(from, days - 1)) } : undefined);
   }, [open, from, days, isCustom]);
 
-  const close = React.useCallback(() => setOpen(false), []);
+  const close = React.useCallback(() => setOpen(false), [setOpen]);
 
   const draftFrom = draft?.from ? format(draft.from, ISO) : null;
   const draftTo = draft?.to ? format(draft.to, ISO) : draftFrom;
@@ -65,6 +77,7 @@ export function FrontDeskDateFilter({
 
   return (
     <>
+      {showTrigger ? (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -79,6 +92,7 @@ export function FrontDeskDateFilter({
         <CalendarIcon className="size-4 shrink-0" aria-hidden="true" />
         {isCustom ? `${formatDateShort(from)} – ${formatDateShort(addIsoDays(from, days - 1))}` : 'Custom'}
       </button>
+      ) : null}
 
       <Modal open={open} onClose={close} title="Custom date range" className="sm:max-w-[44rem]">
         <DayPicker
