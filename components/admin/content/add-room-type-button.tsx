@@ -3,13 +3,12 @@
 import * as React from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import type { RoomType } from '@/lib/domain/schemas';
-import type { MediaAsset } from '@/lib/domain/ports';
 import { bedLabels, viewLabels } from '@/lib/formatting';
 import { pill } from '@/lib/ui';
 import { createRoomAction } from '@/app/admin/content/rooms/new/actions';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
-import { MediaListEditor, type MediaItemDraft } from '@/components/admin/content/media-list-editor';
+import type { MediaItemDraft } from '@/components/admin/content/media-list-editor';
 import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
 import { Modal } from '@/components/site/modal';
 
@@ -25,7 +24,7 @@ type RoomTypeTemplate = Pick<
  * own page — the same place the full page lands — to add a rate, more
  * photos, and its physical rooms.
  */
-export function AddRoomTypeButton({ assets, roomTypes }: { assets: MediaAsset[]; roomTypes: RoomTypeTemplate[] }) {
+export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[] }) {
   const [open, setOpen] = React.useState(false);
   const [templateId, setTemplateId] = React.useState('');
   const template = roomTypes.find((room) => room.id === templateId) ?? null;
@@ -43,7 +42,8 @@ export function AddRoomTypeButton({ assets, roomTypes }: { assets: MediaAsset[];
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add property" className="sm:max-w-2xl">
         <p className="text-sm text-muted-foreground">
-          Starts hidden from the site. Give it a rate and its own rooms afterwards, from its page.
+          Starts hidden from the site. Give it a rate and its own rooms afterwards, from its page —
+          its photos come from the room type picked below, or add its own there.
         </p>
 
         <div className="mt-5">
@@ -128,14 +128,8 @@ export function AddRoomTypeButton({ assets, roomTypes }: { assets: MediaAsset[];
                   </Select>
                 </Field>
 
-                <div role="group" aria-labelledby="room-media-heading">
-                  <h3 id="room-media-heading" className="text-sm font-medium">
-                    Photo
-                  </h3>
-                  <div className="mt-2">
-                    <MediaListEditor name="media" initial={templateMedia} assets={assets} />
-                  </div>
-                </div>
+                {/* No photo editor here — its photos are whichever the picked room type already has; add its own from the room's page. */}
+                <input type="hidden" name="media" value={JSON.stringify(templateMedia)} />
               </div>
             </div>
           </ContentForm>
