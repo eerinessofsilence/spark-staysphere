@@ -15,7 +15,9 @@ import { tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RoomStatusControl } from '@/components/admin/room-controls';
 import { RatePriceForm } from '@/components/admin/operations/rate-price-form';
+import { AddRoomRateButton } from '@/components/admin/content/add-room-rate-button';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { createRateAction } from '@/app/admin/content/rooms/[id]/actions';
 import { updateBaseRateAction } from './actions';
 
 export const metadata: Metadata = { title: 'Room Rates — Hotel admin | SPARK StaySphere 360' };
@@ -56,13 +58,16 @@ export default async function RatesPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Room Rates" />
-      <p className="mt-4 max-w-3xl text-sm text-muted-foreground">
-        In production, rates and availability come from the PMS or channel manager and this page reads
-        them back; seasonal and date-based pricing arrive with that integration. Here, a saved rate reprices
-        the guest site immediately, and an override forces a room type&apos;s status for every night. The
-        price here is the room&apos;s first rate under Rooms — the same field, whichever page you change it on.
-      </p>
+      <AdminPageHeader
+        title="Room Rates"
+        actions={
+          <AddRoomRateButton
+            rooms={rows.map(({ room }) => ({ id: room.id, name: room.name }))}
+            currency={hotel.currency}
+            createRateAction={createRateAction}
+          />
+        }
+      />
 
       <section aria-label="Rates and availability by room type" className="mt-6 rounded-[18px] bg-card shadow-soft">
         <div
