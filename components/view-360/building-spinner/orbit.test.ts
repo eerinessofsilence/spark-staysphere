@@ -7,6 +7,7 @@ import {
   hotspotPosition,
   loadOrder,
   midArcFrame,
+  nearestKeyAngle,
   nextStop,
   openingFrame,
   ringDelta,
@@ -66,6 +67,30 @@ describe('nextStop', () => {
   it('has nowhere to go without other stops', () => {
     expect(nextStop([], 10, 1, FRAMES)).toBeNull();
     expect(nextStop([10], 10, 1, FRAMES)).toBeNull();
+  });
+});
+
+describe('nearestKeyAngle', () => {
+  const stops = [0, 40, 80, 120];
+
+  it('returns the frame itself when it is already a stop', () => {
+    expect(nearestKeyAngle(stops, 40, FRAMES)).toBe(40);
+  });
+
+  it('picks whichever stop is closer, either direction', () => {
+    expect(nearestKeyAngle(stops, 50, FRAMES)).toBe(40);
+    expect(nearestKeyAngle(stops, 65, FRAMES)).toBe(80);
+  });
+
+  it('wraps past the ends of the ring', () => {
+    // 150 is 30 short of wrapping to 0, and 30 past 120 — a tie, forward wins.
+    expect(nearestKeyAngle(stops, 150, FRAMES)).toBe(0);
+    // 135 is 15 past 120 and 45 short of wrapping to 0 — 120 is nearer.
+    expect(nearestKeyAngle(stops, 135, FRAMES)).toBe(120);
+  });
+
+  it('has nowhere to settle without any stops', () => {
+    expect(nearestKeyAngle([], 10, FRAMES)).toBeNull();
   });
 });
 

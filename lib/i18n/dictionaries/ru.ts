@@ -72,6 +72,7 @@ export const ru: Record<TranslationKey, string> = {
   'home.turnLeft': "Повернуть влево",
   'home.turnRight': "Повернуть вправо",
   'home.spinnerDragHint': "перетащите или используйте стрелки, чтобы повернуть здание",
+  'home.spinnerFloorZone': "Этаж {floor}",
 
   'rooms.chooseYourRoom': 'Выберите номер',
   'rooms.subtitle': '{dateRange}, {nights}, {guests}',

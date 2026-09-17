@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { nightsInRange } from '../domain/availability';
 import { effectiveVersion } from '../domain/catalog-overlay';
 import { isEquirectangular, isPanorama } from '../domain/media';
+import type { Polygon } from '../domain/polygon/geometry';
+import { checkPolygon, requireUuid } from '../domain/polygon/validate';
 import { floorOf, nextRoomNumber } from '../domain/room-units';
 import { KEBAB_CASE, kebabSuggestion } from '../domain/slug';
 import { systemClock } from '../domain/clock';
@@ -12,6 +14,7 @@ import type {
   CatalogReader,
   Clock,
   MediaLibraryPort,
+  SpinnerMarkupPort,
 } from '../domain/ports';
 import {
   addOnSchema,
@@ -28,6 +31,7 @@ import {
   type RatePlan,
   type RoomType,
 } from '../domain/schemas';
+import { spinnerZoneTargetSchema, type SpinnerZone, type SpinnerZoneTarget } from '../domain/spinner-markup';
 
 /**
  * All CMS business rules live here, never in a server action or a component
@@ -223,6 +227,7 @@ export class ContentService {
     private readonly repository: CatalogReader & Pick<BookingStore, 'listBookings'>,
     private readonly content: CatalogContentPort,
     private readonly media: MediaLibraryPort,
+    private readonly spinnerMarkup: SpinnerMarkupPort,
     private readonly hotelSlug: string,
     /** Which ids came from `mock-data.ts` — the only entities a hard delete is refused for. */
     private readonly seedIds: Record<CatalogEntryKind, ReadonlySet<string>>,
@@ -952,11 +957,119 @@ export class ContentService {
     return this.remove('addon', id, expectedVersion);
   }
 
+  // ----------------------------------------------------------------- Spinner markup
+
+  /**
+   * Everything `/admin/content/spinner` needs: the current frames and key
+   * angles (still read straight off `Hotel.spinner` — replacing those is
+   * roadmap step 8, a separate CMS pass), the zones drawn on them so far,
+   * and the catalog references a zone's target picker offers. Every
+   * physical room and room type is included, hidden ones too, the same way
+   * `listPhysicalRoomsContent`/`listRoomsContent` do — a zone bound to a
+   * room a team just hid should still show what it points at, not go blank.
+   */
+  async getSpinnerMarkupContent(): Promise<{
+    frames: NonNullable<Hotel['spinner']>['frames'];
+    frameWidth: number;
+    frameHeight: number;
+    keyAngles: number[];
+    zones: SpinnerZone[];
+    units: Array<{ id: string; number: string; floor: number; roomTypeId: string; roomTypeName: string }>;
+    roomTypes: Array<{ id: string; name: string; floor: number; hidden: boolean }>;
+  } | null> {
+    const hotel = await this.hotel();
+    if (!hotel.spinner) return null;
+
+    const [zones, rooms, units] = await Promise.all([
+      this.spinnerMarkup.listZones(hotel.id),
+      this.repository.listRooms(hotel.id),
+      this.repository.listPhysicalRooms(hotel.id),
+    ]);
+    const roomById = new Map(rooms.map((room) => [room.id, room]));
+
+    return {
+      frames: hotel.spinner.frames,
+      frameWidth: hotel.spinner.frameWidth,
+      frameHeight: hotel.spinner.frameHeight,
+      keyAngles: [...hotel.spinner.keyAngles].sort((a, b) => a - b),
+      zones,
+      units: units
+        .map((unit) => ({
+          id: unit.id,
+          number: unit.number,
+          floor: unit.floor,
+          roomTypeId: unit.roomTypeId,
+          roomTypeName: roomById.get(unit.roomTypeId)?.name ?? unit.roomTypeId,
+        }))
+        .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })),
+      roomTypes: rooms
+        .map((room) => ({ id: room.id, name: room.name, floor: room.floor, hidden: room.hidden ?? false }))
+        .sort((a, b) => a.floor - b.floor || a.name.localeCompare(b.name)),
+    };
+  }
+
+  /**
+   * The autosave batch the ported polygon editor sends for one key-angle
+   * frame: `{ upserts: [{ id, polygon, target }], deletes: [id] }`. Shaped
+   * like `saveBatch` in the reference `svg-editor-kit`, but with a target to
+   * validate against the *current* catalog on top of `checkPolygon`'s own
+   * geometry checks — a target the catalog no longer has (a deleted unit or
+   * room type) is rejected rather than silently stored broken.
+   */
+  async saveSpinnerZones(
+    frameIndex: number,
+    rawBatch: unknown,
+  ): Promise<{ ok: true; saved: number; removed: number } | { ok: false; error: string }> {
+    assertCanEditContent();
+    const hotel = await this.hotel();
+    if (!hotel.spinner) return { ok: false, error: 'This hotel has no building spinner configured.' };
+    if (!hotel.spinner.keyAngles.includes(frameIndex)) {
+      return { ok: false, error: 'Zones can only be drawn on one of the spinner’s key-angle frames.' };
+    }
+
+    const batchSchema = z.object({
+      upserts: z
+        .array(z.object({ id: z.unknown(), polygon: z.unknown(), target: spinnerZoneTargetSchema.nullable() }))
+        .default([]),
+      deletes: z.array(z.unknown()).default([]),
+    });
+    const parsedBatch = batchSchema.safeParse(rawBatch ?? {});
+    if (!parsedBatch.success) return { ok: false, error: 'Malformed save request.' };
+
+    const [rooms, units] = await Promise.all([
+      this.repository.listRooms(hotel.id),
+      this.repository.listPhysicalRooms(hotel.id),
+    ]);
+    const roomIds = new Set(rooms.map((room) => room.id));
+    const unitIds = new Set(units.map((unit) => unit.id));
+
+    const upserts: Array<{ id: string; frameIndex: number; polygon: Polygon; target: SpinnerZoneTarget | null }> = [];
+    try {
+      for (const [index, item] of parsedBatch.data.upserts.entries()) {
+        const id = requireUuid(item.id, `zone #${index + 1}`);
+        const polygon = checkPolygon(item.polygon, index);
+        if (item.target?.kind === 'unit' && !unitIds.has(item.target.unitId)) {
+          throw new Error(`Zone #${index + 1}: that room no longer exists.`);
+        }
+        if (item.target?.kind === 'roomType' && !roomIds.has(item.target.roomTypeId)) {
+          throw new Error(`Zone #${index + 1}: that room type no longer exists.`);
+        }
+        upserts.push({ id, frameIndex, polygon, target: item.target });
+      }
+      const deletes = parsedBatch.data.deletes.map((value, index) => requireUuid(value, `zone #${index + 1}`));
+
+      await this.spinnerMarkup.applyZoneBatch(hotel.id, { upserts, deletes });
+      return { ok: true, saved: upserts.length, removed: deletes.length };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
   // ----------------------------------------------------------------- Reset
 
   async resetContent(): Promise<void> {
     assertCanEditContent();
     const hotel = await this.hotel();
-    await this.content.reset(hotel.id);
+    await Promise.all([this.content.reset(hotel.id), this.spinnerMarkup.reset(hotel.id)]);
   }
 }

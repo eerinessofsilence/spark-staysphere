@@ -17,8 +17,10 @@ the back office is server actions only, no new API routes.
 The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
 live on demo data. Operations: an overview, a rooms × nights front desk, bookings with detail and
 cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
-rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, and the
-hotel's own copy (see TECH.md's "Content management (CMS)" and "Back office").
+rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, the
+hotel's own copy, and the building spinner's markup (`/admin/content/spinner`: zones drawn on its
+key-angle frames, each bound to a room, a floor, a room type, or a link — see
+`docs/decisions/0006-spinner-markup.md`) (see TECH.md's "Content management (CMS)" and "Back office").
 
 The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
 photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
@@ -26,7 +28,9 @@ replaced by a draggable building spinner (`Hotel.spinner`, `BuildingSpinner`)
 — a baked 160-frame orbit drawn to a canvas, not a live 3D scene — whose hotspots open the rooms
 on each floor; see `SPINNER_SPEC.md` for why a baked sequence replaced an earlier, same-day
 three.js attempt. That spinner and the room gallery's panorama sphere (`PanoramaViewer`) are one
-module, `components/view-360/`, whose README.md is the handoff doc for both. Playwright covers the
+module, `components/view-360/`, whose README.md is the handoff doc for both. On top of it, a hotel
+team can draw and bind zones — polygons that only exist on the spinner's key-angle frames — in
+`/admin/content/spinner`; see `docs/decisions/0006-spinner-markup.md`. Playwright covers the
 golden path at 1440px and 390px.
 
 Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
@@ -87,15 +91,18 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) in the
    overlay on the seed catalog.~~ Done.
 7. ~~Back office for the demo: shell, overview, front desk, bookings with cancel, rates &
    availability, and the CMS in the same shell; physical rooms and the guest floor plan.~~ Done.
-8. Replace stock photography with the property's own, add real 360 tiles if the property has them,
-   and the property's own rendered orbit frames in place of the demo `Hotel.spinner` sequence.
-9. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
-   one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
-   behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,
-   rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
-   enforce.
-10. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
-11. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
+8. ~~CMS markup for the building spinner: `/admin/content/spinner`, drawing and binding zones on
+   its key-angle frames (`docs/decisions/0006-spinner-markup.md`).~~ Done.
+9. Replace stock photography with the property's own, add real 360 tiles if the property has them,
+   and the property's own rendered orbit frames — and, in the CMS, an upload path for them — in
+   place of the demo `Hotel.spinner` sequence and its fixed key angles.
+10. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
+    one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
+    behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,
+    rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
+    enforce.
+11. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
+12. CMS v2, if ever needed: file uploads to R2 (`MediaStoragePort` is declared, not implemented),
     saved brand settings, draft/versioned content, multi-hotel support (`hotel_id` is already in
     every overlay row).
 
