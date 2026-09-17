@@ -81,20 +81,29 @@ export const spinnerFrameSchema = z.object({
 });
 
 /**
+ * A fraction of the spinner frame, generous past both edges: `floorBand()`
+ * (`mock-data.ts`) deliberately extrapolates a floor hotspot's position and
+ * outline past the traced band's own edge for the storeys below it — "past
+ * 1" is that band's own documented behaviour, not bad data. `[0, 1]` would
+ * reject exactly the floors that behaviour exists for.
+ */
+const spinnerFraction = z.number().min(-1).max(2);
+
+/**
  * Where a spinner hotspot sits at one frame it's actually visible in. A
  * hotspot only appears across the sub-range its keyframes span — the frames
  * where it faces the camera — with its position interpolated between them.
  */
 export const spinnerHotspotKeyframeSchema = z.object({
   frameIndex: z.number().int().nonnegative(),
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
+  x: spinnerFraction,
+  y: spinnerFraction,
   /**
    * The part of the building this marker stands for, traced on this frame as
    * fractions. Every keyframe of one hotspot must trace the same corners in the
    * same order, so the shape can be interpolated between frames as it turns.
    */
-  outline: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).optional(),
+  outline: z.array(z.object({ x: spinnerFraction, y: spinnerFraction })).optional(),
 });
 
 export const spinnerHotspotSchema = z.object({
