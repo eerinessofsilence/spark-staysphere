@@ -4,7 +4,6 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ArrowTopRightOnSquareIcon,
   BanknotesIcon,
   Bars3Icon,
   BuildingOffice2Icon,
@@ -98,20 +97,6 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       ))}
     </nav>
-  );
-}
-
-export function ViewSiteLink() {
-  return (
-    <a
-      href="/"
-      target="_blank"
-      rel="noreferrer"
-      className={cn(itemClass, 'text-muted-foreground hover:bg-stone hover:text-foreground')}
-    >
-      <ArrowTopRightOnSquareIcon className="size-5 shrink-0" aria-hidden="true" />
-      View guest site
-    </a>
   );
 }
 
@@ -245,7 +230,6 @@ export function AdminMobileMenu({ hotelName, location }: { hotelName: string; lo
           <AdminNav onNavigate={close} />
         </div>
         <div className="mt-4 grid gap-1 border-t border-border pt-3">
-          <ViewSiteLink />
           <DemoAccount onNavigate={close} />
         </div>
       </Modal>

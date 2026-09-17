@@ -5,7 +5,6 @@ import {
   AdminNav,
   DemoAccount,
   PropertyCard,
-  ViewSiteLink,
 } from './admin-nav';
 import { UnsavedChangesGuard } from './unsaved-changes';
 
@@ -28,7 +27,6 @@ export function AdminShell({ hotelName, location, children }: AdminShellProps) {
             <AdminNav />
           </div>
           <div className="mt-3 grid gap-1 border-t border-border pt-3">
-            <ViewSiteLink />
             <DemoAccount />
           </div>
         </div>
