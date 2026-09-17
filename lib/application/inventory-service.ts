@@ -104,6 +104,7 @@ export interface FrontDeskRoom {
 export interface FrontDeskGroup {
   roomTypeId: string;
   roomName: string;
+  roomDescription: string;
   roomSlug: string;
   /** The room type's cover photograph, for the stay card. */
   photo: { url: string; width?: number; height?: number } | null;
@@ -297,6 +298,7 @@ export class InventoryService {
         return {
           roomTypeId: room.id,
           roomName: room.name,
+          roomDescription: room.description,
           roomSlug: room.slug,
           photo: cover ? { url: cover.url, width: cover.width, height: cover.height } : null,
           hidden: Boolean(room.hidden),

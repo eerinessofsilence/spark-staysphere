@@ -11,15 +11,9 @@ import type {
   FrontDeskSegment,
 } from '@/lib/application/inventory-service';
 import { addIsoDays } from '@/lib/domain/dates';
-import { nightsBetween } from '@/lib/domain/pricing';
-import {
-  facadeLabels,
-  formatDateRange,
-  formatMoney,
-} from '@/lib/formatting';
+import { facadeLabels, formatDateRange } from '@/lib/formatting';
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { Modal } from '@/components/site/modal';
 import { demandPattern } from './front-desk-shared';
 
@@ -35,6 +29,7 @@ interface Selection {
   segment: FrontDeskSegment;
   roomNumber: string;
   roomName: string;
+  roomDescription: string;
   photo: FrontDeskGroup['photo'];
 }
 
@@ -70,7 +65,13 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
   );
 
   const select = (segment: FrontDeskSegment, room: FrontDeskRoom, group: FrontDeskGroup) => {
-    setSelection({ segment, roomNumber: room.number, roomName: group.roomName, photo: group.photo });
+    setSelection({
+      segment,
+      roomNumber: room.number,
+      roomName: group.roomName,
+      roomDescription: group.roomDescription,
+      photo: group.photo,
+    });
     setOpen(true);
   };
 
@@ -197,6 +198,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       <Modal
         open={open}
         onClose={close}
+        className="sm:max-w-2xl"
         title={
           selection?.segment.kind === 'booking'
             ? `Booking ${selection.segment.reference}`
@@ -286,31 +288,14 @@ function SegmentBar({
 }
 
 function SelectionDetail({ selection, dates }: { selection: Selection; dates: string[] }) {
-  const { segment, roomNumber, roomName, photo } = selection;
-
-  const header = (
-    <div className="flex items-start gap-4">
-      {photo ? (
-        <img
-          src={photo.url}
-          alt={roomName}
-          width={photo.width}
-          height={photo.height}
-          className="size-20 shrink-0 rounded-xl object-cover sm:size-24"
-        />
-      ) : null}
-      <div className="min-w-0">
-        <p className="text-display text-2xl tabular-nums">Room {roomNumber}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{roomName}</p>
-      </div>
-    </div>
-  );
+  const { segment, roomNumber, roomName, roomDescription, photo } = selection;
 
   if (segment.kind === 'closed') {
     const { from, to } = segmentRange(segment, dates);
     return (
       <div>
-        {header}
+        <p className="text-display text-2xl tabular-nums">Room {roomNumber}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{roomName}</p>
         <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
           <Field label="Dates" wide>
             {formatDateRange(from, to)}
@@ -330,93 +315,26 @@ function SelectionDetail({ selection, dates }: { selection: Selection; dates: st
     );
   }
 
-  const nights = nightsBetween(segment.checkIn, segment.checkOut);
-  const balance = Math.max(0, segment.total - segment.paid);
-
   return (
     <div>
-      {header}
-
-      <dl className="mt-5 grid grid-cols-3 gap-x-4 gap-y-4 text-sm">
-        <Field label="Main guest" wide>
-          {segment.guestName}
-        </Field>
-        {segment.kind === 'booking' ? (
-          <Field label="Booking #">
-            <Link href={`/admin/bookings/${segment.reference}`} className="hover:text-accent-strong">
-              {segment.reference}
-            </Link>
-          </Field>
-        ) : (
-          <Field label="Channel">{segment.channel}</Field>
-        )}
-
-        <Field label="Dates of stay" wide>
-          {formatDateRange(segment.checkIn, segment.checkOut)}
-        </Field>
-        <Field label="Nights">{nights}</Field>
-
-        <Field label="Room rate">{segment.ratePlanName}</Field>
-        <Field label="Meals">{segment.breakfastIncluded ? 'Breakfast' : 'No meals'}</Field>
-        <Field label="Guests">
-          {segment.adults} {segment.adults === 1 ? 'adult' : 'adults'}
-          {segment.children > 0 ? (
-            <span className="block font-normal text-muted-foreground">
-              {segment.children} {segment.children === 1 ? 'child' : 'children'}
-            </span>
-          ) : null}
-        </Field>
-
-        <Field label="Check-in">{segment.checkInTime}</Field>
-        <Field label="Check-out">
-          {segment.checkOutTime}
-          {segment.checkOutTime !== '11:00' ? (
-            <span className="block font-normal text-muted-foreground">Late check-out</span>
-          ) : null}
-        </Field>
-        {segment.kind === 'booking' ? (
-          <Field label="Assigned">
-            {segment.chosenByGuest ? (
-              <span className="inline-flex items-center gap-1">
-                <PushPin weight="fill" className="size-3.5" aria-hidden="true" />
-                By guest
-              </span>
-            ) : (
-              'Automatically'
-            )}
-          </Field>
-        ) : null}
-      </dl>
-
-      <div className="mt-5 grid grid-cols-3 gap-2">
-        <Amount label="Amount" value={formatMoney(segment.total, segment.currency)} />
-        <Amount label="Paid" value={formatMoney(segment.paid, segment.currency)} />
-        <Amount
-          label="Balance"
-          value={formatMoney(balance, segment.currency)}
-          tone={balance > 0 ? 'due' : 'settled'}
+      {photo ? (
+        <img
+          src={photo.url}
+          alt={roomName}
+          width={photo.width}
+          height={photo.height}
+          className="-mx-5 -mt-5 mb-5 aspect-[16/9] w-[calc(100%+2.5rem)] max-w-none object-cover sm:-mx-6 sm:-mt-6 sm:mb-6 sm:w-[calc(100%+3rem)]"
         />
-      </div>
+      ) : null}
 
-      {segment.kind === 'booking' ? (
-        <>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {segment.guestEmail}
-            {segment.guestPhone ? <span className="block">{segment.guestPhone}</span> : null}
-          </p>
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <BookingStatusBadge status={segment.status} />
-            <Link href={`/admin/bookings/${segment.reference}`} className={pill('primary')}>
-              Booking details
-            </Link>
-          </div>
-        </>
-      ) : (
-        <p className="mt-4 rounded-xl bg-stone/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Simulated demand — stands in for channel and walk-in bookings in this demo, not a real
-          reservation. Guests see these nights as taken, the same way the catalog counts them.
-        </p>
-      )}
+      <p className="text-display text-2xl tabular-nums">Room {roomNumber}</p>
+      <p className="mt-0.5 text-sm font-medium text-muted-foreground">{roomName}</p>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{roomDescription}</p>
+
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="text-xs text-muted-foreground">Room rate</p>
+        <p className="mt-0.5 font-medium">{segment.ratePlanName}</p>
+      </div>
     </div>
   );
 }
@@ -430,20 +348,3 @@ function Field({ label, wide, children }: { label: string; wide?: boolean; child
   );
 }
 
-function Amount({ label, value, tone }: { label: string; value: string; tone?: 'due' | 'settled' }) {
-  return (
-    <div
-      className={cn(
-        'min-w-0 rounded-xl border px-3 py-2',
-        tone === 'settled'
-          ? 'border-success/40 bg-success/5'
-          : tone === 'due'
-            ? 'border-warning/40 bg-warning/5'
-            : 'border-border bg-stone/40',
-      )}
-    >
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
