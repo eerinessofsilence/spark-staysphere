@@ -701,7 +701,18 @@ export class ContentService {
     return Promise.all(rates.map(async (rate) => ({ ...rate, version: await this.versionOf('rate', rate.id) })));
   }
 
-  private async findRate(id: string): Promise<(RatePlan & Versioned) | null> {
+  /**
+   * `roomTypeId` is an optional shortcut for a caller that already knows
+   * it (Rates & availability's own price editor, on whichever hotel is
+   * currently selected) — without it, the search is scoped to this
+   * service's one bound hotel, the only one its write methods know how to
+   * save against.
+   */
+  private async findRate(id: string, roomTypeId?: string): Promise<(RatePlan & Versioned) | null> {
+    if (roomTypeId) {
+      const rate = (await this.repository.listRatePlans(roomTypeId)).find((candidate) => candidate.id === id);
+      return rate ? { ...rate, version: await this.versionOf('rate', id) } : null;
+    }
     const hotel = await this.hotel();
     const rooms = await this.repository.listRooms(hotel.id);
     for (const room of rooms) {
@@ -743,9 +754,14 @@ export class ContentService {
     return ok({ id, version: saved.value.version });
   }
 
-  async updateRate(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
+  async updateRate(
+    id: string,
+    rawInput: unknown,
+    expectedVersion: number,
+    roomTypeId?: string,
+  ): Promise<ContentResult<Versioned>> {
     assertCanEditContent();
-    const current = await this.findRate(id);
+    const current = await this.findRate(id, roomTypeId);
     if (!current) return fail({ kind: 'not_found' });
 
     const parsed = rateFieldsSchema.safeParse(rawInput);

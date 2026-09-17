@@ -4,6 +4,7 @@ import type { AddOn, Hotel, PhysicalRoom, RatePlan, RoomType } from '../domain/s
 import { getDemoDatabase } from './cloudflare-env';
 import * as d1 from './d1-hotel-repository';
 import { durableCatalogContentPort } from './durable-catalog-content';
+import { demoHotels } from './mock-data';
 import { mockAvailability, mockDemoControlPort, mockHotelRepository } from './mock-hotel-repository';
 
 /**
@@ -50,16 +51,19 @@ export const durableHotelRepository: HotelRepository = {
 
   async listRatePlans(roomTypeId) {
     const seed = await mockHotelRepository.listRatePlans(roomTypeId);
-    // Rate overlay rows are keyed to the one demo hotel, then narrowed to
-    // this room type — there is no per-room-type overlay listing, and one
-    // hotel is all v1 supports (see CLAUDE.md's roadmap).
-    const hotel = await mockHotelRepository.getHotel('asteria-cove');
-    const overlay = hotel
-      ? ((await durableCatalogContentPort.listEntries(
-          'rate',
-          hotel.id,
-        )) as CatalogEntryRecord<RatePlan>[])
-      : [];
+    // Rate overlay rows are keyed to a hotel, then narrowed to this room
+    // type — there is no per-room-type overlay listing, so every seed
+    // hotel's overlay is checked and the room type's own id picks out the
+    // right rows (CMS edits only ever land under one hotel today, but this
+    // stays correct once a second one can take them too).
+    const overlay = (
+      await Promise.all(
+        demoHotels.map(
+          (hotel) =>
+            durableCatalogContentPort.listEntries('rate', hotel.id) as Promise<CatalogEntryRecord<RatePlan>[]>,
+        ),
+      )
+    ).flat();
     const relevant = overlay.filter((entry) => entry.data.roomTypeId === roomTypeId);
     return mergeCatalog(seed, relevant);
   },
@@ -74,10 +78,12 @@ export const durableHotelRepository: HotelRepository = {
   },
 
   async getAvailability(roomTypeId, from, to) {
-    // Rooms are keyed to the one demo hotel, like rates above. Counting the
-    // merged list is what keeps the CMS's rooms and the rooms on sale equal.
-    const hotel = await mockHotelRepository.getHotel('asteria-cove');
-    const rooms = hotel ? await durableHotelRepository.listPhysicalRooms(hotel.id) : [];
+    // Rooms are keyed to a hotel, like rates above. Counting the merged list
+    // across every seed hotel is what keeps the CMS's rooms and the rooms on
+    // sale equal, whichever hotel this room type belongs to.
+    const rooms = (
+      await Promise.all(demoHotels.map((hotel) => durableHotelRepository.listPhysicalRooms(hotel.id)))
+    ).flat();
     const units = rooms.filter((room) => room.roomTypeId === roomTypeId).length;
     const db = getDemoDatabase();
     return db
