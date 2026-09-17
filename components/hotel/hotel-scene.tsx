@@ -28,6 +28,7 @@ import { useAnchoredCard, useMarkerAnchor, type CardAnchor } from '@/components/
 import { useElementSize } from '@/components/site/use-element-size';
 import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
 import { BuildingSpinner } from '@/components/view-360';
+import type { GuestSpinnerZone } from '@/lib/application/catalog-service';
 import { withStayQuery } from '@/lib/application/search-params';
 import type { BuildingSpinnerData, HotelArea, Hotspot } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
@@ -67,6 +68,8 @@ interface HotelSceneProps {
   rooms?: Record<string, RoomFacts>;
   /** Replaces the `SPINNER_AREA_ID` area's flat photo with a draggable orbit. */
   spinner?: BuildingSpinnerData;
+  /** Zones drawn in `/admin/content/spinner`, shown while the orbit is stopped on a key angle. */
+  spinnerZones?: GuestSpinnerZone[];
   /** Deep link: `/?frame=N`. */
   spinnerInitialFrame?: number;
   /** Deep link: `/?unit=<slug>`, opens turned to a frame where that hotspot is visible. */
@@ -80,6 +83,7 @@ export function HotelScene({
   stayQuery,
   rooms,
   spinner,
+  spinnerZones,
   spinnerInitialFrame,
   spinnerFocusHotspotId,
   className,
@@ -210,6 +214,7 @@ export function HotelScene({
             {candidate.id === SPINNER_AREA_ID && spinner ? (
               <BuildingSpinner
                 spinner={spinner}
+                zones={spinnerZones}
                 fallbackPhoto={candidate.photo}
                 title={candidate.name}
                 stayQuery={stayQuery}
