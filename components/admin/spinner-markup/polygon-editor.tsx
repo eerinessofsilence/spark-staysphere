@@ -700,6 +700,61 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     [tool],
   );
 
+  // Docked in the sidebar, above the target editor, rather than over the
+  // canvas: the draw tools act on the selected zone shown right below them.
+  const sidebarToolbar = (
+    <div className="pe-side-toolbar">
+      <div className="pe-group" role="group" aria-label="Tools">
+        {TOOLS.map(({ id, label, key, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className="pe-btn"
+            data-active={tool === id || undefined}
+            aria-pressed={tool === id}
+            aria-label={`${label} (${key})`}
+            title={`${label} — ${key}`}
+            onClick={() => setTool(id)}
+          >
+            <Icon className="pe-icon" />
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label="Snap to neighbours (M)"
+        title="Snap to neighbours — M. Closes gaps between neighbouring zones"
+        disabled={!selected}
+        onClick={snapSelected}
+      >
+        <IconMagnet className="pe-icon" />
+      </button>
+
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label="Undo (Ctrl+Z)"
+        title="Undo — Ctrl+Z"
+        disabled={state.past.length === 0}
+        onClick={() => dispatch({ type: 'undo' })}
+      >
+        <IconUndo className="pe-icon" />
+      </button>
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label="Redo (Ctrl+Shift+Z)"
+        title="Redo — Ctrl+Shift+Z"
+        disabled={state.future.length === 0}
+        onClick={() => dispatch({ type: 'redo' })}
+      >
+        <IconRedo className="pe-icon" />
+      </button>
+    </div>
+  );
+
   const vertexSize = handleScreenPx(zoom) * unitsPerPixel;
 
   const px = ([x, y]: Point) => `${x * image.width},${y * image.height}`;
@@ -788,56 +843,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       <style>{EDITOR_STYLES}</style>
 
       <header className="pe-toolbar">
+        {showList ? null : sidebarToolbar}
         {toolbarStart}
-
-        <div className="pe-group" role="group" aria-label="Tools">
-          {TOOLS.map(({ id, label, key, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="pe-btn"
-              data-active={tool === id || undefined}
-              aria-pressed={tool === id}
-              aria-label={`${label} (${key})`}
-              title={`${label} — ${key}`}
-              onClick={() => setTool(id)}
-            >
-              <Icon className="pe-icon" />
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className="pe-btn"
-          aria-label="Snap to neighbours (M)"
-          title="Snap to neighbours — M. Closes gaps between neighbouring zones"
-          disabled={!selected}
-          onClick={snapSelected}
-        >
-          <IconMagnet className="pe-icon" />
-        </button>
-
-        <button
-          type="button"
-          className="pe-btn"
-          aria-label="Undo (Ctrl+Z)"
-          title="Undo — Ctrl+Z"
-          disabled={state.past.length === 0}
-          onClick={() => dispatch({ type: 'undo' })}
-        >
-          <IconUndo className="pe-icon" />
-        </button>
-        <button
-          type="button"
-          className="pe-btn"
-          aria-label="Redo (Ctrl+Shift+Z)"
-          title="Redo — Ctrl+Shift+Z"
-          disabled={state.future.length === 0}
-          onClick={() => dispatch({ type: 'redo' })}
-        >
-          <IconRedo className="pe-icon" />
-        </button>
 
         <div className="pe-toolbar-end">
           {notice ? (
@@ -880,7 +887,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
         </MarkupCanvas>
 
         {showList ? (
-          <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel}>
+          <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel} toolbar={sidebarToolbar}>
             <ZoneTargetEditor zone={selected} dispatch={dispatch} catalog={catalog} />
           </ZoneList>
         ) : null}
