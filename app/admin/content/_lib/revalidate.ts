@@ -20,6 +20,7 @@ export function revalidateContent(): void {
   revalidatePath('/admin/content/add-ons');
   revalidatePath('/admin/content/spinner');
   revalidatePath('/admin/content/spinner/markup');
+  revalidatePath('/admin/content/spinner/frames');
   revalidatePath('/admin/content/units/[id]', 'page');
   revalidatePath('/admin/content/rooms/[id]', 'page');
   revalidatePath('/admin/content/add-ons/[id]', 'page');

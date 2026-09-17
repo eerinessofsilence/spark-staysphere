@@ -13,3 +13,8 @@ export function getDemoDatabase(): D1Database | null {
 export function getOpenAiKey(): string | null {
   return (env as Cloudflare.Env).OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? null;
 }
+
+/** Same call-time-resolution rule as `getDemoDatabase`. Never cache this at module scope. */
+export function getMediaBucket(): R2Bucket | null {
+  return (env as Cloudflare.Env).MEDIA ?? null;
+}

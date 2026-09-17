@@ -6,12 +6,14 @@ import type {
   SpeechTranscriber,
 } from '../domain/ports';
 import type { Hotel } from '../domain/schemas';
-import { getOpenAiKey } from '../infrastructure/cloudflare-env';
+import { getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
+import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
+import { readMockFrame } from '../infrastructure/spinner-frame-storage-mock';
 import { demoAddOns, demoHotel, demoHotels, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
@@ -82,6 +84,7 @@ export const contentService = new ContentService(
   durableCatalogContentPort,
   mediaLibraryPort,
   durableSpinnerMarkupPort,
+  durableSpinnerFrameStoragePort,
   DEMO_HOTEL_SLUG,
   seedIds,
 );
@@ -137,3 +140,23 @@ export const speechTranscriber: SpeechTranscriber = {
     return createOpenAiTranscriber(apiKey).transcribe(input);
   },
 };
+
+/**
+ * The one thing `app/media/[...path]/route.ts` needs from `lib/infrastructure`
+ * — reading one object back out of the `MEDIA` bucket (or, without an R2
+ * binding, the in-memory fallback spinner frame uploads write to) — wrapped
+ * here so that route stays within the "container.ts is the only module that
+ * may import lib/infrastructure" rule, same as every service above it.
+ */
+export async function readMediaObject(
+  key: string,
+): Promise<{ contentType: string; body: ReadableStream | ArrayBuffer } | null> {
+  const bucket = getMediaBucket();
+  if (bucket) {
+    const object = await bucket.get(key);
+    if (!object) return null;
+    return { contentType: object.httpMetadata?.contentType ?? 'application/octet-stream', body: object.body };
+  }
+  const local = readMockFrame(key);
+  return local ? { contentType: local.contentType, body: local.bytes } : null;
+}

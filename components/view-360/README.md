@@ -117,13 +117,20 @@ the catalog offer's own, passed in through `rooms`.
 
 ## Common changes
 
-**Replace the orbit with the property's own render.** Render and track outlines with the tools in
-`scripts/` (scripts/README.md walks through it), commit the WebP frames to
-`public/images/hotel/spin/`, then update `Hotel.spinner` in `lib/infrastructure/mock-data.ts` —
-`frameCount`, `frameWidth`/`frameHeight` (every frame shares one framing), `frames`, `keyAngles`
-(the stops the arrows jump between) and each hotspot's `keyframes` (regenerated into
-`lib/infrastructure/spinner-outlines.ts` by `track-outlines.py`). No component change is needed.
-Check at 1440px and 390px.
+**Replace the orbit with the property's own render, from the CMS.** No code change needed —
+`/admin/content/spinner/frames`: choose the rendered frames (re-encoded to WebP in the browser,
+uploaded to R2), then pick key angles and a start frame. Replacing the frames this way clears
+existing hotspots and zones (both name frame indices from a sequence that's gone); picking
+different key angles on the same frames does not. See
+`docs/decisions/0006-spinner-markup.md`.
+
+**Replace the orbit by editing the seed instead** — for the demo hotel's own baseline, not a live
+property. Render and track outlines with the tools in `scripts/` (scripts/README.md walks through
+it), commit the WebP frames to `public/images/hotel/spin/`, then update `Hotel.spinner` in
+`lib/infrastructure/mock-data.ts` — `frameCount`, `frameWidth`/`frameHeight` (every frame shares
+one framing), `frames`, `keyAngles` (the stops the arrows jump between) and each hotspot's
+`keyframes` (regenerated into `lib/infrastructure/spinner-outlines.ts` by `track-outlines.py`). No
+component change is needed. Check at 1440px and 390px.
 
 **Add or move a hotspot on the orbit.** An entry in `Hotel.spinner.hotspots`: `id`, `label`,
 `description`, `href`, `cta`, optional `roomSlug` (adds the floor and price line, and is hidden
@@ -157,7 +164,9 @@ the schema (`Hotspot.yaw`/`pitch`/`sphereOutline`, `HotelArea.panorama`/`panoram
   screen turns the building and a hotspot leads into the catalog; a `?frame=` deep link opens
   there and the turn controls move it; a room page opens its 360° view and returns to the photos.
   `e2e/spinner-markup.spec.ts` (desktop only — see its own note) covers drawing and binding a zone
-  in the CMS and the same zone showing up on the guest orbit.
+  in the CMS and the same zone showing up on the guest orbit; `e2e/spinner-frames.spec.ts` (same
+  desktop-only reason) covers uploading a replacement frame set, the destructive-replace
+  confirmation, and the new sequence reaching the guest orbit.
 - **By hand, after any change to the spinner**: drag with a mouse and a finger; arrow keys and the
   turn buttons, including several quick presses; a tap on a marker opens its card (desk) or sheet
   (phone) while a drag starting on a marker still turns; the card stays on screen near every edge;

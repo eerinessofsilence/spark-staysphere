@@ -119,8 +119,9 @@ export function midArcFrame(hotspot: SpinnerHotspot, frameCount: number): number
 
 /**
  * The frame the orbit opens on: an explicit `?frame=N`; else mid-arc of the
- * `?unit=` hotspot; else the first key angle — frame 0 isn't necessarily a
- * face of the building, so it lands on the stop the property listed first.
+ * `?unit=` hotspot; else the property's own chosen `startFrame`; else the
+ * first key angle — frame 0 isn't necessarily a face of the building, so it
+ * falls back to the stop the property listed first.
  */
 export function openingFrame(input: {
   frameCount: number;
@@ -129,12 +130,15 @@ export function openingFrame(input: {
   hotspots: SpinnerHotspot[];
   initialFrame?: number;
   focusHotspotId?: string | null;
+  /** Set from `/admin/content/spinner/frames` — see `Hotel.spinner.startFrame`. */
+  startFrame?: number;
 }): number {
   if (typeof input.initialFrame === 'number') return wrap(input.initialFrame, input.frameCount);
   const focused = input.focusHotspotId
     ? input.hotspots.find((hotspot) => hotspot.id === input.focusHotspotId)
     : undefined;
   if (focused) return midArcFrame(focused, input.frameCount);
+  if (typeof input.startFrame === 'number') return wrap(input.startFrame, input.frameCount);
   return input.keyAngles[0] ?? 0;
 }
 

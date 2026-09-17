@@ -14,10 +14,12 @@ import type {
   CatalogReader,
   Clock,
   MediaLibraryPort,
+  SpinnerFrameStoragePort,
   SpinnerMarkupPort,
 } from '../domain/ports';
 import {
   addOnSchema,
+  buildingSpinnerSchema,
   facilityIconSchema,
   hotelSchema,
   physicalRoomSchema,
@@ -30,8 +32,9 @@ import {
   type PhysicalRoom,
   type RatePlan,
   type RoomType,
+  type SpinnerFrame,
 } from '../domain/schemas';
-import { spinnerZoneTargetSchema, type SpinnerZone, type SpinnerZoneTarget } from '../domain/spinner-markup';
+import { frameSetIdOf, spinnerZoneTargetSchema, type SpinnerZone, type SpinnerZoneTarget } from '../domain/spinner-markup';
 
 /**
  * All CMS business rules live here, never in a server action or a component
@@ -228,6 +231,7 @@ export class ContentService {
     private readonly content: CatalogContentPort,
     private readonly media: MediaLibraryPort,
     private readonly spinnerMarkup: SpinnerMarkupPort,
+    private readonly frameStorage: SpinnerFrameStoragePort,
     private readonly hotelSlug: string,
     /** Which ids came from `mock-data.ts` — the only entities a hard delete is refused for. */
     private readonly seedIds: Record<CatalogEntryKind, ReadonlySet<string>>,
@@ -960,10 +964,10 @@ export class ContentService {
   // ----------------------------------------------------------------- Spinner markup
 
   /**
-   * Everything `/admin/content/spinner` needs: the current frames and key
-   * angles (still read straight off `Hotel.spinner` — replacing those is
-   * roadmap step 8, a separate CMS pass), the zones drawn on them so far,
-   * and the catalog references a zone's target picker offers. Every
+   * Everything `/admin/content/spinner` needs: the current frames, key
+   * angles and version (all editable from `/admin/content/spinner/frames` —
+   * see `updateSpinnerScene`), the zones drawn on the key-angle frames so
+   * far, and the catalog references a zone's target picker offers. Every
    * physical room and room type is included, hidden ones too, the same way
    * `listPhysicalRoomsContent`/`listRoomsContent` do — a zone bound to a
    * room a team just hid should still show what it points at, not go blank.
@@ -973,6 +977,10 @@ export class ContentService {
     frameWidth: number;
     frameHeight: number;
     keyAngles: number[];
+    startFrame: number;
+    version: number;
+    /** How many marker hotspots (`sea-view`, floor pins, …) would be cleared by replacing the frames — see `updateSpinnerScene`. */
+    hotspotCount: number;
     zones: SpinnerZone[];
     units: Array<{ id: string; number: string; floor: number; roomTypeId: string; roomTypeName: string }>;
     roomTypes: Array<{ id: string; name: string; floor: number; hidden: boolean }>;
@@ -980,18 +988,23 @@ export class ContentService {
     const hotel = await this.hotel();
     if (!hotel.spinner) return null;
 
-    const [zones, rooms, units] = await Promise.all([
+    const [zones, rooms, units, version] = await Promise.all([
       this.spinnerMarkup.listZones(hotel.id),
       this.repository.listRooms(hotel.id),
       this.repository.listPhysicalRooms(hotel.id),
+      this.versionOf('hotel', hotel.id),
     ]);
     const roomById = new Map(rooms.map((room) => [room.id, room]));
+    const keyAngles = [...hotel.spinner.keyAngles].sort((a, b) => a - b);
 
     return {
       frames: hotel.spinner.frames,
       frameWidth: hotel.spinner.frameWidth,
       frameHeight: hotel.spinner.frameHeight,
-      keyAngles: [...hotel.spinner.keyAngles].sort((a, b) => a - b),
+      keyAngles,
+      startFrame: hotel.spinner.startFrame ?? keyAngles[0] ?? 0,
+      version,
+      hotspotCount: hotel.spinner.hotspots.length,
       zones,
       units: units
         .map((unit) => ({
@@ -1006,6 +1019,105 @@ export class ContentService {
         .map((room) => ({ id: room.id, name: room.name, floor: room.floor, hidden: room.hidden ?? false }))
         .sort((a, b) => a.floor - b.floor || a.name.localeCompare(b.name)),
     };
+  }
+
+  /**
+   * One frame's bytes, already re-encoded in the browser
+   * (`app/admin/content/spinner/frames/frame-uploader.tsx`), on their way
+   * into R2. `frameSetId` is minted client-side per upload session so an
+   * upload in progress can never collide with the frame set that's still
+   * live — see `SpinnerFrameStoragePort`. This does not touch `Hotel.spinner`
+   * itself; `updateSpinnerScene` does that once every frame has a URL.
+   */
+  async uploadSpinnerFrame(
+    frameSetId: string,
+    index: number,
+    contentType: string,
+    bytes: ArrayBuffer,
+  ): Promise<ContentResult<{ url: string }>> {
+    assertCanEditContent();
+    // A well-formed id, not just "truthy": it is embedded verbatim in the R2
+    // key (`frameKey` in spinner-frame-storage-r2.ts) and later used as a
+    // `deleteFrameSet` prefix — an id containing a `/` would let one frame
+    // set's key collide with, and later be swept by, an unrelated shorter
+    // one's delete.
+    if (!/^[a-zA-Z0-9-]{1,64}$/.test(frameSetId)) return ruleError('Malformed frame set id.');
+    if (!/^image\/(webp|jpeg|png)$/.test(contentType)) {
+      return ruleError('Only WebP, JPEG or PNG frames are supported.');
+    }
+    if (bytes.byteLength === 0) return ruleError(`Frame ${index + 1} is empty.`);
+    if (!Number.isInteger(index) || index < 0) return ruleError('Malformed frame index.');
+
+    const hotel = await this.hotel();
+    const url = await this.frameStorage.putFrame({ hotelId: hotel.id, frameSetId, index, contentType, bytes });
+    return ok({ url });
+  }
+
+  /**
+   * Replaces `Hotel.spinner`'s frames, key angles and start frame — or, when
+   * `frames` is unchanged from what's already live, just its key angles and
+   * start frame. The distinction matters for what happens to the rest of
+   * the spinner: swapping in a genuinely new frame set invalidates every
+   * existing hotspot's `keyframes` (they name frame indices from the old
+   * sequence) and every zone drawn on it (they name frame indices that may
+   * not even be key angles any more, on frames that may not exist at all),
+   * so both are cleared; picking different key angles on the *same* frames
+   * leaves both alone; a hotspot or a zone is only ever visible when its
+   * frame is a key angle, so nothing already relied on a stop this call
+   * removes.
+   *
+   * Which frame set gets swept from R2 when frames are replaced is derived
+   * here from `current` — the same way `resetContent` derives it — never
+   * taken as an argument: trusting a caller-supplied id would delete
+   * whatever frame set it named, live or not, on nothing more than its say-so.
+   */
+  async updateSpinnerScene(
+    input: { frameWidth: number; frameHeight: number; frames: SpinnerFrame[]; keyAngles: number[]; startFrame?: number },
+    expectedVersion: number,
+  ): Promise<ContentResult<Versioned>> {
+    assertCanEditContent();
+    const hotel = await this.hotel();
+    const current = hotel.spinner;
+
+    if (input.frames.length === 0) return ruleError('Upload at least one frame.');
+    if (input.keyAngles.some((angle) => angle < 0 || angle >= input.frames.length)) {
+      return ruleError('A key angle must point at one of the uploaded frames.');
+    }
+    if (input.startFrame !== undefined) {
+      if (input.startFrame < 0 || input.startFrame >= input.frames.length) {
+        return ruleError('The start frame must be one of the uploaded frames.');
+      }
+      if (!input.keyAngles.includes(input.startFrame)) {
+        return ruleError('The start frame must be one of the key angles.');
+      }
+    }
+
+    const framesReplaced =
+      !current ||
+      current.frameWidth !== input.frameWidth ||
+      current.frameHeight !== input.frameHeight ||
+      current.frames.length !== input.frames.length ||
+      current.frames.some((frame, i) => frame.imageUrl !== input.frames[i]?.imageUrl);
+
+    const parsed = buildingSpinnerSchema.safeParse({
+      frameCount: input.frames.length,
+      frameWidth: input.frameWidth,
+      frameHeight: input.frameHeight,
+      keyAngles: input.keyAngles,
+      startFrame: input.startFrame,
+      frames: input.frames,
+      hotspots: framesReplaced ? [] : current.hotspots,
+    });
+    if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
+
+    const previousFrameSetId = framesReplaced ? frameSetIdOf(current?.frames[0]?.imageUrl ?? '') : null;
+    const next: Hotel = { ...hotel, spinner: parsed.data };
+    const saved = await this.save('hotel', hotel.id, hotel.id, next, expectedVersion);
+    if (saved.ok && framesReplaced) {
+      await this.spinnerMarkup.reset(hotel.id);
+      if (previousFrameSetId) await this.frameStorage.deleteFrameSet(hotel.id, previousFrameSetId);
+    }
+    return saved;
   }
 
   /**
@@ -1067,9 +1179,28 @@ export class ContentService {
 
   // ----------------------------------------------------------------- Reset
 
+  /**
+   * Sweeps one uploaded-but-never-applied frame set from R2 — the picker
+   * calls this when a fresh upload replaces one that was never carried
+   * through to `updateSpinnerScene`, so an abandoned choice doesn't sit in
+   * storage forever. A malformed id is ignored rather than erroring: this is
+   * best-effort cleanup, not a step the picker's own flow depends on.
+   */
+  async discardSpinnerFrameSet(frameSetId: string): Promise<void> {
+    assertCanEditContent();
+    if (!/^[a-zA-Z0-9-]{1,64}$/.test(frameSetId)) return;
+    const hotel = await this.hotel();
+    await this.frameStorage.deleteFrameSet(hotel.id, frameSetId);
+  }
+
   async resetContent(): Promise<void> {
     assertCanEditContent();
     const hotel = await this.hotel();
+    // An uploaded frame set (as opposed to the seed's own static frames) has
+    // nothing left pointing at it once the `hotel` overlay row is cleared —
+    // sweep it from storage rather than leave it orphaned in R2.
+    const uploadedFrameSetId = frameSetIdOf(hotel.spinner?.frames[0]?.imageUrl ?? '');
     await Promise.all([this.content.reset(hotel.id), this.spinnerMarkup.reset(hotel.id)]);
+    if (uploadedFrameSetId) await this.frameStorage.deleteFrameSet(hotel.id, uploadedFrameSetId);
   }
 }

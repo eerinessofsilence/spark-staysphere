@@ -5,6 +5,7 @@ import { mockCatalogContentPort } from '../infrastructure/catalog-content-mock';
 import { mockHotelRepository } from '../infrastructure/mock-hotel-repository';
 import { createBookingEngineAdapter } from '../infrastructure/mock-adapters';
 import { mockSpinnerMarkupPort } from '../infrastructure/spinner-markup-mock';
+import { mockSpinnerFrameStoragePort } from '../infrastructure/spinner-frame-storage-mock';
 import { CatalogService } from './catalog-service';
 import { ContentService } from './content-service';
 
@@ -17,6 +18,7 @@ function makeContentService() {
     mockCatalogContentPort,
     noopMedia,
     mockSpinnerMarkupPort,
+    mockSpinnerFrameStoragePort,
     demoHotel.slug,
     { hotel: new Set([demoHotel.id]), room: new Set(), unit: new Set(), rate: new Set(), addon: new Set() },
   );
