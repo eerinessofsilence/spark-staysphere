@@ -41,7 +41,7 @@ export function AddRoomTypeButton({ assets, roomTypes }: { assets: MediaAsset[];
         Add property
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="New room type" className="sm:max-w-2xl">
+      <Modal open={open} onClose={() => setOpen(false)} title="Add property" className="sm:max-w-2xl">
         <p className="text-sm text-muted-foreground">
           Starts hidden from the site. Give it a rate and its own rooms afterwards, from its page.
         </p>
