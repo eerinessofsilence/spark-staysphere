@@ -134,7 +134,7 @@ export function PropertyCard({ hotelName, location }: { hotelName: string; locat
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-2xl bg-stone/60 px-3 py-2.5 text-left transition-colors hover:bg-stone"
+        className="flex w-full items-center gap-2 rounded-xl bg-stone/60 px-4 py-3 text-left transition-colors hover:bg-stone"
       >
         <span className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{hotelName}</p>
