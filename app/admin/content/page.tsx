@@ -86,9 +86,15 @@ export default async function RoomTypesPage() {
                   const href = `/admin/content/rooms/${room.id}`;
                   const roomCount = physicalRooms.filter((unit) => unit.roomTypeId === room.id).length;
                   return (
-                    <tr key={room.id} className="border-b border-border last:border-b-0">
+                    <tr
+                      key={room.id}
+                      className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                    >
                       <Td className="align-middle">
-                        <Link href={href} className="group flex items-center gap-3">
+                        {/* Stretched: the row opens the room type's own page from anywhere in
+                            it, not only the photo and name — the rooms link and row menu sit
+                            at a higher stacking level so their own clicks still reach them. */}
+                        <Link href={href} className="group flex items-center gap-3 before:absolute before:inset-0">
                           <span className="block size-14 shrink-0 overflow-hidden rounded-2xl bg-stone">
                             {cover ? (
                               <img
@@ -128,7 +134,7 @@ export default async function RoomTypesPage() {
                           <span className="text-muted-foreground">No rate yet</span>
                         )}
                       </Td>
-                      <Td className={cn(deskOnly, 'align-middle tabular-nums')}>
+                      <Td className={cn(deskOnly, 'relative z-10 align-middle tabular-nums')}>
                         <Link
                           href={`/admin/content/units#type-${room.id}`}
                           className={cn('hover:text-accent-strong', roomCount === 0 && 'text-muted-foreground')}
@@ -149,7 +155,7 @@ export default async function RoomTypesPage() {
                           </span>
                         )}
                       </Td>
-                      <Td className="align-middle text-right">
+                      <Td className="relative z-10 align-middle text-right">
                         <RowActions
                           id={room.id}
                           version={room.version}
