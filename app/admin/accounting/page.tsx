@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -48,7 +48,7 @@ export default async function AccountingPage({
   const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, page);
   const money = (value: number) => formatMoney(value, hotel.currency);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
-  const pageHref = (next: number) => (next > 1 ? `/admin/accounting?page=${next}` : '/admin/accounting');
+  const pageHref = simplePageHref('/admin/accounting');
 
   return (
     <AdminPage>
