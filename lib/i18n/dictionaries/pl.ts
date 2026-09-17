@@ -72,6 +72,7 @@ export const pl: Record<TranslationKey, string> = {
   'home.turnLeft': "Obróć w lewo",
   'home.turnRight': "Obróć w prawo",
   'home.spinnerDragHint': "przeciągnij lub użyj strzałek, aby obrócić budynek",
+  'home.spinnerFloorZone': "Piętro {floor}",
 
   'rooms.chooseYourRoom': 'Wybierz pokój',
   'rooms.subtitle': '{dateRange} na {nights}, {guests}',

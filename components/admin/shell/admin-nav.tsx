@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   BanknotesIcon,
   Bars3Icon,
+  ArrowPathRoundedSquareIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   ChevronUpDownIcon,
@@ -53,6 +54,7 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Content',
     items: [
       { href: '/admin/content', label: 'Rooms', icon: DocumentTextIcon },
+      { href: '/admin/content/spinner', label: '360 Orbit', icon: ArrowPathRoundedSquareIcon },
       { href: '/admin/content/hotel', label: 'Hotel Settings', icon: BuildingOffice2Icon },
     ],
   },

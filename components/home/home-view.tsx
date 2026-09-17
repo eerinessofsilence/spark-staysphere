@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Star } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon, ArrowUpRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import type { RoomFacts } from '@/components/rooms/room-facts';
+import type { GuestSpinnerZone } from '@/lib/application/catalog-service';
 import type { BuildingSpinnerData, Hotel, RoomOffer } from '@/lib/domain/schemas';
 import { useT } from '@/lib/i18n/context';
 import { pill } from '@/lib/ui';
@@ -28,6 +29,7 @@ export interface HomeViewProps {
   rest: RoomOffer[];
   roomFacts: Record<string, RoomFacts>;
   spinner: BuildingSpinnerData | undefined;
+  spinnerZones: GuestSpinnerZone[];
   spinnerInitialFrame: number | undefined;
   spinnerFocusHotspotId: string | null;
 }
@@ -41,6 +43,7 @@ export function HomeView({
   rest,
   roomFacts,
   spinner,
+  spinnerZones,
   spinnerInitialFrame,
   spinnerFocusHotspotId,
 }: HomeViewProps) {
@@ -91,6 +94,7 @@ export function HomeView({
             stayQuery={stayQuery}
             rooms={roomFacts}
             spinner={spinner}
+            spinnerZones={spinnerZones}
             spinnerInitialFrame={spinnerInitialFrame}
             spinnerFocusHotspotId={spinnerFocusHotspotId}
           />

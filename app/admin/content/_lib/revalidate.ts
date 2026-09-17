@@ -18,6 +18,8 @@ export function revalidateContent(): void {
   revalidatePath('/admin/content/hotel');
   revalidatePath('/admin/content/units');
   revalidatePath('/admin/content/add-ons');
+  revalidatePath('/admin/content/spinner');
+  revalidatePath('/admin/content/spinner/markup');
   revalidatePath('/admin/content/units/[id]', 'page');
   revalidatePath('/admin/content/rooms/[id]', 'page');
   revalidatePath('/admin/content/add-ons/[id]', 'page');

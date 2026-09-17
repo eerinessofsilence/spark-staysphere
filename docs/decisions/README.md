@@ -12,6 +12,7 @@ project — only the ones worth someone not re-litigating.
 | [0003](0003-fetch-not-openai-sdk.md) | Call the OpenAI REST API with `fetch`, not the `openai` npm package |
 | [0004](0004-hotel-repository-port-slices.md) | Split `HotelRepository` into four narrower interfaces |
 | [0005](0005-view-360-module.md) | The 360° views are one module with a single public entry |
+| [0006](0006-spinner-markup.md) | Spinner-markup zones: a CMS tab, stored beside — not inside — `Hotel.spinner` |
 
 ## Adding one
 

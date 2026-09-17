@@ -10,11 +10,10 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const stayQuery = buildQuery({ criteria });
   const today = toIsoDate(new Date());
 
-  const { hotel, offers } = await catalogService.search(
-    DEMO_HOTEL_SLUG,
-    criteria,
-    defaultRoomFilters,
-  );
+  const [{ hotel, offers }, spinnerZones] = await Promise.all([
+    catalogService.search(DEMO_HOTEL_SLUG, criteria, defaultRoomFilters),
+    catalogService.getSpinnerZones(DEMO_HOTEL_SLUG),
+  ]);
   // Eight: two screens of four, so the arrows have one page to reveal and
   // the rail stays a selection rather than the whole catalog. Whatever is
   // left goes to the rail on the way out.
@@ -61,6 +60,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
       rest={rest}
       roomFacts={roomFacts}
       spinner={hotel.spinner}
+      spinnerZones={spinnerZones}
       spinnerInitialFrame={spinnerInitialFrame}
       spinnerFocusHotspotId={spinnerFocusHotspotId}
     />

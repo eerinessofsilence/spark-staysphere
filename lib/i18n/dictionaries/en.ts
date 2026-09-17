@@ -85,6 +85,7 @@ export const en = {
   'home.turnLeft': "Turn left",
   'home.turnRight': "Turn right",
   'home.spinnerDragHint': "drag or use the arrow keys to spin around the building",
+  'home.spinnerFloorZone': "Floor {floor}",
 
   // Rooms catalog
   'rooms.chooseYourRoom': 'Choose your room',
