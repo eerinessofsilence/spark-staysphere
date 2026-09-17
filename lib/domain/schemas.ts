@@ -312,7 +312,7 @@ export const ROOM_NUMBER = /^(?:G|[1-9]\d?)\d{2}$/;
 
 /**
  * One door in the building. The catalog sells room types; these are what a
- * type's availability counts and what the floor plan and the tape chart draw.
+ * type's availability counts and what the floor plan and the front desk draw.
  */
 export const physicalRoomSchema = z.object({
   id: z.string(),

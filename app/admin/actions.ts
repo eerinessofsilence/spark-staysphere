@@ -26,7 +26,7 @@ function refresh() {
   revalidatePath('/admin/content');
   revalidatePath('/admin/rates');
   revalidatePath('/admin/bookings');
-  revalidatePath('/admin/tape-chart');
+  revalidatePath('/admin/front-desk');
   revalidatePath('/admin/accounting');
   revalidatePath('/rooms');
   revalidatePath('/');

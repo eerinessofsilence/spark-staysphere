@@ -196,9 +196,9 @@ because the room page shows it as the name of that view. The media picker is the
 searches by name, and marks photos already added. The content list searches by name and filters to
 room types, add-ons, or only what is hidden or withdrawn.
 
-## Physical rooms, the floor plan and the tape chart
+## Physical rooms, the floor plan and the front desk
 
-The catalog sells room types; a floor plan and a PMS tape chart need doors. Physical rooms are
+The catalog sells room types; a floor plan and a PMS front desk need doors. Physical rooms are
 stored: a `PhysicalRoom` (`number`, `floor`, `roomTypeId`) is a CMS entity of kind `unit`, seeded in
 `mock-data.ts` by `layOutRooms` with the numbers the demo building always had (floor by floor, sea
 facade first) and edited under `/admin/content/units`. A room type sells exactly as many rooms a night
@@ -220,9 +220,9 @@ lowest-ranked room free for their whole stay (a stay never changes rooms mid-way
 availability still counts as taken fills the lowest-ranked free rooms as simulated demand, or as
 closed when an admin override is behind it. Ranks are hashed per room type so occupied doors scatter.
 `InventoryService` (`lib/application/inventory-service.ts`) exposes it as `getFloorPlan` (one stay,
-guest-facing, hidden types left out), `getTapeChart` (every room across a window of nights, with
+guest-facing, hidden types left out), `getFrontDesk` (every room across a window of nights, with
 bookings, demand, closures and daily arrivals and departures) and `getBookingRoom`. Simulated demand
-is cut into 2–5-night blocks only so the tape chart reads like a PMS, and is labelled as simulated
+is cut into 2–5-night blocks only so the front desk reads like a PMS, and is labelled as simulated
 wherever it appears.
 
 A booking may carry `unitNumber`, the room the guest picked. `booking-intake.ts` checks that room is
@@ -242,9 +242,9 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
-| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getTapeChart`, `HotelRepository.listBookings`, `DemoControlPort` — live |
+| `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getFrontDesk`, `HotelRepository.listBookings`, `DemoControlPort` — live |
 | `/admin/reset` | "Reset demo state" — not in the sidebar; reachable by URL for the demo owner and the e2e harness, not by navigation | `DemoControlPort.reset`, `ContentService.resetContent` — live |
-| `/admin/tape-chart` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getTapeChart` — live; demand is simulated and says so |
+| `/admin/front-desk` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getFrontDesk` — live; demand is simulated and says so |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; detail is three cards — guest (contact, party, totals across their stays), booking (status, room, rate, payment, dates, extras, cancel), room (photo, facts, price summary) — over the guest's booking history, matched by email | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom`, `HotelRepository.listBookings` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
 | `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
@@ -254,7 +254,7 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
 `lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,
 and cancelled with and without payment — saved through `HotelRepository.saveBooking`/
-`cancelBooking`, so inventory holds, the tape chart and accounting agree with them. Totals come
+`cancelBooking`, so inventory holds, the front desk and accounting agree with them. Totals come
 from `buildPriceBreakdown`. Each has a fixed idempotency key, so pressing it twice adds nothing,
 and none falls in the 45–48-day window the e2e suite books into. Past and in-house stays are why
 it skips `BookingService.confirm`, which rightly refuses them.
@@ -270,7 +270,7 @@ team roles, integration credentials and media uploads are left out until they ca
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
 `stay_started` rules as the guest's, without the email check, since the desk is trusted (until
 auth, anyone who can open `/admin` is). A cancelled booking releases its nights and its room at
-once, because both the floor plan and the tape chart recompute `allocateRoomType` on read. The rates
+once, because both the floor plan and the front desk recompute `allocateRoomType` on read. The rates
 screen saves through `ContentService.updateRate` with the rate's `version`, so it and the CMS rate
 form share one concurrency check and one overlay row. Every write revalidates the admin screens
 that show it and the guest routes it reprices.

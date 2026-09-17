@@ -5,7 +5,7 @@ import { addDays, parseISO } from 'date-fns';
 import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { DEMO_HOTEL_SLUG, hotelRepository, inventoryService } from '@/lib/application/container';
-import type { TapeChartDay } from '@/lib/application/inventory-service';
+import type { FrontDeskDay } from '@/lib/application/inventory-service';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminOverviewPage() {
   const today = toIsoDate(new Date());
   const [board, bookings] = await Promise.all([
-    inventoryService.getTapeChart(DEMO_HOTEL_SLUG, today, 14),
+    inventoryService.getFrontDesk(DEMO_HOTEL_SLUG, today, 14),
     hotelRepository.listBookings(),
   ]);
   const { hotel } = board;
@@ -57,8 +57,8 @@ export default async function AdminOverviewPage() {
       <AdminPageHeader
         title="Dashboard"
         actions={
-          <Link href="/admin/tape-chart" className={pill('primary')}>
-            Open tape chart
+          <Link href="/admin/front-desk" className={pill('primary')}>
+            Open front desk
           </Link>
         }
       />
@@ -140,7 +140,7 @@ export default async function AdminOverviewPage() {
             <div>
               <h3 className="text-display text-2xl">No reservations yet</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Complete a demo booking on the guest site and it appears here, on the tape chart, and in
+                Complete a demo booking on the guest site and it appears here, on the front desk, and in
                 Reservations.
               </p>
             </div>
@@ -202,7 +202,7 @@ export default async function AdminOverviewPage() {
 }
 
 /** 14-point trend, tonight in the accent and the rest in the de-emphasis hue — same marks as `OccupancyChart` below it. */
-function Sparkline({ days, totalRooms }: { days: TapeChartDay[]; totalRooms: number }) {
+function Sparkline({ days, totalRooms }: { days: FrontDeskDay[]; totalRooms: number }) {
   return (
     <div aria-hidden="true" className="mt-4 flex h-8 items-end gap-0.5">
       {days.map((day, index) => {

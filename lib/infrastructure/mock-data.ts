@@ -902,7 +902,7 @@ const seedRoomCounts: Record<string, number> = {
 
 /**
  * The demo building's rooms, numbered floor by floor, sea facade first — the
- * same numbers the floor plan and the tape chart showed before rooms were
+ * same numbers the floor plan and the front desk showed before rooms were
  * stored, so existing bookings that chose a room still find it.
  */
 export const demoPhysicalRooms: PhysicalRoom[] = layOutRooms(

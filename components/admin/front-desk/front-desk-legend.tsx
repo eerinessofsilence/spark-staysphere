@@ -1,7 +1,7 @@
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { demandPattern } from './tape-chart-shared';
+import { demandPattern } from './front-desk-shared';
 
-export function TapeChartLegend() {
+export function FrontDeskLegend() {
   return (
     <ul
       aria-label="Legend"

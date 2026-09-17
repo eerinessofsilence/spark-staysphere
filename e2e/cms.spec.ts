@@ -285,7 +285,7 @@ test("a row's menu deletes a CMS add-on after confirming, and won't delete a see
   await expect(deleteItem).toHaveAttribute('aria-disabled', 'true');
 });
 
-test('a room is added under its room type, shows on the tape chart, and can be removed', async ({ page }) => {
+test('a room is added under its room type, shows on the front desk, and can be removed', async ({ page }) => {
   await page.goto('/admin/content/units/new?type=room_deluxe-sea');
   const number = page.locator('#unit-number');
   await expect(number).not.toHaveValue('');
@@ -300,7 +300,7 @@ test('a room is added under its room type, shows on the tape chart, and can be r
   await expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 10_000 });
   await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toBeVisible();
 
-  await page.goto('/admin/tape-chart?type=room_deluxe-sea');
+  await page.goto('/admin/front-desk?type=room_deluxe-sea');
   await expect(page.getByRole('group', { name: 'Room 499' })).toBeVisible();
 
   await page.goto('/admin/content/units/unit_499');

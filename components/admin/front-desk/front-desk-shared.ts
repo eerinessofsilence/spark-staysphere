@@ -3,16 +3,16 @@ import type { CSSProperties } from 'react';
 export const WINDOW_OPTIONS = [7, 14, 30] as const;
 export const DEFAULT_WINDOW = 14;
 
-export interface TapeChartQuery {
+export interface FrontDeskQuery {
   from: string;
   days: number;
   type: string | null;
 }
 
-export function tapeChartHref({ from, days, type }: TapeChartQuery): string {
+export function frontDeskHref({ from, days, type }: FrontDeskQuery): string {
   const params = new URLSearchParams({ from, days: String(days) });
   if (type) params.set('type', type);
-  return `/admin/tape-chart?${params.toString()}`;
+  return `/admin/front-desk?${params.toString()}`;
 }
 
 /** A hatch drawn from the foreground token, so demand reads as a pattern, not only a colour. */

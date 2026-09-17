@@ -347,11 +347,11 @@ export default async function RoomContentPage({
               {numberRange ? `, numbered ${numberRange}` : ''}.
             </p>
             <Link
-              href={`/admin/tape-chart?type=${room.id}`}
+              href={`/admin/front-desk?type=${room.id}`}
               className="inline-flex min-h-11 items-center gap-2 font-medium hover:text-accent-strong"
             >
               <TableCellsIcon className="size-4" aria-hidden="true" />
-              See them on the tape chart
+              See them on the front desk
             </Link>
             <Link
               href={`/admin/content/units#type-${room.id}`}

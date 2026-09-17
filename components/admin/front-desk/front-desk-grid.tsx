@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
 import type {
-  TapeChartDay,
-  TapeChartGroup,
-  TapeChartRoom,
-  TapeChartSegment,
+  FrontDeskDay,
+  FrontDeskGroup,
+  FrontDeskRoom,
+  FrontDeskSegment,
 } from '@/lib/application/inventory-service';
 import { addIsoDays } from '@/lib/domain/dates';
 import { nightsBetween } from '@/lib/domain/pricing';
@@ -22,18 +22,18 @@ import {
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
-import { demandPattern } from './tape-chart-shared';
+import { demandPattern } from './front-desk-shared';
 
-interface TapeChartGridProps {
+interface FrontDeskGridProps {
   dates: string[];
-  days: TapeChartDay[];
-  groups: TapeChartGroup[];
+  days: FrontDeskDay[];
+  groups: FrontDeskGroup[];
   totalRooms: number;
   today: string;
 }
 
 interface Selection {
-  segment: TapeChartSegment;
+  segment: FrontDeskSegment;
   roomNumber: string;
   roomName: string;
 }
@@ -41,12 +41,12 @@ interface Selection {
 const LABEL_WIDTH = '9rem';
 const NIGHT_WIDTH = '2.75rem';
 
-function segmentRange(segment: TapeChartSegment, dates: string[]): { from: string; to: string } {
+function segmentRange(segment: FrontDeskSegment, dates: string[]): { from: string; to: string } {
   if (segment.kind === 'booking') return { from: segment.checkIn, to: segment.checkOut };
   return { from: dates[segment.start]!, to: addIsoDays(dates[segment.start]!, segment.span) };
 }
 
-function segmentLabel(segment: TapeChartSegment, dates: string[], roomNumber: string): string {
+function segmentLabel(segment: FrontDeskSegment, dates: string[], roomNumber: string): string {
   if (segment.kind === 'booking') {
     return `Booking ${segment.reference}, ${segment.guestName}, ${formatDateRange(segment.checkIn, segment.checkOut)}, ${
       segment.chosenByGuest ? 'room chosen by guest' : 'room assigned automatically'
@@ -57,7 +57,7 @@ function segmentLabel(segment: TapeChartSegment, dates: string[], roomNumber: st
   return `${what}, room ${roomNumber}, ${formatDateRange(from, to)}`;
 }
 
-export function TapeChartGrid({ dates, days, groups, totalRooms, today }: TapeChartGridProps) {
+export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontDeskGridProps) {
   const [selection, setSelection] = React.useState<Selection | null>(null);
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
@@ -69,7 +69,7 @@ export function TapeChartGrid({ dates, days, groups, totalRooms, today }: TapeCh
     [dates],
   );
 
-  const select = (segment: TapeChartSegment, room: TapeChartRoom, roomName: string) => {
+  const select = (segment: FrontDeskSegment, room: FrontDeskRoom, roomName: string) => {
     setSelection({ segment, roomNumber: room.number, roomName });
     setOpen(true);
   };
@@ -216,7 +216,7 @@ function SegmentBar({
   label,
   onSelect,
 }: {
-  segment: TapeChartSegment;
+  segment: FrontDeskSegment;
   label: string;
   onSelect: () => void;
 }) {

@@ -22,7 +22,7 @@ flowchart LR
 - **Application services** (`lib/application/`) hold the business rules: `CatalogService`
   (search, offers, facets), `BookingService` (idempotency, price recheck, the hold, persistence),
   `ContentService` (every CMS rule — slugs, concurrency, media, what can be deleted),
-  `InventoryService` (the floor plan, the tape chart, who's in which room).
+  `InventoryService` (the floor plan, the front desk, who's in which room).
 - **Domain ports** (`lib/domain/ports.ts`) are interfaces: `HotelRepository` and its four
   narrower slices, `CatalogContentPort`, `BookingEngineAdapter`, `PaymentProvider`, `CrmAdapter`,
   `PmsAdapter`, `RoomSearchInterpreter`, `Clock`. A service depends on a port, never on a concrete
@@ -108,13 +108,13 @@ the app running (state just doesn't survive a restart) rather than failing outri
 | Physical rooms, numbering, who's in which room | `lib/domain/room-units.ts` (`buildRoomUnits`, `allocateRoomType`) |
 | A CMS rule (slugs, concurrency, media, what can be deleted) | `lib/application/content-service.ts` |
 | The booking flow's own rules (idempotency, recheck, hold) | `lib/application/booking-service.ts` |
-| The floor plan or the tape chart | `lib/application/inventory-service.ts` |
+| The floor plan or the front desk | `lib/application/inventory-service.ts` |
 | A port interface | `lib/domain/ports.ts` |
 | A D1-or-in-memory choice for a port | `lib/infrastructure/durable-hotel-repository.ts`, `durable-catalog-content.ts` |
 | The one place infrastructure gets wired up | `lib/application/container.ts` |
 | A guest route's UI | `app/` (routes) and `components/` (`hotel/`, `rooms/`, `booking/`, `search/`, `site/`, `view-360/`) |
 | The building spinner or a 360° panorama | `components/view-360/` — start at its README.md; import only from `@/components/view-360` (lint fails a deep import) |
-| An admin screen's UI | `app/admin/**`, `components/admin/**` (`shell/` = the back-office chrome, `content/` = CMS form pieces, `tape-chart/` and `operations/` = the PMS-style views) |
+| An admin screen's UI | `app/admin/**`, `components/admin/**` (`shell/` = the back-office chrome, `content/` = CMS form pieces, `front-desk/` and `operations/` = the PMS-style views) |
 | Shared API route boilerplate | `app/api/_lib/http.ts` (`parseJsonBody`, `mapBookingError`, `toBookingErrorResponse`) |
 | A shared client hook | `components/site/use-scroll-lock.ts`, `use-overlay-transition.ts`, `use-media-query.ts`, `use-element-size.ts`, `use-anchored-card.ts` (plus the pure `cover-fit.ts`); `components/admin/content/use-ordered-list.ts`, `use-undoable-toggle.ts` |
 | Design tokens and rules | `app/globals.css` (tokens), DESIGN_SYSTEM.md (rules) |

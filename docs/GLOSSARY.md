@@ -17,7 +17,7 @@ edits it. Not the same as **Inventory** (which physical room is free on which ni
 
 **Facade** (of the building) — `'sea' | 'town'`. Every room's view maps to one: sea and pool
 rooms face the sea side, city and garden rooms the town side (`facadeOf`,
-`lib/domain/room-units.ts`). Used to group rooms in the floor plan and the tape chart.
+`lib/domain/room-units.ts`). Used to group rooms in the floor plan and the front desk.
 
 **Facets** — `CatalogFacets`: the set of filterable values (views, bed types, price range, …)
 actually present in the current search results, computed fresh each search so a filter panel never
@@ -63,7 +63,7 @@ name, a view, a capacity, amenities, a gallery. A **room** (`PhysicalRoom`, a CM
 (`floorOf`). A type sells exactly as many rooms a night as it has stored rooms; hotel teams add,
 renumber and remove them under `/admin/content/units`, and the demo seed lays them out with
 `layOutRooms` (`lib/domain/room-units.ts`). `buildRoomUnits` turns stored rooms into the `RoomUnit`s
-the allocator works with. The catalog sells room types; the floor plan and the tape chart show rooms.
+the allocator works with. The catalog sells room types; the floor plan and the front desk show rooms.
 
 **Room zone** — A traced outline on one of the arrival page's flat photo areas (e.g. the pool
 photo), stored as fractions of the photo, mapped to a room slug — `HotelArea.roomZones`
@@ -91,16 +91,16 @@ through its `index.ts`.
 and the admin bookings list, so the two screens can't disagree about whether a stay still counts
 as upcoming.
 
-**Tape chart** — The PMS-style view at `/admin/tape-chart`: one row per physical room, one column
-per night, showing a real booking, simulated demand, or a closure. `InventoryService.getTapeChart`
-(`lib/application/inventory-service.ts`); each cell is a `TapeChartSegment` with `kind: 'booking' |
+**Front desk** — The PMS-style view at `/admin/front-desk`: one row per physical room, one column
+per night, showing a real booking, simulated demand, or a closure. `InventoryService.getFrontDesk`
+(`lib/application/inventory-service.ts`); each cell is a `FrontDeskSegment` with `kind: 'booking' |
 'demand' | 'closed'`.
 
 **Simulated demand / demand filler** — Baseline occupancy with no real booking behind it, there so
 the demo doesn't read as an empty hotel. Deterministic (hashed from the room and date, not random)
 and computed fresh on every read — nothing to reset. `allocateRoomType`
 (`lib/domain/room-units.ts`) fills it into the lowest-ranked free rooms after real bookings are
-placed; it's rendered as `kind: 'demand'` on the tape chart (or `'closed'` when an admin override
+placed; it's rendered as `kind: 'demand'` on the front desk (or `'closed'` when an admin override
 is behind it) and always labelled as simulated wherever it's shown.
 
 **Unit number** — The specific room a guest picked on the floor plan, e.g. `"402"`

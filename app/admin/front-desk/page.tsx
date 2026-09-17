@@ -8,17 +8,17 @@ import { formatDateShort, formatNights } from '@/lib/formatting';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-button';
-import { TapeChartGrid } from '@/components/admin/tape-chart/tape-chart-grid';
-import { TapeChartLegend } from '@/components/admin/tape-chart/tape-chart-legend';
+import { FrontDeskGrid } from '@/components/admin/front-desk/front-desk-grid';
+import { FrontDeskLegend } from '@/components/admin/front-desk/front-desk-legend';
 import {
-  tapeChartHref,
+  frontDeskHref,
   DEFAULT_WINDOW,
   WINDOW_OPTIONS,
-} from '@/components/admin/tape-chart/tape-chart-shared';
-import { RoomTypeSelect } from '@/components/admin/tape-chart/room-type-select';
+} from '@/components/admin/front-desk/front-desk-shared';
+import { RoomTypeSelect } from '@/components/admin/front-desk/room-type-select';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Tape chart — Hotel admin | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'Front desk — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -27,7 +27,7 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function TapeChartPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function FrontDeskPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const today = toIsoDate(new Date());
   const rawFrom = first(params.from);
@@ -35,7 +35,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
   const rawDays = Number(first(params.days));
   const days = (WINDOW_OPTIONS as readonly number[]).includes(rawDays) ? rawDays : DEFAULT_WINDOW;
 
-  const board = await inventoryService.getTapeChart(DEMO_HOTEL_SLUG, from, days);
+  const board = await inventoryService.getFrontDesk(DEMO_HOTEL_SLUG, from, days);
   const rawType = first(params.type);
   const type = rawType && board.groups.some((group) => group.roomTypeId === rawType) ? rawType : null;
   const groups = type ? board.groups.filter((group) => group.roomTypeId === type) : board.groups;
@@ -45,26 +45,26 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Tape chart" actions={<AddRoomTypeButton assets={assets} />} />
+      <AdminPageHeader title="Front desk" actions={<AddRoomTypeButton assets={assets} />} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Link
-            href={tapeChartHref({ from: addIsoDays(from, -days), days, type })}
+            href={frontDeskHref({ from: addIsoDays(from, -days), days, type })}
             aria-label={`Previous ${days} nights`}
             className={iconButton('light')}
           >
             <ChevronLeftIcon className="size-5" aria-hidden="true" />
           </Link>
           <Link
-            href={tapeChartHref({ from: today, days, type })}
+            href={frontDeskHref({ from: today, days, type })}
             aria-current={from === today ? 'true' : undefined}
             className={pill('secondary')}
           >
             Today
           </Link>
           <Link
-            href={tapeChartHref({ from: addIsoDays(from, days), days, type })}
+            href={frontDeskHref({ from: addIsoDays(from, days), days, type })}
             aria-label={`Next ${days} nights`}
             className={iconButton('light')}
           >
@@ -87,7 +87,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
               return (
                 <Link
                   key={option}
-                  href={tapeChartHref({ from, days: option, type })}
+                  href={frontDeskHref({ from, days: option, type })}
                   aria-current={active ? 'true' : undefined}
                   className={cn(
                     'inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors sm:min-h-9 sm:px-3',
@@ -109,7 +109,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="mt-6">
-        <TapeChartLegend />
+        <FrontDeskLegend />
       </div>
 
       <div className="mt-5">
@@ -122,14 +122,14 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
                 : 'Add a room type and its rooms will appear here, night by night.'}
             </p>
             <Link
-              href={type ? tapeChartHref({ from, days, type: null }) : '/admin/content/rooms/new'}
+              href={type ? frontDeskHref({ from, days, type: null }) : '/admin/content/rooms/new'}
               className={pill('primary')}
             >
               {type ? 'Show all room types' : 'Add a room type'}
             </Link>
           </div>
         ) : (
-          <TapeChartGrid
+          <FrontDeskGrid
             dates={board.dates}
             days={board.days}
             groups={groups}
