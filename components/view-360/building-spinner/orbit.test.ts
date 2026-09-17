@@ -135,6 +135,16 @@ describe('openingFrame', () => {
     expect(openingFrame({ frameCount: FRAMES, keyAngles: [40, 120], hotspots: spots, focusHotspotId: 'missing' })).toBe(40);
     expect(openingFrame({ frameCount: FRAMES, keyAngles: [], hotspots: spots })).toBe(0);
   });
+
+  it("prefers the property's own startFrame over the first key angle", () => {
+    expect(
+      openingFrame({ frameCount: FRAMES, keyAngles: [40, 120], hotspots: spots, focusHotspotId: 'missing', startFrame: 95 }),
+    ).toBe(95);
+    // An explicit ?frame= still wins over startFrame.
+    expect(
+      openingFrame({ frameCount: FRAMES, keyAngles: [40], hotspots: spots, initialFrame: 10, startFrame: 95 }),
+    ).toBe(10);
+  });
 });
 
 describe('frontOnPoint', () => {

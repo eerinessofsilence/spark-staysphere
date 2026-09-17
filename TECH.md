@@ -79,7 +79,11 @@ D1 database via `@cloudflare/vite-plugin` — no Cloudflare account or `wrangler
 this; Miniflare persists the SQLite file under `.wrangler/state/v3` (gitignored) across `vinext
 dev` restarts, which is what makes local demo bookings survive a restart. The Site Creator
 platform is expected to provision the real D1 database that this same binding name resolves to in
-production.
+production. R2 (`"r2": "MEDIA"` in the same file, the `r2_buckets` block in `vite.config.ts`) is
+resolved the same call-time-or-in-memory-fallback way, by `getMediaBucket()` alongside
+`getDemoDatabase()` in `cloudflare-env.ts`; the building spinner's uploaded frames are its only
+tenant so far (`lib/infrastructure/durable-spinner-frame-storage.ts`), served back through
+`app/media/[...path]/route.ts`.
 
 Schema (`lib/infrastructure/d1-schema.ts`) is applied with idempotent `CREATE TABLE IF NOT EXISTS`
 statements the first time any D1 function runs per isolate — there is no migration runner. Each
@@ -210,9 +214,10 @@ alone — no version, no conflict to resolve, the same as the ported polygon edi
 each zone's target through the live catalog for the guest and silently drops one that no longer
 resolves. The editor itself (`components/admin/spinner-markup/`) is a port of a general-purpose
 polygon editor built outside this repo — geometry and validation live in `lib/domain/polygon/`,
-carrying over that project's own test suite. Frames and key angles are still read straight off
-`Hotel.spinner`; uploading the property's own frames is still roadmap step 8, not this tab's job.
-See `docs/decisions/0006-spinner-markup.md`.
+carrying over that project's own test suite. The frames themselves — and which of them are key
+angles, and which one the orbit opens on — are edited at `/admin/content/spinner/frames`, the
+one CMS screen that writes to R2; see "Photography and media" and
+`docs/decisions/0006-spinner-markup.md`.
 
 ## Physical rooms, the floor plan and the front desk
 
@@ -268,7 +273,7 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 | `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
 | `/admin/content` — Rooms | Two tabs: Room types (`/admin/content`: cover, price, room count) and Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one); room type, room and rate editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 | `/admin/content/add-ons` — Services | Its own nav item: every add-on by category, with the on-sale switch, and the add-on editors under it | `ContentService` — live |
-| `/admin/content/spinner` — 360 Orbit | Overview (key-angle frames, zone coverage) and `/admin/content/spinner/markup` (draw and bind zones per frame) | `ContentService.getSpinnerMarkupContent`/`saveSpinnerZones` — live |
+| `/admin/content/spinner` — 360 Orbit | Overview (key-angle frames, zone coverage), `/markup` (draw and bind zones per frame), `/frames` (upload frames, pick key angles and the start frame) | `ContentService.getSpinnerMarkupContent`/`saveSpinnerZones`/`updateSpinnerScene`/`uploadSpinnerFrame` — live |
 
 An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
 `lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,
@@ -423,6 +428,17 @@ baked frame sequence over a live scene. A same-day detour into a live three.js m
 procedural block massing (`Hotel.model`) was tried and replaced by this spinner hours later; its
 files and the `Hotel.model` schema were removed as dead code once the spinner took over.
 
+The orbit's frames, key angles and start frame are editable from `/admin/content/spinner/frames` —
+the one place in this project a CMS screen writes to R2. Each chosen file is re-encoded to WebP in
+the browser (`OffscreenCanvas`, no server-side image library) and uploaded under a fresh
+`frameSetId` so an upload in progress can never collide with what's already live; `Hotel.spinner`
+itself only changes once every frame has a URL (`ContentService.updateSpinnerScene`), through the
+same `hotel`-kind overlay row `updateHotel` already writes. Replacing the frames clears the
+spinner's hotspots and every zone drawn in `/admin/content/spinner/markup` — both name frame
+indices from a sequence that no longer exists — with a confirmation that says so before it
+happens; picking different key angles on the *same* frames leaves both alone. See
+`docs/decisions/0006-spinner-markup.md`.
+
 ## Current limitations
 
 Without a D1 binding, demo state (including the CMS overlay) is process-local and resets with the
@@ -430,8 +446,9 @@ worker isolate. There is no auth on `/admin` or `/admin/content` — `assertCanE
 `content-service.ts` is a no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
 channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
 failure; production needs a queue with retries. The photographs are licensed stock standing in for
-the property's own and must be replaced before any real launch; the CMS has no upload path to do
-that with yet (`MediaStoragePort` is declared, not implemented — see "Content management (CMS)").
+the property's own and must be replaced before any real launch; the CMS still has no upload path
+for the general photo library (`MediaStoragePort` is declared, not implemented — see "Content
+management (CMS)"), though the building spinner's own frames now do (see "Photography and media").
 The CMS itself has no drafts, version history, or scheduled publishing (every save is immediate and
 live), and supports one hotel at a time, though every overlay row already carries a `hotel_id`. The
 AI concierge's rate limiter is per-isolate, not shared; without `OPENAI_API_KEY` its search still

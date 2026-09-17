@@ -56,11 +56,31 @@ suite carried over.
   broken. `ContentService.saveSpinnerZones` additionally rejects a *write* whose target doesn't
   exist yet, so a zone is never saved pointing at nothing by mistake; the read-time drop exists for
   what happens *after* a save, when something else in the catalog changes later.
-- **Frame upload, and editing `keyAngles` themselves, are out of scope for this pass.** Frames and
-  key angles are still read straight off `Hotel.spinner` — replacing the demo orbit with the
-  property's own frames is still roadmap step 8 (`CLAUDE.md`), a separate CMS pass with its own
-  storage question (R2 for frames; `MediaStoragePort` is declared, not implemented). The overview
-  at `/admin/content/spinner` shows the current key-angle frames read-only.
+- **Frame upload and key-angle editing** (`/admin/content/spinner/frames`) followed in the same
+  pass, once R2 was wired up (`.openai/hosting.json`'s `r2` binding, previously `null`). The
+  browser re-encodes every chosen file to WebP itself (`OffscreenCanvas`/`createImageBitmap`, no
+  server-side image library) before uploading it — `ContentService.uploadSpinnerFrame` stores
+  bytes through `SpinnerFrameStoragePort`, a small, indexed, R2-or-in-memory port shaped like
+  `SpinnerMarkupPort`, keyed `spinner/<hotelId>/<frameSetId>/<NNN>.<ext>` and served back through
+  the one public route this pass added, `app/media/[...path]/route.ts`. `Hotel.spinner` itself is
+  still the same CMS-editable `hotel` overlay row every other Hotel Settings field already goes
+  through (`ContentService.updateHotel`'s own `...current` spread has quietly kept it there since
+  before this pass existed) — `updateSpinnerScene` is just a second writer of that one row, guarded
+  by the same version.
+- **Replacing the frames is destructive to what's drawn on them; changing which frames are key
+  angles is not.** `updateSpinnerScene` tells the two apart by comparing the incoming frame
+  URLs/dimensions against what's currently live: identical frames, only different `keyAngles`/
+  `startFrame` → hotspots and zones are left alone (they only ever showed up on a key-angle frame
+  in the first place, so removing a stop from `keyAngles` just makes that frame's markup
+  unreachable, not wrong); a genuinely different set of frames → every hotspot (`sea-view`, the
+  floor pins, …) and every zone is cleared, since both name frame indices from a sequence that no
+  longer exists. `/admin/content/spinner/frames`'s own confirm dialog warns with the actual counts
+  before a destructive replace goes through, and the previous frame set is swept from storage only
+  after the new one is confirmed live.
+- **`Hotel.spinner.startFrame`** is a new, optional field: which frame the orbit opens on absent a
+  deep link, previously always "the lowest `keyAngles` value" by construction. `openingFrame` in
+  `orbit.ts` now checks it between the `?unit=` arc and that fallback, so existing fixtures with no
+  `startFrame` behave exactly as before.
 
 ## Consequences
 
@@ -70,7 +90,20 @@ suite carried over.
   as before. Zones are a second, independent layer, visible only on a key-angle frame, that will
   eventually replace those pin markers once a hotel has drawn real zones — but nothing forces that
   migration, and an empty zone table means the spinner behaves exactly as it did before this pass.
-- `ContentService.resetContent()` now also clears `spinner_zones` for the hotel, so `/admin/reset`
-  returns the spinner to its unmarked state along with the rest of the demo catalog.
+- `ContentService.resetContent()` now also clears `spinner_zones` and, if the current frames were
+  an uploaded set rather than the seed's own, sweeps them from R2 too — so `/admin/reset` returns
+  the spinner to its unmarked, un-uploaded state along with the rest of the demo catalog.
 - The ported editor's three-column layout needs desktop width; `e2e/spinner-markup.spec.ts` is
   desktop-only for that reason, unlike the guest golden path's 1440/390 pair.
+- Replacing the frames resets `hotspots` to `[]`. Nothing currently repopulates it: a hotel that
+  uploads new frames loses the seed's hand-authored `sea-view`/`cove`/`city-view` markers for good
+  and is left with zones as the only way to draw on the orbit — which is fine going forward
+  (zones are the richer replacement) but is a one-way door worth knowing about before uploading a
+  first real set.
+- `MediaStoragePort` (`lib/domain/ports.ts`) is unrelated and still not implemented — it is the
+  general media-library upload path (`/admin/media`'s disabled button), a separate future step.
+  `SpinnerFrameStoragePort` only ever writes under the `spinner/` prefix; `app/media/[...path]/route.ts`
+  enforces that prefix and is not a general file server.
+- `e2e/spinner-frames.spec.ts` is desktop-only for the same layout reason, and covers uploading a
+  smaller replacement set, the destructive-replace confirmation, and the new sequence reaching the
+  guest orbit.

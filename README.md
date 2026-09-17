@@ -17,9 +17,10 @@ npm run dev
 ```
 
 Then open the local URL printed by the development server. `npm run dev` runs against a real,
-locally emulated D1 database (no Cloudflare account needed) — bookings, admin overrides, and CMS
-edits made in `/admin` survive a restart. To start clean, delete `.wrangler/state`, or use
-"Reset demo state" on `/admin/reset`.
+locally emulated D1 database and R2 bucket (no Cloudflare account needed) — bookings, admin
+overrides, CMS edits, and frames uploaded at `/admin/content/spinner/frames` all survive a
+restart. To start clean, delete `.wrangler/state`, or use "Reset demo state" on `/admin/reset`,
+which also sweeps any uploaded frames back to the seed's own.
 
 **Optional — the AI room finder.** Without a key, search still answers through a deterministic
 keyword interpreter and voice input is unavailable. To enable OpenAI interpretation and

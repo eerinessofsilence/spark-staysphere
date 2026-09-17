@@ -258,6 +258,28 @@ export interface SpinnerMarkupPort {
 }
 
 /**
+ * Where the building spinner's uploaded frames live — R2, resolved through
+ * `lib/infrastructure/durable-spinner-frame-storage.ts` the same
+ * call-time-or-in-memory-fallback way D1 is. A frame set is uploaded under a
+ * fresh `frameSetId` (the client mints one per upload session with
+ * `crypto.randomUUID()`), so an upload in progress never collides with, or
+ * is overwritten by, whatever frame set is already live; `deleteFrameSet`
+ * sweeps the previous one only after `ContentService.updateSpinnerScene` has
+ * successfully pointed `Hotel.spinner` at the new one.
+ */
+export interface SpinnerFrameStoragePort {
+  /** Returns the URL the frame is served at (`app/media/[...path]/route.ts`). */
+  putFrame(input: {
+    hotelId: string;
+    frameSetId: string;
+    index: number;
+    contentType: string;
+    bytes: ArrayBuffer;
+  }): Promise<string>;
+  deleteFrameSet(hotelId: string, frameSetId: string): Promise<void>;
+}
+
+/**
  * The current instant, behind an interface so a service that needs "now" —
  * `BookingService`'s cancellation eligibility, `ContentService`'s "upcoming"
  * filters — can be tested against a fixed date instead of the real clock.

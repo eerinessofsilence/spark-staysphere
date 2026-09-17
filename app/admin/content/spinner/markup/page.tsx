@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { AddFrameButton } from './add-frame-button';
 import { MarkupEditor } from './markup-editor';
 
 export const metadata: Metadata = { title: 'Markup — 360 Orbit | SPARK StaySphere 360' };
@@ -51,7 +51,11 @@ export default async function SpinnerMarkupPage({
         breadcrumbs={[{ label: 'Content' }, { label: '360 Orbit', href: '/admin/content/spinner' }]}
         title="Markup"
         description="Draw the zones on each key-angle frame, then bind every zone to a room, a floor, a room type, or a link."
-        actions={<AddFrameButton frames={content.frames} keyAngles={content.keyAngles} />}
+        actions={
+          <Link href="/admin/content/spinner/frames" className={pill('secondary')}>
+            Frames & key angles
+          </Link>
+        }
       />
 
       <nav aria-label="Key-angle frames" className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
