@@ -80,6 +80,15 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
               </Select>
             </Field>
 
+            <Link
+              href="/admin/content/rooms/new"
+              onClick={() => setOpen(false)}
+              className="-mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-accent-strong"
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+              Create Property
+            </Link>
+
             <input type="hidden" name="slug" value={kebabSuggestion(name)} />
             <input type="hidden" name="description" value={template.description} />
             <input type="hidden" name="areaM2" value={template.areaM2} />
