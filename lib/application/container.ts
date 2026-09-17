@@ -9,6 +9,7 @@ import type { Hotel } from '../domain/schemas';
 import { getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
+import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
 import { demoAddOns, demoHotel, demoHotels, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
@@ -52,7 +53,7 @@ export const availableHotels: Array<Pick<Hotel, 'slug' | 'name' | 'location'>> =
 
 const bookingEngineAdapter = createBookingEngineAdapter(hotelRepository);
 
-export const catalogService = new CatalogService(hotelRepository, bookingEngineAdapter);
+export const catalogService = new CatalogService(hotelRepository, bookingEngineAdapter, durableSpinnerMarkupPort);
 
 export const inventoryService = new InventoryService(hotelRepository, demoControl, catalogService);
 
@@ -80,6 +81,7 @@ export const contentService = new ContentService(
   hotelRepository,
   durableCatalogContentPort,
   mediaLibraryPort,
+  durableSpinnerMarkupPort,
   DEMO_HOTEL_SLUG,
   seedIds,
 );
