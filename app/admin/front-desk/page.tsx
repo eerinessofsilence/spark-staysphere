@@ -10,9 +10,11 @@ import { cn } from '@/lib/utils';
 import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-button';
 import { FrontDeskGrid } from '@/components/admin/front-desk/front-desk-grid';
 import { FrontDeskLegend } from '@/components/admin/front-desk/front-desk-legend';
+import { FrontDeskDateFilter } from '@/components/admin/front-desk/front-desk-date-filter';
 import {
   frontDeskHref,
   DEFAULT_WINDOW,
+  MAX_CUSTOM_WINDOW,
   WINDOW_OPTIONS,
 } from '@/components/admin/front-desk/front-desk-shared';
 import { RoomTypeSelect } from '@/components/admin/front-desk/room-type-select';
@@ -33,7 +35,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
   const rawFrom = first(params.from);
   const from = isIsoDate(rawFrom) ? rawFrom : today;
   const rawDays = Number(first(params.days));
-  const days = (WINDOW_OPTIONS as readonly number[]).includes(rawDays) ? rawDays : DEFAULT_WINDOW;
+  const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
 
   const board = await inventoryService.getFrontDesk(DEMO_HOTEL_SLUG, from, days);
   const rawType = first(params.type);
@@ -98,6 +100,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
                 </Link>
               );
             })}
+            <FrontDeskDateFilter from={from} days={days} type={type} />
           </div>
           <RoomTypeSelect
             options={board.groups.map((group) => ({ id: group.roomTypeId, name: group.roomName }))}

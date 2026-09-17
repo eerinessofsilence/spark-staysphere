@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 
 export const WINDOW_OPTIONS = [7, 14, 30] as const;
 export const DEFAULT_WINDOW = 14;
+/** A custom range's cap — past this the grid's per-room-type allocation math gets slow to compute on read. */
+export const MAX_CUSTOM_WINDOW = 90;
 
 export interface FrontDeskQuery {
   from: string;
