@@ -4,12 +4,50 @@ import * as React from 'react';
 import Link from 'next/link';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { Field, Select, TextInput } from '@/components/admin/content/fields';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { toast } from '@/components/admin/shell/toast';
-import { channels, channexPropertyId, initiallyConnected, type Channel } from './channel-data';
+import {
+  channels as builtInChannels,
+  channexPropertyId,
+  CHANNEL_KINDS,
+  CONNECTION_METHODS,
+  CUSTOM_HUES,
+  initiallyConnected,
+  type Channel,
+  type ConnectionMethod,
+} from './channel-data';
+
+/** A short, presentable set of initials from a free-typed channel name — "Nordic Stays" → "NS". */
+function monogramFrom(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0]!.slice(0, 2);
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
+/** Appends `-2`, `-3`, … until the id is free of every channel already on the page, built-in or custom. */
+function uniqueChannelId(base: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+/** What "Bookings pulled" says for a channel, by how it actually connects — built-in demo channels have no `connection` and keep the original copy. */
+function bookingsPulledLabel(channel: Channel): string {
+  switch (channel.connection?.method) {
+    case 'one_way':
+      return 'Not pulled — availability only';
+    case 'feed':
+      return 'By email, as they come in';
+    default:
+      return 'Every 5 minutes';
+  }
+}
 
 /**
  * The channel manager, the way a hotel team meets it in a PMS: one setup
@@ -17,22 +55,36 @@ import { channels, channexPropertyId, initiallyConnected, type Channel } from '.
  * Connecting or disconnecting a channel is local state — nothing leaves the page.
  */
 export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount: number; rateCount: number }) {
+  const [customChannels, setCustomChannels] = React.useState<Channel[]>([]);
   const [connected, setConnected] = React.useState<string[]>(initiallyConnected);
   const [adding, setAdding] = React.useState(false);
+  const [customOpen, setCustomOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [viewing, setViewing] = React.useState<Channel | null>(null);
 
+  const channels = [...builtInChannels, ...customChannels];
   const connectedChannels = channels.filter((channel) => connected.includes(channel.id));
   const available = channels.filter(
     (channel) =>
       !connected.includes(channel.id) && channel.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
+  const closeAdding = () => {
+    setAdding(false);
+    setQuery('');
+  };
+
   const connect = (channel: Channel) => {
     setConnected((current) => [...current, channel.id]);
     toast.success(`${channel.name} connected.`);
-    setAdding(false);
-    setQuery('');
+    closeAdding();
+  };
+
+  const addCustom = (channel: Channel) => {
+    setCustomChannels((current) => [...current, channel]);
+    setConnected((current) => [...current, channel.id]);
+    toast.success(`${channel.name} connected.`);
+    setCustomOpen(false);
   };
 
   const disconnect = (channel: Channel) => {
@@ -47,10 +99,16 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         title="Channel Manager"
         description={`${connectedChannels.length} of ${channels.length} channels connected`}
         actions={
-          <button type="button" onClick={() => setAdding(true)} className={pill('primary')}>
-            <PlusIcon className="size-4" aria-hidden="true" />
-            Add channel
-          </button>
+          <>
+            <button type="button" onClick={() => setCustomOpen(true)} className={pill('secondary')}>
+              <PlusIcon className="size-4" aria-hidden="true" />
+              Add custom channel
+            </button>
+            <button type="button" onClick={() => setAdding(true)} className={pill('primary')}>
+              <PlusIcon className="size-4" aria-hidden="true" />
+              Add channel
+            </button>
+          </>
         }
       />
 
@@ -138,14 +196,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         )}
       </section>
 
-      <Modal
-        open={adding}
-        onClose={() => {
-          setAdding(false);
-          setQuery('');
-        }}
-        title="Add channel"
-      >
+      <Modal open={adding} onClose={closeAdding} title="Add channel">
         <div className="relative">
           <MagnifyingGlassIcon
             className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
@@ -185,6 +236,13 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         </ul>
       </Modal>
 
+      <CustomChannelModal
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        onAdd={addCustom}
+        existingIds={new Set(channels.map((channel) => channel.id))}
+      />
+
       <Modal open={viewing !== null} onClose={() => setViewing(null)} title={viewing?.name ?? 'Channel'}>
         {viewing ? (
           <div>
@@ -208,7 +266,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
               <Fact label="Rate plans mapped">
                 {rateCount} of {rateCount}
               </Fact>
-              <Fact label="Bookings pulled">Every 5 minutes</Fact>
+              <Fact label="Bookings pulled">{bookingsPulledLabel(viewing)}</Fact>
             </dl>
             <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
               <button
@@ -263,5 +321,243 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-medium">{children}</dd>
     </div>
+  );
+}
+
+/**
+ * A channel not on the known list: no logo, no fixed commission, no set connection —
+ * so the form asks for exactly what a real channel manager (Channex, SiteMinder) does
+ * to wire one up: what it is, how rates and bookings move, and its own credentials or
+ * feed. Demo only — nothing here is validated against a real endpoint or ever reached.
+ */
+function CustomChannelModal({
+  open,
+  onClose,
+  onAdd,
+  existingIds,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdd: (channel: Channel) => void;
+  /** Every id already on the page, built-in or custom — so a second channel with the same name gets its own id. */
+  existingIds: ReadonlySet<string>;
+}) {
+  const [name, setName] = React.useState('');
+  const [kind, setKind] = React.useState<(typeof CHANNEL_KINDS)[number]>('OTA');
+  const [markets, setMarkets] = React.useState('');
+  const [commission, setCommission] = React.useState('');
+  const [method, setMethod] = React.useState<ConnectionMethod>('two_way');
+  const [endpoint, setEndpoint] = React.useState('');
+  const [apiKey, setApiKey] = React.useState('');
+  const [secret, setSecret] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [error, setError] = React.useState('');
+
+  const reset = () => {
+    setName('');
+    setKind('OTA');
+    setMarkets('');
+    setCommission('');
+    setMethod('two_way');
+    setEndpoint('');
+    setApiKey('');
+    setSecret('');
+    setEmail('');
+    setError('');
+  };
+
+  const close = () => {
+    reset();
+    onClose();
+  };
+
+  const methodMeta = CONNECTION_METHODS.find((option) => option.value === method)!;
+  const needsCredentials = method === 'two_way' || method === 'one_way';
+
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Enter the channel’s name.');
+      return;
+    }
+    if (needsCredentials && !endpoint.trim()) {
+      setError('Enter the endpoint this channel connects to.');
+      return;
+    }
+    if (!needsCredentials && !email.trim()) {
+      setError('Enter where booking notifications should go.');
+      return;
+    }
+    const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'channel';
+    const id = uniqueChannelId(`custom-${slug}`, existingIds);
+    const hue = CUSTOM_HUES[Math.abs(id.length + trimmedName.length) % CUSTOM_HUES.length]!;
+    onAdd({
+      id,
+      name: trimmedName,
+      monogram: monogramFrom(trimmedName),
+      hue,
+      kind,
+      commission: Number(commission) || 0,
+      markets: markets.trim() || 'Worldwide',
+      connection: needsCredentials
+        ? { method, endpoint: endpoint.trim() }
+        : { method, email: email.trim() },
+    });
+    reset();
+  };
+
+  return (
+    <Modal open={open} onClose={close} title="Add custom channel" className="sm:max-w-xl">
+      <form onSubmit={submit} className="grid gap-5">
+        <Field id="custom-channel-name" label="Channel name">
+          <TextInput
+            id="custom-channel-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Nordic Stays"
+            required
+          />
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="custom-channel-kind" label="Channel type">
+            <Select id="custom-channel-kind" value={kind} onChange={(value) => setKind(value as typeof kind)}>
+              {CHANNEL_KINDS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field id="custom-channel-markets" label="Markets" hint="Optional — defaults to Worldwide.">
+            <TextInput
+              id="custom-channel-markets"
+              value={markets}
+              onChange={(event) => setMarkets(event.target.value)}
+              placeholder="Worldwide"
+            />
+          </Field>
+        </div>
+
+        <Field
+          id="custom-channel-commission"
+          label="Commission"
+          hint="As a percentage of the booking. Leave blank for cost-per-click or a flat fee."
+        >
+          <TextInput
+            id="custom-channel-commission"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            step="0.1"
+            value={commission}
+            onChange={(event) => setCommission(event.target.value)}
+            placeholder="15"
+            className="sm:w-32"
+          />
+        </Field>
+
+        <div role="group" aria-labelledby="custom-channel-connection-heading" className="grid gap-2">
+          <h3 id="custom-channel-connection-heading" className="text-sm text-muted-foreground">
+            How it connects
+          </h3>
+          <div className="grid gap-2">
+            {CONNECTION_METHODS.map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 text-sm transition-colors',
+                  method === option.value ? 'border-foreground bg-stone/60' : 'border-border hover:bg-stone/40',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="connection-method"
+                  value={option.value}
+                  checked={method === option.value}
+                  onChange={() => setMethod(option.value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-medium">{option.label}</span>
+                  <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {needsCredentials ? (
+          <div role="group" aria-labelledby="custom-channel-credentials-heading" className="grid gap-4">
+            <h3 id="custom-channel-credentials-heading" className="text-sm text-muted-foreground">
+              {methodMeta.label} credentials
+            </h3>
+            <Field id="custom-channel-endpoint" label="API endpoint">
+              <TextInput
+                id="custom-channel-endpoint"
+                type="url"
+                value={endpoint}
+                onChange={(event) => setEndpoint(event.target.value)}
+                placeholder="https://"
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="custom-channel-key" label="API key / Client ID">
+                <TextInput
+                  id="custom-channel-key"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  placeholder="Provided by the channel"
+                />
+              </Field>
+              <Field id="custom-channel-secret" label="Secret">
+                <TextInput
+                  id="custom-channel-secret"
+                  type="password"
+                  value={secret}
+                  onChange={(event) => setSecret(event.target.value)}
+                  placeholder="••••••••"
+                />
+              </Field>
+            </div>
+          </div>
+        ) : (
+          <Field
+            id="custom-channel-email"
+            label="Booking notification email"
+            hint="Where a booking made on this channel gets sent, since there is no API to pull it from."
+          >
+            <TextInput
+              id="custom-channel-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="reservations@yourhotel.com"
+            />
+          </Field>
+        )}
+
+        {error ? (
+          <p role="alert" className="text-sm font-medium text-danger">
+            {error}
+          </p>
+        ) : null}
+
+        <p className="rounded-2xl bg-stone/60 px-4 py-3 text-sm text-muted-foreground">
+          Demo — nothing here is sent anywhere. Connecting adds the channel to this page only.
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className={pill('primary')}>
+            Add channel
+          </button>
+          <button type="button" onClick={close} className={pill('secondary')}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

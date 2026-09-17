@@ -12,6 +12,8 @@ export interface Channel {
   kind: string;
   commission: number;
   markets: string;
+  /** Only set for a hotel's own custom channel — how it actually gets rates, availability and bookings. */
+  connection?: { method: ConnectionMethod; endpoint?: string; email?: string };
 }
 
 export const channels: Channel[] = [
@@ -30,5 +32,33 @@ export const channels: Channel[] = [
 ];
 
 export const initiallyConnected = ['booking', 'airbnb', 'expedia', 'hrs'];
+
+/** A channel type a hotel team would pick for one not on the known list. */
+export const CHANNEL_KINDS = [
+  'OTA',
+  'Metasearch',
+  'Home-sharing',
+  'Wholesaler',
+  'Corporate / business travel',
+  'GDS',
+  'Other',
+] as const;
+
+/** How a custom channel gets rates, availability and bookings — same three tiers every channel manager offers one of. */
+export const CONNECTION_METHODS = [
+  { value: 'two_way', label: 'Two-way API', hint: 'Rates and availability sync both ways; bookings pull in automatically.' },
+  { value: 'one_way', label: 'One-way (rates and availability only)', hint: "Pushes out what you set here; the channel's own bookings don't pull back in." },
+  { value: 'feed', label: 'iCal / CSV feed', hint: 'No live API — availability exports on a schedule, and bookings arrive by email.' },
+] as const;
+export type ConnectionMethod = (typeof CONNECTION_METHODS)[number]['value'];
+
+/** A rotating set of neutral hues for a custom channel, which has no real brand colour to draw from. */
+export const CUSTOM_HUES = [
+  { bg: '#e9e5dd', ink: '#5f5e58' },
+  { bg: '#efe7d3', ink: '#7f6a35' },
+  { bg: '#e2e9de', ink: '#4c6a4e' },
+  { bg: '#f1e2e0', ink: '#93565a' },
+  { bg: '#e3eefc', ink: '#1757b8' },
+];
 
 export const channexPropertyId = '621c9410-8281-4b7e-8733-713362084074';
