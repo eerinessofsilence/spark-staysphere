@@ -1,7 +1,13 @@
 import { demoHash, nightsInRange } from '../domain/availability';
 import { addIsoDays } from '../domain/dates';
-import type { AvailabilityReader, BookingStore, CatalogReader, DemoControlPort } from '../domain/ports';
-import { roomCategory, type RoomCategory } from '../domain/room-attributes';
+import type {
+  AvailabilityReader,
+  BookingStore,
+  CatalogReader,
+  DemoControlPort,
+  PaymentAttemptStore,
+} from '../domain/ports';
+import { coverPhoto, roomCategory, type RoomCategory } from '../domain/room-attributes';
 import {
   allocateRoomType,
   buildRoomUnits,
@@ -15,6 +21,7 @@ import type {
   Currency,
   Hotel,
   PriceBreakdown,
+  RatePlan,
   RoomType,
   StayCriteria,
 } from '../domain/schemas';
@@ -48,24 +55,44 @@ export interface FloorPlan {
   availableCount: number;
 }
 
+/** What the desk needs to read a stay at a glance, whether it's a real booking or simulated demand. */
+export interface FrontDeskStay {
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  ratePlanName: string;
+  breakfastIncluded: boolean;
+  /** Hotel-local times, `HH:mm`. Check-out moves to 18:00 with the late check-out add-on. */
+  checkInTime: string;
+  checkOutTime: string;
+  total: number;
+  paid: number;
+  currency: Currency;
+}
+
 export type FrontDeskSegment =
-  | {
+  | ({
       kind: 'booking';
       start: number;
       span: number;
       reference: string;
-      guestName: string;
-      checkIn: string;
-      checkOut: string;
-      adults: number;
-      children: number;
-      total: number;
-      currency: Currency;
+      status: Booking['status'];
+      guestEmail: string;
+      guestPhone: string;
       chosenByGuest: boolean;
       continuesBefore: boolean;
       continuesAfter: boolean;
-    }
-  | { kind: 'demand' | 'closed'; start: number; span: number };
+    } & FrontDeskStay)
+  | ({
+      kind: 'demand';
+      start: number;
+      span: number;
+      /** Where the simulated stay "came from" — an OTA, the phone, the lobby. */
+      channel: string;
+    } & FrontDeskStay)
+  | { kind: 'closed'; start: number; span: number };
 
 export interface FrontDeskRoom {
   number: string;
@@ -78,6 +105,8 @@ export interface FrontDeskGroup {
   roomTypeId: string;
   roomName: string;
   roomSlug: string;
+  /** The room type's cover photograph, for the stay card. */
+  photo: { url: string; width?: number; height?: number } | null;
   hidden: boolean;
   rooms: FrontDeskRoom[];
 }
@@ -109,8 +138,9 @@ function byRoomNumber(a: { number: string }, b: { number: string }): number {
 export class InventoryService {
   constructor(
     private readonly repository: AvailabilityReader &
-      Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms'> &
-      Pick<BookingStore, 'listBookings'>,
+      Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms' | 'listRatePlans'> &
+      Pick<BookingStore, 'listBookings'> &
+      Pick<PaymentAttemptStore, 'listPaymentAttempts'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
   ) {}
@@ -230,23 +260,51 @@ export class InventoryService {
     const allBookings = await this.repository.listBookings();
     const confirmed = allBookings.filter((booking) => booking.status === 'confirmed');
     const bookingsByType = this.confirmedByRoomType(allBookings);
-    const byReference = new Map(allBookings.map((booking) => [booking.reference, booking]));
     const dates = Array.from({ length: days }, (_, index) => addIsoDays(from, index));
+    const windowEnd = addIsoDays(from, days);
+
+    // Only the bookings this window can draw need their payments read.
+    const inWindow = confirmed.filter((booking) => booking.checkIn < windowEnd && booking.checkOut > from);
+    const paidByReference = new Map(
+      await Promise.all(
+        inWindow.map(async (booking) => {
+          const attempts = await this.repository.listPaymentAttempts(booking.id);
+          const paid = attempts
+            .filter((attempt) => attempt.status === 'authorized')
+            .reduce((sum, attempt) => sum + attempt.amount, 0);
+          return [booking.reference, paid] as const;
+        }),
+      ),
+    );
+    const byReference = new Map(allBookings.map((booking) => [booking.reference, booking]));
 
     const groups: FrontDeskGroup[] = await Promise.all(
       rooms.map(async (room) => {
         const roomUnits = units.filter((unit) => unit.roomTypeId === room.id).sort(byRoomNumber);
-        const { occupancy } = await this.allocate(room, roomUnits, bookingsByType.get(room.id) ?? [], dates);
+        const [{ occupancy }, ratePlans] = await Promise.all([
+          this.allocate(room, roomUnits, bookingsByType.get(room.id) ?? [], dates),
+          this.repository.listRatePlans(room.id),
+        ]);
+        const cover = coverPhoto(room);
+        const context: SegmentContext = {
+          dates,
+          bookings: byReference,
+          paid: paidByReference,
+          ratePlans: new Map(ratePlans.map((plan) => [plan.id, plan])),
+          defaultRatePlan: ratePlans[0] ?? null,
+          capacity: room.capacity,
+        };
         return {
           roomTypeId: room.id,
           roomName: room.name,
           roomSlug: room.slug,
+          photo: cover ? { url: cover.url, width: cover.width, height: cover.height } : null,
           hidden: Boolean(room.hidden),
           rooms: roomUnits.map((unit) => ({
             number: unit.number,
             floor: unit.floor,
             facade: unit.facade,
-            segments: toSegments(occupancy.get(unit.number)!, dates, byReference, unit.number),
+            segments: toSegments(occupancy.get(unit.number)!, unit.number, context),
           })),
         };
       }),
@@ -321,12 +379,66 @@ function sameOccupant(a: NightOccupant | undefined, b: NightOccupant): boolean {
   return a.kind !== 'booking' || a.reference === (b as { reference: string }).reference;
 }
 
-function toSegments(
-  row: Map<string, NightOccupant>,
-  dates: string[],
-  bookings: Map<string, Booking>,
+interface SegmentContext {
+  dates: string[];
+  bookings: Map<string, Booking>;
+  /** Authorized payment total by booking reference. */
+  paid: Map<string, number>;
+  ratePlans: Map<string, RatePlan>;
+  defaultRatePlan: RatePlan | null;
+  capacity: number;
+}
+
+const CHECK_IN_TIME = '15:00';
+const CHECK_OUT_TIME = '11:00';
+const LATE_CHECK_OUT_TIME = '18:00';
+const LATE_CHECK_OUT_ADDON = 'addon_late';
+
+// Simulated demand needs a stay's worth of detail for the desk to read like a
+// PMS. Picked by hash from the room and the block's first night, so a block
+// shows the same guest every time it is drawn.
+const DEMAND_GUESTS = [
+  'Sofia Andreou', 'Lukas Weber', 'Amelia Clarke', 'Marco Bianchi', 'Chloé Martin', 'Nikos Georgiou',
+  'Emma Johansson', 'Daniel Novak', 'Isabel Ruiz', 'Oliver Bennett', 'Hanna Kowalska', 'Yusuf Demir',
+];
+const DEMAND_CHANNELS = [
+  { name: 'Booking.com', prepaid: true },
+  { name: 'Expedia', prepaid: true },
+  { name: 'Phone', prepaid: false },
+  { name: 'Walk-in', prepaid: false },
+  { name: 'Travel agent', prepaid: true },
+] as const;
+
+function simulatedStay(
   unitNumber: string,
-): FrontDeskSegment[] {
+  checkIn: string,
+  nights: number,
+  context: SegmentContext,
+): FrontDeskStay & { channel: string } {
+  const seed = demoHash(`${unitNumber}|${checkIn}|stay`);
+  const plan = context.defaultRatePlan;
+  const channel = DEMAND_CHANNELS[seed % DEMAND_CHANNELS.length]!;
+  const adults = Math.max(1, Math.min(context.capacity, 1 + (seed % 2)));
+  const total = (plan?.nightlyPrice ?? 0) * nights;
+  return {
+    guestName: DEMAND_GUESTS[seed % DEMAND_GUESTS.length]!,
+    checkIn,
+    checkOut: addIsoDays(checkIn, nights),
+    adults,
+    children: context.capacity > adults && seed % 5 === 0 ? 1 : 0,
+    ratePlanName: plan?.name ?? 'Standard rate',
+    breakfastIncluded: plan?.breakfastIncluded ?? false,
+    checkInTime: CHECK_IN_TIME,
+    checkOutTime: seed % 7 === 0 ? LATE_CHECK_OUT_TIME : CHECK_OUT_TIME,
+    total,
+    paid: channel.prepaid ? total : 0,
+    currency: plan?.currency ?? 'EUR',
+    channel: channel.name,
+  };
+}
+
+function toSegments(row: Map<string, NightOccupant>, unitNumber: string, context: SegmentContext): FrontDeskSegment[] {
+  const { dates, bookings } = context;
   const segments: FrontDeskSegment[] = [];
   const windowEnd = addIsoDays(dates.at(-1)!, 1);
   let index = 0;
@@ -343,17 +455,26 @@ function toSegments(
     if (occupant.kind === 'booking') {
       const booking = bookings.get(occupant.reference);
       if (booking) {
+        const plan = context.ratePlans.get(booking.ratePlanId) ?? context.defaultRatePlan;
         segments.push({
           kind: 'booking',
           start: index,
           span: end - index,
           reference: booking.reference,
+          status: booking.status,
           guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
+          guestEmail: booking.guest.email,
+          guestPhone: booking.guest.phone,
           checkIn: booking.checkIn,
           checkOut: booking.checkOut,
           adults: booking.adults,
           children: booking.children,
+          ratePlanName: plan?.name ?? 'Standard rate',
+          breakfastIncluded: plan?.breakfastIncluded ?? false,
+          checkInTime: CHECK_IN_TIME,
+          checkOutTime: booking.addOnIds.includes(LATE_CHECK_OUT_ADDON) ? LATE_CHECK_OUT_TIME : CHECK_OUT_TIME,
           total: booking.total,
+          paid: context.paid.get(booking.reference) ?? 0,
           currency: booking.currency,
           chosenByGuest: booking.unitNumber === unitNumber,
           continuesBefore: booking.checkIn < dates[0]!,
@@ -369,7 +490,12 @@ function toSegments(
       let cursor = index;
       for (let night = index + 1; night <= end; night += 1) {
         if (night === end || demoHash(`${unitNumber}|${dates[night]}`) % 3 === 0) {
-          segments.push({ kind: 'demand', start: cursor, span: night - cursor });
+          segments.push({
+            kind: 'demand',
+            start: cursor,
+            span: night - cursor,
+            ...simulatedStay(unitNumber, dates[cursor]!, night - cursor, context),
+          });
           cursor = night;
         }
       }
