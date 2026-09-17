@@ -9,6 +9,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
+import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteRoomAction } from './rooms/[id]/actions';
@@ -27,13 +28,21 @@ function capitalize(value: string): string {
 /** Columns a phone can do without: what they say is folded into the first cell there. */
 const deskOnly = 'hidden sm:table-cell';
 
-export default async function RoomTypesPage() {
+export default async function RoomTypesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const page = parsePage((await searchParams).page);
   const [rooms, physicalRooms] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
-  const rates = await Promise.all(rooms.map((room) => contentService.listRatesContent(room.id)));
   const onSite = rooms.filter((room) => !room.hidden).length;
+  const { pageItems: pageRooms, page: currentPage, totalPages } = paginate(rooms, page);
+  const pageRates = await Promise.all(pageRooms.map((room) => contentService.listRatesContent(room.id)));
+  const pageItems = pageRooms.map((room, index) => ({ room, rates: pageRates[index]! }));
+  const pageHref = simplePageHref('/admin/content');
 
   return (
     <AdminPage>
@@ -79,16 +88,22 @@ export default async function RoomTypesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rooms.map((room, index) => {
+                {pageItems.map(({ room, rates: roomRates }) => {
                   const cover = coverPhoto(room);
-                  const cheapest = [...rates[index]!].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
+                  const cheapest = [...roomRates].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
                   const price = cheapest ? `${formatMoney(cheapest.nightlyPrice, cheapest.currency)} a night` : 'No rate yet';
                   const href = `/admin/content/rooms/${room.id}`;
                   const roomCount = physicalRooms.filter((unit) => unit.roomTypeId === room.id).length;
                   return (
-                    <tr key={room.id} className="border-b border-border last:border-b-0">
+                    <tr
+                      key={room.id}
+                      className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                    >
                       <Td className="align-middle">
-                        <Link href={href} className="group flex items-center gap-3">
+                        {/* Stretched: the row opens the room type's own page from anywhere in
+                            it, not only the photo and name — the rooms link and row menu sit
+                            at a higher stacking level so their own clicks still reach them. */}
+                        <Link href={href} className="group flex items-center gap-3 before:absolute before:inset-0">
                           <span className="block size-14 shrink-0 overflow-hidden rounded-2xl bg-stone">
                             {cover ? (
                               <img
@@ -128,7 +143,7 @@ export default async function RoomTypesPage() {
                           <span className="text-muted-foreground">No rate yet</span>
                         )}
                       </Td>
-                      <Td className={cn(deskOnly, 'align-middle tabular-nums')}>
+                      <Td className={cn(deskOnly, 'relative z-10 align-middle tabular-nums')}>
                         <Link
                           href={`/admin/content/units#type-${room.id}`}
                           className={cn('hover:text-accent-strong', roomCount === 0 && 'text-muted-foreground')}
@@ -149,7 +164,7 @@ export default async function RoomTypesPage() {
                           </span>
                         )}
                       </Td>
-                      <Td className="align-middle text-right">
+                      <Td className="relative z-10 align-middle text-right">
                         <RowActions
                           id={room.id}
                           version={room.version}
@@ -171,6 +186,7 @@ export default async function RoomTypesPage() {
                 })}
               </tbody>
             </TableCard>
+            <Pagination page={currentPage} totalPages={totalPages} total={rooms.length} hrefFor={pageHref} />
           </div>
         </>
       )}
