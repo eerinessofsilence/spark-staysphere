@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { cn } from '@/lib/utils';
+import { AddFrameButton } from './add-frame-button';
 import { MarkupEditor } from './markup-editor';
 
 export const metadata: Metadata = { title: 'Markup — 360 Orbit | SPARK StaySphere 360' };
@@ -50,6 +51,7 @@ export default async function SpinnerMarkupPage({
         breadcrumbs={[{ label: 'Content' }, { label: '360 Orbit', href: '/admin/content/spinner' }]}
         title="Markup"
         description="Draw the zones on each key-angle frame, then bind every zone to a room, a floor, a room type, or a link."
+        actions={<AddFrameButton frames={content.frames} keyAngles={content.keyAngles} />}
       />
 
       <nav aria-label="Key-angle frames" className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
@@ -82,12 +84,17 @@ export default async function SpinnerMarkupPage({
         })}
       </nav>
 
-      <div className="mt-4 h-[calc(100svh-14rem)] min-h-[480px]">
+      {/* The editor takes the frame's own shape, so the photograph fills it
+          edge to edge: sized any other way the canvas letterboxes, and a
+          cover-crop would put the zones near the edges out of reach. */}
+      <div className="mt-4 w-full min-h-[480px]" style={{ aspectRatio: `${content.frameWidth} / ${content.frameHeight}` }}>
         <MarkupEditor
           frameIndex={frameIndex}
           image={image}
           initialZones={zonesForFrame}
           catalog={{ units: content.units, roomTypes: content.roomTypes }}
+          frames={content.frames}
+          keyAngles={content.keyAngles}
         />
       </div>
     </AdminPage>
