@@ -22,6 +22,7 @@ import { BookingRowActions } from '@/components/admin/operations/booking-row-act
 import { BookingStatusFilter } from '@/components/admin/operations/booking-status-filter';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -56,7 +57,7 @@ function parseRange(fromParam: string | string[] | undefined, toParam: string | 
   return from <= to ? { from, to } : { from: to, to: from };
 }
 
-function hrefFor(filter: Filter, query: string, range: DayRange | null): string {
+function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: number): string {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
   if (filter !== 'all') params.set('status', filter);
@@ -64,6 +65,7 @@ function hrefFor(filter: Filter, query: string, range: DayRange | null): string 
     params.set('from', range.from);
     params.set('to', range.to);
   }
+  if (page && page > 1) params.set('page', String(page));
   const search = params.toString();
   return search ? `/admin/bookings?${search}` : '/admin/bookings';
 }
@@ -77,6 +79,7 @@ export default async function BookingsPage({
   const query = typeof params.q === 'string' ? params.q.trim() : '';
   const filter = parseFilter(params.status);
   const range = parseRange(params.from, params.to);
+  const page = parsePage(params.page);
   const today = toIsoDate(new Date());
 
   const [hotel, allBookings] = await Promise.all([
@@ -95,9 +98,10 @@ export default async function BookingsPage({
   const counts: Record<Filter, number> = { all: searched.length, upcoming: 0, in_house: 0, past: 0, cancelled: 0 };
   for (const booking of searched) counts[stayBucket(booking, today)] += 1;
   const visible = filter === 'all' ? searched : searched.filter((booking) => stayBucket(booking, today) === filter);
+  const { pageItems, page: currentPage, totalPages } = paginate(visible, page);
 
   const rows = await Promise.all(
-    visible.map(async (booking) => ({ booking, room: await inventoryService.getBookingRoom(booking) })),
+    pageItems.map(async (booking) => ({ booking, room: await inventoryService.getBookingRoom(booking) })),
   );
 
   const filters: Filter[] = ['all', ...stayBuckets];
@@ -265,6 +269,12 @@ export default async function BookingsPage({
             </tbody>
           </TableCard>
         )}
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={visible.length}
+          hrefFor={(next) => hrefFor(filter, query, range, next)}
+        />
       </div>
     </AdminPage>
   );

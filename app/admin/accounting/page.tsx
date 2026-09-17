@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -29,7 +30,12 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-export default async function AccountingPage() {
+export default async function AccountingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const page = parsePage((await searchParams).page);
   const [hotel, allBookings] = await Promise.all([
     catalogService.getHotel(await getSelectedHotelSlug()),
     hotelRepository.listBookings(),
@@ -39,8 +45,10 @@ export default async function AccountingPage() {
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );
   const ledger = buildLedger(entries);
+  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, page);
   const money = (value: number) => formatMoney(value, hotel.currency);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
+  const pageHref = (next: number) => (next > 1 ? `/admin/accounting?page=${next}` : '/admin/accounting');
 
   return (
     <AdminPage>
@@ -155,7 +163,7 @@ export default async function AccountingPage() {
                 </tr>
               </thead>
               <tbody>
-                {ledger.rows.map(({ booking, method, state, amount }) => {
+                {pageRows.map(({ booking, method, state, amount }) => {
                   const meta = states[state];
                   return (
                     <tr
@@ -192,6 +200,7 @@ export default async function AccountingPage() {
               </tbody>
             </TableCard>
           )}
+          <Pagination page={currentPage} totalPages={totalPages} total={ledger.rows.length} hrefFor={pageHref} />
         </div>
       </section>
     </AdminPage>

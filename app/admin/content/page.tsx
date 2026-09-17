@@ -9,6 +9,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteRoomAction } from './rooms/[id]/actions';
@@ -27,13 +28,21 @@ function capitalize(value: string): string {
 /** Columns a phone can do without: what they say is folded into the first cell there. */
 const deskOnly = 'hidden sm:table-cell';
 
-export default async function RoomTypesPage() {
+export default async function RoomTypesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const page = parsePage((await searchParams).page);
   const [rooms, physicalRooms] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
   const rates = await Promise.all(rooms.map((room) => contentService.listRatesContent(room.id)));
   const onSite = rooms.filter((room) => !room.hidden).length;
+  const pairs = rooms.map((room, index) => ({ room, rates: rates[index]! }));
+  const { pageItems, page: currentPage, totalPages } = paginate(pairs, page);
+  const pageHref = (next: number) => (next > 1 ? `/admin/content?page=${next}` : '/admin/content');
 
   return (
     <AdminPage>
@@ -79,9 +88,9 @@ export default async function RoomTypesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rooms.map((room, index) => {
+                {pageItems.map(({ room, rates: roomRates }) => {
                   const cover = coverPhoto(room);
-                  const cheapest = [...rates[index]!].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
+                  const cheapest = [...roomRates].sort((a, b) => a.nightlyPrice - b.nightlyPrice)[0];
                   const price = cheapest ? `${formatMoney(cheapest.nightlyPrice, cheapest.currency)} a night` : 'No rate yet';
                   const href = `/admin/content/rooms/${room.id}`;
                   const roomCount = physicalRooms.filter((unit) => unit.roomTypeId === room.id).length;
@@ -177,6 +186,7 @@ export default async function RoomTypesPage() {
                 })}
               </tbody>
             </TableCard>
+            <Pagination page={currentPage} totalPages={totalPages} total={rooms.length} hrefFor={pageHref} />
           </div>
         </>
       )}
