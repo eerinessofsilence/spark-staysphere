@@ -173,5 +173,24 @@ export const EDITOR_STYLES = `
   .pe-item-delete:focus-visible { opacity: 1; }
   .pe-item-delete:hover { color: var(--pe-danger); }
 
-  .pe-target { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--pe-border); }
+  .pe-side-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--pe-border);
+  }
+
+  .pe-target {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 10px;
+    border: 1px solid var(--pe-border);
+    border-radius: 14px;
+    background: var(--pe-hover);
+    overflow: hidden;
+  }
 `;
