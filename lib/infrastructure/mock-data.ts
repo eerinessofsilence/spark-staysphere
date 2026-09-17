@@ -850,32 +850,6 @@ const roomSeed: RoomSeed[] = [
   },
 ];
 
-export const demoRooms: RoomType[] = roomSeed.map((seed) => ({
-  id: `room_${seed.slug}`,
-  hotelId: demoHotel.id,
-  slug: seed.slug,
-  name: seed.name,
-  description: seed.description,
-  areaM2: seed.areaM2,
-  floor: seed.floor,
-  capacity: seed.capacity,
-  bedType: seed.bedType,
-  view: seed.view,
-  amenities: seed.amenities,
-  media: [
-    ...seed.photos.map((photo) => ({
-      type: 'image' as const,
-      url: `/images/rooms/${photo.from ?? seed.slug}/${photo.file}.webp`,
-      label: photo.label,
-      width: photo.width,
-      height: photo.height,
-    })),
-    ...(panoramaByRoom[seed.slug]
-      ? [{ type: '360' as const, url: panoramaByRoom[seed.slug]!, label: '360° view' }]
-      : []),
-  ],
-}));
-
 /** How many doors each seed room type has. Rarer rooms sell out more often in the demo. */
 const seedRoomCounts: Record<string, number> = {
   'room_deluxe-sea': 8,
@@ -901,31 +875,253 @@ const seedRoomCounts: Record<string, number> = {
 };
 
 /**
+ * Builds one hotel's room types, physical rooms, and rates from a
+ * `RoomSeed` list — the same shape `demoRooms`/`demoPhysicalRooms`/
+ * `demoRates` were hand-built from before a second and third hotel existed.
+ * `idPrefix` keeps every id globally unique across hotels (empty for Asteria
+ * Cove, so its ids are unchanged from before this was a function) while
+ * `slug` stays the plain room slug, shared on purpose with `sample-bookings.ts`'s
+ * `SAMPLES`/`SHOWCASE` lists so "Add sample bookings" still finds a room to
+ * book on every hotel, not only the first one.
+ */
+function buildRoomCatalog(
+  hotelId: string,
+  currency: RatePlan['currency'],
+  seeds: RoomSeed[],
+  idPrefix: string,
+  countFor: (roomTypeId: string) => number = () => 5,
+): { rooms: RoomType[]; physicalRooms: PhysicalRoom[]; rates: RatePlan[] } {
+  const rooms: RoomType[] = seeds.map((seed) => ({
+    id: `room_${idPrefix}${seed.slug}`,
+    hotelId,
+    slug: seed.slug,
+    name: seed.name,
+    description: seed.description,
+    areaM2: seed.areaM2,
+    floor: seed.floor,
+    capacity: seed.capacity,
+    bedType: seed.bedType,
+    view: seed.view,
+    amenities: seed.amenities,
+    media: [
+      ...seed.photos.map((photo) => ({
+        type: 'image' as const,
+        url: `/images/rooms/${photo.from ?? seed.slug}/${photo.file}.webp`,
+        label: photo.label,
+        width: photo.width,
+        height: photo.height,
+      })),
+      ...(panoramaByRoom[seed.slug]
+        ? [{ type: '360' as const, url: panoramaByRoom[seed.slug]!, label: '360° view' }]
+        : []),
+    ],
+  }));
+
+  const physicalRooms: PhysicalRoom[] = layOutRooms(rooms, countFor).map((room) => ({
+    id: `unit_${idPrefix}${room.number}`,
+    hotelId,
+    ...room,
+  }));
+
+  const rates: RatePlan[] = seeds.map((seed) => ({
+    id: `rate_${idPrefix}${seed.slug}_flex`,
+    roomTypeId: `room_${idPrefix}${seed.slug}`,
+    name: 'Direct Flexible',
+    nightlyPrice: seed.nightlyPrice,
+    currency,
+    breakfastIncluded: true,
+    includedServices: [
+      'Breakfast for all guests',
+      'Wi-Fi throughout the property',
+      'Beach club chairs and towels',
+      'Best direct rate guarantee',
+    ],
+    cancellationPolicy: 'Free cancellation up to 72 hours before arrival.',
+    otaComparisonPrice: Math.round(seed.nightlyPrice * 1.12),
+  }));
+
+  return { rooms, physicalRooms, rates };
+}
+
+/**
  * The demo building's rooms, numbered floor by floor, sea facade first — the
- * same numbers the floor plan and the tape chart showed before rooms were
+ * same numbers the floor plan and the front desk showed before rooms were
  * stored, so existing bookings that chose a room still find it.
  */
-export const demoPhysicalRooms: PhysicalRoom[] = layOutRooms(
-  demoRooms,
-  (roomTypeId) => seedRoomCounts[roomTypeId] ?? 5,
-).map((room) => ({ id: `unit_${room.number}`, hotelId: demoHotel.id, ...room }));
+const asteriaCatalog = buildRoomCatalog(demoHotel.id, 'EUR', roomSeed, '', (roomTypeId) => seedRoomCounts[roomTypeId] ?? 5);
 
-export const demoRates: RatePlan[] = roomSeed.map((seed) => ({
-  id: `rate_${seed.slug}_flex`,
-  roomTypeId: `room_${seed.slug}`,
-  name: 'Direct Flexible',
-  nightlyPrice: seed.nightlyPrice,
-  currency: 'EUR',
-  breakfastIncluded: true,
-  includedServices: [
-    'Breakfast for all guests',
-    'Wi-Fi throughout the property',
-    'Beach club chairs and towels',
-    'Best direct rate guarantee',
+/**
+ * Marlow House and The Locke & Vine exist so the admin's property switcher
+ * has more than one real hotel behind it (see `docs/decisions` — no ticket
+ * yet, this is the switcher work). Both borrow Asteria Cove's photography
+ * and panoramas rather than a fresh shoot, and reuse a handful of Asteria
+ * Cove's own room slugs so `sample-bookings.ts`'s hardcoded room lists
+ * resolve on them too — slugs are only unique per hotel, not globally.
+ */
+export const marlowHouse: Hotel = {
+  id: 'hotel_marlow',
+  slug: 'marlow-house',
+  name: 'Marlow House',
+  tagline: 'See the stay. Book the room.',
+  location: 'Lisbon, Portugal',
+  starRating: 5,
+  description:
+    'A restored townhouse above the Alfama rooftops, four floors climbing toward the river, with a plunge pool on the top terrace and the tram line passing the front door.',
+  aboutPhoto: { url: '/images/hotel/cove.webp', width: 2000, height: 3000 },
+  facilities: [
+    { icon: 'pool', name: 'Rooftop plunge pool' },
+    { icon: 'restaurant', name: 'Courtyard restaurant' },
+    { icon: 'bar', name: 'Terrace bar' },
+    { icon: 'wifi', name: 'Free Wi-Fi' },
+    { icon: 'concierge', name: 'Concierge' },
   ],
-  cancellationPolicy: 'Free cancellation up to 72 hours before arrival.',
-  otaComparisonPrice: Math.round(seed.nightlyPrice * 1.12),
-}));
+  currency: 'EUR',
+  timezone: 'Europe/Lisbon',
+  areas: [],
+};
+
+const marlowRoomSeed: RoomSeed[] = [
+  {
+    slug: 'deluxe-sea',
+    name: 'River Suite',
+    areaM2: 40,
+    floor: 3,
+    capacity: 2,
+    bedType: 'king',
+    view: 'sea',
+    nightlyPrice: 268,
+    description: 'Top-floor room with a slim balcony over the rooftops toward the Tagus, a few minutes from the tram stop.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Private balcony', 'Rain shower', 'Nespresso bar'],
+    photos: [
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
+      { file: 'balcony', label: 'Balcony', width: 1600, height: 2134 },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1496 },
+    ],
+  },
+  {
+    slug: 'garden-studio',
+    name: 'Courtyard Studio',
+    areaM2: 30,
+    floor: 0,
+    capacity: 2,
+    bedType: 'queen',
+    view: 'garden',
+    nightlyPrice: 189,
+    description: 'Ground-floor studio opening onto the tiled inner courtyard, the quietest room in the house.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Courtyard access', 'Rain shower'],
+    photos: [
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
+      { file: 'terrace', label: 'Courtyard', width: 1600, height: 2845 },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 2400 },
+    ],
+  },
+  {
+    slug: 'coastal-twin',
+    name: 'Twin Room',
+    areaM2: 26,
+    floor: 2,
+    capacity: 2,
+    bedType: 'twin',
+    view: 'city',
+    nightlyPrice: 176,
+    description: 'Two beds and a window onto the tiled rooftops — the straightforward room in the house.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Work desk'],
+    photos: [
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
+      { file: 'balcony', label: 'View', width: 1600, height: 1387 },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1496 },
+    ],
+  },
+];
+
+export const lockeAndVine: Hotel = {
+  id: 'hotel_locke-vine',
+  slug: 'the-locke-and-vine',
+  name: 'The Locke & Vine',
+  tagline: 'See the stay. Book the room.',
+  location: 'Austin, United States',
+  starRating: 4,
+  description:
+    'A converted warehouse two blocks off Rainey Street, exposed brick and steel joists throughout, with a rooftop deck looking over the Colorado River.',
+  aboutPhoto: { url: '/images/hotel/cove.webp', width: 2000, height: 3000 },
+  facilities: [
+    { icon: 'bar', name: 'Rooftop deck' },
+    { icon: 'gym', name: 'Fitness studio' },
+    { icon: 'parking', name: 'Valet parking' },
+    { icon: 'wifi', name: 'Free Wi-Fi' },
+  ],
+  currency: 'USD',
+  timezone: 'America/Chicago',
+  areas: [],
+};
+
+const lockeRoomSeed: RoomSeed[] = [
+  {
+    slug: 'deluxe-sea',
+    name: 'Rooftop King',
+    areaM2: 38,
+    floor: 5,
+    capacity: 2,
+    bedType: 'king',
+    view: 'city',
+    nightlyPrice: 289,
+    description: 'Top-floor room with deck access and a view down Rainey Street toward the river.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Deck access', 'Rain shower', 'Nespresso bar'],
+    photos: [
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
+      { file: 'balcony', label: 'Deck', width: 1600, height: 2134 },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 1496 },
+    ],
+  },
+  {
+    slug: 'garden-studio',
+    name: 'Courtyard King',
+    areaM2: 28,
+    floor: 1,
+    capacity: 2,
+    bedType: 'king',
+    view: 'garden',
+    nightlyPrice: 199,
+    description: 'Ground-floor room opening onto the planted courtyard behind the building.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Courtyard access', 'Rain shower'],
+    photos: [
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067 },
+      { file: 'terrace', label: 'Courtyard', width: 1600, height: 2845 },
+      { file: 'bathroom', label: 'Bathroom', width: 1600, height: 2400 },
+    ],
+  },
+  {
+    slug: 'sea-view-room',
+    name: 'Standard Queen',
+    areaM2: 24,
+    floor: 3,
+    capacity: 2,
+    bedType: 'queen',
+    view: 'city',
+    nightlyPrice: 168,
+    description: 'A queen bed and exposed brick, the straightforward room in the house.',
+    amenities: ['Wi-Fi', 'Air conditioning', 'Rain shower', 'Nespresso bar'],
+    photos: [
+      { file: 'balcony', label: 'The view', width: 16000, height: 2134, from: 'deluxe-sea' },
+      { file: 'bedroom', label: 'Bedroom', width: 1600, height: 1067, from: 'coastal-twin' },
+      { file: 'bathroom', label: 'Bathroom', width: 16000, height: 1496, from: 'deluxe-sea' },
+    ],
+  },
+];
+
+const marlowCatalog = buildRoomCatalog(marlowHouse.id, 'EUR', marlowRoomSeed, 'marlow-', () => 3);
+const lockeCatalog = buildRoomCatalog(lockeAndVine.id, 'USD', lockeRoomSeed, 'locke-', () => 3);
+
+/** Every seed hotel the demo serves — the property switcher's real rows, in `/admin`. */
+export const demoHotels: Hotel[] = [demoHotel, marlowHouse, lockeAndVine];
+
+export const demoRooms: RoomType[] = [...asteriaCatalog.rooms, ...marlowCatalog.rooms, ...lockeCatalog.rooms];
+export const demoPhysicalRooms: PhysicalRoom[] = [
+  ...asteriaCatalog.physicalRooms,
+  ...marlowCatalog.physicalRooms,
+  ...lockeCatalog.physicalRooms,
+];
+export const demoRates: RatePlan[] = [...asteriaCatalog.rates, ...marlowCatalog.rates, ...lockeCatalog.rates];
 
 export const demoAddOns: AddOn[] = [
   // Services the staff performs. No photograph: nobody picks a transfer by sight.

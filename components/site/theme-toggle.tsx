@@ -8,13 +8,8 @@ import {
   storeTheme,
   type ThemePreference,
 } from '@/lib/theme';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
-
-const options: { value: ThemePreference; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
-  { value: 'light', label: 'Light', icon: SunIcon },
-  { value: 'dark', label: 'Dark', icon: MoonIcon },
-  { value: 'system', label: 'System', icon: ComputerDesktopIcon },
-];
 
 /**
  * Day, night, or whatever the machine says. The class is already on `<html>`
@@ -22,6 +17,12 @@ const options: { value: ThemePreference; label: string; icon: React.ComponentTyp
  * choice back so the right segment is lit, and writes the new one.
  */
 export function ThemeToggle() {
+  const t = useT();
+  const options: { value: ThemePreference; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
+    { value: 'light', label: t('nav.light'), icon: SunIcon },
+    { value: 'dark', label: t('nav.dark'), icon: MoonIcon },
+    { value: 'system', label: t('nav.system'), icon: ComputerDesktopIcon },
+  ];
   const [theme, setTheme] = React.useState<ThemePreference | null>(null);
 
   React.useEffect(() => setTheme(readTheme()), []);
@@ -44,10 +45,10 @@ export function ThemeToggle() {
 
   return (
     <div>
-      <p className="mb-2 px-3 text-xs text-muted-foreground">Appearance</p>
+      <p className="mb-2 px-3 text-xs text-muted-foreground">{t('nav.appearance')}</p>
       <div
         role="radiogroup"
-        aria-label="Appearance"
+        aria-label={t('nav.appearance')}
         className="grid grid-cols-3 gap-1 rounded-2xl bg-stone/60 p-1"
       >
         {options.map((option) => {

@@ -15,15 +15,8 @@ import {
 import type { FloorPlanUnit } from '@/lib/application/inventory-service';
 import { buildQuery } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
-import {
-  bedLabels,
-  facadeLabels,
-  formatFloor,
-  formatMoney,
-  formatNights,
-  formatRoomNumber,
-  viewLabels,
-} from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lFacade, lFloor, lMoney, lNights, lRoomNumber, lView } from '@/lib/i18n/format';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
@@ -45,6 +38,8 @@ interface RoomUnitCardProps {
 }
 
 export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnitCardProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const guests = criteria.adults + criteria.children;
   const stayQuery = buildQuery({ criteria });
   const roomHref = `/rooms/${unit.roomSlug}?${stayQuery}`;
@@ -53,27 +48,31 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
   const facts = [
     {
       icon: Buildings,
-      label: `${formatFloor(unit.floor)}, ${facadeLabels[unit.facade].toLowerCase()}`,
+      label: `${lFloor(unit.floor, locale)}, ${lFacade(unit.facade, locale)}`,
       tone: factTone.floor,
     },
-    { icon: Eye, label: viewLabels[unit.view], tone: factTone.view },
+    { icon: Eye, label: lView(unit.view, locale), tone: factTone.view },
     { icon: Ruler, label: `${unit.areaM2} m²`, tone: factTone.area },
-    { icon: UsersThree, label: `Sleeps ${unit.capacity}`, tone: factTone.capacity },
-    { icon: Bed, label: bedLabels[unit.bedType], tone: factTone.bed },
+    { icon: UsersThree, label: t('rooms.sleepsCount', { n: String(unit.capacity) }), tone: factTone.capacity },
+    { icon: Bed, label: lBed(unit.bedType, locale), tone: factTone.bed },
   ];
 
   const explanation =
     unit.status === 'booked'
-      ? `Someone is staying in room ${unit.number} on at least one of your nights. Pick another room on the plan, or book the ${unit.roomName} without choosing one.`
+      ? t('rooms.explanationBooked', { number: unit.number, room: unit.roomName })
       : unit.status === 'unsuitable'
-        ? `The ${unit.roomName} sleeps up to ${unit.capacity} and your party is ${guests}. Change the guests in your search to book it.`
-        : `This room doesn't match the filters you've set. Clear them to book it.`;
+        ? t('rooms.explanationUnsuitable', {
+            room: unit.roomName,
+            capacity: String(unit.capacity),
+            guests: String(guests),
+          })
+        : t('rooms.explanationFiltered');
 
   return (
     <div className={cn(bare ? 'p-5' : 'rounded-[18px] bg-card p-5 shadow-soft sm:p-6')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-display text-3xl">{formatRoomNumber(unit.number)}</p>
+          <p className="text-display text-3xl">{lRoomNumber(unit.number, locale)}</p>
           <Link href={roomHref} className="mt-1 inline-block text-sm font-medium hover:text-accent-strong">
             {unit.roomName}
           </Link>
@@ -81,7 +80,7 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close room details"
+          aria-label={t('room.closeRoomDetails')}
           className={iconButton('light', 'size-10')}
         >
           <XMarkIcon className="size-4" aria-hidden="true" />
@@ -95,7 +94,7 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
         )}
       >
         <status.icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
-        {unitStatusWords(unit, guests)}
+        {unitStatusWords(unit, guests, t)}
       </p>
 
       <ul className="mt-4 flex flex-wrap gap-1.5">
@@ -111,13 +110,13 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
         <div className="mt-5 border-t border-border pt-4">
           <p>
             <span className="text-display text-2xl">
-              {formatMoney(unit.price.nightlyPrice, unit.price.currency)}
+              {lMoney(unit.price.nightlyPrice, unit.price.currency, locale)}
             </span>
-            <span className="text-sm text-muted-foreground"> a night</span>
+            <span className="text-sm text-muted-foreground"> {t('rooms.aNight')}</span>
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatMoney(unit.price.total, unit.price.currency)} for {formatNights(unit.price.nights)},
-            taxes in
+            {lMoney(unit.price.total, unit.price.currency, locale)}{' '}
+            {t('rooms.forNightsTaxesIn', { nights: lNights(unit.price.nights, locale) })}
           </p>
         </div>
       ) : null}
@@ -128,17 +127,17 @@ export function RoomUnitCard({ unit, criteria, onClose, bare = false }: RoomUnit
             href={`/book/${unit.roomSlug}?${buildQuery({ criteria, roomNumber: unit.number })}`}
             className={pill('primary', 'w-full')}
           >
-            Book room {unit.number}
+            {t('rooms.bookRoomNumber', { number: unit.number })}
           </Link>
           <Link href={roomHref} className={pill('secondary', 'w-full')}>
-            See the room
+            {t('rooms.seeTheRoom')}
           </Link>
         </div>
       ) : (
         <>
           <p className="mt-5 text-sm leading-relaxed text-muted-foreground">{explanation}</p>
           <Link href={roomHref} className={pill('secondary', 'mt-4 w-full')}>
-            See the room
+            {t('rooms.seeTheRoom')}
           </Link>
         </>
       )}

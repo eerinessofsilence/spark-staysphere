@@ -20,6 +20,9 @@ import {
 } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
 import { formatAssistantSummary, formatDateRange } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lDateRange } from '@/lib/i18n/format';
+import type { TranslationKey } from '@/lib/i18n/dictionaries';
 import { iconButton, fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RoomCard } from '@/components/rooms/room-card';
@@ -30,6 +33,9 @@ import { useVoiceCapture } from './use-voice-capture';
 
 type AssistantSearchResponse = AssistantAskResult & { interpretedBy: 'openai' | 'keyword' | null };
 
+// Example prompts and the AI-interpreted relaxation label are the assistant's
+// own natural-language surface, not platform chrome — out of scope for now,
+// same as the room/rate/add-on catalog content elsewhere on the site.
 const EXAMPLE_UTTERANCES = [
   'A sea view suite for two',
   'Something with a balcony, under €300',
@@ -39,12 +45,12 @@ const EXAMPLE_UTTERANCES = [
 /** Three across: a tile narrower than that drops its name to two lines and stops reading at a glance. */
 const SHOWN_CARDS = 3;
 
-const PHASE_LABEL: Partial<Record<AssistantPhase, string>> = {
-  idle: 'Tell me what you are looking for, or use the mic.',
-  listening: 'Listening — tap the mic again to stop.',
-  transcribing: 'Turning that into text…',
-  thinking: 'Searching the catalog…',
-  'mic-denied': 'Microphone access is unavailable here — you can still type.',
+const PHASE_LABEL_KEYS: Partial<Record<AssistantPhase, TranslationKey>> = {
+  idle: 'assistant.idle',
+  listening: 'assistant.listening',
+  transcribing: 'assistant.transcribing',
+  thinking: 'assistant.thinking',
+  'mic-denied': 'assistant.micDenied',
 };
 
 /** `URLSearchParams` → the record shape `parseCriteria`/`parseFilters` read, multi-values kept. */
@@ -71,6 +77,8 @@ interface AssistantPanelProps {
 }
 
 export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: AssistantPanelProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const searchParams = useSearchParams();
   const { rendered, visible } = useOverlayTransition(open);
   const [mounted, setMounted] = React.useState(false);
@@ -180,12 +188,11 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           | null;
 
         if (!response.ok) {
-          const message = payload && 'message' in payload ? payload.message : undefined;
+          // The server's own message is always English (see the API route); shown
+          // instead of the translated fallback it would leak untranslated text into
+          // the guest's chosen language, so the status code alone picks the copy.
           setErrorMessage(
-            (typeof message === 'string' && message) ||
-              (response.status === 429
-                ? 'Too many searches at once. Wait a moment and try again.'
-                : 'Could not run that search.'),
+            response.status === 429 ? t('assistant.tooManySearches') : t('assistant.couldNotRunSearch'),
           );
           setPhase('error');
           return;
@@ -197,11 +204,11 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         setFilters(data.filters);
         setPhase(data.offers.length > 0 ? 'results' : 'empty');
       } catch {
-        setErrorMessage('Could not reach the assistant. Check your connection and try again.');
+        setErrorMessage(t('assistant.couldNotReach'));
         setPhase('error');
       }
     },
-    [criteria, filters],
+    [criteria, filters, t],
   );
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -294,10 +301,10 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
 
   const statusLabel =
     phase === 'empty'
-      ? `No rooms match that combination for ${formatDateRange(criteria.checkIn, criteria.checkOut)}.`
+      ? t('assistant.noRoomsMatch', { dateRange: lDateRange(criteria.checkIn, criteria.checkOut, locale) })
       : phase === 'error'
-        ? (errorMessage ?? 'Something went wrong.')
-        : (PHASE_LABEL[phase] ?? '');
+        ? (errorMessage ?? t('assistant.somethingWrong'))
+        : (PHASE_LABEL_KEYS[phase] ? t(PHASE_LABEL_KEYS[phase]!) : '');
   // A re-search from a chip keeps the last answer on screen, dimmed, so the
   // cards do not blink out and back for the round trip.
   const hasOffers = result !== null && result.offers.length > 0;
@@ -321,7 +328,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Find a room by voice or description"
+        aria-label={t('assistant.ariaLabel')}
         tabIndex={-1}
         style={{ transformOrigin: 'bottom center' }}
         className={cn(
@@ -343,8 +350,8 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           <div className="size-16 shrink-0 rounded-full bg-stone">
             <ThinkingOrbs phase={phase} getAmplitude={voice.getAmplitude} />
           </div>
-          <p className="flex-1 text-base font-medium">AI room finder</p>
-          <button type="button" onClick={onClose} aria-label="Close" className={iconButton('light', 'size-9')}>
+          <p className="flex-1 text-base font-medium">{t('assistant.title')}</p>
+          <button type="button" onClick={onClose} aria-label={t('assistant.close')} className={iconButton('light', 'size-9')}>
             <XMarkIcon className="size-4" aria-hidden="true" />
           </button>
         </div>
@@ -391,8 +398,9 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
 
           {phase === 'results' && result && result.unresolved.length > 0 ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              I ignored &ldquo;{result.unresolved.join('", "')}&rdquo; — the catalog has no filter for{' '}
-              {result.unresolved.length === 1 ? 'it' : 'them'}.
+              {t(result.unresolved.length === 1 ? 'assistant.ignoredTermOne' : 'assistant.ignoredTermOther', {
+                terms: result.unresolved.join('", "'),
+              })}
             </p>
           ) : null}
 
@@ -408,7 +416,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
 
           {phase === 'error' ? (
             <button type="button" onClick={() => void runSearch(inputValue.trim())} className={pill('secondary', 'mt-4')}>
-              Try again
+              {t('assistant.tryAgain')}
             </button>
           ) : null}
 
@@ -454,8 +462,8 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               type="text"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value.slice(0, 400))}
-              placeholder="A quiet sea-view suite for two, under €400…"
-              aria-label="Describe the room you want"
+              placeholder={t('assistant.placeholder')}
+              aria-label={t('assistant.describeAria')}
               maxLength={400}
               tabIndex={showingResults ? -1 : undefined}
               disabled={showingResults || phase === 'listening' || phase === 'transcribing'}
@@ -475,7 +483,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
                     void voice.start();
                   }
                 }}
-                aria-label={voice.status === 'listening' ? 'Stop recording' : 'Speak your search'}
+                aria-label={voice.status === 'listening' ? t('assistant.stopRecording') : t('assistant.speakSearch')}
                 className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
               >
                 {voice.status === 'listening' ? (
@@ -488,7 +496,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
 
             <button
               type="submit"
-              aria-label="Search"
+              aria-label={t('assistant.search')}
               tabIndex={showingResults ? -1 : undefined}
               disabled={
                 showingResults || !inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'
@@ -512,7 +520,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               onClick={startNewSearch}
               className={pill('secondary')}
             >
-              New search
+              {t('assistant.newSearch')}
             </button>
             <Link
               href={result ? `/rooms?${result.query}` : '#'}
@@ -520,17 +528,21 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               className={pill('primary', 'flex-1 justify-center')}
             >
               {result && result.offers.length > SHOWN_CARDS
-                ? `See all ${result.offers.length} rooms`
-                : 'Compare in the catalog'}
+                ? t('assistant.seeAllRooms', { count: String(result.offers.length) })
+                : t('assistant.compareInCatalog')}
             </Link>
           </div>
         </div>
 
         {phase === 'listening' ? (
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
-            <span>{voice.countdown !== null ? `Auto-stop in ${voice.countdown}s` : 'Listening…'}</span>
+            <span>
+              {voice.countdown !== null
+                ? t('assistant.autoStop', { n: String(voice.countdown) })
+                : t('assistant.listeningEllipsis')}
+            </span>
             <button type="button" onClick={() => voice.cancel()} className="cursor-pointer font-medium text-foreground">
-              Cancel
+              {t('assistant.cancel')}
             </button>
           </div>
         ) : null}

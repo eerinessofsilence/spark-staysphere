@@ -292,7 +292,7 @@ free-hand a width or a column track.
     on the dashboard are four cards on the same 18px surface as the chart beside them: a short
     label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
     admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
-  - **The tape chart** (`components/admin/tape-chart/`) is one row per door, grouped by room type,
+  - **The front desk** (`components/admin/front-desk/`) is one row per door, grouped by room type,
     one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
     when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
     tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is

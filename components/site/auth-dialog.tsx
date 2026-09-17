@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Modal } from '@/components/site/modal';
+import { useT } from '@/lib/i18n/context';
 import { fieldClass, pill } from '@/lib/ui';
 
 /**
@@ -16,26 +17,6 @@ import { fieldClass, pill } from '@/lib/ui';
 
 export type AuthMode = 'signin' | 'signup';
 
-const copy: Record<
-  AuthMode,
-  { title: string; heading: string; body: string; switchTo: AuthMode; switchLabel: string }
-> = {
-  signin: {
-    title: 'Log in',
-    heading: 'Welcome back',
-    body: 'Enter the email address you booked with.',
-    switchTo: 'signup',
-    switchLabel: 'New here? Create an account',
-  },
-  signup: {
-    title: 'Sign up',
-    heading: 'Create your account',
-    body: 'Start with your email address.',
-    switchTo: 'signin',
-    switchLabel: 'Already have an account? Log in',
-  },
-};
-
 interface AuthDialogProps {
   mode: AuthMode | null;
   onModeChange: (mode: AuthMode) => void;
@@ -43,6 +24,26 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
+  const t = useT();
+  const copy: Record<
+    AuthMode,
+    { title: string; heading: string; body: string; switchTo: AuthMode; switchLabel: string }
+  > = {
+    signin: {
+      title: t('nav.logIn'),
+      heading: t('auth.welcomeBack'),
+      body: t('auth.enterEmailBookedWith'),
+      switchTo: 'signup',
+      switchLabel: t('auth.newHereCreateAccount'),
+    },
+    signup: {
+      title: t('nav.signUp'),
+      heading: t('auth.createYourAccount'),
+      body: t('auth.startWithEmail'),
+      switchTo: 'signin',
+      switchLabel: t('auth.alreadyHaveAccount'),
+    },
+  };
   const [email, setEmail] = React.useState('');
   const [submitted, setSubmitted] = React.useState(false);
 
@@ -59,7 +60,7 @@ export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
   const active = mode ? copy[mode] : null;
 
   return (
-    <Modal open={mode !== null} onClose={close} title={active?.title ?? 'Log in'}>
+    <Modal open={mode !== null} onClose={close} title={active?.title ?? t('nav.logIn')}>
       {active ? (
         <form
           onSubmit={(event) => {
@@ -71,7 +72,7 @@ export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
           <p className="mt-1.5 text-sm text-muted-foreground">{active.body}</p>
 
           <label htmlFor="auth-email" className="mt-5 mb-1.5 block text-sm text-muted-foreground">
-            Email
+            {t('book.email')}
           </label>
           <input
             id="auth-email"
@@ -85,12 +86,12 @@ export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
           />
 
           <button type="submit" className={pill('primary', 'mt-4 w-full')}>
-            Continue
+            {t('book.continue')}
           </button>
 
           {submitted ? (
             <p role="status" className="mt-3 text-sm font-medium">
-              Thanks — this prototype stops here. No account was created and nothing was sent.
+              {t('auth.thanksPrototypeStops')}
             </p>
           ) : null}
 
@@ -106,8 +107,7 @@ export function AuthDialog({ mode, onModeChange, onClose }: AuthDialogProps) {
           </button>
 
           <p className="mt-5 rounded-2xl bg-stone/60 p-3 text-xs leading-relaxed text-muted-foreground">
-            Demo sign-in. Accounts are not created, no password is asked for, and the address you
-            type is never sent anywhere.
+            {t('auth.demoSignInNotice')}
           </p>
         </form>
       ) : null}

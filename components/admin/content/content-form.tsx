@@ -8,6 +8,7 @@ import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { discardUnsavedChanges, useUnsavedChanges } from '@/components/admin/shell/unsaved-changes';
+import { toast } from '@/components/admin/shell/toast';
 import { announceVersion, useSharedVersion } from './version-channel';
 
 const FieldErrorsContext = React.createContext<Record<string, string[]>>({});
@@ -51,6 +52,12 @@ interface ContentFormProps {
    * "Save" pill stacked on top of the last.
    */
   dock?: boolean;
+  /**
+   * Skips the sticky card (border, background, shadow) around the action
+   * row — for a form already sitting inside its own card, like a `Modal`,
+   * where that framing would just double up.
+   */
+  bare?: boolean;
 }
 
 /** What the form holds, minus its version — compared against the last saved state to know it changed. */
@@ -103,6 +110,7 @@ export function ContentForm({
   resetOnSuccess = false,
   versionKey,
   dock = false,
+  bare = false,
 }: ContentFormProps) {
   const formId = React.useId();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -195,7 +203,9 @@ export function ContentForm({
         setDirty(false);
       }
       onSuccess?.(state);
+      toast.success(state.message || 'Saved.');
     } else if (state.status === 'error') {
+      toast.error('Not saved. Check the form and try again.');
       revealFirstError(formRef.current, bannerRef.current);
     }
     // Runs once per submit result, not per render: `state` is a fresh object each dispatch.
@@ -242,7 +252,8 @@ export function ContentForm({
     statusText = 'Unsaved changes';
   } else if (state.status === 'success') {
     statusTone = 'success';
-    statusText = state.message;
+    // The full message goes out as a toast; beside the button a short word is enough.
+    statusText = 'Saved';
   }
 
   return (
@@ -323,7 +334,12 @@ export function ContentForm({
               </div>
             </>
           ) : (
-            <div className="sticky bottom-3 z-20 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md">
+            <div
+              className={cn(
+                'mt-8 flex flex-wrap items-center gap-x-4 gap-y-2',
+                bare ? 'pr-4' : 'sticky bottom-3 z-20 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md',
+              )}
+            >
               <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
                 {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                 {submitLabel}

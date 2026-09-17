@@ -12,6 +12,7 @@ import { statusLabels } from '@/lib/formatting';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { toast } from '@/components/admin/shell/toast';
 
 const overrideOptions: { value: RoomStatus | 'auto'; label: string }[] = [
   { value: 'auto', label: 'Auto (simulated)' },
@@ -46,10 +47,14 @@ export function RoomStatusControl({
         disabled={pending}
         onValueChange={async (next) => {
           setPending(true);
-          await setRoomStatus({
-            roomTypeId,
-            status: (next ?? 'auto') as RoomStatus | 'auto',
-          });
+          const status = (next ?? 'auto') as RoomStatus | 'auto';
+          try {
+            await setRoomStatus({ roomTypeId, status });
+            const label = overrideOptions.find((option) => option.value === status)?.label ?? status;
+            toast.success(`${roomName}: availability set to ${label}.`);
+          } catch {
+            toast.error(`${roomName}: the availability override didn't save. Try again.`);
+          }
           router.refresh();
           setPending(false);
         }}
@@ -105,6 +110,7 @@ export function AddOnToggle({
     const result = await action(addOnId, checked);
     if (result.ok) {
       setUndoTo(offerUndo ? !checked : null);
+      toast.success(result.message || `${addOnName}: ${checked ? 'on sale' : 'withdrawn'}.`);
       router.refresh();
     } else {
       // A version conflict or a validation failure must not look like it
@@ -113,6 +119,7 @@ export function AddOnToggle({
       // tells the hotel team the flip they just made did not take.
       setUndoTo(null);
       setMessage(result.message);
+      toast.error(result.message);
       router.refresh();
     }
     setPending(false);
@@ -164,7 +171,12 @@ export function ResetDemoButton() {
       disabled={pending}
       onClick={async () => {
         setPending(true);
-        await resetDemoState();
+        try {
+          await resetDemoState();
+          toast.success('Demo state reset.');
+        } catch {
+          toast.error("Demo state didn't reset. Try again.");
+        }
         router.refresh();
         setPending(false);
       }}

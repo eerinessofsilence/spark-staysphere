@@ -236,9 +236,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           </Section>
 
           <div className="mt-6 flex flex-wrap items-start justify-between gap-4 border-t border-border pt-5">
-            <Link href={`/admin/tape-chart?from=${booking.checkIn}`} className={pill('ghost')}>
+            <Link href={`/admin/front-desk?from=${booking.checkIn}`} className={pill('ghost')}>
               <TableCellsIcon className="size-4" aria-hidden="true" />
-              Show on tape chart
+              Show on front desk
             </Link>
             <BookingActions reference={booking.reference} canCancel={canCancel} note={note} />
           </div>

@@ -2,7 +2,7 @@ import { addDays, format, parseISO } from 'date-fns';
 
 /**
  * `iso` shifted by `days` calendar days, formatted back to `yyyy-MM-dd`.
- * Shared by the tape chart's own segment math (`inventory-service.ts`), its
+ * Shared by the front desk's own segment math (`inventory-service.ts`), its
  * grid's day-column paging, and its page's prev/next week controls, so the
  * same operation isn't three separate copies.
  */

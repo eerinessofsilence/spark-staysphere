@@ -1,91 +1,123 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import type { MediaAsset } from '@/lib/domain/ports';
-import { bedLabels, viewLabels } from '@/lib/formatting';
+import type { RoomType } from '@/lib/domain/schemas';
+import { kebabSuggestion } from '@/lib/domain/slug';
 import { pill } from '@/lib/ui';
 import { createRoomAction } from '@/app/admin/content/rooms/new/actions';
-import { ContentForm } from '@/components/admin/content/content-form';
-import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
-import { MediaListEditor } from '@/components/admin/content/media-list-editor';
-import { NewRoomIdentityFields } from '@/components/admin/content/new-room-identity-fields';
+import { ContentForm, useFieldError } from '@/components/admin/content/content-form';
+import { Field, Select, TextInput } from '@/components/admin/content/fields';
 import { Modal } from '@/components/site/modal';
 
+type RoomTypeTemplate = Pick<
+  RoomType,
+  'id' | 'name' | 'description' | 'areaM2' | 'floor' | 'capacity' | 'bedType' | 'view' | 'amenities' | 'media'
+>;
+
 /**
- * A compact version of `/admin/content/rooms/new`'s form, for adding a room
- * type from wherever a hotel team is already looking (the tape chart)
- * instead of sending them across the app. Saving redirects to the new type's
- * own page — the same place the full page lands — to add a rate, more
- * photos, and its physical rooms.
+ * Adds a room type from the front desk by copying an existing one: only the
+ * name is new, everything else comes from the picked type and can be changed
+ * afterwards on the new type's own page, where saving lands.
  */
-export function AddRoomTypeButton({ assets }: { assets: MediaAsset[] }) {
+export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[] }) {
   const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [templateId, setTemplateId] = React.useState(roomTypes[0]?.id ?? '');
+  const template = roomTypes.find((room) => room.id === templateId);
+
+  const label = (
+    <>
+      <PlusIcon className="size-4" aria-hidden="true" />
+      Add property
+    </>
+  );
+
+  if (!template) {
+    return (
+      <Link href="/admin/content/rooms/new" className={pill('primary')}>
+        {label}
+      </Link>
+    );
+  }
+
+  const media = template.media
+    .filter((item) => item.type === 'image' || item.type === '360')
+    .map((item) => ({ type: item.type, url: item.url, label: item.label }));
 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
-        <PlusIcon className="size-4" aria-hidden="true" />
-        Add room type
+        {label}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="New room type" className="sm:max-w-2xl">
-        <p className="text-sm text-muted-foreground">
-          Starts hidden from the site. Give it a rate and its own rooms afterwards, from its page.
-        </p>
+      <Modal open={open} onClose={() => setOpen(false)} title="Add property">
+        <ContentForm
+          action={createRoomAction}
+          initialVersion={0}
+          submitLabel="Add property"
+          bare
+          extraActions={
+            <Link
+              href="/admin/content/rooms/new"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-accent-strong"
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+              Create Property
+            </Link>
+          }
+        >
+          <div className="grid gap-5">
+            <Field id="property-name" name="name" label="Name">
+              <TextInput
+                id="property-name"
+                name="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </Field>
+            <SlugError />
 
-        <div className="mt-5">
-          <ContentForm action={createRoomAction} initialVersion={0} submitLabel="Create room type">
-            <div className="grid gap-5">
-              <NewRoomIdentityFields />
+            <Field
+              id="property-room-type"
+              label="Room type"
+              hint="Description, size, view, amenities and photos come from this room type."
+            >
+              <Select id="property-room-type" value={templateId} onChange={setTemplateId} required>
+                {roomTypes.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-              <Field id="room-description" name="description" label="Description" hint="Plain text, no formatting.">
-                <TextArea id="room-description" name="description" required />
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-4">
-                <Field id="room-areaM2" name="areaM2" label="Size (m²)">
-                  <TextInput id="room-areaM2" name="areaM2" type="number" min={1} step="0.1" required />
-                </Field>
-                <Field id="room-floor" name="floor" label="Floor">
-                  <TextInput id="room-floor" name="floor" type="number" min={0} step="1" required />
-                </Field>
-                <Field id="room-capacity" name="capacity" label="Sleeps">
-                  <TextInput id="room-capacity" name="capacity" type="number" min={1} step="1" required />
-                </Field>
-                <Field id="room-bedType" name="bedType" label="Bed">
-                  <Select id="room-bedType" name="bedType" defaultValue="king" required>
-                    {Object.entries(bedLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-
-              <Field id="room-view" name="view" label="View">
-                <Select id="room-view" name="view" defaultValue="sea" required className="sm:w-56">
-                  {Object.entries(viewLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <div role="group" aria-labelledby="room-media-heading">
-                <h3 id="room-media-heading" className="text-sm font-medium">
-                  Photo
-                </h3>
-                <div className="mt-2">
-                  <MediaListEditor name="media" initial={[]} assets={assets} />
-                </div>
-              </div>
-            </div>
-          </ContentForm>
-        </div>
+            <input type="hidden" name="slug" value={kebabSuggestion(name)} />
+            <input type="hidden" name="description" value={template.description} />
+            <input type="hidden" name="areaM2" value={template.areaM2} />
+            <input type="hidden" name="floor" value={template.floor} />
+            <input type="hidden" name="capacity" value={template.capacity} />
+            <input type="hidden" name="bedType" value={template.bedType} />
+            <input type="hidden" name="view" value={template.view} />
+            <input type="hidden" name="amenities" value={JSON.stringify(template.amenities)} />
+            <input type="hidden" name="media" value={JSON.stringify(media)} />
+          </div>
+        </ContentForm>
       </Modal>
     </>
+  );
+}
+
+/** The page address is derived from the name, so a clash with an existing one is reported here. */
+function SlugError() {
+  const error = useFieldError('slug');
+  if (!error?.trim()) return null;
+  return (
+    <p role="alert" className="-mt-3 text-xs font-medium text-danger">
+      {error === 'That page address is already in use.' ? 'A room type with this name already exists.' : error}
+    </p>
   );
 }

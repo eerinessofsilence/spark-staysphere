@@ -8,7 +8,7 @@ the order to read everything else in.
 | [ONBOARDING.md](ONBOARDING.md) | It's your first day on this codebase. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | You need the mental model, or you're hunting for where a piece of logic lives. |
 | [HOWTO.md](HOWTO.md) | You're about to add a room type, a route, a rule, an admin screen, or an API route, and want the pattern this codebase already uses. |
-| [GLOSSARY.md](GLOSSARY.md) | A term in a comment or a variable name is unfamiliar (tape chart, stay bucket, seed vs. overlay, hold, …). |
+| [GLOSSARY.md](GLOSSARY.md) | A term in a comment or a variable name is unfamiliar (front desk, stay bucket, seed vs. overlay, hold, …). |
 | [TESTING.md](TESTING.md) | You're deciding unit vs. e2e, or the e2e suite is behaving strangely. |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Something is broken in a way that feels like it's happened before. |
 | [decisions/](decisions/) | You're wondering *why* something was built the way it was, not just how it works. |

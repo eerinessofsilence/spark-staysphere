@@ -7,7 +7,7 @@ import type {
   RoomStatus,
 } from '../domain/schemas';
 import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
-import { demoAddOns, demoHotel, demoPhysicalRooms, demoRates, demoRooms } from './mock-data';
+import { demoAddOns, demoHotels, demoPhysicalRooms, demoRates, demoRooms } from './mock-data';
 
 /**
  * Process-local in-memory demo state. This is the fallback used whenever no
@@ -49,7 +49,7 @@ export function mockAvailability(roomTypeId: string, units: number, from: string
 
 export const mockHotelRepository: HotelRepository = {
   async getHotel(slug) {
-    return slug === demoHotel.slug ? demoHotel : null;
+    return demoHotels.find((hotel) => hotel.slug === slug) ?? null;
   },
   async listRooms(hotelId) {
     return demoRooms.filter((room) => room.hotelId === hotelId);
@@ -61,7 +61,7 @@ export const mockHotelRepository: HotelRepository = {
     return demoRates.filter((rate) => rate.roomTypeId === roomTypeId);
   },
   async listAddOns(hotelId) {
-    if (hotelId !== demoHotel.id) return [];
+    if (!demoHotels.some((hotel) => hotel.id === hotelId)) return [];
     return demoAddOns.map((addOn) => ({ ...addOn }));
   },
   async getAvailability(roomTypeId, from, to) {

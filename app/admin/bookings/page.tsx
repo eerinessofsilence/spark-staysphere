@@ -2,12 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarBlank, MagnifyingGlass, PushPin } from '@phosphor-icons/react/dist/ssr';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import {
-  catalogService,
-  DEMO_HOTEL_SLUG,
-  hotelRepository,
-  inventoryService,
-} from '@/lib/application/container';
+import { catalogService, hotelRepository, inventoryService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
@@ -83,10 +79,11 @@ export default async function BookingsPage({
   const range = parseRange(params.from, params.to);
   const today = toIsoDate(new Date());
 
-  const [hotel, bookings] = await Promise.all([
-    catalogService.getHotel(DEMO_HOTEL_SLUG),
+  const [hotel, allBookings] = await Promise.all([
+    catalogService.getHotel(await getSelectedHotelSlug()),
     hotelRepository.listBookings(),
   ]);
+  const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
   const rooms = await hotelRepository.listRooms(hotel.id);
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
 

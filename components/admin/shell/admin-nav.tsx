@@ -4,7 +4,6 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ArrowTopRightOnSquareIcon,
   BanknotesIcon,
   Bars3Icon,
   BuildingOffice2Icon,
@@ -14,13 +13,22 @@ import {
   DocumentTextIcon,
   HomeIcon,
   MagnifyingGlassIcon,
+  PuzzlePieceIcon,
   ShoppingBagIcon,
   TableCellsIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
+import { setSelectedHotelAction } from '@/app/admin/actions';
 import { Modal } from '@/components/site/modal';
+import { toast } from './toast';
 import { fieldClass, iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+
+export interface HotelOption {
+  slug: string;
+  name: string;
+  location: string;
+}
 
 interface NavItem {
   href: string;
@@ -33,17 +41,18 @@ const groups: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { href: '/admin', label: 'Dashboard', icon: HomeIcon },
-      { href: '/admin/tape-chart', label: 'Tape chart', icon: TableCellsIcon },
+      { href: '/admin/front-desk', label: 'Front Desk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'Reservations', icon: CalendarDaysIcon },
+      { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/rates', label: 'Room Rates', icon: TagIcon },
       { href: '/admin/accounting', label: 'Accounting', icon: BanknotesIcon },
+      { href: '/admin/channel-manager', label: 'Channel Manager', icon: PuzzlePieceIcon },
     ],
   },
   {
     heading: 'Content',
     items: [
       { href: '/admin/content', label: 'Rooms', icon: DocumentTextIcon },
-      { href: '/admin/content/add-ons', label: 'Services', icon: ShoppingBagIcon },
       { href: '/admin/content/hotel', label: 'Hotel Settings', icon: BuildingOffice2Icon },
     ],
   },
@@ -101,55 +110,53 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function ViewSiteLink() {
-  return (
-    <a
-      href="/"
-      target="_blank"
-      rel="noreferrer"
-      className={cn(itemClass, 'text-muted-foreground hover:bg-stone hover:text-foreground')}
-    >
-      <ArrowTopRightOnSquareIcon className="size-5 shrink-0" aria-hidden="true" />
-      View guest site
-    </a>
-  );
-}
-
 export function AdminBrand() {
   return (
     <Link href="/admin" className="flex min-h-11 items-center gap-2 rounded-full px-2">
       <img src="/brand/staysphere-logo-on-light.svg" alt="StaySphere" className="h-6 w-auto dark:hidden" />
       <img src="/brand/staysphere-logo.svg" alt="" aria-hidden="true" className="hidden h-6 w-auto dark:block" />
-      <span className="hidden text-sm font-medium text-muted-foreground lg:inline">Admin</span>
     </Link>
   );
 }
 
-export function PropertyCard({ hotelName, location }: { hotelName: string; location: string }) {
+export function PropertyCard({
+  hotelName,
+  location,
+  hotels,
+  selectedSlug,
+}: {
+  hotelName: string;
+  location: string;
+  hotels: HotelOption[];
+  selectedSlug: string;
+}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
-  // The demo backend only ever serves one property. The rest are display-only
-  // rows so the switcher reads like a real portfolio picker — wiring an
-  // actual switch in means listing real hotels here once the backend can.
-  const properties = [
-    { name: hotelName, location, active: true },
-    { name: 'Marlow House', location: 'Lisbon, Portugal', active: false },
-    { name: 'Nordkapp Fjord Lodge', location: 'Tromsø, Norway', active: false },
-    { name: 'Villa Serrano', location: 'Palma de Mallorca, Spain', active: false },
-    { name: 'The Locke & Vine', location: 'Austin, United States', active: false },
-    { name: 'Kiri Bay Retreat', location: 'Queenstown, New Zealand', active: false },
-  ];
+  const [pending, startTransition] = React.useTransition();
   const close = React.useCallback(() => setOpen(false), []);
-  const matches = properties.filter((property) =>
-    property.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const matches = hotels.filter((hotel) => hotel.name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  function switchTo(slug: string) {
+    if (slug === selectedSlug) {
+      close();
+      return;
+    }
+    startTransition(async () => {
+      // The action's own revalidatePath calls refresh whatever admin page is
+      // already open — an explicit router.refresh() here raced it and left
+      // the sidebar showing the previous hotel.
+      await setSelectedHotelAction(slug);
+      close();
+      toast.success(`Switched to ${hotels.find((hotel) => hotel.slug === slug)?.name ?? 'that property'}.`);
+    });
+  }
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-2xl bg-stone/60 px-3 py-2.5 text-left transition-colors hover:bg-stone"
+        className="flex w-full items-center gap-2 rounded-xl bg-stone/60 px-4 py-3 text-left transition-colors hover:bg-stone"
       >
         <span className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{hotelName}</p>
@@ -180,18 +187,19 @@ export function PropertyCard({ hotelName, location }: { hotelName: string; locat
               No hotels found.
             </li>
           ) : (
-            matches.map((property) => (
-              <li key={property.name}>
+            matches.map((hotel) => (
+              <li key={hotel.slug}>
                 <button
                   type="button"
-                  onClick={close}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-stone"
+                  disabled={pending}
+                  onClick={() => switchTo(hotel.slug)}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-stone disabled:opacity-60"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{property.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{property.location}</span>
+                    <span className="block truncate text-sm font-medium">{hotel.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{hotel.location}</span>
                   </span>
-                  {property.active ? (
+                  {hotel.slug === selectedSlug ? (
                     <CheckIcon className="size-4 shrink-0 text-foreground" aria-hidden="true" />
                   ) : null}
                 </button>
@@ -225,7 +233,17 @@ export function DemoAccount({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminMobileMenu({ hotelName, location }: { hotelName: string; location: string }) {
+export function AdminMobileMenu({
+  hotelName,
+  location,
+  hotels,
+  selectedSlug,
+}: {
+  hotelName: string;
+  location: string;
+  hotels: HotelOption[];
+  selectedSlug: string;
+}) {
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
 
@@ -240,12 +258,11 @@ export function AdminMobileMenu({ hotelName, location }: { hotelName: string; lo
         <Bars3Icon className="size-5" aria-hidden="true" />
       </button>
       <Modal open={open} onClose={close} title="Admin menu">
-        <PropertyCard hotelName={hotelName} location={location} />
+        <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
         <div className="mt-4">
           <AdminNav onNavigate={close} />
         </div>
         <div className="mt-4 grid gap-1 border-t border-border pt-3">
-          <ViewSiteLink />
           <DemoAccount onNavigate={close} />
         </div>
       </Modal>

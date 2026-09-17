@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom';
 import { DayPicker, type DayButton, type Modifiers } from 'react-day-picker';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { addDays, differenceInCalendarDays, format, isAfter, parseISO } from 'date-fns';
-import { formatDateShort, formatNights } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
+import { formatDateShort } from '@/lib/formatting';
 import { fieldClass, iconButton, pill } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { cn } from '@/lib/utils';
@@ -121,6 +123,8 @@ export function StayDatesField({
   size = 'default',
   error,
 }: StayDatesFieldProps) {
+  const { locale } = useLocale();
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   // This panel cannot be a `Modal` — it is anchored under the field it belongs
   // to rather than centred — but it is still an overlay and arrives like one.
@@ -245,15 +249,15 @@ export function StayDatesField({
   const nights = draft.from && draft.to ? differenceInCalendarDays(draft.to, draft.from) : 0;
   const rangeSummary =
     draft.from && draft.to
-      ? `${formatDateShort(format(draft.from, ISO_FORMAT))} → ${formatDateShort(format(draft.to, ISO_FORMAT))}`
+      ? `${lDateShort(format(draft.from, ISO_FORMAT), locale)} → ${lDateShort(format(draft.to, ISO_FORMAT), locale)}`
       : null;
-  const prompt = draft.from ? 'Pick your check-out date.' : 'Pick your check-in date.';
+  const prompt = draft.from ? t('search.pickCheckOut') : t('search.pickCheckIn');
 
   const panel = (
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Choose your dates"
+      aria-label={t('search.chooseYourDates')}
       className={cn(
         'z-50 rounded-[18px] border border-border bg-card p-4 shadow-soft-lg sm:p-5',
         // Mobile: a sheet pinned to the bottom of the viewport.
@@ -303,6 +307,7 @@ export function StayDatesField({
         }}
         classNames={CALENDAR_CLASS_NAMES}
         components={CALENDAR_COMPONENTS}
+        locale={DATE_FNS_LOCALES[locale]}
       />
 
       <div className="mt-4 border-t border-border pt-4">
@@ -313,7 +318,7 @@ export function StayDatesField({
           {rangeSummary ? (
             <>
               <p className="text-display text-xl sm:text-2xl">{rangeSummary}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{formatNights(nights)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{lNights(nights, locale)}</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">{prompt}</p>
@@ -322,10 +327,10 @@ export function StayDatesField({
 
         <div className="mt-4 flex justify-center gap-2">
           <button type="button" onClick={clear} className={pill('ghost', 'min-h-10 px-4')}>
-            Clear dates
+            {t('search.clearDates')}
           </button>
           <button type="button" onClick={close} className={pill('primary', 'min-h-10 px-5')}>
-            Done
+            {t('search.done')}
           </button>
         </div>
       </div>
@@ -335,7 +340,7 @@ export function StayDatesField({
   const trigger = (field: DateField, label: string, value: string) => {
     const active = open && editing === field;
     const ref = field === 'checkIn' ? checkInRef : checkOutRef;
-    const display = formatDateShort(value);
+    const display = lDateShort(value, locale);
 
     if (variant === 'stacked') {
       return (
@@ -347,7 +352,7 @@ export function StayDatesField({
             onClick={() => openFor(field)}
             aria-haspopup="dialog"
             aria-expanded={open}
-            aria-label={`${label}, ${display}. Choose your dates.`}
+            aria-label={`${label}, ${display}. ${t('search.chooseYourDates')}.`}
             className={cn(
               fieldClass,
               'flex cursor-pointer items-center justify-between gap-2 text-left',
@@ -375,7 +380,7 @@ export function StayDatesField({
           onClick={() => openFor(field)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`${label}, ${display}. Choose your dates.`}
+          aria-label={`${label}, ${display}. ${t('search.chooseYourDates')}.`}
           className={cn(
             'flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-stone/60',
             active && 'bg-stone/60',
@@ -394,7 +399,7 @@ export function StayDatesField({
         onClick={() => openFor(field)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`${label}, ${display}. Choose your dates.`}
+        aria-label={`${label}, ${display}. ${t('search.chooseYourDates')}.`}
         className={cn(
           'flex min-h-14 cursor-pointer flex-col justify-center px-4 py-2 text-left transition-colors',
           // Square, always. A rounded field meeting a hairline draws the line
@@ -419,8 +424,8 @@ export function StayDatesField({
 
   return (
     <>
-      {trigger('checkIn', 'Check-in', checkIn)}
-      {trigger('checkOut', 'Check-out', checkOut)}
+      {trigger('checkIn', t('search.checkIn'), checkIn)}
+      {trigger('checkOut', t('search.checkOut'), checkOut)}
       {rendered
         ? // On the body, not in place: the header's frosted pill has a backdrop
           // filter, which would make it the containing block for these.

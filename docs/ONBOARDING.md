@@ -73,7 +73,7 @@ step 4, that's the one function to change — not the route, not the component.
 
 1. **ARCHITECTURE.md** — the four layers, the four rules, and a "where does X live" table for
    when you're hunting for a specific piece.
-2. **GLOSSARY.md** — skim it once so the domain terms (tape chart, seed vs. overlay, stay bucket,
+2. **GLOSSARY.md** — skim it once so the domain terms (front desk, seed vs. overlay, stay bucket,
    hold…) aren't new the first time you hit one in a comment.
 3. **HOWTO.md** — recipes for the tasks you'll actually do first: add a room type, add a photo,
    add a route, add a rule with a test.

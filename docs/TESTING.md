@@ -37,7 +37,7 @@ testable without real wall-clock time.
 
 ```
 e2e/assistant.spec.ts    — the AI room finder
-e2e/cabinet.spec.ts      — floor plan, tape chart, the bookings desk (serial)
+e2e/cabinet.spec.ts      — floor plan, front desk, the bookings desk (serial)
 e2e/cms.spec.ts          — /admin/content (serial)
 e2e/golden-path.spec.ts  — the guest journey end to end, 1440px and 390px
 e2e/inventory.spec.ts    — booking an exact room over the API

@@ -1,26 +1,20 @@
 import type { FloorPlanStatus, FloorPlanUnit } from '@/lib/application/inventory-service';
-import type { RoomCategory } from '@/lib/domain/room-attributes';
+import type { TranslationKey } from '@/lib/i18n/dictionaries';
 
-/** Fits a 44px cell under the room number; the full word is in the cell's label. */
-export const categoryShort: Record<RoomCategory, string> = {
-  room: 'Room',
-  studio: 'Studio',
-  suite: 'Suite',
-  loft: 'Loft',
-  residence: 'Res.',
-  penthouse: 'Penth.',
-};
-
-export function unitStatusWords(unit: FloorPlanUnit, guests: number): string {
+export function unitStatusWords(
+  unit: FloorPlanUnit,
+  guests: number,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string,
+): string {
   switch (unit.status) {
     case 'available':
-      return 'Free for your dates';
+      return t('rooms.freeForYourDates');
     case 'booked':
-      return 'Booked on at least one of your nights';
+      return t('rooms.bookedOnAtLeastOneNight');
     case 'unsuitable':
-      return `Sleeps up to ${unit.capacity}, not enough for ${guests}`;
+      return t('rooms.notEnoughForGuests', { capacity: String(unit.capacity), guests: String(guests) });
     case 'filtered':
-      return 'Hidden by your filters';
+      return t('rooms.hiddenByYourFilters');
   }
 }
 

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowUpRightIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n/context';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ interface ScrollArrowsProps {
  * pages a `gap-3` grid-turned-rail and a `gap-4` strip correctly.
  */
 export function ScrollArrows({ targetId, className }: ScrollArrowsProps) {
+  const t = useT();
   const [atStart, setAtStart] = React.useState(true);
   const [atEnd, setAtEnd] = React.useState(false);
 
@@ -65,7 +67,7 @@ export function ScrollArrows({ targetId, className }: ScrollArrowsProps) {
         type="button"
         onClick={() => page(-1)}
         disabled={atStart}
-        aria-label="Scroll to previous rooms"
+        aria-label={t('rooms.scrollPrevious')}
         className={cn(iconButton('light'), 'disabled:opacity-40')}
       >
         <ChevronLeftIcon className="size-4" aria-hidden="true" />
@@ -74,7 +76,7 @@ export function ScrollArrows({ targetId, className }: ScrollArrowsProps) {
         type="button"
         onClick={() => page(1)}
         disabled={atEnd}
-        aria-label="Scroll to more rooms"
+        aria-label={t('rooms.scrollNext')}
         className={cn(iconButton('light'), 'disabled:opacity-40')}
       >
         <ChevronRightIcon className="size-4" aria-hidden="true" />
@@ -100,11 +102,12 @@ interface RoomStripControlsProps {
  * beside the heading, it shrinks back to a compact group at that edge.
  */
 export function RoomStripControls({ targetId, href, className }: RoomStripControlsProps) {
+  const t = useT();
   return (
     <div className={cn('flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start', className)}>
       <ScrollArrows targetId={targetId} />
       <Link href={href} className={pill('secondary')}>
-        View all rooms
+        {t('home.viewAllRooms')}
         <ArrowUpRightIcon className="size-4" aria-hidden="true" />
       </Link>
     </div>

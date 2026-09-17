@@ -4,6 +4,7 @@ import type { AddOn, Hotel, PhysicalRoom, RatePlan, RoomType } from '../domain/s
 import { getDemoDatabase } from './cloudflare-env';
 import * as d1 from './d1-hotel-repository';
 import { durableCatalogContentPort } from './durable-catalog-content';
+import { demoHotel, demoRooms } from './mock-data';
 import { mockAvailability, mockDemoControlPort, mockHotelRepository } from './mock-hotel-repository';
 
 /**
@@ -19,6 +20,20 @@ import { mockAvailability, mockDemoControlPort, mockHotelRepository } from './mo
  * see `lib/domain/catalog-overlay.ts`. Nothing else in this file's booking
  * state is affected: only what `/admin/content` can edit is overlaid.
  */
+
+/**
+ * Which hotel a room type belongs to, from the static seed alone — no D1
+ * round trip. A room type the CMS created isn't in that seed; the CMS only
+ * ever writes against the default hotel (content-service.ts's one bound
+ * `hotelSlug`), so that's the correct fallback, not a guess. Querying every
+ * seed hotel's overlay on every rate/availability lookup used to do exactly
+ * that instead, and multiplied this file's D1 calls by the hotel count —
+ * enough on a 23-room-type hotel to trip a Worker's resource limit.
+ */
+function ownerHotelId(roomTypeId: string): string {
+  return demoRooms.find((room) => room.id === roomTypeId)?.hotelId ?? demoHotel.id;
+}
+
 export const durableHotelRepository: HotelRepository = {
   async getHotel(slug) {
     const seed = await mockHotelRepository.getHotel(slug);
@@ -50,16 +65,14 @@ export const durableHotelRepository: HotelRepository = {
 
   async listRatePlans(roomTypeId) {
     const seed = await mockHotelRepository.listRatePlans(roomTypeId);
-    // Rate overlay rows are keyed to the one demo hotel, then narrowed to
-    // this room type — there is no per-room-type overlay listing, and one
-    // hotel is all v1 supports (see CLAUDE.md's roadmap).
-    const hotel = await mockHotelRepository.getHotel('asteria-cove');
-    const overlay = hotel
-      ? ((await durableCatalogContentPort.listEntries(
-          'rate',
-          hotel.id,
-        )) as CatalogEntryRecord<RatePlan>[])
-      : [];
+    // Rate overlay rows are keyed to a hotel, then narrowed to this room
+    // type — there is no per-room-type overlay listing, so the room type's
+    // own hotel picks out the right bucket and its own id picks out the
+    // right rows within it.
+    const overlay = (await durableCatalogContentPort.listEntries(
+      'rate',
+      ownerHotelId(roomTypeId),
+    )) as CatalogEntryRecord<RatePlan>[];
     const relevant = overlay.filter((entry) => entry.data.roomTypeId === roomTypeId);
     return mergeCatalog(seed, relevant);
   },
@@ -74,10 +87,10 @@ export const durableHotelRepository: HotelRepository = {
   },
 
   async getAvailability(roomTypeId, from, to) {
-    // Rooms are keyed to the one demo hotel, like rates above. Counting the
-    // merged list is what keeps the CMS's rooms and the rooms on sale equal.
-    const hotel = await mockHotelRepository.getHotel('asteria-cove');
-    const rooms = hotel ? await durableHotelRepository.listPhysicalRooms(hotel.id) : [];
+    // Rooms are keyed to a hotel, like rates above. Counting the merged list
+    // for that one hotel is what keeps the CMS's rooms and the rooms on
+    // sale equal.
+    const rooms = await durableHotelRepository.listPhysicalRooms(ownerHotelId(roomTypeId));
     const units = rooms.filter((room) => room.roomTypeId === roomTypeId).length;
     const db = getDemoDatabase();
     return db

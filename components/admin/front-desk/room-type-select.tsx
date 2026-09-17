@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation';
 import { fieldClass } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { tapeChartHref } from './tape-chart-shared';
+import { frontDeskHref } from './front-desk-shared';
 
 interface RoomTypeSelectProps {
   options: { id: string; name: string }[];
   value: string | null;
   from: string;
   days: number;
+  id?: string;
+  className?: string;
 }
 
-export function RoomTypeSelect({ options, value, from, days }: RoomTypeSelectProps) {
+export function RoomTypeSelect({ options, value, from, days, id = 'front-desk-room-type', className }: RoomTypeSelectProps) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const items = [
@@ -23,8 +25,8 @@ export function RoomTypeSelect({ options, value, from, days }: RoomTypeSelectPro
   ];
 
   return (
-    <div className="w-full sm:w-64">
-      <label htmlFor="tape-chart-room-type" className="sr-only">
+    <div className={cn('w-full sm:w-64', className)}>
+      <label htmlFor={id} className="sr-only">
         Room type
       </label>
       <Select
@@ -33,10 +35,10 @@ export function RoomTypeSelect({ options, value, from, days }: RoomTypeSelectPro
         disabled={pending}
         onValueChange={(next) => {
           const type = next || null;
-          startTransition(() => router.replace(tapeChartHref({ from, days, type }), { scroll: false }));
+          startTransition(() => router.replace(frontDeskHref({ from, days, type }), { scroll: false }));
         }}
       >
-        <SelectTrigger id="tape-chart-room-type" className={cn(fieldClass, 'justify-between gap-2 py-0 disabled:opacity-60')}>
+        <SelectTrigger id={id} className={cn(fieldClass, 'justify-between gap-2 py-0 disabled:opacity-60')}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">

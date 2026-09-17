@@ -1,13 +1,17 @@
+'use client';
+
+import { useT } from '@/lib/i18n/context';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RoomDetailLoading() {
+  const t = useT();
   return (
     <div
       role="status"
       aria-live="polite"
       className="container-page py-8 lg:py-12"
     >
-      <span className="sr-only">Loading this room…</span>
+      <span className="sr-only">{t('room.loadingThisRoom')}</span>
       <Skeleton className="h-4 w-28" />
       <div className="mt-6 grid gap-8 lg:grid-cols-sidebar lg:gap-10">
         <div>

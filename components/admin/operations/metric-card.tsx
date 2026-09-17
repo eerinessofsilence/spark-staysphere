@@ -19,13 +19,14 @@ export function Metric({
   chart?: ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
+    <div className="flex min-w-0 flex-col rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
       <dt className="text-sm font-medium">{label}</dt>
       <dd className="mt-3">
         <span className="text-display block text-2xl tabular-nums sm:text-4xl">{value}</span>
         <span className="mt-1.5 block text-sm text-muted-foreground">{detail}</span>
       </dd>
-      {chart}
+      {/* Pinned to the bottom so marks line up across a row of cards whose copy wraps differently. */}
+      {chart ? <div className="mt-auto">{chart}</div> : null}
     </div>
   );
 }

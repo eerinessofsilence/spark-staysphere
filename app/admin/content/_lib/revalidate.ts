@@ -13,7 +13,7 @@ export function revalidateContent(): void {
   revalidatePath('/book/[slug]', 'page');
   revalidatePath('/admin');
   revalidatePath('/admin/rates');
-  revalidatePath('/admin/tape-chart');
+  revalidatePath('/admin/front-desk');
   revalidatePath('/admin/content');
   revalidatePath('/admin/content/hotel');
   revalidatePath('/admin/content/units');

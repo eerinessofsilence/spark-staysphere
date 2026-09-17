@@ -223,7 +223,7 @@ test('no route overflows the phone viewport', async ({ page, request }, testInfo
     `/book/deluxe-sea?${stayQuery}`,
     `/booking/${reference}`,
     '/admin',
-    '/admin/tape-chart',
+    '/admin/front-desk',
     '/admin/bookings',
     `/admin/bookings/${reference}`,
     '/admin/rates',

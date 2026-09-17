@@ -4,6 +4,7 @@ import * as React from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addSampleBookings } from '@/app/admin/actions';
 import { pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 
 /**
  * Fills an empty demo with a dozen believable stays (see
@@ -13,7 +14,6 @@ import { pill } from '@/lib/ui';
  */
 export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'primary' | 'secondary' }) {
   const [pending, startTransition] = React.useTransition();
-  const [message, setMessage] = React.useState('');
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -23,7 +23,8 @@ export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'pri
         onClick={() =>
           startTransition(async () => {
             const { created } = await addSampleBookings();
-            setMessage(created === 0 ? 'Nothing added — the sample stays are already in, or their rooms are full.' : '');
+            if (created > 0) toast.success(`${created} sample ${created === 1 ? 'booking' : 'bookings'} added.`);
+            else toast.error('Nothing added — the sample stays are already in, or their rooms are full.');
           })
         }
         className={pill(variant)}
@@ -31,9 +32,6 @@ export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'pri
         {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
         {pending ? 'Adding sample bookings…' : 'Add sample bookings'}
       </button>
-      <p role="status" aria-live="polite" className="max-w-xs text-xs text-muted-foreground">
-        {message}
-      </p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
+import { LocaleProvider } from '@/lib/i18n/context';
 import { THEME_BOOTSTRAP } from '@/lib/theme';
 import './globals.css';
 
@@ -46,7 +47,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className={`${body.variable} ${accent.variable} bg-background text-foreground antialiased`}>
-        {children}
+        <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>
   );

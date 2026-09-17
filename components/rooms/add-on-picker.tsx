@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { AddOn } from '@/lib/domain/schemas';
-import { formatMoney } from '@/lib/formatting';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lMoney, lNights } from '@/lib/i18n/format';
 import { AddOnCatalog } from './add-on-catalog';
 import { useRoomPricing } from './room-pricing';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ interface AddOnPickerProps {
 }
 
 export function AddOnPicker({ addOns }: AddOnPickerProps) {
+  const t = useT();
   // Selection and repricing belong to the page, not to this list: the two
   // pickers and the summary all sell into the same quote.
   const { selected, repricing: isPending, setAddOns: change } = useRoomPricing();
@@ -21,7 +23,7 @@ export function AddOnPicker({ addOns }: AddOnPickerProps) {
   if (enabled.length === 0) {
     return (
       <p className="rounded-3xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-        Nothing is on sale for this stay right now.
+        {t('room.noServicesOnSale')}
       </p>
     );
   }
@@ -32,7 +34,7 @@ export function AddOnPicker({ addOns }: AddOnPickerProps) {
       {isPending ? (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
-          Repricing your stay…
+          {t('room.repricingYourStay')}
         </p>
       ) : null}
     </div>
@@ -45,6 +47,8 @@ export function AddOnPicker({ addOns }: AddOnPickerProps) {
  * the card they bought something from.
  */
 export function QuoteLines() {
+  const t = useT();
+  const { locale } = useLocale();
   const { quote, selected, repricing: isPending, setAddOns } = useRoomPricing();
   const { price } = quote;
 
@@ -59,21 +63,21 @@ export function QuoteLines() {
   return (
     <dl className={cn('grid gap-2 text-sm', isPending && 'opacity-60')} aria-busy={isPending}>
       <BillRow
-        label={`${formatMoney(price.nightlyPrice, price.currency)} × ${price.nights} ${price.nights === 1 ? 'night' : 'nights'}`}
-        value={formatMoney(price.roomTotal, price.currency)}
+        label={`${lMoney(price.nightlyPrice, price.currency, locale)} × ${lNights(price.nights, locale)}`}
+        value={lMoney(price.roomTotal, price.currency, locale)}
       />
       {price.addOnLines.map((line) => (
         <BillRow
           key={line.addOnId}
           label={`${line.name}${line.quantity > 1 ? ` × ${line.quantity}` : ''}`}
-          value={formatMoney(line.total, price.currency)}
+          value={lMoney(line.total, price.currency, locale)}
           // An extra reads as belonging to the thing above it, not as its own order.
           indented={Boolean(line.parentId)}
           onRemove={() => remove(line.addOnId)}
-          removeLabel={`Remove ${line.name}`}
+          removeLabel={t('room.remove', { name: line.name })}
         />
       ))}
-      <BillRow label="Taxes and city fees" value={formatMoney(price.taxesAndFees, price.currency)} />
+      <BillRow label={t('room.taxesAndFees')} value={lMoney(price.taxesAndFees, price.currency, locale)} />
     </dl>
   );
 }

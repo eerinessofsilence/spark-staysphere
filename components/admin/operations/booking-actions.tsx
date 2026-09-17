@@ -6,6 +6,7 @@ import { ArrowPathIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/ou
 import { cancelBookingAction } from '@/app/admin/bookings/actions';
 import { Modal } from '@/components/site/modal';
 import { pill } from '@/lib/ui';
+import { toast } from '@/components/admin/shell/toast';
 
 export function BookingActions({
   reference,
@@ -19,13 +20,13 @@ export function BookingActions({
   const router = useRouter();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
-  const [message, setMessage] = React.useState('');
   const close = React.useCallback(() => setConfirming(false), []);
 
   const cancel = async () => {
     setPending(true);
     const result = await cancelBookingAction(reference);
-    setMessage(result.message);
+    if (result.ok) toast.success(result.message);
+    else toast.error(result.message);
     setPending(false);
     setConfirming(false);
     router.refresh();
@@ -45,9 +46,6 @@ export function BookingActions({
         </a>
       </div>
       {note ? <p className="text-sm text-muted-foreground">{note}</p> : null}
-      <p role="status" aria-live="polite" className="text-sm font-medium">
-        {message}
-      </p>
 
       <Modal open={confirming} onClose={close} title="Cancel booking">
         <p className="text-sm">

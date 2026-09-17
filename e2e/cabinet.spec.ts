@@ -80,31 +80,46 @@ async function bookFreeDeluxeRoom(request: APIRequestContext, project: string) {
 
 test.describe.configure({ mode: 'serial' });
 
-test('the tape chart lays out every room and filters by room type', async ({ page }) => {
-  await page.goto('/admin/tape-chart');
-  await expect(page.getByRole('heading', { level: 1, name: 'Tape chart' })).toBeVisible();
+test('the front desk lays out every room and filters by room type', async ({ page }) => {
+  await page.goto('/admin/front-desk');
+  await expect(page.getByRole('heading', { level: 1, name: 'Front Desk' })).toBeVisible();
 
   const rows = page.getByRole('group', { name: roomLabel });
   await expect(rows.first()).toBeVisible();
   const total = await rows.count();
   expect(total).toBeGreaterThan(8);
 
-  await page.goto('/admin/tape-chart?type=room_deluxe-sea');
+  await page.goto('/admin/front-desk?type=room_deluxe-sea');
   await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(8);
 
-  // Nonsense parameters fall back to today, 14 nights and every room type.
-  await page.goto('/admin/tape-chart?from=garbage&days=5&type=nope');
+  // Nonsense parameters fall back to today, 14 nights and every room type. Any whole number of
+  // nights up to 90 is a valid custom range, so the fallback needs one past that.
+  await page.goto('/admin/front-desk?from=garbage&days=500&type=nope');
+  // On a phone the nights toggle lives in the filter sheet.
+  const filters = page.getByRole('button', { name: /^Filters/ });
+  if (await filters.isVisible()) {
+    await actUntil(
+      () => filters.click(),
+      () => expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible({ timeout: 3_000 }),
+    );
+  }
   await expect(page.getByRole('link', { name: '14 nights', exact: true })).toHaveAttribute(
     'aria-current',
     'true',
   );
+  // The sheet's own "Room type" group would otherwise match the room-row pattern too.
+  const sheet = page.getByRole('dialog', { name: 'Filters' });
+  if (await sheet.isVisible()) {
+    await sheet.getByRole('button', { name: 'Done' }).click();
+    await expect(sheet).toBeHidden();
+  }
   await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(total);
 });
 
-test('a room the guest chose shows on that room in the tape chart', async ({ page, request }, testInfo) => {
+test('a room the guest chose shows on that room in the front desk', async ({ page, request }, testInfo) => {
   const { reference, room, stay } = await bookFreeDeluxeRoom(request, testInfo.project.name);
 
-  await page.goto(`/admin/tape-chart?from=${stay.checkIn}&type=room_deluxe-sea`);
+  await page.goto(`/admin/front-desk?from=${stay.checkIn}&type=room_deluxe-sea`);
   const bar = page
     .getByRole('group', { name: `Room ${room}` })
     .getByRole('button', { name: new RegExp(`^Booking ${reference},.*room chosen by guest$`) });
@@ -115,12 +130,8 @@ test('a room the guest chose shows on that room in the tape chart', async ({ pag
     () => bar.click(),
     () => expect(dialog).toBeVisible({ timeout: 3_000 }),
   );
-  await expect(dialog.getByText(`Room ${room}`)).toBeVisible();
-  await expect(dialog.getByText('Chosen by the guest on the floor plan')).toBeVisible();
-  await expect(dialog.getByRole('link', { name: 'Open booking' })).toHaveAttribute(
-    'href',
-    `/admin/bookings/${reference}`,
-  );
+  await expect(dialog.getByText(`Room ${room}`, { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Room rate', { exact: true })).toBeVisible();
 });
 
 test('a guest picks a room on the floor plan, books it, and the back office sees that room', async ({
@@ -163,7 +174,7 @@ test('a guest picks a room on the floor plan, books it, and the back office sees
   await expect(page.getByText(`Room ${room}`)).toBeVisible();
   const reference = (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
 
-  await page.goto(`/admin/tape-chart?from=${checkIn}&type=room_${slug}`);
+  await page.goto(`/admin/front-desk?from=${checkIn}&type=room_${slug}`);
   await expect(
     page
       .getByRole('group', { name: `Room ${room}` })
@@ -200,7 +211,7 @@ test('the desk finds a booking, sees its room, and cancelling puts the room back
   await expect(page.getByText('Released', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
 
-  await page.goto(`/admin/tape-chart?from=${stay.checkIn}&type=room_deluxe-sea`);
+  await page.goto(`/admin/front-desk?from=${stay.checkIn}&type=room_deluxe-sea`);
   await expect(page.getByRole('group', { name: `Room ${room}` })).toBeVisible();
   await expect(page.getByRole('button', { name: new RegExp(`^Booking ${reference},`) })).toHaveCount(0);
 

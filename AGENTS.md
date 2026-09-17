@@ -53,18 +53,18 @@ CI (`.github/workflows/ci.yml`) runs all of these on every pull request.
   CMS's form shell (`ContentForm`, `Field`), the reorderable-list and media-picker editors, and the
   derived-value fields (`RoomNameField`, `AddOnNameField`) that surface
   `roomCategory`/`featureIcon`/`addOnIcon` live next to the field they're derived from;
-  `admin/tape-chart/` and `admin/operations/` — tables, status badges, the occupancy chart, the
+  `admin/front-desk/` and `admin/operations/` — tables, status badges, the occupancy chart, the
   rate form and booking actions).
 - `e2e/`: Playwright golden-path coverage, plus `cms.spec.ts` for `/admin/content`,
   `inventory.spec.ts` for booking an exact room over the API, and `cabinet.spec.ts` for the floor
-  plan, the tape chart and the bookings desk.
+  plan, the front desk and the bookings desk.
 - `lib/domain/`: Zod schemas, inferred types, and ports — including `CatalogContentPort` (the
   CMS's storage boundary), `MediaLibraryPort`, `catalog-overlay.ts`'s seed+overlay merge, and
   `media.ts`'s media-asset predicates, and `room-units.ts` — physical rooms derived from room types
   and `allocateRoomType`, the one rule for who is in which room each night.
 - `lib/application/`: use cases and business rules, including `content-service.ts` — every CMS
   business rule (slugs, references, currency, media, concurrency), never in a component or a
-  server action — and `inventory-service.ts`, the floor plan, the tape chart and a booking's room.
+  server action — and `inventory-service.ts`, the floor plan, the front desk and a booking's room.
 - `lib/application/container.ts`: the composition root — the only module allowed to import
   `lib/infrastructure`.
 - `lib/infrastructure/`: mock data and adapter/repository implementations, including the CMS

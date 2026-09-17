@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { CheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 
 interface StepRailProps {
@@ -28,6 +29,7 @@ interface StepRailProps {
  * view as it changes so the guest never has to find it.
  */
 export function StepRail({ steps, current, onSelect, className }: StepRailProps) {
+  const t = useT();
   const currentRef = React.useRef<HTMLLIElement>(null);
 
   React.useEffect(() => {
@@ -37,7 +39,7 @@ export function StepRail({ steps, current, onSelect, className }: StepRailProps)
   return (
     <nav aria-label="Booking steps" className={className}>
       <p className="text-sm text-muted-foreground">
-        Step {current + 1} of {steps.length}
+        {t('book.stepOf', { current: String(current + 1), total: String(steps.length) })}
       </p>
 
       <ol className="-mx-3 mt-2 flex items-center gap-1 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">

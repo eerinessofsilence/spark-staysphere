@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Sparkle } from '@phosphor-icons/react/dist/ssr';
+import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 import { AssistantPanel } from './assistant-panel';
 
@@ -23,6 +24,7 @@ interface AssistantLauncherProps {
  * descendants).
  */
 export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLauncherProps) {
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -37,7 +39,7 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Find a room by voice or description"
+        aria-label={t('assistant.ariaLabel')}
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(

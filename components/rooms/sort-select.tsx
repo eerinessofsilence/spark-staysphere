@@ -5,14 +5,8 @@ import { useRouter } from 'next/navigation';
 import type { RoomFilters, SortOrder } from '@/lib/application/catalog-service';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';
+import { useT } from '@/lib/i18n/context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const options: { value: SortOrder; label: string }[] = [
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'price_asc', label: 'Price: low to high' },
-  { value: 'price_desc', label: 'Price: high to low' },
-  { value: 'area_desc', label: 'Largest first' },
-];
 
 export function SortSelect({
   criteria,
@@ -24,13 +18,21 @@ export function SortSelect({
   /** Carried through so re-sorting does not throw the guest back to the grid. */
   layout?: CatalogLayout;
 }) {
+  const t = useT();
   const router = useRouter();
   const [, startTransition] = React.useTransition();
+
+  const options: { value: SortOrder; label: string }[] = [
+    { value: 'recommended', label: t('rooms.recommended') },
+    { value: 'price_asc', label: t('rooms.priceLowHigh') },
+    { value: 'price_desc', label: t('rooms.priceHighLow') },
+    { value: 'area_desc', label: t('rooms.largestFirst') },
+  ];
 
   return (
     <div className="flex items-center gap-2">
       <label htmlFor="room-sort" className="text-sm whitespace-nowrap text-muted-foreground">
-        Sort by
+        {t('rooms.sortBy')}
       </label>
       <Select
         items={options}

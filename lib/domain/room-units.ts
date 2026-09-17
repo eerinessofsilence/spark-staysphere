@@ -16,7 +16,7 @@ export function roomNumber(floor: number, position: number): string {
 
 /**
  * Room numbers in the order a hotel team reads them (G07 before 101, 2 before
- * 12), not alphabetically ('12' before '2'). Shared by the tape chart, the
+ * 12), not alphabetically ('12' before '2'). Shared by the front desk, the
  * floor plan, and the CMS's renumbering rules — see `inventory-service.ts`
  * and `content-service.ts`.
  */

@@ -38,6 +38,8 @@ interface RateFormProps {
   resetOnSuccess?: boolean;
   /** An existing rate's price is also on Rates & availability — say so, so the two never look like different numbers. */
   showRatesLink?: boolean;
+  /** For a rate form already sitting inside a `Modal` — see `ContentForm`'s own `bare`. */
+  bare?: boolean;
 }
 
 /** Shared by "add a rate" and "edit this rate" — the currency is fixed to the hotel's own and shown, not editable (see content-service.ts's currency rule). */
@@ -52,6 +54,7 @@ export function RateForm({
   versionKey,
   resetOnSuccess = false,
   showRatesLink = false,
+  bare = false,
 }: RateFormProps) {
   return (
     <ContentForm
@@ -61,6 +64,7 @@ export function RateForm({
       extraActions={extraActions}
       versionKey={versionKey}
       resetOnSuccess={resetOnSuccess}
+      bare={bare}
     >
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">

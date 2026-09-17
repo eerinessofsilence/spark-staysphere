@@ -1,5 +1,8 @@
+'use client';
+
 import { CheckCircle, WarningCircle, XCircle } from '@phosphor-icons/react/dist/ssr';
-import { statusText } from '@/lib/formatting';
+import { useLocale } from '@/lib/i18n/context';
+import { lStatusText } from '@/lib/i18n/format';
 import type { RoomStatus } from '@/lib/domain/schemas';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +30,7 @@ interface StatusBadgeProps {
 
 /** Icon plus wording carry the meaning; colour is reinforcement only. */
 export function StatusBadge({ status, remaining, onPhoto, className }: StatusBadgeProps) {
+  const { locale } = useLocale();
   const Icon = icons[status];
   return (
     <span
@@ -40,7 +44,7 @@ export function StatusBadge({ status, remaining, onPhoto, className }: StatusBad
       )}
     >
       <Icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
-      {statusText(status, remaining)}
+      {lStatusText(status, remaining, locale)}
     </span>
   );
 }

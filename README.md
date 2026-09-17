@@ -64,7 +64,7 @@ spec made; the CMS and golden-path specs reset demo state at the start of their 
 |---|---|
 | `/admin` | Overview: tonight's occupancy, 14-night chart, arrivals/departures, recent bookings, integration status |
 | `/admin/reset` | "Reset demo state" — not in the sidebar; for the demo owner and the e2e suite |
-| `/admin/tape-chart` | Rooms × nights, 7/14/30-night window, filter by room type |
+| `/admin/front-desk` | Rooms × nights, 7/14/30-night window, filter by room type |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search, stay-bucket filters, booking detail, desk cancel |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, availability override |
 | `/admin/content` and its editors | The CMS: room types, rates, add-ons, and the hotel's own copy — no deploy needed |
@@ -126,7 +126,7 @@ of this, including a guided trace of one booking through every layer.
 | `docs/ONBOARDING.md` | Day one: reading order, the mental model, a first change to make |
 | `docs/ARCHITECTURE.md` | The layers, the four rules, a "where does X live" table |
 | `docs/HOWTO.md` | Recipes: add a room type, a route, a rule with a test, an admin screen, an API route |
-| `docs/GLOSSARY.md` | Domain terms (tape chart, seed vs. overlay, stay bucket, hold, …) |
+| `docs/GLOSSARY.md` | Domain terms (front desk, seed vs. overlay, stay bucket, hold, …) |
 | `docs/TESTING.md` | Unit vs. e2e, and the e2e suite's shared-state quirks |
 | `docs/TROUBLESHOOTING.md` | Traps this codebase has already hit |
 | `TECH.md` | The deep technical reference — persistence, the CMS's concurrency model, the AI concierge, production integration, all with the *why* |

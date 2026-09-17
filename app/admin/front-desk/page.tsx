@@ -2,23 +2,27 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { contentService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { addIsoDays } from '@/lib/domain/dates';
 import { formatDateShort, formatNights } from '@/lib/formatting';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-button';
-import { TapeChartGrid } from '@/components/admin/tape-chart/tape-chart-grid';
-import { TapeChartLegend } from '@/components/admin/tape-chart/tape-chart-legend';
+import { FrontDeskGrid } from '@/components/admin/front-desk/front-desk-grid';
+import { FrontDeskLegend } from '@/components/admin/front-desk/front-desk-legend';
+import { FrontDeskDateFilter } from '@/components/admin/front-desk/front-desk-date-filter';
+import { FrontDeskMobileFilters } from '@/components/admin/front-desk/front-desk-mobile-filters';
 import {
-  tapeChartHref,
+  frontDeskHref,
   DEFAULT_WINDOW,
+  MAX_CUSTOM_WINDOW,
   WINDOW_OPTIONS,
-} from '@/components/admin/tape-chart/tape-chart-shared';
-import { RoomTypeSelect } from '@/components/admin/tape-chart/room-type-select';
+} from '@/components/admin/front-desk/front-desk-shared';
+import { RoomTypeSelect } from '@/components/admin/front-desk/room-type-select';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Tape chart — Hotel admin | SPARK StaySphere 360' };
+export const metadata: Metadata = { title: 'Front Desk — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -27,56 +31,71 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function TapeChartPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function FrontDeskPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const today = toIsoDate(new Date());
   const rawFrom = first(params.from);
   const from = isIsoDate(rawFrom) ? rawFrom : today;
   const rawDays = Number(first(params.days));
-  const days = (WINDOW_OPTIONS as readonly number[]).includes(rawDays) ? rawDays : DEFAULT_WINDOW;
+  const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
 
-  const board = await inventoryService.getTapeChart(DEMO_HOTEL_SLUG, from, days);
+  const selectedSlug = await getSelectedHotelSlug();
+  const board = await inventoryService.getFrontDesk(selectedSlug, from, days);
   const rawType = first(params.type);
   const type = rawType && board.groups.some((group) => group.roomTypeId === rawType) ? rawType : null;
   const groups = type ? board.groups.filter((group) => group.roomTypeId === type) : board.groups;
 
   const lastNight = board.dates.at(-1) ?? from;
-  const assets = contentService.listMedia();
+  // The CMS only ever writes against the default hotel — see content-service.ts's
+  // single bound `hotelSlug` — so the shortcut to add a room type only appears there.
+  const canAddProperty = selectedSlug === DEMO_HOTEL_SLUG;
+  const roomTypes = canAddProperty ? await contentService.listRoomsContent() : [];
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Tape chart" actions={<AddRoomTypeButton assets={assets} />} />
+      <AdminPageHeader
+        title="Front Desk"
+        actions={canAddProperty ? <AddRoomTypeButton roomTypes={roomTypes} /> : null}
+      />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Link
-            href={tapeChartHref({ from: addIsoDays(from, -days), days, type })}
+            href={frontDeskHref({ from: addIsoDays(from, -days), days, type })}
             aria-label={`Previous ${days} nights`}
             className={iconButton('light')}
           >
             <ChevronLeftIcon className="size-5" aria-hidden="true" />
           </Link>
           <Link
-            href={tapeChartHref({ from: today, days, type })}
+            href={frontDeskHref({ from: today, days, type })}
             aria-current={from === today ? 'true' : undefined}
             className={pill('secondary')}
           >
             Today
           </Link>
           <Link
-            href={tapeChartHref({ from: addIsoDays(from, days), days, type })}
+            href={frontDeskHref({ from: addIsoDays(from, days), days, type })}
             aria-label={`Next ${days} nights`}
             className={iconButton('light')}
           >
             <ChevronRightIcon className="size-5" aria-hidden="true" />
           </Link>
+          <div className="ml-auto sm:hidden">
+            <FrontDeskMobileFilters
+              from={from}
+              days={days}
+              type={type}
+              roomTypes={board.groups.map((group) => ({ id: group.roomTypeId, name: group.roomName }))}
+            />
+          </div>
         </div>
         <p className="text-sm font-medium">
           {formatDateShort(from)} – {formatDateShort(lastNight)}
           <span className="font-normal text-muted-foreground"> · {formatNights(board.dates.length)}</span>
         </p>
 
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+        <div className="hidden flex-wrap items-center gap-2 sm:ml-auto sm:flex">
           <div
             role="group"
             aria-label="Nights shown"
@@ -87,7 +106,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
               return (
                 <Link
                   key={option}
-                  href={tapeChartHref({ from, days: option, type })}
+                  href={frontDeskHref({ from, days: option, type })}
                   aria-current={active ? 'true' : undefined}
                   className={cn(
                     'inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors sm:min-h-9 sm:px-3',
@@ -98,6 +117,7 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
                 </Link>
               );
             })}
+            <FrontDeskDateFilter from={from} days={days} type={type} />
           </div>
           <RoomTypeSelect
             options={board.groups.map((group) => ({ id: group.roomTypeId, name: group.roomName }))}
@@ -106,10 +126,6 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
             days={days}
           />
         </div>
-      </div>
-
-      <div className="mt-6">
-        <TapeChartLegend />
       </div>
 
       <div className="mt-5">
@@ -122,14 +138,14 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
                 : 'Add a room type and its rooms will appear here, night by night.'}
             </p>
             <Link
-              href={type ? tapeChartHref({ from, days, type: null }) : '/admin/content/rooms/new'}
+              href={type ? frontDeskHref({ from, days, type: null }) : '/admin/content/rooms/new'}
               className={pill('primary')}
             >
               {type ? 'Show all room types' : 'Add a room type'}
             </Link>
           </div>
         ) : (
-          <TapeChartGrid
+          <FrontDeskGrid
             dates={board.dates}
             days={board.days}
             groups={groups}
@@ -137,6 +153,10 @@ export default async function TapeChartPage({ searchParams }: { searchParams: Pr
             today={today}
           />
         )}
+      </div>
+
+      <div className="mt-5 hidden sm:block">
+        <FrontDeskLegend />
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
