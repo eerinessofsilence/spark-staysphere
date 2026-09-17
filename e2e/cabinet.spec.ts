@@ -107,6 +107,12 @@ test('the front desk lays out every room and filters by room type', async ({ pag
     'aria-current',
     'true',
   );
+  // The sheet's own "Room type" group would otherwise match the room-row pattern too.
+  const sheet = page.getByRole('dialog', { name: 'Filters' });
+  if (await sheet.isVisible()) {
+    await sheet.getByRole('button', { name: 'Done' }).click();
+    await expect(sheet).toBeHidden();
+  }
   await expect(page.getByRole('group', { name: roomLabel })).toHaveCount(total);
 });
 
