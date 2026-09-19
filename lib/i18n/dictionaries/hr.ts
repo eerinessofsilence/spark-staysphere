@@ -22,13 +22,13 @@ export const hr: Record<TranslationKey, string> = {
   'auth.startWithEmail': "Počnite s e-adresom.",
   'auth.alreadyHaveAccount': "Već imate račun? Prijavite se",
   'auth.thanksPrototypeStops': "Hvala — ovaj prototip ovdje staje. Račun nije otvoren i ništa nije poslano.",
-  'auth.demoSignInNotice': "Demo prijava. Računi se ne otvaraju, lozinka se ne traži, a unesena adresa nikamo se ne šalje.",
+  'auth.demoSignInNotice': "Ova prijava ne otvara račune, ne traži lozinku, a unesena adresa nikamo se ne šalje.",
 
   'footer.tagline': 'White-label platforma za izravne rezervacije za neovisne hotele.',
   'footer.disclosurePre':
     'Asteria Cove je izmišljeni objekt. Cijene, dostupnost, usporedne cijene i plaćanja su simulirani — ne prikupljaju se podaci kartice i nigdje se ne stvara stvarna rezervacija. Fotografije i 360° snimke licencirane su zamjene za vlastite fotografije objekta, s izvorima navedenima u',
   'footer.disclosurePost': '.',
-  'footer.copyright': '© {year} Spark StaySphere — demo verzija.',
+  'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Jezik i regija',
   'language.note': 'Vaš odabir pamti se na ovom uređaju.',
@@ -166,10 +166,10 @@ export const hr: Record<TranslationKey, string> = {
   'room.total': 'Ukupno',
   'room.seeAvailableRooms': 'Pogledaj dostupne sobe',
   'room.fullyBookedForDates': 'Ova soba je potpuno popunjena za {dateRange}.',
-  'room.demoBookingNotice': 'Demo rezervacija. Plaćanje je simulirano i podaci kartice se ne prikupljaju.',
+  'room.demoBookingNotice': 'Plaćanje je simulirano i podaci kartice se ne prikupljaju.',
   'room.lessThanPartnerPricePrefix': '{saving} jeftinije',
   'room.thanPartnerPrice':
-    'od demo cijene partnerske stranice od {price}. Simulirana usporedba, ne stvarna cijena.',
+    'od cijene partnerske stranice od {price}. Simulirana usporedba, ne stvarna cijena.',
   'room.noServicesOnSale': 'Trenutačno ništa nije dostupno za ovaj boravak.',
   'room.repricingYourStay': 'Ponovno izračunavamo cijenu vašeg boravka…',
   'room.taxesAndFees': 'Porezi i gradske pristojbe',
@@ -233,8 +233,8 @@ export const hr: Record<TranslationKey, string> = {
   'book.enterEmail': 'Unesite svoju e-poštu',
   'book.phone': 'Telefon',
   'book.guestDataNotice':
-    'Koristi se samo za prikaz ove demo potvrde. Ništa se ne šalje e-poštom, ne pohranjuje izvan trenutačnog procesa poslužitelja niti dijeli s trećom stranom.',
-  'book.demoPaymentTitle': 'Demo plaćanje.',
+    'Koristi se samo za prikaz ove stranice s potvrdom. Ništa se ne šalje e-poštom, ne pohranjuje izvan trenutačnog procesa poslužitelja niti dijeli s trećom stranom.',
+  'book.demoPaymentTitle': 'Simulirano plaćanje.',
   'book.demoPaymentBody':
     'Ne prikazuju se polja kartice i ne prikupljaju se podaci kartice. Produkcijska verzija prikuplja plaćanje putem vlastitih, hostiranih i tokeniziranih obrazaca pružatelja usluge.',
   'book.paymentMethod': 'Način plaćanja',
@@ -244,7 +244,7 @@ export const hr: Record<TranslationKey, string> = {
   'book.bankTransferHint': 'SEPA prijenos. Soba se zadržava; preostali iznos dospijeva prije dolaska.',
   'book.payAtHotelHint': 'Osigurajte sobu sada, podmirite cijeli boravak po dolasku.',
   'book.acceptTermsPrefix':
-    'Razumijem da je ovo demo rezervacija u izmišljenom objektu, da se plaćanje ne naplaćuje i da',
+    'Razumijem da je ovo rezervacija u izmišljenom objektu, da se plaćanje ne naplaćuje i da',
   'book.tickToContinue': 'Označite okvir iznad za nastavak na pregled.',
   'book.reviewStay': 'Boravak',
   'book.reviewGuests': 'Gosti',
@@ -254,16 +254,16 @@ export const hr: Record<TranslationKey, string> = {
   'book.reviewGuest': 'Gost',
   'book.reviewPayment': 'Plaćanje',
   'book.reviewTotal': 'Ukupno',
-  'book.demo': 'demo',
+  'book.demo': 'simulirano',
   'book.priceRecheckNotice':
     'Cijena i dostupnost ponovno se provjeravaju na poslužitelju u trenutku potvrde. Ako se nešto promijeni, obavijestit ćemo vas prije nego što se išta stvori.',
   'book.back': 'Natrag',
   'book.confirming': 'Potvrđivanje…',
-  'book.confirmDemoBooking': 'Potvrdi demo rezervaciju',
+  'book.confirmDemoBooking': 'Potvrdi rezervaciju',
   'book.continue': 'Nastavi',
   'book.anyRoomInstead': 'Bilo koja soba umjesto toga',
   'book.demoBookingFooter':
-    'Demo rezervacija. Plaćanje je simulirano i podaci kartice se ne prikupljaju — ova rezervacija nigdje nije stvarna.',
+    'Plaćanje je simulirano i podaci kartice se ne prikupljaju — ova rezervacija nigdje nije stvarna.',
   'book.enterFirstNameError': 'Unesite ime.',
   'book.enterLastNameError': 'Unesite prezime.',
   'book.enterEmailError': 'Unesite e-poštu na koju možemo poslati potvrdu.',
@@ -271,7 +271,7 @@ export const hr: Record<TranslationKey, string> = {
   'book.errorInvalidRequest': "Provjerite označene podatke i pokušajte ponovno.",
   'book.errorRoomUnavailable': "Ta soba više nije dostupna. Odaberite drugu sobu ili promijenite datume.",
   'book.errorPriceChanged': "Cijena ovog boravka promijenila se dok ste rezervirali. Provjerite novi iznos prije potvrde.",
-  'book.errorPaymentDeclined': "Demo plaćanje nije autorizirano.",
+  'book.errorPaymentDeclined': "Plaćanje nije autorizirano.",
   'book.errorNotFound': "Nismo mogli pronaći tu rezervaciju.",
   'book.errorQuoteFailed': "Nismo mogli izračunati cijenu boravka. Odaberite drugu sobu ili datume.",
   'book.errorGeneric': "Nešto je pošlo po zlu. Pokušajte ponovno.",
@@ -286,7 +286,7 @@ export const hr: Record<TranslationKey, string> = {
   'confirm.bookingConfirmed': 'Rezervacija potvrđena',
   'confirm.youAreBookedIn': 'Vaša rezervacija je potvrđena',
   'confirm.introText':
-    '{guest}, vaša soba {room} u {hotel} vezana je uz ovdje prikazani broj rezervacije. Ovo je demo rezervacija — plaćanje nije izvršeno i ne postoji stvarna rezervacija.',
+    '{guest}, vaša soba {room} u {hotel} vezana je uz ovdje prikazani broj rezervacije. Plaćanje nije izvršeno i ne postoji stvarna rezervacija.',
   'confirm.bookingNumber': 'Broj rezervacije',
   'confirm.bookedOn': 'Rezervirano {date}',
   'confirm.dates': 'Datumi',
@@ -303,7 +303,7 @@ export const hr: Record<TranslationKey, string> = {
   'confirm.seeInHotelAdmin': 'Pogledaj u administraciji hotela',
   'confirm.viewInvoice': 'Pogledaj račun',
   'confirm.footerNote':
-    'Ovo je demo rezervacija, ne stvarna. Račun još ne postoji — sačuvajte poveznicu na ovu stranicu, ili broj {reference} i e-poštu korištenu prilikom rezervacije, kako biste je ponovno pronašli.',
+    'Ovo nije stvarna rezervacija. Račun još ne postoji — sačuvajte poveznicu na ovu stranicu, ili broj {reference} i e-poštu korištenu prilikom rezervacije, kako biste je ponovno pronašli.',
 
   'invoice.invoice': 'Račun',
   'invoice.issued': 'Izdano {date}',
@@ -316,7 +316,7 @@ export const hr: Record<TranslationKey, string> = {
   'invoice.paidWith': 'Plaćeno putem',
   'invoice.toPayWith': 'Za platiti putem',
   'invoice.disclaimer':
-    'Ovo je demo račun izrađen isključivo u ilustrativne svrhe — plaćanje nije naplaćeno i nema fiskalnu valjanost.',
+    'Ovaj je račun izrađen isključivo u ilustrativne svrhe — plaćanje nije naplaćeno i nema fiskalnu valjanost.',
   'invoice.print': 'Ispiši',
 
   'trips.myTrips': 'Moja putovanja',
@@ -341,7 +341,7 @@ export const hr: Record<TranslationKey, string> = {
   'trips.extraOther': 'dodataka',
   'trips.cancelThisStay': 'Otkazati ovaj boravak?',
   'trips.cancelDialogBody':
-    '{room}, {dateRange} · {reference}. Soba se odmah ponovno vraća u prodaju. U ovom demou ništa nije naplaćeno, pa nema ničega za povrat — a rezervaciju nakon toga nije moguće vratiti.',
+    '{room}, {dateRange} · {reference}. Soba se odmah ponovno vraća u prodaju. Ništa nije naplaćeno, pa nema ničega za povrat — a rezervaciju nakon toga nije moguće vratiti.',
   'trips.cancelEmailLabel': 'E-pošta korištena prilikom rezervacije',
   'trips.keepBooking': 'Zadrži rezervaciju',
   'trips.cancelling': 'Otkazivanje…',
@@ -356,7 +356,7 @@ export const hr: Record<TranslationKey, string> = {
   'trips.enterEmailError': 'Unesite e-poštu korištenu prilikom rezervacije.',
   'trips.bookingNumberFormatError': 'Broj rezervacije izgleda ovako: 3F7K2P.',
   'trips.notMatchError':
-    'Nijedna rezervacija ne odgovara toj referenci i e-pošti. Demo rezervacije također se gube pri ponovnom pokretanju poslužitelja.',
+    'Nijedna rezervacija ne odgovara toj referenci i e-pošti. Rezervacije napravljene ovdje također se gube pri ponovnom pokretanju poslužitelja.',
   'trips.stayAlreadyBegunError': 'Ovaj boravak je već počeo — promjene sada obrađuje recepcija.',
   'trips.notMatchCancelError': 'Ta referenca i e-pošta ne odgovaraju nijednoj rezervaciji koju je moguće otkazati.',
 
@@ -391,11 +391,11 @@ export const hr: Record<TranslationKey, string> = {
   'assistant.couldNotAccessMic': "Nije moguć pristup mikrofonu.",
 
   'error.notFoundTitle': 'Nismo mogli pronaći tu stranicu',
-  'error.notFoundBody': 'Soba ili rezervacija koju ste slijedili ne postoji, ili su podaci ovog demoa nedavno resetirani.',
+  'error.notFoundBody': 'Soba ili rezervacija koju ste slijedili ne postoji, ili su podaci ove stranice nedavno resetirani.',
   'error.browseRooms': 'Pregledaj sobe',
   'error.backToHotel': 'Natrag na hotel',
   'error.somethingWrongTitle': 'Nešto je pošlo po zlu',
-  'error.somethingWrongBody': 'Nismo mogli učitati ovaj dio demo rezervacije. Ništa nije naplaćeno niti rezervirano.',
+  'error.somethingWrongBody': 'Nismo mogli učitati ovaj dio postupka rezervacije. Ništa nije naplaćeno niti rezervirano.',
   'error.tryAgain': 'Pokušaj ponovno',
   'error.backToRooms': 'Natrag na sobe',
 };

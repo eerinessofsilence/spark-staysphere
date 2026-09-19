@@ -21,14 +21,14 @@ export const ru: Record<TranslationKey, string> = {
   'auth.createYourAccount': "Создайте аккаунт",
   'auth.startWithEmail': "Начните с email-адреса.",
   'auth.alreadyHaveAccount': "Уже есть аккаунт? Войти",
-  'auth.thanksPrototypeStops': "Спасибо — на этом демо заканчивается. Аккаунт не создан, ничего не отправлено.",
-  'auth.demoSignInNotice': "Демо-вход. Аккаунты не создаются, пароль не запрашивается, а введённый адрес никуда не отправляется.",
+  'auth.thanksPrototypeStops': "Спасибо — на этом прототип заканчивается. Аккаунт не создан, ничего не отправлено.",
+  'auth.demoSignInNotice': "Этот вход не создаёт аккаунты, не запрашивает пароль, а введённый адрес никуда не отправляется.",
 
   'footer.tagline': 'White-label платформа прямого бронирования для независимых отелей.',
   'footer.disclosurePre':
     'Asteria Cove — вымышленный отель. Тарифы, наличие номеров, сравнительные цены и платежи имитируются — данные карт не собираются, и бронирование нигде не создаётся по-настоящему. Фотографии и 360°-съёмки — лицензированные заглушки вместо собственных фото отеля, указаны в',
   'footer.disclosurePost': '.',
-  'footer.copyright': '© {year} Spark StaySphere — демо-версия.',
+  'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Язык и регион',
   'language.note': 'Выбор запоминается на этом устройстве.',
@@ -165,9 +165,9 @@ export const ru: Record<TranslationKey, string> = {
   'room.total': 'Итого',
   'room.seeAvailableRooms': 'Смотреть свободные номера',
   'room.fullyBookedForDates': 'На {dateRange} свободных мест в этом номере нет.',
-  'room.demoBookingNotice': 'Демо-бронирование. Оплата имитируется, данные карты не собираются.',
+  'room.demoBookingNotice': 'Оплата имитируется, данные карты не собираются.',
   'room.lessThanPartnerPricePrefix': 'Дешевле на {saving}',
-  'room.thanPartnerPrice': 'чем демо-цена на партнёрском сайте {price}. Это смоделированное сравнение, а не реальный тариф.',
+  'room.thanPartnerPrice': 'чем цена на партнёрском сайте {price}. Это смоделированное сравнение, а не реальный тариф.',
   'room.noServicesOnSale': 'Сейчас на эти даты нет доступных услуг.',
   'room.repricingYourStay': 'Пересчитываем стоимость…',
   'room.taxesAndFees': 'Налоги и городские сборы',
@@ -231,8 +231,8 @@ export const ru: Record<TranslationKey, string> = {
   'book.enterEmail': 'Введите ваш email',
   'book.phone': 'Телефон',
   'book.guestDataNotice':
-    'Используется только для отображения этого демо-подтверждения. Ничего не отправляется по почте, не хранится дольше текущего сеанса сервера и не передаётся третьим лицам.',
-  'book.demoPaymentTitle': 'Демо-оплата.',
+    'Используется только для отображения этой страницы подтверждения. Ничего не отправляется по почте, не хранится дольше текущего сеанса сервера и не передаётся третьим лицам.',
+  'book.demoPaymentTitle': 'Смоделированная оплата.',
   'book.demoPaymentBody':
     'Поля карты не отображаются, данные карты не собираются. В продакшене оплата проходит через собственные защищённые (токенизированные) формы платёжного провайдера.',
   'book.paymentMethod': 'Способ оплаты',
@@ -242,7 +242,7 @@ export const ru: Record<TranslationKey, string> = {
   'book.bankTransferHint': 'SEPA-перевод. Номер удерживается; остаток оплачивается до заезда.',
   'book.payAtHotelHint': 'Гарантируйте номер сейчас, оплатите проживание полностью при заезде.',
   'book.acceptTermsPrefix':
-    'Я понимаю, что это демо-бронирование в вымышленном отеле, что оплата не производится и что',
+    'Я понимаю, что это бронирование в вымышленном отеле, что оплата не производится и что',
   'book.tickToContinue': 'Отметьте галочку выше, чтобы перейти к проверке.',
   'book.reviewStay': 'Проживание',
   'book.reviewGuests': 'Гости',
@@ -252,16 +252,16 @@ export const ru: Record<TranslationKey, string> = {
   'book.reviewGuest': 'Гость',
   'book.reviewPayment': 'Оплата',
   'book.reviewTotal': 'Итого',
-  'book.demo': 'демо',
+  'book.demo': 'имитация',
   'book.priceRecheckNotice':
     'Цена и наличие номеров перепроверяются на сервере в момент подтверждения. Если что-то изменится, мы сообщим об этом до создания брони.',
   'book.back': 'Назад',
   'book.confirming': 'Подтверждаем…',
-  'book.confirmDemoBooking': 'Подтвердить демо-бронирование',
+  'book.confirmDemoBooking': 'Подтвердить бронирование',
   'book.continue': 'Продолжить',
   'book.anyRoomInstead': 'Любой номер вместо этого',
   'book.demoBookingFooter':
-    'Демо-бронирование. Оплата имитируется, данные карты не собираются — это бронирование нигде не является настоящим.',
+    'Оплата имитируется, данные карты не собираются — это бронирование нигде не является настоящим.',
   'book.enterFirstNameError': 'Введите имя.',
   'book.enterLastNameError': 'Введите фамилию.',
   'book.enterEmailError': 'Введите email, на который можно отправить подтверждение.',
@@ -269,7 +269,7 @@ export const ru: Record<TranslationKey, string> = {
   'book.errorInvalidRequest': "Проверьте выделенные поля и попробуйте снова.",
   'book.errorRoomUnavailable': "Этот номер больше недоступен. Выберите другой номер или измените даты.",
   'book.errorPriceChanged': "Пока вы оформляли бронь, цена изменилась. Проверьте новую сумму перед подтверждением.",
-  'book.errorPaymentDeclined': "Демо-платёж не был авторизован.",
+  'book.errorPaymentDeclined': "Платёж не был авторизован.",
   'book.errorNotFound': "Не удалось найти это бронирование.",
   'book.errorQuoteFailed': "Не удалось рассчитать стоимость проживания. Выберите другой номер или даты.",
   'book.errorGeneric': "Что-то пошло не так. Попробуйте ещё раз.",
@@ -284,7 +284,7 @@ export const ru: Record<TranslationKey, string> = {
   'confirm.bookingConfirmed': 'Бронирование подтверждено',
   'confirm.youAreBookedIn': 'Вы забронировали номер',
   'confirm.introText':
-    '{guest}, ваш номер «{room}» в отеле {hotel} закреплён за указанным здесь номером брони. Это демо-бронирование — оплата не производилась, и реального бронирования не существует.',
+    '{guest}, ваш номер «{room}» в отеле {hotel} закреплён за указанным здесь номером брони. Это не настоящее бронирование — оплата не производилась, и реального бронирования не существует.',
   'confirm.bookingNumber': 'Номер брони',
   'confirm.bookedOn': 'Забронировано {date}',
   'confirm.dates': 'Даты',
@@ -301,7 +301,7 @@ export const ru: Record<TranslationKey, string> = {
   'confirm.seeInHotelAdmin': 'Посмотреть в админ-панели отеля',
   'confirm.viewInvoice': 'Посмотреть счёт',
   'confirm.footerNote':
-    'Это демо-бронирование, а не настоящее. Аккаунта пока нет — сохраните ссылку на эту страницу или номер брони {reference} и email, указанный при бронировании, чтобы найти её снова.',
+    'Это не настоящее бронирование. Аккаунта пока нет — сохраните ссылку на эту страницу или номер брони {reference} и email, указанный при бронировании, чтобы найти её снова.',
 
   'invoice.invoice': 'Счёт',
   'invoice.issued': 'Выставлен {date}',
@@ -314,7 +314,7 @@ export const ru: Record<TranslationKey, string> = {
   'invoice.paidWith': 'Способ оплаты',
   'invoice.toPayWith': 'Способ оплаты',
   'invoice.disclaimer':
-    'Это демо-счёт, созданный только для наглядности — оплата не производилась, и он не имеет юридической силы.',
+    'Этот счёт создан только для наглядности — оплата не производилась, и он не имеет юридической силы.',
   'invoice.print': 'Печать',
 
   'trips.myTrips': 'Мои поездки',
@@ -339,7 +339,7 @@ export const ru: Record<TranslationKey, string> = {
   'trips.extraOther': 'доп. услуги',
   'trips.cancelThisStay': 'Отменить это проживание?',
   'trips.cancelDialogBody':
-    '{room}, {dateRange} · {reference}. Номер сразу же снова станет доступен для бронирования. В этом демо ничего не списывалось, поэтому возвращать нечего — и восстановить бронь после отмены будет нельзя.',
+    '{room}, {dateRange} · {reference}. Номер сразу же снова станет доступен для бронирования. Ничего не списывалось, поэтому возвращать нечего — и восстановить бронь после отмены будет нельзя.',
   'trips.cancelEmailLabel': 'Email, указанный при бронировании',
   'trips.keepBooking': 'Оставить бронь',
   'trips.cancelling': 'Отменяем…',
@@ -354,7 +354,7 @@ export const ru: Record<TranslationKey, string> = {
   'trips.enterEmailError': 'Введите email, указанный при бронировании.',
   'trips.bookingNumberFormatError': 'Номер брони выглядит так: 3F7K2P.',
   'trips.notMatchError':
-    'Не найдено брони с таким номером и email. Демо-брони также теряются при перезапуске сервера.',
+    'Не найдено брони с таким номером и email. Брони, оформленные здесь, также теряются при перезапуске сервера.',
   'trips.stayAlreadyBegunError': 'Это проживание уже началось — изменения теперь оформляются на стойке регистрации.',
   'trips.notMatchCancelError': 'Этот номер брони и email не соответствуют брони, которую можно отменить.',
 
@@ -389,11 +389,11 @@ export const ru: Record<TranslationKey, string> = {
   'assistant.couldNotAccessMic': "Не удалось получить доступ к микрофону.",
 
   'error.notFoundTitle': 'Такой страницы нет',
-  'error.notFoundBody': 'Номер или бронь, на которые вы перешли, не существуют, либо демо-данные недавно сбросили.',
+  'error.notFoundBody': 'Номер или бронь, на которые вы перешли, не существуют, либо данные этого сайта недавно сбросили.',
   'error.browseRooms': 'Смотреть номера',
   'error.backToHotel': 'Вернуться на главную',
   'error.somethingWrongTitle': 'Что-то пошло не так',
-  'error.somethingWrongBody': 'Не удалось загрузить эту часть демо-бронирования. Ничего не было списано или забронировано.',
+  'error.somethingWrongBody': 'Не удалось загрузить эту часть процесса бронирования. Ничего не было списано или забронировано.',
   'error.tryAgain': 'Повторить',
   'error.backToRooms': 'Вернуться к номерам',
 };

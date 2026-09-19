@@ -26,7 +26,7 @@ const accent = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: 'SPARK StaySphere 360 — Asteria Cove',
-  description: 'See the stay. Book the room. A white-label 3D hotel booking demo for Asteria Cove.',
+  description: 'See the stay. Book the room. A white-label 3D hotel booking experience for Asteria Cove.',
 };
 
 export default function RootLayout({

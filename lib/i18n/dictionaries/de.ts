@@ -22,13 +22,13 @@ export const de: Record<TranslationKey, string> = {
   'auth.startWithEmail': "Beginnen Sie mit Ihrer E-Mail-Adresse.",
   'auth.alreadyHaveAccount': "Bereits ein Konto? Anmelden",
   'auth.thanksPrototypeStops': "Danke — dieser Prototyp endet hier. Es wurde kein Konto erstellt und nichts gesendet.",
-  'auth.demoSignInNotice': "Demo-Anmeldung. Es werden keine Konten erstellt, kein Passwort abgefragt, und die eingegebene Adresse wird nirgendwohin gesendet.",
+  'auth.demoSignInNotice': "Diese Anmeldung erstellt keine Konten, fragt kein Passwort ab, und die eingegebene Adresse wird nirgendwohin gesendet.",
 
   'footer.tagline': 'Eine White-Label-Direktbuchungsseite für unabhängige Hotels.',
   'footer.disclosurePre':
     'Asteria Cove ist ein fiktives Hotel. Preise, Verfügbarkeit, Vergleichspreise und Zahlungen sind simuliert — es werden keine Kartendaten erfasst und nirgendwo eine echte Reservierung erstellt. Fotos und 360°-Aufnahmen sind lizenzierte Platzhalter für die eigenen Bilder des Hotels, mit Quellenangabe in',
   'footer.disclosurePost': '.',
-  'footer.copyright': '© {year} Spark StaySphere — Demo-Version.',
+  'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Sprache und Region',
   'language.note': 'Ihre Wahl wird auf diesem Gerät gespeichert.',
@@ -166,9 +166,9 @@ export const de: Record<TranslationKey, string> = {
   'room.total': 'Gesamt',
   'room.seeAvailableRooms': 'Verfügbare Zimmer ansehen',
   'room.fullyBookedForDates': 'Dieses Zimmer ist für {dateRange} ausgebucht.',
-  'room.demoBookingNotice': 'Demo-Buchung. Die Zahlung ist simuliert, es werden keine Kartendaten erfasst.',
+  'room.demoBookingNotice': 'Die Zahlung ist simuliert, es werden keine Kartendaten erfasst.',
   'room.lessThanPartnerPricePrefix': '{saving} günstiger',
-  'room.thanPartnerPrice': 'als der Demo-Partnerpreis von {price}. Ein simulierter Vergleich, kein Live-Preis.',
+  'room.thanPartnerPrice': 'als der Partnerpreis von {price}. Ein simulierter Vergleich, kein Live-Preis.',
   'room.noServicesOnSale': 'Für diesen Aufenthalt ist derzeit nichts verfügbar.',
   'room.repricingYourStay': 'Preis wird aktualisiert…',
   'room.taxesAndFees': 'Steuern und Ortstaxen',
@@ -232,8 +232,8 @@ export const de: Record<TranslationKey, string> = {
   'book.enterEmail': 'Geben Sie Ihre E-Mail-Adresse ein',
   'book.phone': 'Telefon',
   'book.guestDataNotice':
-    'Wird nur zur Anzeige dieser Demo-Bestätigung verwendet. Nichts wird per E-Mail versendet, über den aktuellen Serverprozess hinaus gespeichert oder an Dritte weitergegeben.',
-  'book.demoPaymentTitle': 'Demo-Zahlung.',
+    'Wird nur zur Anzeige dieser Bestätigungsseite verwendet. Nichts wird per E-Mail versendet, über den aktuellen Serverprozess hinaus gespeichert oder an Dritte weitergegeben.',
+  'book.demoPaymentTitle': 'Simulierte Zahlung.',
   'book.demoPaymentBody':
     'Es werden keine Kartenfelder angezeigt und keine Kartendaten erfasst. Eine Produktivversion erfasst Zahlungen über die eigenen gehosteten, tokenisierten Formulare des Anbieters.',
   'book.paymentMethod': 'Zahlungsmethode',
@@ -243,7 +243,7 @@ export const de: Record<TranslationKey, string> = {
   'book.bankTransferHint': 'SEPA-Überweisung. Das Zimmer wird gehalten; der Restbetrag ist vor Anreise fällig.',
   'book.payAtHotelHint': 'Sichern Sie das Zimmer jetzt und zahlen Sie den gesamten Aufenthalt bei Anreise.',
   'book.acceptTermsPrefix':
-    'Ich verstehe, dass dies eine Demo-Buchung in einem fiktiven Hotel ist, dass keine Zahlung erfolgt und dass',
+    'Ich verstehe, dass dies eine Buchung in einem fiktiven Hotel ist, dass keine Zahlung erfolgt und dass',
   'book.tickToContinue': 'Aktivieren Sie das Kästchen oben, um zur Überprüfung zu gelangen.',
   'book.reviewStay': 'Aufenthalt',
   'book.reviewGuests': 'Gäste',
@@ -253,16 +253,16 @@ export const de: Record<TranslationKey, string> = {
   'book.reviewGuest': 'Gast',
   'book.reviewPayment': 'Zahlung',
   'book.reviewTotal': 'Gesamt',
-  'book.demo': 'Demo',
+  'book.demo': 'simuliert',
   'book.priceRecheckNotice':
     'Preis und Verfügbarkeit werden im Moment der Bestätigung serverseitig erneut geprüft. Bei Änderungen informieren wir Sie, bevor etwas erstellt wird.',
   'book.back': 'Zurück',
   'book.confirming': 'Wird bestätigt…',
-  'book.confirmDemoBooking': 'Demo-Buchung bestätigen',
+  'book.confirmDemoBooking': 'Buchung bestätigen',
   'book.continue': 'Weiter',
   'book.anyRoomInstead': 'Stattdessen beliebiges Zimmer',
   'book.demoBookingFooter':
-    'Demo-Buchung. Die Zahlung ist simuliert, es werden keine Kartendaten erfasst — diese Reservierung ist nirgendwo real.',
+    'Die Zahlung ist simuliert, es werden keine Kartendaten erfasst — diese Reservierung ist nirgendwo real.',
   'book.enterFirstNameError': 'Geben Sie einen Vornamen ein.',
   'book.enterLastNameError': 'Geben Sie einen Nachnamen ein.',
   'book.enterEmailError': 'Geben Sie eine E-Mail-Adresse für die Bestätigung ein.',
@@ -270,7 +270,7 @@ export const de: Record<TranslationKey, string> = {
   'book.errorInvalidRequest': "Überprüfen Sie die markierten Angaben und versuchen Sie es erneut.",
   'book.errorRoomUnavailable': "Dieses Zimmer ist nicht mehr verfügbar. Wählen Sie ein anderes Zimmer oder verschieben Sie Ihren Aufenthalt.",
   'book.errorPriceChanged': "Der Preis für diesen Aufenthalt hat sich während der Buchung geändert. Prüfen Sie den neuen Gesamtbetrag vor der Bestätigung.",
-  'book.errorPaymentDeclined': "Die Demo-Zahlung wurde nicht autorisiert.",
+  'book.errorPaymentDeclined': "Die Zahlung wurde nicht autorisiert.",
   'book.errorNotFound': "Diese Buchung konnte nicht gefunden werden.",
   'book.errorQuoteFailed': "Der Preis für diesen Aufenthalt konnte nicht berechnet werden. Wählen Sie ein anderes Zimmer oder andere Daten.",
   'book.errorGeneric': "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
@@ -285,7 +285,7 @@ export const de: Record<TranslationKey, string> = {
   'confirm.bookingConfirmed': 'Buchung bestätigt',
   'confirm.youAreBookedIn': 'Ihre Buchung ist bestätigt',
   'confirm.introText':
-    '{guest}, Ihr {room} im {hotel} ist unter der hier gezeigten Buchungsnummer hinterlegt. Dies ist eine Demo-Buchung — es wurde keine Zahlung vorgenommen und es besteht keine echte Reservierung.',
+    '{guest}, Ihr {room} im {hotel} ist unter der hier gezeigten Buchungsnummer hinterlegt. Es wurde keine Zahlung vorgenommen und es besteht keine echte Reservierung.',
   'confirm.bookingNumber': 'Buchungsnummer',
   'confirm.bookedOn': 'Gebucht am {date}',
   'confirm.dates': 'Daten',
@@ -302,7 +302,7 @@ export const de: Record<TranslationKey, string> = {
   'confirm.seeInHotelAdmin': 'In der Hotel-Verwaltung ansehen',
   'confirm.viewInvoice': 'Rechnung ansehen',
   'confirm.footerNote':
-    'Dies ist eine Demo-Buchung, keine echte. Es gibt noch kein Konto — heben Sie den Link dieser Seite oder die Referenz {reference} und die bei der Buchung verwendete E-Mail-Adresse auf, um sie wiederzufinden.',
+    'Dies ist keine echte Buchung. Es gibt noch kein Konto — heben Sie den Link dieser Seite oder die Referenz {reference} und die bei der Buchung verwendete E-Mail-Adresse auf, um sie wiederzufinden.',
 
   'invoice.invoice': 'Rechnung',
   'invoice.issued': 'Ausgestellt am {date}',
@@ -315,7 +315,7 @@ export const de: Record<TranslationKey, string> = {
   'invoice.paidWith': 'Bezahlt mit',
   'invoice.toPayWith': 'Zu zahlen mit',
   'invoice.disclaimer':
-    'Dies ist eine nur zur Veranschaulichung erstellte Demo-Rechnung — es wurde keine Zahlung eingezogen, und sie hat keine steuerliche Gültigkeit.',
+    'Diese Rechnung dient nur zur Veranschaulichung — es wurde keine Zahlung eingezogen, und sie hat keine steuerliche Gültigkeit.',
   'invoice.print': 'Drucken',
 
   'trips.myTrips': 'Meine Reisen',
@@ -340,7 +340,7 @@ export const de: Record<TranslationKey, string> = {
   'trips.extraOther': 'Extras',
   'trips.cancelThisStay': 'Diesen Aufenthalt stornieren?',
   'trips.cancelDialogBody':
-    '{room}, {dateRange} · {reference}. Das Zimmer wird sofort wieder freigegeben. In dieser Demo wurde nichts belastet, es gibt also nichts zu erstatten — und die Buchung kann danach nicht wiederhergestellt werden.',
+    '{room}, {dateRange} · {reference}. Das Zimmer wird sofort wieder freigegeben. Es wurde nichts belastet, es gibt also nichts zu erstatten — und die Buchung kann danach nicht wiederhergestellt werden.',
   'trips.cancelEmailLabel': 'E-Mail-Adresse der Buchung',
   'trips.keepBooking': 'Buchung behalten',
   'trips.cancelling': 'Wird storniert…',
@@ -355,7 +355,7 @@ export const de: Record<TranslationKey, string> = {
   'trips.enterEmailError': 'Geben Sie die bei der Buchung verwendete E-Mail-Adresse ein.',
   'trips.bookingNumberFormatError': 'Eine Buchungsnummer sieht so aus: 3F7K2P.',
   'trips.notMatchError':
-    'Keine Buchung stimmt mit dieser Referenz und E-Mail-Adresse überein. Demo-Buchungen gehen auch bei einem Server-Neustart verloren.',
+    'Keine Buchung stimmt mit dieser Referenz und E-Mail-Adresse überein. Hier gemachte Buchungen gehen auch bei einem Server-Neustart verloren.',
   'trips.stayAlreadyBegunError': 'Dieser Aufenthalt hat bereits begonnen — Änderungen übernimmt jetzt die Rezeption.',
   'trips.notMatchCancelError': 'Diese Referenz und E-Mail-Adresse stimmen mit keiner stornierbaren Buchung überein.',
 
@@ -391,11 +391,11 @@ export const de: Record<TranslationKey, string> = {
 
   'error.notFoundTitle': 'Diese Seite konnte nicht gefunden werden',
   'error.notFoundBody':
-    'Das Zimmer oder die Buchung, denen Sie gefolgt sind, existieren nicht mehr, oder die Demo-Daten wurden kürzlich zurückgesetzt.',
+    'Das Zimmer oder die Buchung, denen Sie gefolgt sind, existieren nicht mehr, oder die Daten dieser Seite wurden kürzlich zurückgesetzt.',
   'error.browseRooms': 'Zimmer durchsuchen',
   'error.backToHotel': 'Zurück zum Hotel',
   'error.somethingWrongTitle': 'Etwas ist schiefgelaufen',
-  'error.somethingWrongBody': 'Dieser Teil der Buchungsdemo konnte nicht geladen werden. Es wurde nichts belastet oder reserviert.',
+  'error.somethingWrongBody': 'Dieser Teil des Buchungsvorgangs konnte nicht geladen werden. Es wurde nichts belastet oder reserviert.',
   'error.tryAgain': 'Erneut versuchen',
   'error.backToRooms': 'Zurück zu den Zimmern',
 };

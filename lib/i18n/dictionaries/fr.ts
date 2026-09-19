@@ -22,13 +22,13 @@ export const fr: Record<TranslationKey, string> = {
   'auth.startWithEmail': "Commencez par votre adresse e-mail.",
   'auth.alreadyHaveAccount': "Déjà un compte ? Se connecter",
   'auth.thanksPrototypeStops': "Merci — ce prototype s'arrête ici. Aucun compte n'a été créé et rien n'a été envoyé.",
-  'auth.demoSignInNotice': "Connexion de démonstration. Aucun compte n'est créé, aucun mot de passe n'est demandé, et l'adresse saisie n'est jamais envoyée nulle part.",
+  'auth.demoSignInNotice': "Cette connexion ne crée aucun compte, ne demande aucun mot de passe, et l'adresse saisie n'est jamais envoyée nulle part.",
 
   'footer.tagline': 'Une plateforme de réservation directe en marque blanche pour les hôtels indépendants.',
   'footer.disclosurePre':
     "Asteria Cove est un établissement fictif. Les tarifs, la disponibilité, les prix comparatifs et les paiements sont simulés — aucune donnée de carte n'est collectée et aucune réservation réelle n'est créée. Les photographies et prises de vue à 360° sont des images sous licence en attendant celles de l'établissement, créditées dans",
   'footer.disclosurePost': '.',
-  'footer.copyright': '© {year} Spark StaySphere — version de démonstration.',
+  'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Langue et région',
   'language.note': 'Votre choix est mémorisé sur cet appareil.',
@@ -166,10 +166,10 @@ export const fr: Record<TranslationKey, string> = {
   'room.total': 'Total',
   'room.seeAvailableRooms': 'Voir les chambres disponibles',
   'room.fullyBookedForDates': 'Cette chambre est complète pour {dateRange}.',
-  'room.demoBookingNotice': "Réservation de démonstration. Le paiement est simulé, aucune donnée de carte n'est collectée.",
+  'room.demoBookingNotice': "Le paiement est simulé, aucune donnée de carte n'est collectée.",
   'room.lessThanPartnerPricePrefix': '{saving} de moins',
   'room.thanPartnerPrice':
-    "que le prix de démonstration du site partenaire de {price}. Une comparaison simulée, pas un tarif réel.",
+    "que le prix du site partenaire de {price}. Une comparaison simulée, pas un tarif réel.",
   'room.noServicesOnSale': "Rien n'est disponible à la vente pour ce séjour pour le moment.",
   'room.repricingYourStay': 'Recalcul du tarif de votre séjour…',
   'room.taxesAndFees': 'Taxes et frais de séjour',
@@ -233,8 +233,8 @@ export const fr: Record<TranslationKey, string> = {
   'book.enterEmail': 'Saisissez votre e-mail',
   'book.phone': 'Téléphone',
   'book.guestDataNotice':
-    "Utilisé uniquement pour afficher cette confirmation de démonstration. Rien n'est envoyé par e-mail, conservé au-delà du processus serveur actuel, ni partagé avec un tiers.",
-  'book.demoPaymentTitle': 'Paiement de démonstration.',
+    "Utilisé uniquement pour afficher cette page de confirmation. Rien n'est envoyé par e-mail, conservé au-delà du processus serveur actuel, ni partagé avec un tiers.",
+  'book.demoPaymentTitle': 'Paiement simulé.',
   'book.demoPaymentBody':
     "Aucun champ de carte n'est affiché et aucune donnée de carte n'est collectée. Une version de production collecte le paiement via les formulaires hébergés et tokenisés du prestataire.",
   'book.paymentMethod': 'Moyen de paiement',
@@ -244,7 +244,7 @@ export const fr: Record<TranslationKey, string> = {
   'book.bankTransferHint': 'Virement SEPA. La chambre est retenue ; le solde est dû avant l’arrivée.',
   'book.payAtHotelHint': "Garantissez la chambre maintenant, réglez tout le séjour à l'arrivée.",
   'book.acceptTermsPrefix':
-    "Je comprends qu'il s'agit d'une réservation de démonstration dans un établissement fictif, qu'aucun paiement n'est prélevé, et que",
+    "Je comprends qu'il s'agit d'une réservation dans un établissement fictif, qu'aucun paiement n'est prélevé, et que",
   'book.tickToContinue': 'Cochez la case ci-dessus pour passer au récapitulatif.',
   'book.reviewStay': 'Séjour',
   'book.reviewGuests': 'Voyageurs',
@@ -254,16 +254,16 @@ export const fr: Record<TranslationKey, string> = {
   'book.reviewGuest': 'Client',
   'book.reviewPayment': 'Paiement',
   'book.reviewTotal': 'Total',
-  'book.demo': 'démo',
+  'book.demo': 'simulé',
   'book.priceRecheckNotice':
     'Le prix et la disponibilité sont revérifiés sur le serveur au moment de la confirmation. En cas de changement, nous vous préviendrons avant toute création.',
   'book.back': 'Retour',
   'book.confirming': 'Confirmation…',
-  'book.confirmDemoBooking': 'Confirmer la réservation de démonstration',
+  'book.confirmDemoBooking': 'Confirmer la réservation',
   'book.continue': 'Continuer',
   'book.anyRoomInstead': 'Chambre au choix à la place',
   'book.demoBookingFooter':
-    "Réservation de démonstration. Le paiement est simulé et aucune donnée de carte n'est collectée — cette réservation n'est réelle nulle part.",
+    "Le paiement est simulé et aucune donnée de carte n'est collectée — cette réservation n'est réelle nulle part.",
   'book.enterFirstNameError': 'Saisissez un prénom.',
   'book.enterLastNameError': 'Saisissez un nom.',
   'book.enterEmailError': 'Saisissez un e-mail auquel nous pouvons envoyer la confirmation.',
@@ -271,7 +271,7 @@ export const fr: Record<TranslationKey, string> = {
   'book.errorInvalidRequest': "Vérifiez les champs signalés et réessayez.",
   'book.errorRoomUnavailable': "Cette chambre n'est plus disponible. Choisissez une autre chambre ou modifiez vos dates.",
   'book.errorPriceChanged': "Le prix de ce séjour a changé pendant votre réservation. Vérifiez le nouveau total avant de confirmer.",
-  'book.errorPaymentDeclined': "Le paiement de démonstration n'a pas été autorisé.",
+  'book.errorPaymentDeclined': "Le paiement n'a pas été autorisé.",
   'book.errorNotFound': "Cette réservation est introuvable.",
   'book.errorQuoteFailed': "Nous n'avons pas pu calculer le prix de ce séjour. Choisissez une autre chambre ou d'autres dates.",
   'book.errorGeneric': "Une erreur s'est produite. Veuillez réessayer.",
@@ -286,7 +286,7 @@ export const fr: Record<TranslationKey, string> = {
   'confirm.bookingConfirmed': 'Réservation confirmée',
   'confirm.youAreBookedIn': 'Votre réservation est confirmée',
   'confirm.introText':
-    "{guest}, votre {room} à {hotel} est associée au numéro de réservation indiqué ici. Il s'agit d'une réservation de démonstration — aucun paiement n'a été effectué et aucune réservation réelle n'existe.",
+    "{guest}, votre {room} à {hotel} est associée au numéro de réservation indiqué ici. Aucun paiement n'a été effectué et aucune réservation réelle n'existe.",
   'confirm.bookingNumber': 'Numéro de réservation',
   'confirm.bookedOn': 'Réservé le {date}',
   'confirm.dates': 'Dates',
@@ -303,7 +303,7 @@ export const fr: Record<TranslationKey, string> = {
   'confirm.seeInHotelAdmin': "Voir dans l'administration de l'hôtel",
   'confirm.viewInvoice': 'Voir la facture',
   'confirm.footerNote':
-    "Il s'agit d'une réservation de démonstration, pas d'une réservation réelle. Il n'y a pas encore de compte — conservez le lien de cette page, ou la référence {reference} et l'e-mail utilisé, pour la retrouver.",
+    "Il ne s'agit pas d'une réservation réelle. Il n'y a pas encore de compte — conservez le lien de cette page, ou la référence {reference} et l'e-mail utilisé, pour la retrouver.",
 
   'invoice.invoice': 'Facture',
   'invoice.issued': 'Émise le {date}',
@@ -316,7 +316,7 @@ export const fr: Record<TranslationKey, string> = {
   'invoice.paidWith': 'Payé avec',
   'invoice.toPayWith': 'À payer avec',
   'invoice.disclaimer':
-    "Il s'agit d'une facture de démonstration générée à titre illustratif — aucun paiement n'a été prélevé et elle n'a aucune valeur fiscale.",
+    "Cette facture est générée à titre illustratif — aucun paiement n'a été prélevé et elle n'a aucune valeur fiscale.",
   'invoice.print': 'Imprimer',
 
   'trips.myTrips': 'Mes séjours',
@@ -341,7 +341,7 @@ export const fr: Record<TranslationKey, string> = {
   'trips.extraOther': 'extras',
   'trips.cancelThisStay': 'Annuler ce séjour ?',
   'trips.cancelDialogBody':
-    "{room}, {dateRange} · {reference}. La chambre redevient immédiatement disponible à la réservation. Rien n'a été débité dans cette démonstration, il n'y a donc rien à rembourser — et la réservation ne pourra pas être rétablie ensuite.",
+    "{room}, {dateRange} · {reference}. La chambre redevient immédiatement disponible à la réservation. Rien n'a été débité, il n'y a donc rien à rembourser — et la réservation ne pourra pas être rétablie ensuite.",
   'trips.cancelEmailLabel': "E-mail utilisé pour la réservation",
   'trips.keepBooking': 'Conserver la réservation',
   'trips.cancelling': 'Annulation…',
@@ -356,7 +356,7 @@ export const fr: Record<TranslationKey, string> = {
   'trips.enterEmailError': 'Saisissez l’adresse e-mail utilisée pour la réservation.',
   'trips.bookingNumberFormatError': 'Un numéro de réservation ressemble à 3F7K2P.',
   'trips.notMatchError':
-    "Aucune réservation ne correspond à cette référence et cet e-mail. Les réservations de démonstration sont aussi perdues au redémarrage du serveur.",
+    "Aucune réservation ne correspond à cette référence et cet e-mail. Les réservations faites ici sont aussi perdues au redémarrage du serveur.",
   'trips.stayAlreadyBegunError': "Ce séjour a déjà commencé — la réception gère désormais les modifications.",
   'trips.notMatchCancelError': "Cette référence et cet e-mail ne correspondent à aucune réservation annulable.",
 
@@ -392,11 +392,11 @@ export const fr: Record<TranslationKey, string> = {
 
   'error.notFoundTitle': 'Cette page est introuvable',
   'error.notFoundBody':
-    "La chambre ou la réservation que vous avez suivie n'existe pas, ou les données de cette démonstration ont été récemment réinitialisées.",
+    "La chambre ou la réservation que vous avez suivie n'existe pas, ou les données de ce site ont été récemment réinitialisées.",
   'error.browseRooms': 'Parcourir les chambres',
   'error.backToHotel': "Retour à l'hôtel",
   'error.somethingWrongTitle': "Une erreur s'est produite",
-  'error.somethingWrongBody': "Impossible de charger cette partie de la démonstration de réservation. Rien n'a été débité ni réservé.",
+  'error.somethingWrongBody': "Impossible de charger cette partie du parcours de réservation. Rien n'a été débité ni réservé.",
   'error.tryAgain': 'Réessayer',
   'error.backToRooms': 'Retour aux chambres',
 };

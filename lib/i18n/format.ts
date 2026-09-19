@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { de, enGB, es, fr, hr, it, pl, ru } from 'date-fns/locale';
 import type { RoomCategory } from '../domain/room-attributes';
 import type { Facade } from '../domain/room-units';
@@ -37,6 +37,15 @@ export function lDateShort(iso: string, locale: Locale): string {
 
 export function lDateRange(checkIn: string, checkOut: string, locale: Locale): string {
   return `${lDateShort(checkIn, locale)} → ${lDateShort(checkOut, locale)}`;
+}
+
+/**
+ * "2 days ago" / "vor 2 Tagen" / "2 дня назад". Client-only by convention, as
+ * `formatRelativeTime` in `lib/formatting.ts` is: "now" moves between the
+ * server render and hydration, so this belongs in a popover or after mount.
+ */
+export function lRelativeTime(iso: string, locale: Locale): string {
+  return formatDistanceToNowStrict(parseISO(iso), { locale: DATE_FNS_LOCALES[locale], addSuffix: true });
 }
 
 const NIGHT: Record<Locale, PluralForms> = {

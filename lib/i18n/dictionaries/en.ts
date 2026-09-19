@@ -33,13 +33,13 @@ export const en = {
   'auth.startWithEmail': "Start with your email address.",
   'auth.alreadyHaveAccount': "Already have an account? Log in",
   'auth.thanksPrototypeStops': "Thanks — this prototype stops here. No account was created and nothing was sent.",
-  'auth.demoSignInNotice': "Demo sign-in. Accounts are not created, no password is asked for, and the address you type is never sent anywhere.",
+  'auth.demoSignInNotice': "This sign-in doesn't create accounts, ask for a password, or send the address you type anywhere.",
 
   'footer.tagline': 'A white-label direct-booking front end for independent hotels.',
   'footer.disclosurePre':
     'Asteria Cove is a fictional property. Rates, availability, comparison prices, and payments are simulated — no card data is collected and no reservation is made anywhere. Photographs and 360° captures are licensed stand-ins for the property’s own, credited in',
   'footer.disclosurePost': '.',
-  'footer.copyright': '© {year} Spark StaySphere — demo build.',
+  'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Language and region',
   'language.note': 'Your choice is remembered on this device.',
@@ -180,9 +180,9 @@ export const en = {
   'room.total': 'Total',
   'room.seeAvailableRooms': 'See available rooms',
   'room.fullyBookedForDates': 'This room is fully booked for {dateRange}.',
-  'room.demoBookingNotice': 'Demo booking. Payment is simulated and no card details are collected.',
+  'room.demoBookingNotice': 'Payment is simulated and no card details are collected.',
   'room.lessThanPartnerPricePrefix': '{saving} less',
-  'room.thanPartnerPrice': 'than the {price} demo partner-site price. A simulated comparison, not a live rate.',
+  'room.thanPartnerPrice': 'than the {price} partner-site price. A simulated comparison, not a live rate.',
   'room.noServicesOnSale': 'Nothing is on sale for this stay right now.',
   'room.repricingYourStay': 'Repricing your stay…',
   'room.taxesAndFees': 'Taxes and city fees',
@@ -247,8 +247,8 @@ export const en = {
   'book.enterEmail': 'Enter your email',
   'book.phone': 'Phone',
   'book.guestDataNotice':
-    'Used only to render this demo confirmation. Nothing is emailed, stored beyond the current server process, or shared with a third party.',
-  'book.demoPaymentTitle': 'Demo payment.',
+    'Used only to render this confirmation page. Nothing is emailed, stored beyond the current server process, or shared with a third party.',
+  'book.demoPaymentTitle': 'Simulated payment.',
   'book.demoPaymentBody':
     "No card fields are shown and no card data is collected. A production build collects payment through the provider's own hosted, tokenized fields.",
   'book.paymentMethod': 'Payment method',
@@ -258,7 +258,7 @@ export const en = {
   'book.bankTransferHint': 'SEPA transfer. The room is held; the balance is due before arrival.',
   'book.payAtHotelHint': 'Guarantee the room now, settle the whole stay on arrival.',
   'book.acceptTermsPrefix':
-    'I understand this is a demo booking at a fictional property, that no payment is taken, and that',
+    'I understand this is a booking at a fictional property, that no payment is taken, and that',
   'book.tickToContinue': 'Tick the box above to continue to review.',
   'book.reviewStay': 'Stay',
   'book.reviewGuests': 'Guests',
@@ -268,16 +268,16 @@ export const en = {
   'book.reviewGuest': 'Guest',
   'book.reviewPayment': 'Payment',
   'book.reviewTotal': 'Total',
-  'book.demo': 'demo',
+  'book.demo': 'simulated',
   'book.priceRecheckNotice':
     'Price and availability are rechecked on the server the moment you confirm. If either changed, we will tell you before anything is created.',
   'book.back': 'Back',
   'book.confirming': 'Confirming…',
-  'book.confirmDemoBooking': 'Confirm demo booking',
+  'book.confirmDemoBooking': 'Confirm booking',
   'book.continue': 'Continue',
   'book.anyRoomInstead': 'Any room instead',
   'book.demoBookingFooter':
-    'Demo booking. Payment is simulated and no card data is collected — this reservation is not a real one anywhere.',
+    'Payment is simulated and no card data is collected — this reservation is not a real one anywhere.',
   'book.enterFirstNameError': 'Enter a first name.',
   'book.enterLastNameError': 'Enter a last name.',
   'book.enterEmailError': 'Enter an email we can send the confirmation to.',
@@ -285,7 +285,7 @@ export const en = {
   'book.errorInvalidRequest': "Check the highlighted details and try again.",
   'book.errorRoomUnavailable': "That room is no longer available. Choose another room or shift your stay.",
   'book.errorPriceChanged': "The price for this stay changed while you were booking. Review the new total before confirming.",
-  'book.errorPaymentDeclined': "The demo payment was not authorized.",
+  'book.errorPaymentDeclined': "The payment was not authorized.",
   'book.errorNotFound': "We could not find that booking.",
   'book.errorQuoteFailed': "We could not price that stay. Choose another room or dates.",
   'book.errorGeneric': "Something went wrong. Please try again.",
@@ -301,7 +301,7 @@ export const en = {
   'confirm.bookingConfirmed': 'Booking confirmed',
   'confirm.youAreBookedIn': 'You are booked in',
   'confirm.introText':
-    '{guest}, your {room} at {hotel} is held under the booking number shown here. This is a demo booking — no payment was taken and no real reservation exists.',
+    '{guest}, your {room} at {hotel} is held under the booking number shown here. No payment was taken and no real reservation exists.',
   'confirm.bookingNumber': 'Booking number',
   'confirm.bookedOn': 'Booked {date}',
   'confirm.dates': 'Dates',
@@ -318,7 +318,7 @@ export const en = {
   'confirm.seeInHotelAdmin': 'See it in the hotel admin',
   'confirm.viewInvoice': 'View invoice',
   'confirm.footerNote':
-    "This is a demo booking, not a real one. There's no account yet — keep this page's link, or the reference {reference} and the email you booked with, if you want to find it again.",
+    "This isn't a real booking. There's no account yet — keep this page's link, or the reference {reference} and the email you booked with, if you want to find it again.",
 
   // Invoice
   'invoice.invoice': 'Invoice',
@@ -332,7 +332,7 @@ export const en = {
   'invoice.paidWith': 'Paid with',
   'invoice.toPayWith': 'To pay with',
   'invoice.disclaimer':
-    'This is a demo invoice generated for illustration only — no payment was collected and it has no fiscal standing.',
+    'This invoice is generated for illustration only — no payment was collected and it has no fiscal standing.',
   'invoice.print': 'Print',
 
   // Trips
@@ -358,7 +358,7 @@ export const en = {
   'trips.extraOther': 'extras',
   'trips.cancelThisStay': 'Cancel this stay?',
   'trips.cancelDialogBody':
-    '{room}, {dateRange} · {reference}. The room goes back on sale straight away. Nothing was charged in this demo, so there is nothing to refund — and the booking cannot be reinstated afterwards.',
+    '{room}, {dateRange} · {reference}. The room goes back on sale straight away. Nothing was charged, so there is nothing to refund — and the booking cannot be reinstated afterwards.',
   'trips.cancelEmailLabel': 'Email the booking was made with',
   'trips.keepBooking': 'Keep booking',
   'trips.cancelling': 'Cancelling…',
@@ -373,7 +373,7 @@ export const en = {
   'trips.enterEmailError': 'Enter the email address the booking was made with.',
   'trips.bookingNumberFormatError': 'A booking number looks like 3F7K2P.',
   'trips.notMatchError':
-    'No booking matches that reference and email. Demo bookings are also lost when the server restarts.',
+    'No booking matches that reference and email. Bookings made here are also lost when the server restarts.',
   'trips.stayAlreadyBegunError': 'This stay has already begun — the front desk handles changes from here.',
   'trips.notMatchCancelError': 'That reference and email do not match a booking we can cancel.',
 
@@ -410,11 +410,11 @@ export const en = {
 
   // Not found / error boundary
   'error.notFoundTitle': 'We could not find that page',
-  'error.notFoundBody': "The room or booking you followed does not exist, or this demo's data was recently reset.",
+  'error.notFoundBody': "The room or booking you followed does not exist, or this site's data was recently reset.",
   'error.browseRooms': 'Browse rooms',
   'error.backToHotel': 'Back to the hotel',
   'error.somethingWrongTitle': 'Something went wrong',
-  'error.somethingWrongBody': 'We could not load this part of the booking demo. Nothing was charged or reserved.',
+  'error.somethingWrongBody': 'We could not load this part of the booking flow. Nothing was charged or reserved.',
   'error.tryAgain': 'Try again',
   'error.backToRooms': 'Back to rooms',
 } as const;

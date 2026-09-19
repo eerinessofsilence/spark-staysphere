@@ -13,7 +13,7 @@ import { BookView } from '@/components/booking/book-view';
 
 export const metadata: Metadata = {
   title: 'Book your stay — Asteria Cove | SPARK StaySphere 360',
-  description: 'Complete a clearly labelled demo booking at Asteria Cove.',
+  description: 'Complete a booking at Asteria Cove — payment is simulated and nothing is charged.',
 };
 
 export default async function BookPage({ params, searchParams }: PageProps<'/book/[slug]'>) {

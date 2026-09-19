@@ -4,7 +4,7 @@ import { TripsPageView } from '@/components/trips/trips-page-view';
 
 export const metadata: Metadata = {
   title: 'My trips — Asteria Cove | SPARK StaySphere 360',
-  description: 'The demo bookings this browser has made at Asteria Cove.',
+  description: 'The bookings this browser has made at Asteria Cove.',
 };
 
 /**
