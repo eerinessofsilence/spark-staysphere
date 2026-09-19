@@ -10,6 +10,8 @@ import type {
   Quote,
   RatePlan,
   RoomStatus,
+  StayState,
+  TeamRoleDefinition,
   RoomType,
   StayCriteria,
 } from './schemas';
@@ -57,6 +59,8 @@ export interface BookingStore {
    * returned unchanged and its inventory is not credited twice.
    */
   cancelBooking(reference: string): Promise<Booking | null>;
+  /** The desk's check-in / check-out / no-show mark. Inventory is untouched: the booking itself stays as it is. */
+  setBookingStayState(reference: string, state: StayState): Promise<Booking | null>;
   listBookings(): Promise<Booking[]>;
 }
 
@@ -86,6 +90,19 @@ export interface DemoControlPort {
   getRoomStatusOverride(roomTypeId: string): Promise<RoomStatus | null>;
   listIntegrationStatuses(): Promise<IntegrationStatus[]>;
   reset(): Promise<void>;
+}
+
+/**
+ * The durable half of `/admin/settings/team`'s roles: custom role
+ * definitions, and which member has been moved off their built-in role onto
+ * one (custom or built-in) by id. The five built-in roles themselves are
+ * fixed in code (`team-directory.ts`) and never stored here.
+ */
+export interface RoleStore {
+  listCustomRoles(): Promise<TeamRoleDefinition[]>;
+  createCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
+  getMemberRoleOverride(memberId: string): Promise<string | null>;
+  setMemberRoleOverride(memberId: string, roleId: string): Promise<void>;
 }
 
 export interface PmsAdapter {
@@ -143,6 +160,37 @@ export interface RoomSearchInterpreter {
     current: StayCriteria; // what the guest already has in the URL
     facets: CatalogFacets; // the only amenity/category vocabulary allowed
   }): Promise<SearchIntent>;
+}
+
+/**
+ * What the admin assistant understood from a request — which of a fixed set
+ * of actions, and the words the admin used for its target. Never an id and
+ * never a resolved entity: `admin-assistant-service.ts` matches `target`
+ * against the live catalog itself, so the model cannot point a change at
+ * something it made up. See `lib/domain/admin-assistant.ts`.
+ */
+export type AdminCommand = import('./admin-assistant').AdminCommandWire;
+
+/** The words the interpreter may use for a target — the catalog's own names, nothing else. */
+export interface AdminCommandVocabulary {
+  roomTypes: string[];
+  addOns: string[];
+}
+
+/** One earlier message of the conversation, for the interpreter's context only — never a fact. */
+export interface AdminChatTurn {
+  role: 'admin' | 'assistant';
+  text: string;
+}
+
+export interface AdminCommandInterpreter {
+  interpret(input: {
+    utterance: string;
+    vocabulary: AdminCommandVocabulary;
+    /** What is being set up mid-conversation, if anything — the reply is then an answer to its open question. */
+    draft: import('./admin-assistant').AdminDraft | null;
+    history: AdminChatTurn[];
+  }): Promise<AdminCommand>;
 }
 
 export interface SpeechTranscriber {

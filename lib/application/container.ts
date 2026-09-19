@@ -1,4 +1,5 @@
 import type {
+  AdminCommandInterpreter,
   CatalogEntryKind,
   DemoControlPort,
   HotelRepository,
@@ -6,24 +7,30 @@ import type {
   SpeechTranscriber,
 } from '../domain/ports';
 import type { Hotel } from '../domain/schemas';
-import { getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
+import { getAdminAuthEnv, getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
+import { durableRoleStore } from '../infrastructure/durable-role-store';
 import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
+import { keywordAdminInterpreter } from '../infrastructure/keyword-admin-interpreter';
 import { keywordSearchInterpreter } from '../infrastructure/keyword-search-interpreter';
 import { mediaLibraryPort } from '../infrastructure/media-library';
 import { readMockFrame } from '../infrastructure/spinner-frame-storage-mock';
 import { demoAddOns, demoHotel, demoHotels, demoPhysicalRooms, demoRates, demoRooms } from '../infrastructure/mock-data';
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
+import { createOpenAiAdminInterpreter } from '../infrastructure/openai-admin-interpreter';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
 import { createOpenAiTranscriber } from '../infrastructure/openai-transcriber';
+import { AdminAssistantService } from './admin-assistant-service';
 import { AssistantError, AssistantService } from './assistant-service';
 import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
 import { ContentService } from './content-service';
+import { systemClock } from '../domain/clock';
 import { InventoryService } from './inventory-service';
 import { SampleBookingService } from './sample-bookings';
+import { TeamService } from './team-service';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -37,6 +44,9 @@ import { SampleBookingService } from './sample-bookings';
  */
 export const hotelRepository: HotelRepository = durableHotelRepository;
 export const demoControl: DemoControlPort = durableDemoControlPort;
+
+/** Custom roles and member role overrides — see `team-service.ts`. Its `hasPermission` is what `admin-session.ts`'s `requirePermission` actually calls. */
+export const teamService = new TeamService(durableRoleStore);
 
 /** The demo tenant. A white-label deployment resolves this per host or per route. */
 export const DEMO_HOTEL_SLUG = 'asteria-cove';
@@ -87,6 +97,14 @@ export const contentService = new ContentService(
   durableSpinnerFrameStoragePort,
   DEMO_HOTEL_SLUG,
   seedIds,
+  systemClock,
+  // Imported lazily: admin-session.ts reads `adminAuthConfig` from this
+  // module, so a static import here would be a cycle. Nothing runs until a
+  // mutator is actually called, by which time both modules are long loaded.
+  async (permission) => {
+    const { requirePermission } = await import('./admin-session');
+    await requirePermission(permission);
+  },
 );
 
 /**
@@ -112,6 +130,26 @@ const roomSearchInterpreter: RoomSearchInterpreter = {
 
 export const assistantService = new AssistantService(catalogService, roomSearchInterpreter);
 
+/** The admin assistant's interpreter: the same key-at-call-time, keyword-fallback rule as the guest's. */
+const adminCommandInterpreter: AdminCommandInterpreter = {
+  async interpret(input) {
+    const apiKey = getOpenAiKey();
+    if (!apiKey) return keywordAdminInterpreter.interpret(input);
+    try {
+      return await createOpenAiAdminInterpreter(apiKey).interpret(input);
+    } catch (error) {
+      console.error('Admin assistant: OpenAI interpreter failed, falling back to keywords.', error);
+      return keywordAdminInterpreter.interpret(input);
+    }
+  },
+};
+
+/**
+ * Bound to the same hotel as `contentService`: a proposal must describe the
+ * catalog `apply` will actually write to. See admin-assistant-service.ts.
+ */
+export const adminAssistantService = new AdminAssistantService(contentService, demoControl, adminCommandInterpreter);
+
 /**
  * Which interpreter a call to `assistantService.ask` is about to use, so the
  * route can tell the panel to say, quietly, that it is matching on keywords.
@@ -121,6 +159,26 @@ export const assistantService = new AssistantService(catalogService, roomSearchI
  */
 export function assistantInterpreterSource(): 'openai' | 'keyword' {
   return getOpenAiKey() ? 'openai' : 'keyword';
+}
+
+/** What the demo signs in with when nothing is configured — and what the sign-in page prints in that case. */
+export const DEMO_ADMIN_PASSWORD = 'staysphere';
+
+/**
+ * The back office's sign-in configuration, resolved at call time like every
+ * other binding here. `demo` is true while the shared demo password is the
+ * one in force, which is the only time the sign-in page may show it. The
+ * session secret's development fallback is fixed on purpose: a cookie signed
+ * during one `vinext dev` run must still verify after a restart, or every
+ * restart would sign everyone out (and the e2e suite with them).
+ */
+export function adminAuthConfig(): { password: string; sessionSecret: string; demo: boolean } {
+  const { password, sessionSecret } = getAdminAuthEnv();
+  return {
+    password: password ?? DEMO_ADMIN_PASSWORD,
+    sessionSecret: sessionSecret ?? 'staysphere-development-session-secret',
+    demo: password === null,
+  };
 }
 
 /**

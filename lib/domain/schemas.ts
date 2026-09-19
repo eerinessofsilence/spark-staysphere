@@ -238,6 +238,17 @@ export const roomTypeSchema = z.object({
   view: z.enum(['sea', 'garden', 'pool', 'city']),
   amenities: z.array(z.string()),
   /**
+   * Names from the hotel's own `facilities` list (Hotel Settings — the pool,
+   * the spa) that this room type's own page shows, a subset rather than the
+   * property's whole list. A reference by name, the loose join the CMS
+   * already uses elsewhere rather than a new id scheme (facilities have
+   * none). `undefined` — no selection ever made — reads as "every facility",
+   * so this ships without touching every existing `RoomType` fixture and a
+   * room created before this field existed keeps showing what it always
+   * did; see `RoomDetailView`.
+   */
+  facilities: z.array(z.string()).optional(),
+  /**
    * Withdrawn from the site by the CMS. Optional so this ships without
    * touching every existing `RoomType` fixture (the same trick as `spinner`
    * and `model` on `Hotel`). A hidden room stays visible in `/admin/content`
@@ -340,6 +351,9 @@ export const physicalRoomSchema = z.object({
 
 export type PhysicalRoom = z.infer<typeof physicalRoomSchema>;
 
+/** The desk's side of a confirmed stay — see `lib/domain/stay-state.ts` for the moves between them. */
+export const stayStateSchema = z.enum(['booked', 'checked_in', 'checked_out', 'no_show']);
+
 export const bookingSchema = z.object({
   id: z.string(),
   reference: z.string(),
@@ -357,6 +371,7 @@ export const bookingSchema = z.object({
   total: z.number().nonnegative(),
   currency: currencySchema,
   status: z.enum(['draft', 'held', 'confirmed', 'cancelled']),
+  stayState: stayStateSchema.default('booked'),
   createdAt: z.string().datetime(),
 });
 
@@ -365,6 +380,38 @@ export const integrationStatusSchema = z.object({
   mode: z.enum(['mock', 'sandbox', 'production']),
   connected: z.boolean(),
   lastSyncAt: z.string().datetime().nullable(),
+});
+
+/**
+ * What a role can be granted — see `lib/application/team-directory.ts` for
+ * the five built-in roles and `lib/application/team-service.ts` for how a
+ * custom one (`TeamRoleDefinition`) is built and checked against the same
+ * enum, so a role dreamed up in `/admin/settings/team` can never grant
+ * something `requirePermission` doesn't know how to gate.
+ */
+export const teamPermissionKeySchema = z.enum([
+  'team.permViewBookings',
+  'team.permCancelBookings',
+  'team.permEditRates',
+  'team.permEditContent',
+  'team.permManageMedia',
+  'team.permBrandDomain',
+  'team.permTeamRoles',
+  'team.permIntegrations',
+]);
+
+/**
+ * A role a team member can be given: one of the five built-in ones
+ * (`builtin: true`, fixed in code) or one created from
+ * `/admin/settings/team` (`builtin: false`, its `id` a slug of its name,
+ * stored alongside the built-ins so `TeamService.hasPermission` never has
+ * to know which kind it's looking at).
+ */
+export const teamRoleDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  builtin: z.boolean(),
+  permissions: z.array(teamPermissionKeySchema),
 });
 
 /**
@@ -515,7 +562,10 @@ export type AddOn = z.infer<typeof addOnSchema>;
 export type Guest = z.infer<typeof guestSchema>;
 export type PaymentAttempt = z.infer<typeof paymentAttemptSchema>;
 export type Booking = z.infer<typeof bookingSchema>;
+export type StayState = z.infer<typeof stayStateSchema>;
 export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
+export type TeamPermissionKey = z.infer<typeof teamPermissionKeySchema>;
+export type TeamRoleDefinition = z.infer<typeof teamRoleDefinitionSchema>;
 export type RoomStatus = z.infer<typeof roomStatusSchema>;
 export type Currency = z.infer<typeof currencySchema>;
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
