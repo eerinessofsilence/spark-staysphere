@@ -18,7 +18,7 @@ const KEY_ANGLE = 25; // one of the seed spinner's `keyAngles` (mock-data.ts)
 
 async function resetDemoState(page: Page) {
   await page.goto('/admin/reset');
-  const button = page.getByRole('button', { name: 'Reset demo state' });
+  const button = page.getByRole('button', { name: 'Reset seed data' });
   await expect(async () => {
     await button.click();
     await expect(button).toBeDisabled({ timeout: 2_000 });

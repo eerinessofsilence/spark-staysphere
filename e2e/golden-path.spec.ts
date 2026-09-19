@@ -123,9 +123,9 @@ async function bookAStay(page: Page): Promise<string> {
   await page.getByLabel('Phone').fill('91 555 0117');
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  await toggle(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }), 'true');
+  await toggle(page.getByRole('checkbox', { name: /I understand this is a booking at a fictional property/ }), 'true');
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Confirm demo booking' }).click();
+  await page.getByRole('button', { name: 'Confirm booking' }).click();
   await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
 
   return (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
@@ -174,7 +174,7 @@ test('resetting demo state clears bookings and availability overrides', async ({
 
   // "No reservations yet" can already be true before the reset has finished — after a suite that made no
   // bookings — so wait on the button's own disabled → enabled round trip, which only the reset resolves.
-  const reset = page.getByRole('button', { name: 'Reset demo state' });
+  const reset = page.getByRole('button', { name: 'Reset seed data' });
   await actUntil(
     () => reset.click(),
     () => expect(reset).toBeDisabled({ timeout: 2_000 }),
@@ -576,13 +576,13 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Payment' })).toBeVisible();
 
-  await toggle(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }), 'true');
+  await toggle(page.getByRole('checkbox', { name: /I understand this is a booking at a fictional property/ }), 'true');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 6. Review and confirm
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
   await expect(page.getByText('ada@example.com').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Confirm demo booking' }).click();
+  await page.getByRole('button', { name: 'Confirm booking' }).click();
 
   await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
   await expect(page.getByRole('heading', { level: 1, name: 'You are booked in' })).toBeVisible();

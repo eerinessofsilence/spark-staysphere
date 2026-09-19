@@ -15,7 +15,7 @@ const SAMPLE_FRAMES = [0, 1, 2, 3, 4, 5].map((n) => path.join(FRAMES_DIR, `frame
 
 async function resetDemoState(page: Page) {
   await page.goto('/admin/reset');
-  const button = page.getByRole('button', { name: 'Reset demo state' });
+  const button = page.getByRole('button', { name: 'Reset seed data' });
   await expect(async () => {
     await button.click();
     await expect(button).toBeDisabled({ timeout: 2_000 });

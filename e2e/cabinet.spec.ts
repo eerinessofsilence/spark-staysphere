@@ -166,9 +166,9 @@ test('a guest picks a room on the floor plan, books it, and the back office sees
   await page.getByLabel('Email').fill(guest.email);
   await page.getByLabel('Phone').fill(guest.phone);
   await page.getByRole('button', { name: 'Continue' }).click();
-  await check(page.getByRole('checkbox', { name: /I understand this is a demo booking/ }));
+  await check(page.getByRole('checkbox', { name: /I understand this is a booking at a fictional property/ }));
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Confirm demo booking' }).click();
+  await page.getByRole('button', { name: 'Confirm booking' }).click();
 
   await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
   await expect(page.getByText(`Room ${room}`)).toBeVisible();

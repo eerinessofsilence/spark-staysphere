@@ -40,7 +40,7 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
  */
 async function resetDemoState(page: Page) {
   await page.goto('/admin/reset');
-  const button = page.getByRole('button', { name: 'Reset demo state' });
+  const button = page.getByRole('button', { name: 'Reset seed data' });
   await actUntil(
     () => button.click(),
     () => expect(button).toBeDisabled({ timeout: 2_000 }),
@@ -219,7 +219,7 @@ test('creating an add-on offers it in a room\'s picker; withdrawing it removes t
   // A demo add-on offers no delete at all; one made in the CMS is removed from its dialog.
   await page.goto('/admin/content/add-ons/addon_late');
   await expect(page.getByRole('button', { name: 'Remove Late check-out' })).toHaveCount(0);
-  await expect(page.getByText(/Came with the demo catalog/)).toBeVisible();
+  await expect(page.getByText(/Came with the seed catalog/)).toBeVisible();
 
   await page.goto('/admin/content/add-ons/addon_sunset-kayak-tour');
   const removeDialog = page.getByRole('dialog', { name: 'Remove Sunset Kayak Tour?' });
