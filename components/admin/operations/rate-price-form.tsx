@@ -5,6 +5,7 @@ import { useActionState } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { toast } from '@/components/admin/shell/toast';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function RatePriceForm({
   nightlyPrice,
   otaComparisonPrice,
 }: RatePriceFormProps) {
+  const t = useAdminT();
   const [state, dispatch, pending] = useActionState(action, idleFormState);
   const [currentVersion, setCurrentVersion] = React.useState(version);
 
@@ -59,7 +61,7 @@ export function RatePriceForm({
       <input type="hidden" name="version" value={currentVersion} />
       <div className="flex items-center gap-2">
         <label htmlFor={`${idPrefix}-price`} className="sr-only">
-          Nightly price ({currency}) for {roomName}
+          {t('ops.nightlyPriceLabel', { currency, room: roomName })}
         </label>
         <input
           id={`${idPrefix}-price`}
@@ -74,7 +76,7 @@ export function RatePriceForm({
           className={inputClass}
         />
         <label htmlFor={`${idPrefix}-ota`} className="sr-only">
-          Booking-site price ({currency}) for {roomName}
+          {t('ops.bookingSitePriceLabel', { currency, room: roomName })}
         </label>
         <input
           id={`${idPrefix}-ota`}
@@ -91,7 +93,8 @@ export function RatePriceForm({
         />
         <button type="submit" disabled={pending} className={pill('secondary', 'px-4')}>
           {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-          Save<span className="sr-only"> rate for {roomName}</span>
+          <span aria-hidden="true">{t('ops.save')}</span>
+          <span className="sr-only">{t('ops.saveRateFor', { room: roomName })}</span>
         </button>
       </div>
       {priceError ? (

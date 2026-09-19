@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { addDays, format, parseISO } from 'date-fns';
-import { EyeSlash } from '@phosphor-icons/react/dist/ssr';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
   catalogService,
   contentService,
@@ -10,62 +9,110 @@ import {
   hotelRepository,
 } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
-import { toIsoDate } from '@/lib/application/search-params';
-import { formatDate } from '@/lib/formatting';
-import { tag } from '@/lib/ui';
+import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
+import { addIsoDays } from '@/lib/domain/dates';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
+import { pluralForm } from '@/lib/i18n/plural';
+import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { RoomStatusControl } from '@/components/admin/room-controls';
-import { RatePriceForm } from '@/components/admin/operations/rate-price-form';
+import { WINDOW_OPTIONS, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
+import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
+import { RatesSearchBox } from '@/components/admin/rates/rates-search-box';
+import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
+import { buildDateWindow, ratesHref, roomRatesHref } from '@/components/admin/rates/rates-shared';
 import { AddRoomRateButton } from '@/components/admin/content/add-room-rate-button';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { createRateAction } from '@/app/admin/content/rooms/[id]/actions';
-import { updateBaseRateAction } from './actions';
 
-export const metadata: Metadata = { title: 'Room Rates — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
 
-const NIGHTS = 7;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.roomRates')) };
+}
+
+const DEFAULT_WINDOW = 14;
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 /**
- * Room type · price · seven nights · override. On a desk the one template lines every row up under
- * a shared head, like a table; on a phone each room type stacks and labels its own parts, so no
- * column ever hides off the edge of the screen.
+ * The overview: one grid row per room type, quota only — a glance at who's
+ * sold out and when. A row is the door into that room's own rates screen
+ * (`/admin/rates/[id]`), where its rate plans and their prices actually
+ * live; this page never shows a price, so it stays short even with many
+ * room types and many rates each.
  */
-const columns = 'lg:grid-cols-[13rem_minmax(15rem,1fr)_minmax(0,21rem)_12rem]';
-
-export default async function RatesPage() {
+export default async function RatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const locale = await getAdminLocale();
+  const t = adminT(locale);
+  const dateFnsLocale = DATE_FNS_LOCALES[locale];
+  const params = await searchParams;
   const today = toIsoDate(new Date());
-  const dates = Array.from({ length: NIGHTS }, (_, index) => toIsoDate(addDays(parseISO(today), index)));
-  const windowEnd = toIsoDate(addDays(parseISO(today), NIGHTS));
+  const rawFrom = first(params.from);
+  const from = isIsoDate(rawFrom) ? rawFrom : today;
+  const rawDays = Number(first(params.days));
+  const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
+  const q = first(params.q)?.trim() ?? '';
+  const { dates, windowEnd, columns, minWidth } = buildDateWindow(from, days);
+  const lastNight = dates.at(-1) ?? from;
 
   const selectedSlug = await getSelectedHotelSlug();
   const hotel = await catalogService.getHotel(selectedSlug);
   const rooms = await hotelRepository.listRooms(hotel.id);
-  // The CMS (createRate/createRoom) only ever writes against the default hotel — see
-  // content-service.ts's single bound `hotelSlug` — so the add-a-rate shortcut only
-  // appears there; other hotels still edit an existing rate's price inline below.
   const canAddRate = selectedSlug === DEMO_HOTEL_SLUG;
-  const rows = await Promise.all(
+  const allRows = await Promise.all(
     rooms.map(async (room) => {
-      const [rates, override, availability] = await Promise.all([
-        contentService.listRatesContent(room.id),
+      const [rateCount, override, availability] = await Promise.all([
+        contentService.listRatesContent(room.id).then((rates) => rates.length),
         demoControl.getRoomStatusOverride(room.id),
-        hotelRepository.getAvailability(room.id, today, windowEnd),
+        hotelRepository.getAvailability(room.id, from, windowEnd),
       ]);
       return {
         room,
-        rate: rates[0] ?? null,
-        rateCount: rates.length,
+        rateCount,
         override,
         remaining: new Map(availability.map((night) => [night.date, night.remaining])),
       };
     }),
   );
+  const needle = q.toLowerCase();
+  // The overview only ever names room types, so a rate's own name has to be
+  // fetched separately to still match it — content-service reads are cheap
+  // enough for a demo catalog this size, and it's the only way "garden
+  // studio breakfast" (a rate's name) can find its room from here at all.
+  const rows = needle
+    ? (
+        await Promise.all(
+          allRows.map(async (row) => {
+            if (row.room.name.toLowerCase().includes(needle)) return row;
+            const rates = await contentService.listRatesContent(row.room.id);
+            return rates.some((rate) => rate.name.toLowerCase().includes(needle)) ? row : null;
+          }),
+        )
+      ).filter((row): row is (typeof allRows)[number] => row !== null)
+    : allRows;
+
+  const nights = lNights(days, locale);
+  const rateCountLabel = (count: number) =>
+    pluralForm(locale, count, {
+      one: t('rates.countOne', { count }),
+      few: t('rates.countFew', { count }),
+      many: t('rates.countMany', { count }),
+      other: t('rates.countMany', { count }),
+    });
 
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Room Rates"
+        title={t('nav.roomRates')}
         actions={
           canAddRate ? (
             <AddRoomRateButton
@@ -77,107 +124,89 @@ export default async function RatesPage() {
         }
       />
 
-      <section aria-label="Rates and availability by room type" className="mt-6 rounded-[18px] bg-card shadow-soft">
-        <div
-          aria-hidden="true"
-          className={cn('hidden gap-4 border-b border-border px-5 py-3 text-sm text-muted-foreground lg:grid', columns)}
-        >
-          <span className="self-end">Room type</span>
-          <span className="self-end">Nightly · booking-site price, {hotel.currency}</span>
-          <span className="grid grid-cols-7 gap-1 text-center text-xs">
-            {dates.map((date, index) => (
-              <span key={date}>
-                <span className="block">{index === 0 ? 'Tonight' : format(parseISO(date), 'EEE')}</span>
-                <span className="block tabular-nums">{format(parseISO(date), 'd MMM')}</span>
-              </span>
-            ))}
-          </span>
-          <span className="self-end">Override</span>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <RatesSearchBox query={q} />
+
+        <div className="flex items-center gap-2">
+          <Link
+            href={ratesHref({ from: addIsoDays(from, -days), days, q })}
+            aria-label={t('frontDesk.previousNights', { nights })}
+            className={iconButton('light')}
+          >
+            <ChevronLeftIcon className="size-5" aria-hidden="true" />
+          </Link>
+          <Link
+            href={ratesHref({ from: today, days, q })}
+            aria-current={from === today ? 'true' : undefined}
+            className={pill('secondary')}
+          >
+            {t('frontDesk.today')}
+          </Link>
+          <Link
+            href={ratesHref({ from: addIsoDays(from, days), days, q })}
+            aria-label={t('frontDesk.nextNights', { nights })}
+            className={iconButton('light')}
+          >
+            <ChevronRightIcon className="size-5" aria-hidden="true" />
+          </Link>
         </div>
 
-        <ul>
-          {rows.map(({ room, rate, rateCount, override, remaining }) => (
-            <li
-              key={room.id}
-              className={cn('grid gap-4 border-b border-border px-5 py-4 last:border-b-0 lg:items-center', columns)}
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+          {WINDOW_OPTIONS.map((option) => (
+            <Link
+              key={option}
+              href={ratesHref({ from, days: option, q })}
+              aria-current={option === days ? 'page' : undefined}
+              className={cn(
+                'flex min-h-8 items-center rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors',
+                option === days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone hover:text-foreground',
+              )}
             >
-              <div className="min-w-0">
-                <Link href={`/admin/content/rooms/${room.id}`} className="font-medium hover:text-accent-strong">
-                  {room.name}
-                </Link>
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                  {rate ? rate.name : 'No rate'}
-                  {rateCount > 1 ? ` · ${rateCount} rates` : ''}
-                  {room.hidden ? (
-                    <span className={tag('py-0.5')}>
-                      <EyeSlash weight="fill" className="size-3.5" aria-hidden="true" />
-                      Hidden
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-
-              <div>
-                <p className="mb-1.5 text-xs text-muted-foreground lg:hidden" aria-hidden="true">
-                  Nightly · booking-site price, {hotel.currency}
-                </p>
-                {rate ? (
-                  <RatePriceForm
-                    action={updateBaseRateAction.bind(null, room.id, rate.id)}
-                    version={rate.version}
-                    idPrefix={`rate-${rate.id}`}
-                    roomName={room.name}
-                    currency={rate.currency}
-                    nightlyPrice={rate.nightlyPrice}
-                    otaComparisonPrice={rate.otaComparisonPrice}
-                  />
-                ) : (
-                  <Link href={`/admin/content/rooms/${room.id}`} className="text-sm text-muted-foreground hover:text-accent-strong">
-                    Add a rate in the CMS
-                  </Link>
-                )}
-              </div>
-
-              <div>
-                <p className="mb-1.5 text-xs text-muted-foreground lg:hidden" aria-hidden="true">
-                  Rooms left, next seven nights
-                </p>
-                <ol
-                  aria-label={`Rooms left for ${room.name}, next seven nights`}
-                  className="grid grid-cols-7 gap-1 text-center text-sm tabular-nums"
-                >
-                  {dates.map((date) => {
-                    const left = remaining.get(date);
-                    return (
-                      <li
-                        key={date}
-                        className={cn(
-                          'rounded-xl py-1.5',
-                          left === 0 ? 'bg-danger/10 font-medium text-danger' : 'bg-stone/50',
-                        )}
-                      >
-                        <span className="block text-[11px] leading-tight text-muted-foreground lg:hidden" aria-hidden="true">
-                          {format(parseISO(date), 'EEE')}
-                        </span>
-                        <span className="sr-only">{formatDate(date)}: </span>
-                        {left === undefined ? '—' : left}
-                        <span className="sr-only">{left === 0 ? ' left, fully booked' : ' left'}</span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-
-              <div>
-                <p className="mb-1.5 text-xs text-muted-foreground lg:hidden" aria-hidden="true">
-                  Override
-                </p>
-                <RoomStatusControl roomTypeId={room.id} roomName={room.name} value={override ?? 'auto'} />
-              </div>
-            </li>
+              {lNights(option, locale)}
+            </Link>
           ))}
-        </ul>
-      </section>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          {t('rates.dates', { from: lDateShort(from, locale), to: lDateShort(lastNight, locale) })}
+        </p>
+      </div>
+
+      <div className="mt-5">
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
+            <p className="font-medium">{q ? t('rates.noMatchQuery', { query: q }) : t('rates.noRate')}</p>
+            {q ? (
+              <Link href={ratesHref({ from, days, q: '' })} className={pill('secondary', 'mt-2')}>
+                {t('rates.clearSearch')}
+              </Link>
+            ) : null}
+          </div>
+        ) : (
+          <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
+            <div style={{ minWidth }} className="text-sm">
+              <RatesDateHeader dates={dates} columns={columns} dateFnsLocale={dateFnsLocale} t={t} />
+              {rows.map(({ room, rateCount, override, remaining }) => (
+                <div key={room.id} className="group">
+                  <RoomQuotaRow
+                    room={room}
+                    override={override}
+                    remaining={remaining}
+                    dates={dates}
+                    columns={columns}
+                    locale={locale}
+                    t={t}
+                    linkTo={roomRatesHref(room.id, { from, days })}
+                  />
+                  <div className="sticky left-0 z-20 w-fit border-b border-border bg-card px-4 py-1.5 text-xs text-muted-foreground">
+                    {rateCount === 0 ? t('rates.noRate') : rateCountLabel(rateCount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </AdminPage>
   );
 }

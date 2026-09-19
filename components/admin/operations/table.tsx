@@ -4,14 +4,22 @@ import { cn } from '@/lib/utils';
 export function TableCard({
   caption,
   className,
+  attached,
   children,
 }: {
   caption: string;
   className: string;
+  /** A `Pagination` follows immediately, sharing this card rather than floating below it as its own — see that component's own `attached`. */
+  attached?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
+    <div
+      className={cn(
+        'relative overflow-x-auto contain-inline-size',
+        attached ? 'bg-card' : 'rounded-[18px] bg-card shadow-soft',
+      )}
+    >
       <table className={cn('w-full border-collapse text-sm', className)}>
         <caption className="sr-only">{caption}</caption>
         {children}
