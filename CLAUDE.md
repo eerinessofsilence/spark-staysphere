@@ -43,11 +43,26 @@ A persistent AI room finder — a round control on every guest route — turns a
 request into a filter object through a `RoomSearchInterpreter` port (OpenAI, or a deterministic
 keyword fallback with no key configured), sanitises it against the live catalog, and hands the
 result to the same `CatalogService`/`buildPriceBreakdown` path everything else uses; see TECH.md's
-"AI concierge" section.
+"AI concierge" section. The back office has its own, as a chat beside the page: a typed request
+("set the Deluxe Sea View rate to 320", "create a room type and a room for it", "open room rates")
+becomes a question when something is still needed, or a proposal the team member confirms before
+anything is written, through the same CMS mutators the forms use — TECH.md's "Admin assistant".
+The back office speaks English, German and Russian (`lib/i18n/admin`, picked on `/admin/account`,
+a cookie the server reads), separately from the guest site's own eight-language picker — TECH.md's
+"Languages".
 
-Still future work: auth on `/admin` (and with it real team roles), saved brand settings and media
-uploads, the property's own photography, and production PMS, channel manager, payment, and CRM
-integrations.
+`/admin` is behind a two-step sign-in (`app/(auth)/admin`: a team address and the shared
+password, then what the team member is here for), a signed session cookie the layout and every
+admin server action check, and `ContentService`'s `authorize` — TECH.md's "Sign-in". The five demo
+roles (`lib/application/team-directory.ts`) are real, enforced permissions, not a cosmetic label:
+`admin-session.ts`'s `requirePermission` gates `ContentService`'s mutators and a handful of server
+actions against the matrix `/admin/settings/team` shows. What it is not yet: real *accounts* — one
+shared password stands in for a per-member one, so the role is real but who's behind it is on
+trust.
+
+Still future work: per-member accounts on `/admin` (their own passwords, not one shared one),
+saved brand settings and media uploads, the property's own photography, and production PMS,
+channel manager, payment, and CRM integrations.
 
 ## Technical decisions
 
@@ -102,9 +117,11 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) in the
     room galleries), and add real 360 tiles if the property has them — the spinner's own frames
     already have an upload path (step 9); the general photo library still does not
     (`MediaStoragePort` is declared, not implemented).
-11. Auth on `/admin` (and `/admin/content` — `assertCanEditContent()` in `content-service.ts` is the
-    one gate to wire it into) with team roles; then the first real PMS or channel-manager adapter
-    behind the existing ports. A production PMS/channel-manager also becomes the owner of prices,
+11. ~~Auth on `/admin` — a session, and `ContentService`'s `authorize` as the one gate.~~ Done as a
+    shared password over the demo team, each member's role a real, enforced permission
+    (`requirePermission`) rather than a label; per-member accounts (their own password each) are
+    still ahead. Then the first real PMS or channel-manager adapter behind the existing ports. A
+    production PMS/channel-manager also becomes the owner of prices,
     rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
     enforce.
 12. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.

@@ -108,9 +108,12 @@ state" on `/admin` clears the whole table for the hotel, so the catalog falls ba
 
 The `hotel` entry also carries the property's facilities — `Hotel.facilities`, an icon key from
 `facilityIconSchema` plus a name each — edited on the Facilities tab of Hotel Settings
-(`/admin/content/hotel`) and shown as chips on every room page, after the room's own amenities. The icon
+(`/admin/content/hotel`) and shown as chips on a room page, after the room's own amenities. The icon
 vocabulary is fixed in the schema and drawn by `components/hotel/facility-icon.ts`, so the guest
-site never meets a key it cannot render.
+site never meets a key it cannot render. A room type's own `RoomType.facilities` — names from that
+same list, picked on the room's own content page (`RoomFacilitiesPicker`) rather than typed — narrows
+which of them its page shows; `undefined` (no selection ever made) shows every one, so a room type
+from before this field existed keeps showing what it always did.
 
 ```text
 Seed (mock-data.ts)  ──┐
@@ -267,13 +270,22 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 | --- | --- | --- |
 | `/admin` | Tonight's occupancy, 14-night occupancy chart, arrivals and departures, recent bookings, integration status | `InventoryService.getFrontDesk`, `HotelRepository.listBookings`, `DemoControlPort` — live |
 | `/admin/reset` | "Reset demo state" — not in the sidebar; reachable by URL for the demo owner and the e2e harness, not by navigation | `DemoControlPort.reset`, `ContentService.resetContent` — live |
-| `/admin/front-desk` | Rooms × nights (7/14/30), filter by room type, booking detail dialog | `InventoryService.getFrontDesk` — live; demand is simulated and says so |
+| `/admin/front-desk` | Rooms × nights (7/14/30), filter by room type, stay dialog (dates, party, rate, payment) whose status badge is the desk's menu: check in, check out, no-show, one step back, cancel | `InventoryService.getFrontDesk`, `BookingService.setStayStateAsHotel` — live; demand is simulated and says so |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; detail is three cards — guest (contact, party, totals across their stays), booking (status, room, rate, payment, dates, extras, cancel), room (photo, facts, price summary) — over the guest's booking history, matched by email | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom`, `HotelRepository.listBookings` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
 | `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
 | `/admin/content` — Rooms | Two tabs: Room types (`/admin/content`: cover, price, room count) and Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one); room type, room and rate editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 | `/admin/content/add-ons` — Services | Its own nav item: every add-on by category, with the on-sale switch, and the add-on editors under it | `ContentService` — live |
 | `/admin/content/spinner` — 360 Orbit | Overview (key-angle frames, zone coverage), `/markup` (draw and bind zones per frame), `/frames` (upload frames, pick key angles and the start frame) | `ContentService.getSpinnerMarkupContent`/`saveSpinnerZones`/`updateSpinnerScene`/`uploadSpinnerFrame` — live |
+
+The first time the back office opens in a browser, a short guided tour plays
+(`components/admin/onboarding/`): one card at a time against a dimmed screen, pointing at the
+property switcher, the nav, 360 Orbit, the bell and the assistant. A step points at whatever
+carries `data-tour="…"`, and a step whose target has no boxes right now is skipped — which is
+what makes one list work for both layouts, the sidebar's steps dropping out on a phone and the
+menu button's step dropping out on a desktop, with nothing in the tour knowing about breakpoints.
+"Seen" is remembered per browser (`localStorage`), like the bell's own "last seen", because
+there is no per-user session to hang it on yet; `/admin/account` plays it again on demand.
 
 An empty Reservations or Accounting screen offers "Add sample bookings" (`SampleBookingService`,
 `lib/application/sample-bookings.ts`): a dozen stays relative to today — past, in house, upcoming,
@@ -292,12 +304,100 @@ manifest, read-only — there is no upload path, see "Content management (CMS)")
 team roles, integration credentials and media uploads are left out until they can actually save.
 
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
-`stay_started` rules as the guest's, without the email check, since the desk is trusted (until
-auth, anyone who can open `/admin` is). A cancelled booking releases its nights and its room at
-once, because both the floor plan and the front desk recompute `allocateRoomType` on read. The rates
+`stay_started` rules as the guest's, without the email check, since the desk is trusted — a
+signed-in team member (see "Sign-in" below), not anyone who can type the URL. A cancelled booking releases its nights and its room at
+once, because both the floor plan and the front desk recompute `allocateRoomType` on read.
+`BookingService.setStayStateAsHotel` is the desk's other move: a confirmed booking's `stayState`
+(`booked` → `checked_in` → `checked_out`, or `booked` → `no_show`, each undoable one step —
+`lib/domain/stay-state.ts`) is the guest's whereabouts, separate from the booking's own `status`,
+which stays `confirmed` throughout; it never touches inventory. D1 keeps it in
+`booking_stay_states` (its own table, like `booking_units`, since there is no migration runner
+to ALTER `bookings`), the badge on every admin screen reads it, and the board's bar colours prefer
+it over the calendar. The rates
 screen saves through `ContentService.updateRate` with the rate's `version`, so it and the CMS rate
 form share one concurrency check and one overlay row. Every write revalidates the admin screens
 that show it and the guest routes it reprices.
+
+### Sign-in
+
+`/admin` is behind a session. The door is a two-step wizard in its own route group,
+`app/(auth)/admin` — `/admin/sign-in` (who you are) then `/admin/welcome` (what you are here
+for) — outside `app/admin/layout.tsx` so that layout, which sends anyone without a session to
+the door, never wraps the door itself. Same URL prefix, a different tree, no sidebar.
+
+```text
+/admin/sign-in  → signInAction        ← team address + the shared password (lib/application/team-directory.ts,
+                                         ADMIN_PASSWORD or the demo one); a wrong address and a wrong
+                                         password fail identically; the assistant's rate limiter, own bucket
+                → cookie admin-session ← { memberId, interests, onboarded, exp } + HMAC-SHA256 over it
+                                         (ADMIN_SESSION_SECRET), httpOnly, /admin, seven days — no store
+/admin/welcome  → saveInterestsAction ← as many of ADMIN_INTERESTS as apply, or "skip"; marks the
+                                         session onboarded and lands on the first interest's screen
+app/admin/layout.tsx                  ← no session → /admin/sign-in; not onboarded → /admin/welcome
+every admin server action             ← requireAdminSession(): a layout guards what renders, not
+                                         what can be posted to
+ContentService                        ← its `authorize` (the old assertCanEditContent choke point) is
+                                         requirePermission('team.perm…'), handed in by the container
+```
+
+`lib/application/admin-session.ts` owns all of it: encode/decode (a payload the browser can read
+but cannot forge — constant-time compare, expiry, member still on the team), `signIn`, and the
+cookie itself. There are no per-member passwords because there are no per-member accounts, only
+the demo team; unset, `ADMIN_PASSWORD` is the demo password and the sign-in page prints it,
+which is the only time it does (`adminAuthConfig().demo`). The session secret's development
+fallback is fixed so a `vinext dev` restart doesn't sign everyone out. The interests picked in
+step two are remembered on the session, shown on `/admin/account` (with a way back to step two),
+and decide where sign-in lands; the account menu at the foot of the sidebar signs out
+(`signOutAction`: clear the cookie, back to the door). Playwright signs in once through the real
+door (`e2e/auth.setup.ts`) and the other projects start from that browser state.
+
+`team-directory.ts`'s `permissions` table (which role may do what) is a real, enforced gate, not a
+preview: `admin-session.ts`'s `requirePermission(key)` — `requireAdminSession` plus `hasPermission`
+on the signed-in member's role — is what `ContentService`'s `authorize` now is, and a handful of
+server actions that don't go through `ContentService` (booking cancel, the front desk's own quote
+and create, the demo rate/availability override, "Reset demo state") call it directly. A denial
+comes back as an ordinary `ContentError`/form failure (`{ kind: 'forbidden', message }`), the same
+shape as a validation or a rule error, not a thrown exception a page has to recover from. Still
+ahead: real per-member *accounts* — the gate checks which role is signed in, but every role still
+signs in with the one shared password, so who is actually behind it is on trust.
+
+### Languages
+
+The guest site speaks eight languages through `lib/i18n` (`LocaleProvider`, `useT`, the `l*`
+formatters in `format.ts`), chosen in the header's `LanguagePicker` and remembered in
+`localStorage` — nothing the server knows, so every guest page renders English first and corrects
+itself after mount. The back office is deliberately not inside that choice: a hotel's team member
+and a guest in the same browser are two people. `/admin` has its own, `lib/i18n/admin`, in three
+languages (`ADMIN_LOCALES`: English, German, Russian), picked on `/admin/account` and kept in a
+cookie scoped to `/admin` (`admin-locale`, set by `setAdminLocaleAction`), so the server reads it
+the same way it reads the selected hotel and every screen renders in it from the first byte — no
+English flash, and `<title>`s and server actions' own messages come back in it too.
+
+```text
+cookie admin-locale
+  → getAdminLocale() / getAdminT()        ← server components, generateMetadata, server actions
+  → AdminLocaleProvider (app/admin/layout) ← seeded from the same read, so the client agrees
+  → useAdminLocale() / useAdminT()        ← client components
+```
+
+`adminT(locale)` is pure and synchronous, so the server, a client component and a test all
+translate identically; `translateAdmin` falls back to English (never to the raw key), though the
+dictionaries' types make a missing key a compile error first. The dictionary is one file per
+group of screens under `lib/i18n/admin/dictionaries/` (`shell`, `dashboard`, `account`,
+`operations`, `frontDesk`, `content`, `catalog`, `spinner`, `assistant`, `settings`), each a
+`defineArea({ en, de, ru })` whose keys are inferred from `en` — a key missing from `de` or `ru` is
+a type error — merged by `index.ts`. Dates, money, counts and the fixed vocabularies (views, beds,
+statuses, payment methods…) go through the guest site's own `l*` formatters with the admin locale,
+since `AdminLocale` is a subset of `Locale`; nothing in `/admin` hand-builds "3 nights" any more.
+
+What is not translated, on purpose: the hotel's own catalog copy (room, rate and add-on names,
+descriptions, the hotel's text — content, not chrome, as on the guest site), product and
+integration names, and the CMS's own validation and rule messages from `content-service.ts`, which
+still arrive in English through `ContentFormState` — translating those means error codes rather
+than sentences at the service boundary, which is a change to the application layer this did not
+make. The admin assistant's interpreter (keyword fallback and the OpenAI prompt) reads English
+requests; the panel says so under its example chips. The default is English, so the e2e suite,
+which reads English text, runs unchanged.
 
 ## AI concierge
 
@@ -348,6 +448,57 @@ one-request-in-flight lock per client, the same process-local shape as the rest 
 in-memory state. Production needs a KV- or Redis-backed limiter shared across isolates. Neither
 route ever logs an utterance or audio — only a correlation id and the outcome — and the uploaded
 recording is never written anywhere; it is discarded with the request once transcription returns.
+
+### Admin assistant
+
+The back office has the same control (`components/admin/assistant/`, mounted once in
+`AdminShell`), for a hotel team member rather than a guest, as a chat window docked beside the page
+rather than a dialog over it — setting a hotel up is done alongside the screens it changes. "Set
+the Deluxe Sea View rate to 320", "hide Garden Studio", "mark Panorama Suite sold out", "take the
+airport transfer off sale", "create a room type and a room for it", "open room rates". The guest
+rule holds with one more clause — **the model interprets language; it never produces inventory,
+availability, or money, and it never writes.**
+
+```text
+message (typed)  + draft (what is being set up so far)  + the last few turns
+  → AdminCommandInterpreter port        ← OpenAI structured output, or keyword-admin-interpreter.ts;
+                                           with a draft open, the message is read as the answer to
+                                           its next question (plus anything else it volunteers)
+  → AdminCommand                        ← one of a fixed set of actions, plus the target *as the
+                                           admin worded it* — never an id
+  → AdminAssistantService.ask           ← resolves the words against the live catalog's own names
+                                           (exact, then containing, then every-word; a tie is
+                                           returned as a question, never guessed), reads the
+                                           current value and the entity's version
+  → a question                          ← something is still needed: the draft, plus which field
+    or AdminProposal                    ← what would change, from what, to what; shown and confirmed
+  → AdminAssistantService.apply         ← the admin's click, through the same ContentService /
+                                           DemoControlPort mutators the forms use, with the version
+                                           the proposal was read at — so a change made in between
+                                           is the same conflict the form would report; may hand
+                                           back a follow-up draft ("now a room for it")
+```
+
+The conversation's state is the `draft` (`adminDraftSchema` in `lib/domain/admin-assistant.ts`):
+the panel holds it and sends it back with every message, so the server keeps no session and it
+works the same across isolates and reloads. A new room type is gathered field by field in a fixed
+order (name, description, floor, size, capacity, bed, view), one answer at a time or all at once,
+and created `hidden` — amenities and photos are added on its own CMS page, which is what
+`setRoomHidden(false)` insists on. "Cancel" drops the draft.
+
+`ask` only reads. `apply` is a second server action (`app/admin/assistant/actions.ts` — the back
+office is server actions only, no new API routes) that re-parses the proposal with
+`adminProposalSchema` because it round-trips through the browser; `ask` parses the draft and the
+history the same way. The action set is deliberately the mutators that already exist — a nightly
+price, a room type's `hidden`, its availability override, an add-on's `enabled`, `createRoom`,
+`createPhysicalRoom`, and navigation — so the assistant has no write path of its own; extending it
+is a matter of adding an action and its mapping, not a new way to write. Every sentence the panel
+shows (`formatAdminQuestion`, `formatAdminProposal`, `formatAdminAssistantReply`,
+`formatAdminApplyOutcome` in `lib/formatting.ts`) is composed from the draft's and the proposal's
+own names and numbers. The interpreter, its fallback, the rate limit and the no-logging rule are
+the guest assistant's, reused; voice is not offered — a request here is about to be confirmed as a
+write, and typed is the sharper tool for that. It is bound to the CMS's hotel (`ContentService` on
+`DEMO_HOTEL_SLUG`), so a proposal always describes the catalog `apply` will touch.
 
 ## Production source of truth
 
@@ -442,8 +593,11 @@ happens; picking different key angles on the *same* frames leaves both alone. Se
 ## Current limitations
 
 Without a D1 binding, demo state (including the CMS overlay) is process-local and resets with the
-worker isolate. There is no auth on `/admin` or `/admin/content` — `assertCanEditContent()` in
-`content-service.ts` is a no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
+worker isolate. `/admin` is behind a session (see "Sign-in" under Back office), but a shared
+password and a demo team, not accounts: every role signs in with the same password, so the gate
+knows which role is behind a request (`ContentService`'s `authorize` is `requirePermission`, a real
+check against `team-directory.ts`'s `permissions`) but not which actual person. Live payment is a
+no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
 channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
 failure; production needs a queue with retries. The photographs are licensed stock standing in for
 the property's own and must be replaced before any real launch; the CMS still has no upload path

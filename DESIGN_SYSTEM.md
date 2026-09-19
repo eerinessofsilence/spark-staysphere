@@ -182,10 +182,16 @@ free-hand a `text-*xl` that happens to look right on one screen.
 Defined once in `app/globals.css` as Tailwind theme tokens. Pages compose them; they never
 free-hand a width or a column track.
 
-- **Page width.** `container-page` (1400px) for every guest page, the header, the footer and the
-  admin screens; `container-reading` (1000px) for single-column reading pages — the confirmation
-  and trips; `container-form` (1100px) for admin editors. Each centres itself and carries the
-  gutter. When only the width is wanted — the full-bleed phone hero — use `max-w-page`.
+- **Page width.** `container-page` (1400px) for every guest page, plus the header and the footer;
+  `container-reading` (1000px) for single-column reading pages — the confirmation and trips. Both
+  carry the gutter and centre themselves, for pages with no sidebar to line up against.
+  `AdminPage` (`/admin`'s own pages) uses two admin-only containers instead —
+  `container-page-start` for its "wide" screens and `container-form` for its "narrow" editors —
+  each the same 1400px width and each left-aligned in the sidebar's content column, rather than
+  centred: an editor capped narrower than its sibling admin pages, or centred so its heading lands
+  at a different x-position than theirs, both read as a layout bug on a wide monitor rather than as
+  an intentional choice. When only the width is wanted — the full-bleed phone hero — use
+  `max-w-page`.
 - **Gutter.** `--gutter` is 16px on a phone, 24px from `sm`, 32px from `lg`. It is the side
   margin (`px-gutter`), the bleed of an edge-to-edge rail (`-mx-gutter px-gutter
   scroll-pl-gutter`), and the gap between a guest page's main column and its rail

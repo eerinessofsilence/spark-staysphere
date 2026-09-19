@@ -22,6 +22,11 @@ overrides, CMS edits, and frames uploaded at `/admin/content/spinner/frames` all
 restart. To start clean, delete `.wrangler/state`, or use "Reset demo state" on `/admin/reset`,
 which also sweeps any uploaded frames back to the seed's own.
 
+**The back office** is at `/admin`, behind a sign-in. In the demo any team member's address
+works with the password `staysphere` (the sign-in page says so); set `ADMIN_PASSWORD` and
+`ADMIN_SESSION_SECRET` in `.dev.vars` — or as Worker secrets — for anything reachable from
+outside. See TECH.md's "Sign-in".
+
 **Optional — the AI room finder.** Without a key, search still answers through a deterministic
 keyword interpreter and voice input is unavailable. To enable OpenAI interpretation and
 transcription, put `OPENAI_API_KEY=sk-...` in a gitignored `.dev.vars` file at the repo root (not
