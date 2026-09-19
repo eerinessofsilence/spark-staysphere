@@ -1,32 +1,78 @@
 'use server';
 
+import { AdminPermissionError, requirePermission } from '@/lib/application/admin-session';
 import { revalidatePath } from 'next/cache';
 import { bookingService } from '@/lib/application/container';
+import { stayStateSchema, type StayState } from '@/lib/domain/schemas';
+import { getAdminT } from '@/lib/i18n/admin/server';
+import { stayStateKey } from '@/lib/i18n/admin/stay-state';
 
 export interface CancelBookingResult {
   ok: boolean;
   message: string;
 }
 
+/** The pages that draw a booking's state: the board, the lists, the booking's own page. */
+function revalidateBookingViews() {
+  revalidatePath('/admin');
+  revalidatePath('/admin/bookings');
+  revalidatePath('/admin/bookings/[reference]', 'page');
+  revalidatePath('/admin/front-desk');
+}
+
+/**
+ * Check in, check out, no-show — the desk's own moves, so they sit behind the
+ * desk's permission (`permViewBookings`, the same one that books a walk-in),
+ * not the narrower right to cancel.
+ */
+export async function setStayStateAction(reference: string, state: StayState): Promise<CancelBookingResult> {
+  const t = await getAdminT();
+  try {
+    await requirePermission('team.permViewBookings');
+  } catch (error) {
+    if (error instanceof AdminPermissionError) return { ok: false, message: t('team.permissionDenied') };
+    throw error;
+  }
+  const parsed = stayStateSchema.safeParse(state);
+  if (!parsed.success) return { ok: false, message: t('stay.notAllowed') };
+
+  const { outcome, booking } = await bookingService.setStayStateAsHotel(reference, parsed.data);
+  switch (outcome) {
+    case 'updated':
+      revalidateBookingViews();
+      return { ok: true, message: t('stay.updated', { reference: booking!.reference, state: t(stayStateKey(parsed.data)) }) };
+    case 'not_allowed':
+      return { ok: false, message: t('stay.notAllowed') };
+    case 'booking_cancelled':
+      return { ok: false, message: t('stay.bookingCancelled') };
+    default:
+      return { ok: false, message: t('ops.cancelMissing') };
+  }
+}
+
 export async function cancelBookingAction(reference: string): Promise<CancelBookingResult> {
+  const t = await getAdminT();
+  try {
+    await requirePermission('team.permCancelBookings');
+  } catch (error) {
+    if (error instanceof AdminPermissionError) return { ok: false, message: t('team.permissionDenied') };
+    throw error;
+  }
   const { outcome } = await bookingService.cancelAsHotel(reference);
 
   if (outcome === 'cancelled') {
-    revalidatePath('/admin');
-    revalidatePath('/admin/bookings');
-    revalidatePath('/admin/bookings/[reference]', 'page');
-    revalidatePath('/admin/front-desk');
+    revalidateBookingViews();
     revalidatePath('/rooms');
   }
 
   switch (outcome) {
     case 'cancelled':
-      return { ok: true, message: 'Booking cancelled. Its nights are back on sale.' };
+      return { ok: true, message: t('ops.cancelled') };
     case 'already_cancelled':
-      return { ok: true, message: 'This booking was already cancelled.' };
+      return { ok: true, message: t('ops.cancelAlready') };
     case 'stay_started':
-      return { ok: false, message: 'This stay has already begun — an early departure is handled at the desk.' };
+      return { ok: false, message: t('ops.cancelStayStarted') };
     default:
-      return { ok: false, message: 'This booking no longer exists.' };
+      return { ok: false, message: t('ops.cancelMissing') };
   }
 }

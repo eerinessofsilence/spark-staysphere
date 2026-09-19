@@ -20,9 +20,11 @@ import type {
   Quote,
   RatePlan,
   RoomType,
+  StayState,
 } from '../domain/schemas';
 import { bookingRequestSchema, bookingSchema } from '../domain/schemas';
 import { matchesGuestEmail } from '../domain/booking';
+import { canTransitionStay } from '../domain/stay-state';
 import { systemClock } from '../domain/clock';
 import { nightsBetween } from '../domain/pricing';
 import { coverPhoto } from '../domain/room-attributes';
@@ -79,9 +81,12 @@ export interface TripSummary {
 }
 
 export type CancelOutcome = 'cancelled' | 'already_cancelled' | 'stay_started' | 'not_found';
+export type StayStateOutcome = 'updated' | 'not_allowed' | 'booking_cancelled' | 'not_found';
 
-/** The methods that take the money at booking time rather than later. */
-const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google_pay']);
+/** The methods that take the money at booking time rather than later — exported so the front
+ *  desk's own booking form can preview which outcome a payment method choice will produce,
+ *  without a second, driftable copy of the same set. */
+export const AUTHORIZING_METHODS = new Set<PaymentMethod>(['card', 'apple_pay', 'google_pay']);
 
 /** A browser can remember a long history; a page does not need to load all of it. */
 const MAX_TRIPS = 40;
@@ -254,6 +259,24 @@ export class BookingService {
     return cancelled ? { outcome: 'cancelled', booking: cancelled } : { outcome: 'not_found' };
   }
 
+  /**
+   * The desk checking a guest in or out, or marking a no-show. Only the
+   * moves in `STAY_TRANSITIONS` are allowed, and never on a cancelled
+   * booking — that has no stay left to move. Dates are deliberately not a
+   * rule here: an early arrival or a late departure is the desk's call.
+   */
+  async setStayStateAsHotel(
+    reference: string,
+    state: StayState,
+  ): Promise<{ outcome: StayStateOutcome; booking?: Booking }> {
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
+    if (!booking) return { outcome: 'not_found' };
+    if (booking.status === 'cancelled') return { outcome: 'booking_cancelled', booking };
+    if (!canTransitionStay(booking.stayState, state)) return { outcome: 'not_allowed', booking };
+    const updated = await this.repository.setBookingStayState(booking.reference, state);
+    return updated ? { outcome: 'updated', booking: updated } : { outcome: 'not_found' };
+  }
+
   private summarize(booking: Booking, room: RoomType | null): TripSummary {
     const photo = room ? (coverPhoto(room) ?? null) : null;
     return {
@@ -371,6 +394,7 @@ export class BookingService {
       total: quote.price.total,
       currency: quote.price.currency,
       status: 'confirmed',
+      stayState: 'booked',
       createdAt: new Date().toISOString(),
     } satisfies Booking);
 

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import type { StayState } from '@/lib/domain/schemas';
 
 export const WINDOW_OPTIONS = [7, 14, 30] as const;
 export const DEFAULT_WINDOW = 14;
@@ -23,10 +24,19 @@ export const unavailablePattern: CSSProperties = {
     'repeating-linear-gradient(135deg, color-mix(in oklab, var(--danger) 18%, transparent) 0 1.5px, transparent 1.5px 6px)',
 };
 
-export type StayStatus = 'confirmed' | 'due_in' | 'in_house' | 'due_out' | 'checked_out';
+export type StayStatus = 'confirmed' | 'due_in' | 'in_house' | 'due_out' | 'checked_out' | 'no_show';
 
-/** Where a stay is relative to today, the way a PMS tape chart colours it. */
-export function stayStatus(checkIn: string, checkOut: string, today: string): StayStatus {
+/**
+ * How a bar is coloured, the way a PMS tape chart does it. What the desk has
+ * actually recorded wins (a guest checked in is in house whatever the
+ * calendar says; a no-show is a no-show); a stay nobody has touched yet is
+ * read off the dates alone, so simulated demand and a fresh booking both
+ * still tell the day's story.
+ */
+export function stayStatus(checkIn: string, checkOut: string, today: string, stayState?: StayState): StayStatus {
+  if (stayState === 'no_show') return 'no_show';
+  if (stayState === 'checked_out') return 'checked_out';
+  if (stayState === 'checked_in') return checkOut <= today ? 'due_out' : 'in_house';
   if (checkOut === today) return 'due_out';
   if (checkOut < today) return 'checked_out';
   if (checkIn === today) return 'due_in';
@@ -40,6 +50,7 @@ export const stayStatusMeta: Record<StayStatus, { label: string; className: stri
   in_house: { label: 'In house', className: 'bg-stay-in-house text-white' },
   due_out: { label: 'Due out', className: 'bg-stay-due-out text-white' },
   checked_out: { label: 'Checked out', className: 'bg-stay-checked-out text-stay-checked-out-ink' },
+  no_show: { label: 'No-show', className: 'bg-stay-no-show text-stay-no-show-ink line-through' },
 };
 
-export const stayStatusOrder: StayStatus[] = ['confirmed', 'due_in', 'in_house', 'due_out', 'checked_out'];
+export const stayStatusOrder: StayStatus[] = ['confirmed', 'due_in', 'in_house', 'due_out', 'checked_out', 'no_show'];

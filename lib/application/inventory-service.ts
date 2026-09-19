@@ -23,6 +23,7 @@ import type {
   PriceBreakdown,
   RatePlan,
   RoomType,
+  StayState,
   StayCriteria,
 } from '../domain/schemas';
 import { defaultRoomFilters, type CatalogService, type RoomFilters } from './catalog-service';
@@ -79,6 +80,7 @@ export type FrontDeskSegment =
       span: number;
       reference: string;
       status: Booking['status'];
+      stayState: StayState;
       guestEmail: string;
       guestPhone: string;
       chosenByGuest: boolean;
@@ -464,6 +466,7 @@ function toSegments(row: Map<string, NightOccupant>, unitNumber: string, context
           span: end - index,
           reference: booking.reference,
           status: booking.status,
+          stayState: booking.stayState,
           guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
           guestEmail: booking.guest.email,
           guestPhone: booking.guest.phone,

@@ -1,17 +1,32 @@
+'use client';
+
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
+import { useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { cn } from '@/lib/utils';
-import { stayStatusMeta, stayStatusOrder, unavailablePattern } from './front-desk-shared';
+import { stayStatusMeta, stayStatusOrder, unavailablePattern, type StayStatus } from './front-desk-shared';
+
+/** The team member's word for each stay status — `stayStatusMeta.label` is the English source. */
+export const STAY_STATUS_KEY: Record<StayStatus, AdminTranslationKey> = {
+  confirmed: 'frontDesk.stayConfirmed',
+  due_in: 'frontDesk.stayDueIn',
+  in_house: 'frontDesk.stayInHouse',
+  due_out: 'frontDesk.stayDueOut',
+  checked_out: 'frontDesk.stayCheckedOut',
+  no_show: 'frontDesk.stayNoShow',
+};
 
 export function FrontDeskLegend() {
+  const t = useAdminT();
   return (
     <ul
-      aria-label="Legend"
+      aria-label={t('frontDesk.legend')}
       className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground"
     >
       {stayStatusOrder.map((status) => (
         <li key={status} className="flex items-center gap-2">
           <span aria-hidden="true" className={cn('h-4 w-8 rounded-full', stayStatusMeta[status].className)} />
-          {stayStatusMeta[status].label}
+          {t(STAY_STATUS_KEY[status])}
         </li>
       ))}
       <li className="flex items-center gap-2">
@@ -22,15 +37,15 @@ export function FrontDeskLegend() {
         >
           <Prohibit weight="fill" className="size-3" />
         </span>
-        Closed to sale
+        {t('frontDesk.closedToSale')}
       </li>
       <li className="flex items-center gap-2">
         <span aria-hidden="true" className="h-4 w-8 rounded-full border border-border bg-card" />
-        Free
+        {t('frontDesk.free')}
       </li>
       <li className="flex items-center gap-2">
         <PushPin weight="fill" className="size-4 text-foreground" aria-hidden="true" />
-        Room chosen by guest
+        {t('frontDesk.chosenByGuest')}
       </li>
     </ul>
   );

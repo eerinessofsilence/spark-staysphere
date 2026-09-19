@@ -6,6 +6,7 @@ import {
   type Booking,
   type PaymentAttempt,
   type RoomStatus,
+  type StayState,
 } from '../domain/schemas';
 import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
 import { ensureSchema } from './d1-schema';
@@ -42,11 +43,12 @@ interface BookingRow {
   status: string;
   created_at: string;
   unit_number: string | null;
+  stay_state: string | null;
 }
 
-// A separate table rather than a new column: there is no migration runner to ALTER an existing one.
+// Separate tables rather than new columns: there is no migration runner to ALTER an existing one.
 const BOOKING_SELECT =
-  'SELECT b.*, u.unit_number FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id';
+  'SELECT b.*, u.unit_number, s.state AS stay_state FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id LEFT JOIN booking_stay_states s ON s.booking_id = b.id';
 
 function rowToBooking(row: BookingRow): Booking {
   return bookingSchema.parse({
@@ -70,9 +72,28 @@ function rowToBooking(row: BookingRow): Booking {
     total: row.total,
     currency: row.currency,
     status: row.status,
+    stayState: row.stay_state ?? undefined,
     createdAt: row.created_at,
     unitNumber: row.unit_number ?? undefined,
   });
+}
+
+export async function setBookingStayState(
+  db: D1Database,
+  reference: string,
+  state: StayState,
+): Promise<Booking | null> {
+  await ensureSchema(db);
+  const existing = await getBookingByReference(db, reference);
+  if (!existing) return null;
+  await db
+    .prepare(
+      `INSERT INTO booking_stay_states (booking_id, state) VALUES (?, ?)
+       ON CONFLICT (booking_id) DO UPDATE SET state = excluded.state`,
+    )
+    .bind(existing.id, state)
+    .run();
+  return { ...existing, stayState: state };
 }
 
 export async function findBookingByIdempotencyKey(

@@ -358,6 +358,7 @@ export class SampleBookingService {
       total: price.total,
       currency: price.currency,
       status: 'confirmed',
+      stayState: 'booked',
       createdAt: `${bookedOn}T${hour}:${minute}:00.000Z`,
     } satisfies Booking);
 

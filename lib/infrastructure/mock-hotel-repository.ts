@@ -102,6 +102,14 @@ export const mockHotelRepository: HotelRepository = {
     }
     return cancelled;
   },
+  async setBookingStayState(reference, state) {
+    const booking = bookingsByReference.get(reference);
+    if (!booking) return null;
+    const updated: Booking = { ...booking, stayState: state };
+    bookingsByReference.set(reference, updated);
+    bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
+    return updated;
+  },
   async listBookings() {
     return [...bookingsByReference.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
