@@ -7,7 +7,8 @@ import { format, parseISO } from 'date-fns';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 import { addIsoDays } from '@/lib/domain/dates';
 import { nightsBetween } from '@/lib/domain/pricing';
-import { formatDateShort } from '@/lib/formatting';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CALENDAR_CLASS_NAMES, CALENDAR_COMPONENTS } from '@/components/search/stay-dates-field';
@@ -40,6 +41,8 @@ export function FrontDeskDateFilter({
   showTrigger?: boolean;
 }) {
   const router = useRouter();
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const [ownOpen, setOwnOpen] = React.useState(false);
   const open = controlledOpen ?? ownOpen;
   const setOpen = React.useCallback(
@@ -74,6 +77,8 @@ export function FrontDeskDateFilter({
   // a range end is the last night shown, not a checkout the way a stay's is.
   const draftWindowLength = draftFrom && draftTo ? nightsBetween(draftFrom, draftTo) + 1 : 0;
   const tooLong = draftWindowLength > MAX_CUSTOM_WINDOW;
+  const appliedFrom = lDateShort(from, locale);
+  const appliedTo = lDateShort(addIsoDays(from, days - 1), locale);
 
   return (
     <>
@@ -83,18 +88,20 @@ export function FrontDeskDateFilter({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={isCustom ? `Custom range: ${formatDateShort(from)} to ${formatDateShort(addIsoDays(from, days - 1))}. Change it` : 'Pick a custom date range'}
+        aria-label={
+          isCustom ? t('frontDesk.customRangeLabel', { from: appliedFrom, to: appliedTo }) : t('frontDesk.pickCustomRange')
+        }
         className={cn(
           'inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors sm:min-h-9 sm:px-3',
           isCustom ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone',
         )}
       >
         <CalendarIcon className="size-4 shrink-0" aria-hidden="true" />
-        {isCustom ? `${formatDateShort(from)} – ${formatDateShort(addIsoDays(from, days - 1))}` : 'Custom'}
+        {isCustom ? `${appliedFrom} – ${appliedTo}` : t('frontDesk.custom')}
       </button>
       ) : null}
 
-      <Modal open={open} onClose={close} title="Custom date range" className="sm:max-w-[44rem]">
+      <Modal open={open} onClose={close} title={t('frontDesk.customRangeTitle')} className="sm:max-w-[44rem]">
         <DayPicker
           mode="range"
           selected={draft}
@@ -106,21 +113,29 @@ export function FrontDeskDateFilter({
           defaultMonth={draft?.from ?? parseISO(from)}
           classNames={CALENDAR_CLASS_NAMES}
           components={CALENDAR_COMPONENTS}
+          locale={DATE_FNS_LOCALES[locale]}
         />
 
         <div className="mt-4 border-t border-border pt-4">
           <p role="status" className={cn('text-center text-sm', tooLong ? 'font-medium text-danger' : 'text-muted-foreground')}>
             {!draftFrom
-              ? 'Pick the first night, then the last.'
+              ? t('frontDesk.pickFirstNight')
               : tooLong
-                ? `That's ${draftWindowLength} nights — the board shows at most ${MAX_CUSTOM_WINDOW} at a time.`
+                ? t('frontDesk.rangeTooLong', {
+                    nights: lNights(draftWindowLength, locale),
+                    max: lNights(MAX_CUSTOM_WINDOW, locale),
+                  })
                 : draftTo && draftTo !== draftFrom
-                  ? `${formatDateShort(draftFrom)} to ${formatDateShort(draftTo)} · ${draftWindowLength} nights`
-                  : 'Pick a second day for a range.'}
+                  ? t('frontDesk.rangeSummary', {
+                      from: lDateShort(draftFrom, locale),
+                      to: lDateShort(draftTo, locale),
+                      nights: lNights(draftWindowLength, locale),
+                    })
+                  : t('frontDesk.pickSecondDay')}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <button type="button" onClick={close} className={pill('ghost', 'min-h-10 px-4')}>
-              Cancel
+              {t('frontDesk.cancel')}
             </button>
             <button
               type="button"
@@ -132,7 +147,7 @@ export function FrontDeskDateFilter({
               }}
               className={pill('primary', 'min-h-10 px-5')}
             >
-              Show this range
+              {t('frontDesk.showRange')}
             </button>
           </div>
         </div>

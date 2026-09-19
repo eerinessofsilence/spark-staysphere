@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import type { RoomType } from '@/lib/domain/schemas';
 import { kebabSuggestion } from '@/lib/domain/slug';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { createRoomAction } from '@/app/admin/content/rooms/new/actions';
 import { ContentForm, useFieldError } from '@/components/admin/content/content-form';
@@ -13,7 +14,7 @@ import { Modal } from '@/components/site/modal';
 
 type RoomTypeTemplate = Pick<
   RoomType,
-  'id' | 'name' | 'description' | 'areaM2' | 'floor' | 'capacity' | 'bedType' | 'view' | 'amenities' | 'media'
+  'id' | 'name' | 'description' | 'areaM2' | 'floor' | 'capacity' | 'bedType' | 'view' | 'amenities' | 'facilities' | 'media'
 >;
 
 /**
@@ -22,6 +23,7 @@ type RoomTypeTemplate = Pick<
  * afterwards on the new type's own page, where saving lands.
  */
 export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[] }) {
+  const t = useAdminT();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState('');
   const [templateId, setTemplateId] = React.useState(roomTypes[0]?.id ?? '');
@@ -30,7 +32,7 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
   const label = (
     <>
       <PlusIcon className="size-4" aria-hidden="true" />
-      Add property
+      {t('room.addProperty')}
     </>
   );
 
@@ -52,11 +54,11 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
         {label}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add property">
+      <Modal open={open} onClose={() => setOpen(false)} title={t('room.addProperty')}>
         <ContentForm
           action={createRoomAction}
           initialVersion={0}
-          submitLabel="Add property"
+          submitLabel={t('room.addProperty')}
           bare
           extraActions={
             <Link
@@ -65,12 +67,12 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
               className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-accent-strong"
             >
               <PlusIcon className="size-4" aria-hidden="true" />
-              Create Property
+              {t('room.createProperty')}
             </Link>
           }
         >
           <div className="grid gap-5">
-            <Field id="property-name" name="name" label="Name">
+            <Field id="property-name" name="name" label={t('room.name')}>
               <TextInput
                 id="property-name"
                 name="name"
@@ -81,11 +83,7 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
             </Field>
             <SlugError />
 
-            <Field
-              id="property-room-type"
-              label="Room type"
-              hint="Description, size, view, amenities and photos come from this room type."
-            >
+            <Field id="property-room-type" label={t('room.roomType')} hint={t('room.templateHint')}>
               <Select id="property-room-type" value={templateId} onChange={setTemplateId} required>
                 {roomTypes.map((room) => (
                   <option key={room.id} value={room.id}>
@@ -103,6 +101,7 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
             <input type="hidden" name="bedType" value={template.bedType} />
             <input type="hidden" name="view" value={template.view} />
             <input type="hidden" name="amenities" value={JSON.stringify(template.amenities)} />
+            <input type="hidden" name="facilities" value={JSON.stringify(template.facilities ?? [])} />
             <input type="hidden" name="media" value={JSON.stringify(media)} />
           </div>
         </ContentForm>
@@ -113,11 +112,13 @@ export function AddRoomTypeButton({ roomTypes }: { roomTypes: RoomTypeTemplate[]
 
 /** The page address is derived from the name, so a clash with an existing one is reported here. */
 function SlugError() {
+  const t = useAdminT();
   const error = useFieldError('slug');
   if (!error?.trim()) return null;
   return (
     <p role="alert" className="-mt-3 text-xs font-medium text-danger">
-      {error === 'That page address is already in use.' ? 'A room type with this name already exists.' : error}
+      {/* The service's own rule message is English (see form-state.ts); this one is reworded for the name field. */}
+      {error === 'That page address is already in use.' ? t('room.nameTaken') : error}
     </p>
   );
 }

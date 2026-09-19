@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,16 +19,17 @@ interface RoomTypeSelectProps {
 
 export function RoomTypeSelect({ options, value, from, days, id = 'front-desk-room-type', className }: RoomTypeSelectProps) {
   const router = useRouter();
+  const t = useAdminT();
   const [pending, startTransition] = React.useTransition();
   const items = [
-    { value: '', label: 'All room types' },
+    { value: '', label: t('frontDesk.allRoomTypes') },
     ...options.map((option) => ({ value: option.id, label: option.name })),
   ];
 
   return (
     <div className={cn('w-full sm:w-64', className)}>
       <label htmlFor={id} className="sr-only">
-        Room type
+        {t('frontDesk.roomType')}
       </label>
       <Select
         items={items}

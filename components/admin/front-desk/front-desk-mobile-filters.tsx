@@ -4,7 +4,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import { AdjustmentsHorizontalIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { addIsoDays } from '@/lib/domain/dates';
-import { formatDateShort } from '@/lib/formatting';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { lDateShort, lNights } from '@/lib/i18n/format';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
@@ -29,6 +30,8 @@ export function FrontDeskMobileFilters({
   type: string | null;
   roomTypes: { id: string; name: string }[];
 }) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const [open, setOpen] = React.useState(false);
   const [datesOpen, setDatesOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
@@ -40,7 +43,7 @@ export function FrontDeskMobileFilters({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={active ? `Filters, ${active} applied` : 'Filters'}
+        aria-label={active ? t('frontDesk.filtersApplied', { count: active }) : t('frontDesk.filters')}
         className={cn(iconButton('light'), 'relative')}
       >
         <AdjustmentsHorizontalIcon className="size-5" aria-hidden="true" />
@@ -54,11 +57,11 @@ export function FrontDeskMobileFilters({
         ) : null}
       </button>
 
-      <Modal open={open} onClose={close} title="Filters">
+      <Modal open={open} onClose={close} title={t('frontDesk.filters')}>
         <div className="grid gap-6">
           <div role="group" aria-labelledby="front-desk-filter-nights">
             <h3 id="front-desk-filter-nights" className="text-sm font-medium">
-              Nights shown
+              {t('frontDesk.nightsShown')}
             </h3>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {WINDOW_OPTIONS.map((option) => (
@@ -69,7 +72,7 @@ export function FrontDeskMobileFilters({
                   aria-current={option === days ? 'true' : undefined}
                   className={pill(option === days ? 'primary' : 'secondary', 'w-full')}
                 >
-                  {option} nights
+                  {lNights(option, locale)}
                 </Link>
               ))}
               <button
@@ -82,14 +85,16 @@ export function FrontDeskMobileFilters({
                 className={pill(isCustom ? 'primary' : 'secondary', 'w-full')}
               >
                 <CalendarIcon className="size-4 shrink-0" aria-hidden="true" />
-                {isCustom ? `${formatDateShort(from)} – ${formatDateShort(addIsoDays(from, days - 1))}` : 'Custom'}
+                {isCustom
+                  ? `${lDateShort(from, locale)} – ${lDateShort(addIsoDays(from, days - 1), locale)}`
+                  : t('frontDesk.custom')}
               </button>
             </div>
           </div>
 
           <div role="group" aria-labelledby="front-desk-filter-type">
             <h3 id="front-desk-filter-type" className="text-sm font-medium">
-              Room type
+              {t('frontDesk.roomType')}
             </h3>
             <div className="mt-2">
               <RoomTypeSelect id="front-desk-room-type-mobile" options={roomTypes} value={type} from={from} days={days} />
@@ -98,7 +103,7 @@ export function FrontDeskMobileFilters({
 
           <div role="group" aria-labelledby="front-desk-filter-key">
             <h3 id="front-desk-filter-key" className="text-sm font-medium">
-              Colour key
+              {t('frontDesk.colourKey')}
             </h3>
             <div className="mt-3">
               <FrontDeskLegend />
@@ -108,11 +113,11 @@ export function FrontDeskMobileFilters({
           <div className="flex gap-2 border-t border-border pt-4">
             {active ? (
               <Link href={frontDeskHref({ from, days: DEFAULT_WINDOW, type: null })} onClick={close} className={pill('secondary', 'flex-1')}>
-                Reset
+                {t('frontDesk.reset')}
               </Link>
             ) : null}
             <button type="button" onClick={close} className={pill('primary', 'flex-1')}>
-              Done
+              {t('frontDesk.done')}
             </button>
           </div>
         </div>
