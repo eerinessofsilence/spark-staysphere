@@ -16,5 +16,7 @@ npm-debug.log*
 *.tsbuildinfo
 .playwright/
 e2e/.artifacts/
+# The signed-in browser state e2e/auth.setup.ts records for the other projects
+e2e/.auth/
 # CC0 Poly Haven assets for scripts/asteria-cove.blend — re-fetch with scripts/fetch-polyhaven.py
 scripts/blender-assets/

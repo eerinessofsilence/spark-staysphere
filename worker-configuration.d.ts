@@ -11,5 +11,9 @@ declare namespace Cloudflare {
     OPENAI_API_KEY?: string;
     /** Resolved by lib/infrastructure/cloudflare-env.ts#getMediaBucket. Spinner frames and, later, uploaded media. */
     MEDIA?: R2Bucket;
+    /** The back office's shared password (lib/infrastructure/cloudflare-env.ts#getAdminAuthEnv). Unset, the demo password applies and the sign-in page says so. */
+    ADMIN_PASSWORD?: string;
+    /** Signs the back-office session cookie. Unset, a fixed development secret applies — set it for anything reachable from outside. */
+    ADMIN_SESSION_SECRET?: string;
   }
 }

@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
+const ADMIN_STORAGE_STATE = 'e2e/.auth/admin.json';
 
 /**
  * Smoke coverage for the golden path. The dev server is used deliberately:
@@ -17,9 +18,20 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: { baseURL, trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    // Signs in to the back office once and records the browser state the two
+    // real projects start from — every /admin route is behind a session.
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'desktop',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: ADMIN_STORAGE_STATE },
+    },
     // Chromium-based so the suite needs only one browser download.
-    { name: 'mobile', use: { ...devices['Pixel 5'], viewport: { width: 390, height: 844 } } },
+    {
+      name: 'mobile',
+      dependencies: ['setup'],
+      use: { ...devices['Pixel 5'], viewport: { width: 390, height: 844 }, storageState: ADMIN_STORAGE_STATE },
+    },
   ],
   webServer: {
     command: `npx vinext dev --port ${PORT}`,

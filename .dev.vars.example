@@ -6,3 +6,9 @@
 # through a deterministic keyword interpreter, and the mic reports transcription as unavailable
 # rather than failing silently. See TECH.md's "AI concierge" section and README's Quick start.
 OPENAI_API_KEY=sk-...
+
+# Back-office sign-in (/admin/sign-in). Unset, the demo password "staysphere" applies and the
+# sign-in page shows it; set both for anything reachable from outside. The secret signs the
+# session cookie — any long random string. See TECH.md's "Sign-in" section.
+ADMIN_PASSWORD=change-me
+ADMIN_SESSION_SECRET=change-me-to-something-long-and-random
