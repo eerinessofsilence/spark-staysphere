@@ -53,9 +53,9 @@ function criteriaOf(body: QuoteRequestBody): StayCriteria {
   return parsed.data;
 }
 
-export async function quoteForSlug(body: QuoteRequestBody): Promise<Quote> {
+export async function quoteForSlug(body: QuoteRequestBody, hotelSlug: string = DEMO_HOTEL_SLUG): Promise<Quote> {
   const detail = await catalogService.getRoomDetail(
-    DEMO_HOTEL_SLUG,
+    hotelSlug,
     body.roomSlug,
     criteriaOf(body),
     body.addOnIds,
@@ -63,14 +63,22 @@ export async function quoteForSlug(body: QuoteRequestBody): Promise<Quote> {
   return detail.quote;
 }
 
+/**
+ * `hotelSlug` defaults to the guest site's own demo hotel — every guest call
+ * site relies on that default. The back office's front desk is the one
+ * caller that passes the admin's currently selected property instead (see
+ * `app/admin/front-desk/actions.ts`), so a booking it creates lands on
+ * whichever hotel the admin has open, not always the guest's default.
+ */
 export async function confirmForSlug(
   body: BookingRequestBody,
   idempotencyKey: string,
+  hotelSlug: string = DEMO_HOTEL_SLUG,
 ): Promise<Booking> {
   const criteria = criteriaOf(body);
-  const hotel = await catalogService.getHotel(DEMO_HOTEL_SLUG);
+  const hotel = await catalogService.getHotel(hotelSlug);
   const detail = await catalogService.getRoomDetail(
-    DEMO_HOTEL_SLUG,
+    hotelSlug,
     body.roomSlug,
     criteria,
     body.addOnIds,
@@ -79,7 +87,7 @@ export async function confirmForSlug(
   // A replayed key already holds its room; checking again would find it taken by itself.
   if (body.unitNumber && !(await bookingService.findByIdempotencyKey(idempotencyKey))) {
     const free = await inventoryService.isUnitFreeForStay(
-      DEMO_HOTEL_SLUG,
+      hotelSlug,
       detail.offer.room.id,
       body.unitNumber,
       criteria.checkIn,

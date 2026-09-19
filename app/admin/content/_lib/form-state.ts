@@ -1,4 +1,5 @@
 import type { ContentError, ContentResult } from '@/lib/application/content-service';
+import type { AdminT } from '@/lib/i18n/admin/translate';
 
 /**
  * The shape every CMS form's `useActionState` reducer returns. A field error
@@ -17,37 +18,51 @@ export interface ContentFormState {
 
 export const idleFormState: ContentFormState = { status: 'idle', message: '' };
 
+/**
+ * `t` (from `getAdminT()` in the server action) puts the three generic
+ * messages below — validation, conflict, gone — in the team member's language;
+ * without it they stay English. A `rule` error's own message comes from
+ * `content-service.ts` and is English either way.
+ */
 export function formStateFromResult<T extends { version: number }>(
   result: ContentResult<T>,
   successMessage: string,
+  t?: AdminT,
 ): ContentFormState {
   if (result.ok) return { status: 'success', message: successMessage, version: result.value.version };
-  return formStateFromError(result.error);
+  return formStateFromError(result.error, t);
 }
 
-export function formStateFromError(error: ContentError): ContentFormState {
+export function formStateFromError(error: ContentError, t?: AdminT): ContentFormState {
   switch (error.kind) {
     case 'validation':
       return {
         status: 'error',
-        message: 'Fix the highlighted fields and try again.',
+        message: t ? t('form.fixHighlighted') : 'Fix the highlighted fields and try again.',
         fieldErrors: error.fieldErrors,
       };
     case 'conflict':
       return {
         status: 'error',
-        message: 'Someone else saved a newer version while you were editing. Your changes are still in the form.',
+        message: t
+          ? t('form.conflict')
+          : 'Someone else saved a newer version while you were editing. Your changes are still in the form.',
         version: error.currentVersion,
         conflict: true,
       };
     case 'not_found':
-      return { status: 'error', message: 'This no longer exists — it may have been removed or reset.' };
+      return {
+        status: 'error',
+        message: t ? t('form.gone') : 'This no longer exists — it may have been removed or reset.',
+      };
     case 'rule':
       return {
         status: 'error',
         message: error.message,
         fieldErrors: error.field ? { [error.field]: [error.message] } : undefined,
       };
+    case 'forbidden':
+      return { status: 'error', message: error.message };
   }
 }
 

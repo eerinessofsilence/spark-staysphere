@@ -28,21 +28,27 @@ import {
   roomTypeSchema,
   type AddOn,
   type Booking,
+  type FacilityIcon,
   type Hotel,
+  type HotelFacility,
   type PhysicalRoom,
   type RatePlan,
   type RoomType,
   type SpinnerFrame,
 } from '../domain/schemas';
 import { frameSetIdOf, spinnerZoneTargetSchema, type SpinnerZone, type SpinnerZoneTarget } from '../domain/spinner-markup';
+import type { TeamPermissionKey } from './team-directory';
 
 /**
  * All CMS business rules live here, never in a server action or a component
  * — see CLAUDE.md's "Business rules live in lib/application" rule. Every
- * mutator starts with `assertCanEditContent()`, the single authorization
- * choke point: it always allows for now (auth is roadmap step 7), but every
- * write in the CMS goes through it, so adding real auth later is a change to
- * one function.
+ * mutator starts with `await this.permit('team.perm…')`, returning its
+ * `ContentError` on a denial rather than proceeding — the single
+ * authorization choke point: the container hands in an `authorize` that
+ * requires a back-office session with a role listed for that permission
+ * (`admin-session.ts`, `team-directory.ts`'s `hasPermission`), so every write
+ * in the CMS is gated in one place whichever server action reached it; tests
+ * leave it at the default, which allows everything.
  *
  * Reads go through `HotelRepository`, which already returns seed merged with
  * the CMS overlay (see `durable-hotel-repository.ts`) — so everything here
@@ -51,10 +57,6 @@ import { frameSetIdOf, spinnerZoneTargetSchema, type SpinnerZone, type SpinnerZo
  * overlay; the seed in `mock-data.ts` is never mutated.
  */
 
-export function assertCanEditContent(): void {
-  // No-op until /admin gets auth (CLAUDE.md roadmap step 7). Every mutator
-  // below calls this first so that step is a change to this function alone.
-}
 
 const KEBAB_MESSAGE = 'Use lowercase letters, numbers, and hyphens only, e.g. "garden-loft".';
 const ROOM_NUMBER_MESSAGE = 'Use the floor, then a two-digit position: "305", or "G04" on the ground floor.';
@@ -87,7 +89,8 @@ export type ContentError =
   | { kind: 'validation'; fieldErrors: Record<string, string[]> }
   | { kind: 'conflict'; currentVersion: number }
   | { kind: 'not_found' }
-  | { kind: 'rule'; field?: string; message: string };
+  | { kind: 'rule'; field?: string; message: string }
+  | { kind: 'forbidden'; message: string };
 
 export type ContentResult<T> = { ok: true; value: T } | { ok: false; error: ContentError };
 
@@ -179,6 +182,8 @@ const roomFieldsSchema = z.object({
   bedType: z.enum(['king', 'twin', 'queen']),
   view: z.enum(['sea', 'garden', 'pool', 'city']),
   amenities: z.array(z.string().min(1)),
+  /** Names from the hotel's own facilities list — see `roomTypeSchema`'s own doc comment. */
+  facilities: z.array(z.string().min(1)),
   media: z.array(mediaItemSchema),
 });
 export type RoomFieldsInput = z.infer<typeof roomFieldsSchema>;
@@ -236,7 +241,35 @@ export class ContentService {
     /** Which ids came from `mock-data.ts` — the only entities a hard delete is refused for. */
     private readonly seedIds: Record<CatalogEntryKind, ReadonlySet<string>>,
     private readonly clock: Clock = systemClock,
+    /**
+     * Throws when the caller's role may not do `permission`. Defaulted to
+     * "allow anything" for tests; the container requires a signed-in team
+     * member whose role is listed for it (`team-directory.ts`'s
+     * `hasPermission`, via `admin-session.ts`'s `requirePermission`).
+     */
+    private readonly authorize: (permission: TeamPermissionKey) => Promise<void> = async () => {},
   ) {}
+
+  /**
+   * `authorize`, turned into a normal `ContentResult` failure instead of an
+   * uncaught throw when the role itself is the problem — a team member
+   * should see "your role doesn't include this" the same way they'd see any
+   * other rule violation, not a crash. Not signed in at all
+   * (`AdminAuthError`) still propagates uncaught: the layout above every
+   * screen already redirects that case before a mutator is ever reachable,
+   * so hitting it here means something more is wrong than a wrong role.
+   */
+  private async permit(permission: TeamPermissionKey): Promise<Extract<ContentError, { kind: 'forbidden' }> | null> {
+    try {
+      await this.authorize(permission);
+      return null;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AdminPermissionError') {
+        return { kind: 'forbidden', message: error.message };
+      }
+      throw error;
+    }
+  }
 
   private todayIso(): string {
     return this.clock.now().toISOString().slice(0, 10);
@@ -382,7 +415,8 @@ export class ContentService {
   }
 
   async updateHotel(rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const parsed = hotelContentInputSchema.safeParse(rawInput);
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: hotelFieldErrors(parsed.error, rawInput) });
     const input = parsed.data;
@@ -427,6 +461,30 @@ export class ContentService {
     return this.save('hotel', current.id, current.id, next, expectedVersion);
   }
 
+  /**
+   * Appends one facility to the hotel's own list — `RoomFacilitiesPicker`'s
+   * "add new", so a team member editing a room type is never sent to Hotel
+   * Settings just to name something the room's own page should point at.
+   * Reads its own expected version rather than taking one from the caller:
+   * the room type page editing it has never loaded the hotel's, and a lost
+   * update here only costs a re-click, not a room type's own edits.
+   */
+  async addFacility(icon: FacilityIcon, rawName: string): Promise<ContentResult<{ facilities: HotelFacility[] } & Versioned>> {
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
+    const name = rawName.trim();
+    if (!name) return fail({ kind: 'validation', fieldErrors: { name: ['Give the facility a name.'] } });
+
+    const current = await this.hotel();
+    const expectedVersion = await this.versionOf('hotel', current.id);
+    const facilities = [...(current.facilities ?? []), { icon, name }];
+    const next = hotelSchema.parse({ ...current, facilities } satisfies Hotel);
+
+    const saved = await this.save('hotel', current.id, current.id, next, expectedVersion);
+    if (!saved.ok) return saved;
+    return ok({ facilities, version: saved.value.version });
+  }
+
   // ------------------------------------------------------------ Room types
 
   async listRoomsContent(): Promise<Array<RoomType & Versioned>> {
@@ -448,7 +506,8 @@ export class ContentService {
    * those at the moment it's created — its rooms are added next, under Rooms.
    */
   async createRoom(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const parsed = createRoomSchema.safeParse(rawInput);
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
     const input = parsed.data;
@@ -480,6 +539,7 @@ export class ContentService {
       bedType: input.bedType,
       view: input.view,
       amenities: input.amenities,
+      facilities: input.facilities,
       media: media.media,
       hidden: true,
     } satisfies RoomType);
@@ -490,7 +550,8 @@ export class ContentService {
   }
 
   async updateRoom(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
 
@@ -516,6 +577,7 @@ export class ContentService {
       bedType: input.bedType,
       view: input.view,
       amenities: input.amenities,
+      facilities: input.facilities,
       media: media.media,
     } satisfies RoomType);
 
@@ -523,7 +585,8 @@ export class ContentService {
   }
 
   async setRoomHidden(id: string, hidden: boolean, expectedVersion: number): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
 
@@ -550,7 +613,8 @@ export class ContentService {
    * CMS-created type only ever has CMS-created rates.
    */
   async deleteRoom(id: string): Promise<ContentResult<null>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
     if (this.isSeed('room', id)) {
@@ -598,7 +662,8 @@ export class ContentService {
 
   /** A room's floor is read off its number, so the two can never disagree. */
   async createPhysicalRoom(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const parsed = createPhysicalRoomSchema.safeParse(rawInput);
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
     const input = parsed.data;
@@ -629,7 +694,8 @@ export class ContentService {
   }
 
   async updatePhysicalRoom(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getPhysicalRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
 
@@ -669,7 +735,8 @@ export class ContentService {
    * refused whenever what's left couldn't hold the stays already booked.
    */
   async deletePhysicalRoom(id: string): Promise<ContentResult<null>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getPhysicalRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
     if (this.isSeed('unit', id)) {
@@ -732,7 +799,8 @@ export class ContentService {
   }
 
   async createRate(roomTypeId: string, rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditRates');
+    if (denied) return fail(denied);
     const hotel = await this.hotel();
     const room = (await this.repository.listRooms(hotel.id)).find((candidate) => candidate.id === roomTypeId);
     if (!room) return ruleError('Room type not found.', 'roomTypeId');
@@ -769,7 +837,8 @@ export class ContentService {
     expectedVersion: number,
     roomTypeId?: string,
   ): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditRates');
+    if (denied) return fail(denied);
     const current = await this.findRate(id, roomTypeId);
     if (!current) return fail({ kind: 'not_found' });
 
@@ -812,7 +881,8 @@ export class ContentService {
   }
 
   async deleteRate(id: string, expectedVersion: number): Promise<ContentResult<null>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditRates');
+    if (denied) return fail(denied);
     const current = await this.findRate(id);
     if (!current) return fail({ kind: 'not_found' });
     const removal = await this.rateRemoval(id);
@@ -847,7 +917,8 @@ export class ContentService {
   }
 
   async createAddOn(rawInput: unknown): Promise<ContentResult<{ id: string } & Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const parsed = addOnFieldsSchema.safeParse(rawInput);
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
     const input = parsed.data;
@@ -880,7 +951,8 @@ export class ContentService {
   }
 
   async updateAddOn(id: string, rawInput: unknown, expectedVersion: number): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getAddOnContent(id);
     if (!current) return fail({ kind: 'not_found' });
 
@@ -922,7 +994,8 @@ export class ContentService {
    * can step along with it.
    */
   async setAddOnEnabled(id: string, enabled: boolean): Promise<ContentResult<Versioned & { previousVersion: number }>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const current = await this.getAddOnContent(id);
       if (!current) return fail({ kind: 'not_found' });
@@ -953,7 +1026,8 @@ export class ContentService {
   }
 
   async deleteAddOn(id: string, expectedVersion: number): Promise<ContentResult<null>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const current = await this.getAddOnContent(id);
     if (!current) return fail({ kind: 'not_found' });
     const removal = await this.addOnRemoval(id);
@@ -1035,7 +1109,8 @@ export class ContentService {
     contentType: string,
     bytes: ArrayBuffer,
   ): Promise<ContentResult<{ url: string }>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     // A well-formed id, not just "truthy": it is embedded verbatim in the R2
     // key (`frameKey` in spinner-frame-storage-r2.ts) and later used as a
     // `deleteFrameSet` prefix — an id containing a `/` would let one frame
@@ -1075,7 +1150,8 @@ export class ContentService {
     input: { frameWidth: number; frameHeight: number; frames: SpinnerFrame[]; keyAngles: number[]; startFrame?: number },
     expectedVersion: number,
   ): Promise<ContentResult<Versioned>> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
     const hotel = await this.hotel();
     const current = hotel.spinner;
 
@@ -1132,7 +1208,8 @@ export class ContentService {
     frameIndex: number,
     rawBatch: unknown,
   ): Promise<{ ok: true; saved: number; removed: number } | { ok: false; error: string }> {
-    assertCanEditContent();
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return { ok: false, error: denied.message };
     const hotel = await this.hotel();
     if (!hotel.spinner) return { ok: false, error: 'This hotel has no building spinner configured.' };
     if (!hotel.spinner.keyAngles.includes(frameIndex)) {
@@ -1187,14 +1264,14 @@ export class ContentService {
    * best-effort cleanup, not a step the picker's own flow depends on.
    */
   async discardSpinnerFrameSet(frameSetId: string): Promise<void> {
-    assertCanEditContent();
+    await this.authorize('team.permEditContent');
     if (!/^[a-zA-Z0-9-]{1,64}$/.test(frameSetId)) return;
     const hotel = await this.hotel();
     await this.frameStorage.deleteFrameSet(hotel.id, frameSetId);
   }
 
   async resetContent(): Promise<void> {
-    assertCanEditContent();
+    await this.authorize('team.permBrandDomain');
     const hotel = await this.hotel();
     // An uploaded frame set (as opposed to the seed's own static frames) has
     // nothing left pointing at it once the `hotel` overlay row is cleared —
