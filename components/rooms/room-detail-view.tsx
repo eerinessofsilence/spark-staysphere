@@ -45,8 +45,11 @@ interface RoomDetailViewProps {
 export function RoomDetailView({ offer, hotel, addOns, quote, criteria }: RoomDetailViewProps) {
   const t = useT();
   const { locale } = useLocale();
-  const facilities = hotel.facilities ?? [];
   const { room, ratePlan } = offer;
+  // `room.facilities` unset — no selection ever made in the CMS — shows every
+  // hotel facility, the same as before a room could narrow the list; see
+  // `roomTypeSchema`'s own doc comment.
+  const facilities = (hotel.facilities ?? []).filter((facility) => room.facilities?.includes(facility.name) ?? true);
   const soldOut = offer.status === 'sold_out';
   const stayQuery = buildQuery({ criteria });
   const services = addOns.filter((addOn) => addOn.category === 'service');
@@ -138,7 +141,7 @@ export function RoomDetailView({ offer, hotel, addOns, quote, criteria }: RoomDe
                   itself, and paged by the arrows beside the heading. */}
               <ul
                 id="amenities-rail"
-                className="no-scrollbar -mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto py-8"
+                className="no-scrollbar -mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pt-8 pb-2"
               >
                 {room.amenities.map((amenity) => {
                   const Icon = featureIcon(amenity);
