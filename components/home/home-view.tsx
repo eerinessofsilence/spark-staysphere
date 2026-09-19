@@ -60,7 +60,7 @@ export function HomeView({
         <section className="mx-auto max-w-page pt-3 sm:px-gutter sm:pt-8 lg:pt-14">
           {/* What the place is before what it looks like: the name, its
               classification and where it stands, above the building. Gold
-              for the stars, the same `text-warning` the CMS's own rating
+              for the stars, the same `text-star` the CMS's own rating
               picker fills with — a rating reads as that colour everywhere
               now, not just where it's editable. One image with one label,
               so a screen reader hears "5-star hotel", not five unnamed
@@ -71,7 +71,7 @@ export function HomeView({
               <span
                 role="img"
                 aria-label={t('home.starRatingAria', { count: hotel.starRating })}
-                className="flex items-center gap-0.5 text-warning"
+                className="flex items-center gap-0.5 text-star"
               >
                 {Array.from({ length: hotel.starRating }, (_, index) => (
                   <Star key={index} weight="fill" className="size-4" aria-hidden="true" />

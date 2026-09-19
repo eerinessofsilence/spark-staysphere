@@ -36,6 +36,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-star: var(--star);
   --color-stay-confirmed: var(--stay-confirmed);
   --color-stay-confirmed-ink: var(--stay-confirmed-ink);
   --color-stay-due-in: var(--stay-due-in);
@@ -43,6 +44,8 @@
   --color-stay-due-out: var(--stay-due-out);
   --color-stay-checked-out: var(--stay-checked-out);
   --color-stay-checked-out-ink: var(--stay-checked-out-ink);
+  --color-stay-no-show: var(--stay-no-show);
+  --color-stay-no-show-ink: var(--stay-no-show-ink);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -91,7 +94,11 @@
 @theme {
   --container-page: 87.5rem;
   --container-reading: 62.5rem;
-  --container-form: 68.75rem;
+  /* Same width as `--container-page`, not its own value: an admin editor
+     capped narrower than its sibling admin pages read as a layout bug — the
+     content visibly stopped short of where every other page's did — rather
+     than as a deliberate, narrower reading width. */
+  --container-form: 87.5rem;
 
   --grid-template-columns-sidebar: minmax(0, 1fr) minmax(0, 22rem);
   --grid-template-columns-sidebar-start: minmax(0, 22rem) minmax(0, 1fr);
@@ -107,6 +114,22 @@
   padding-inline: var(--gutter);
 }
 
+/*
+ * `container-page`, left-aligned instead of centred — `AdminPage`'s "wide"
+ * variant, sitting in the sidebar column next to `container-form`'s
+ * left-aligned "narrow" one. Same reasoning as `container-form` above: two
+ * admin pages should start their heading at the same x-position, which
+ * centring would break past `--container-page`'s own width (rare, but real
+ * on a wide monitor). `container-page` itself stays centred for the guest
+ * site's own top-level pages, which have no sidebar to line up against.
+ */
+@utility container-page-start {
+  margin-inline: 0;
+  width: 100%;
+  max-width: var(--container-page);
+  padding-inline: var(--gutter);
+}
+
 @utility container-reading {
   margin-inline: auto;
   width: 100%;
@@ -114,8 +137,18 @@
   padding-inline: var(--gutter);
 }
 
+/*
+ * Left-aligned, not centred: unlike `container-page`/`container-reading`
+ * (top-level guest pages, no sidebar to line up against), `container-form`
+ * is only ever `AdminPage`'s "narrow" variant, sitting in the same sidebar
+ * column as "wide" pages. Centering it would start its heading at a
+ * different x-position than a "wide" page's whenever the column is wider
+ * than 68.75rem — the two would visibly jump sideways navigating between
+ * them. Left-aligned, both start flush with the column; only the unused
+ * width sits on the right.
+ */
 @utility container-form {
-  margin-inline: auto;
+  margin-inline: 0;
   width: 100%;
   max-width: var(--container-form);
   padding-inline: var(--gutter);
@@ -186,6 +219,9 @@ body {
   --success: #2e7d5b;
   --warning: #965d0d;
   --danger: #c4473a;
+  /* A proper gold for a filled star icon, not `--warning` — that one is
+     tuned dark for 4.5:1 text contrast, which reads as brown at icon size. */
+  --star: #c99a2e;
   /*
    * Front desk stay statuses, the way a PMS colours its tape chart: one hue
    * per stage of a stay, never a pattern — hatching is kept for rooms that
@@ -198,6 +234,8 @@ body {
   --stay-due-out: #a85a07;
   --stay-checked-out: #e7e4dd;
   --stay-checked-out-ink: #5f5e58;
+  --stay-no-show: #f4e1de;
+  --stay-no-show-ink: #8f3a31;
   --background: var(--canvas);
   --foreground: var(--ink);
   --card: #ffffff;
@@ -306,6 +344,7 @@ html:has([data-admin-shell]) {
   --success: #7fd6a0;
   --warning: #f0b85a;
   --danger: #ff8a80;
+  --star: #e0b23c;
   --background: var(--canvas);
   --foreground: #f4f2ec;
   --card: #1e1e1e;
