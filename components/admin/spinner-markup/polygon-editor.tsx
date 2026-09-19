@@ -13,6 +13,9 @@ import {
   type Point,
 } from '@/lib/domain/polygon/geometry';
 import type { SpinnerZoneTarget } from '@/lib/domain/spinner-markup';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
+import { pluralCount } from '@/lib/i18n/plural';
 import { MarkupCanvas, screenToNormalized, type ImageSize } from './markup-canvas';
 import {
   createInitialState,
@@ -71,11 +74,11 @@ const handleScreenPx = (zoom: number) => HANDLE_PX_AT_1X / (1 + (zoom - 1) * 0.3
 const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
 
 const TOOLS = [
-  { id: 'select', label: 'Select', key: 'V', Icon: IconPointer },
-  { id: 'polygon', label: 'Polygon', key: 'P', Icon: IconPencil },
-  { id: 'rect', label: 'Rectangle', key: 'R', Icon: IconSquare },
-  { id: 'spin', label: 'Spin', key: 'S', Icon: IconSpin },
-] as const;
+  { id: 'select', label: 'editor.toolSelect', key: 'V', Icon: IconPointer },
+  { id: 'polygon', label: 'editor.toolPolygon', key: 'P', Icon: IconPencil },
+  { id: 'rect', label: 'editor.toolRect', key: 'R', Icon: IconSquare },
+  { id: 'spin', label: 'editor.toolSpin', key: 'S', Icon: IconSpin },
+] as const satisfies ReadonlyArray<{ id: string; label: AdminTranslationKey; key: string; Icon: unknown }>;
 
 type Tool = (typeof TOOLS)[number]['id'];
 
@@ -85,11 +88,11 @@ const PRELOAD_INTERVAL = 120;
 /** Frames a second a turn runs at — the pace of the guest spinner's own (`use-orbit.ts`'s STEP_FPS). */
 const TURN_FPS = 60;
 
-const SAVE_LABELS: Record<SaveStatus, string> = {
-  saved: 'Saved',
-  pending: 'Unsaved changes…',
-  saving: 'Saving…',
-  error: 'Save failed',
+const SAVE_LABELS: Record<SaveStatus, AdminTranslationKey> = {
+  saved: 'editor.saved',
+  pending: 'editor.pending',
+  saving: 'editor.saving',
+  error: 'editor.saveFailed',
 };
 
 type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
@@ -174,6 +177,13 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   },
   ref,
 ) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
+  // Handlers read `t` through a ref, like the other callbacks below, so a
+  // language change never has to rebuild the keyboard and pointer plumbing.
+  const tRef = React.useRef(t);
+  tRef.current = t;
+
   const [state, dispatch] = React.useReducer(reducer, initialZones, createInitialState);
   const [tool, setTool] = React.useState<Tool>('select');
   const [draft, setDraft] = React.useState<{ points: Point[]; cursor: Point } | null>(null); // the P tool
@@ -288,9 +298,9 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
 
       const name = nameOf(zone, index);
       if (zone.polygon.points.length < 3) {
-        invalid.push(`"${name}": fewer than three points`);
+        invalid.push(tRef.current('editor.invalidFewPoints', { name }));
       } else if (selfIntersects(flattenPolygon(zone.polygon))) {
-        invalid.push(`"${name}": sides cross themselves`);
+        invalid.push(tRef.current('editor.invalidCross', { name }));
       } else {
         upserts.push({ id: zone.id, polygon: zone.polygon, target: zone.target });
       }
@@ -301,7 +311,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   }, []);
 
   function nameOf(zone: EditorZone, index: number): string {
-    return zoneLabelRef.current?.(zone) || `Zone ${index + 1}`;
+    return zoneLabelRef.current?.(zone) || tRef.current('editor.zoneN', { n: index + 1 });
   }
 
   const flush = React.useCallback(async () => {
@@ -313,7 +323,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     const invalidKey = invalid.join('|');
     if (invalid.length > 0 && warnedInvalidRef.current !== invalidKey) {
       warnedInvalidRef.current = invalidKey;
-      notify({ variant: 'error', title: 'Zone not saved', description: invalid.join('. ') });
+      notify({ variant: 'error', title: tRef.current('editor.zoneNotSaved'), description: invalid.join('. ') });
     }
     if (invalid.length === 0) warnedInvalidRef.current = '';
 
@@ -327,14 +337,14 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     let error: string | null = null;
     try {
       const result = await save({ upserts, deletes });
-      if (result && result.ok === false) error = result.error ?? 'Unknown error';
+      if (result && result.ok === false) error = result.error ?? tRef.current('editor.unknownError');
     } catch (thrown) {
-      error = thrown instanceof Error ? thrown.message : 'Unknown error';
+      error = thrown instanceof Error ? thrown.message : tRef.current('editor.unknownError');
     }
 
     if (error) {
       setSaveStatus('error');
-      notify({ variant: 'error', title: 'Autosave failed', description: error });
+      notify({ variant: 'error', title: tRef.current('editor.autosaveFailed'), description: error });
       return false;
     }
 
@@ -520,7 +530,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   const addPolygon = React.useCallback(
     (points: Point[]) => {
       if (selfIntersects(points)) {
-        notify({ variant: 'error', title: 'Zone not created', description: 'The sides cross themselves.' });
+        notify({ variant: 'error', title: tRef.current('editor.zoneNotCreated'), description: tRef.current('editor.sidesCross') });
         return;
       }
       dispatch({ type: 'add', zone: { id: crypto.randomUUID(), polygon: { points }, target: null } });
@@ -542,7 +552,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
     setDraft(null);
 
     if (current.points.length >= 3) addPolygon(current.points);
-    else notify({ variant: 'error', title: 'Zone not created', description: 'At least three points are needed.' });
+    else notify({ variant: 'error', title: tRef.current('editor.zoneNotCreated'), description: tRef.current('editor.needThreePoints') });
   }, [addPolygon, notify]);
 
   const duplicateSelected = React.useCallback(() => {
@@ -568,8 +578,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       if (zone.polygon.points.length <= 3) {
         notify({
           variant: 'error',
-          title: 'Vertex not deleted',
-          description: 'A polygon needs at least three points left. Delete the whole zone instead.',
+          title: tRef.current('editor.vertexNotDeleted'),
+          description: tRef.current('editor.vertexMin'),
         });
         return;
       }
@@ -603,14 +613,16 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       tolerance: SNAP_TOLERANCE_PX,
     });
 
+    const tt = tRef.current;
     if (snapped === 0) {
-      notify({ variant: 'info', title: 'Nothing to snap to', description: `No other vertex or side within ${SNAP_TOLERANCE_PX} px.` });
+      notify({ variant: 'info', title: tt('editor.nothingToSnap'), description: tt('editor.nothingWithin', { px: SNAP_TOLERANCE_PX }) });
       return;
     }
 
     dispatch({ type: 'patch', id: target.id, patch: { polygon: { ...target.polygon, points } } });
-    notify({ variant: 'info', title: `Snapped ${snapped} vert${snapped === 1 ? 'ex' : 'ices'}` });
-  }, [image, notify]);
+    const vertexForms = { one: tt('editor.vertexOne'), few: tt('editor.vertexFew'), many: tt('editor.vertexMany'), other: tt('editor.vertexOther') };
+    notify({ variant: 'info', title: tt('editor.snapped', { vertices: pluralCount(locale, snapped, vertexForms) }) });
+  }, [image, locale, notify]);
 
   const straightenEdge = React.useCallback((zone: EditorZone, edgeIndex: number) => {
     dispatch({ type: 'patch', id: zone.id, patch: { polygon: withCurve(zone.polygon, edgeIndex, 0) } });
@@ -889,7 +901,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
   // The draw tools float at the bottom centre of the canvas, the way a
   // design tool docks its toolbar: the image keeps the full working area.
   const dock = (
-    <div className="pe-float pe-dock" role="toolbar" aria-label="Drawing tools">
+    <div className="pe-float pe-dock" role="toolbar" aria-label={t('editor.drawingTools')}>
       {TOOLS.filter((item) => item.id !== 'spin' || sequence).map(({ id, label, key, Icon }) => (
         <button
           key={id}
@@ -897,8 +909,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
           className="pe-btn"
           data-active={tool === id || undefined}
           aria-pressed={tool === id}
-          aria-label={`${label} (${key})`}
-          title={`${label} — ${key}`}
+          aria-label={`${t(label)} (${key})`}
+          title={`${t(label)} — ${key}`}
           onClick={() => setTool(id)}
         >
           <Icon className="pe-icon" />
@@ -911,8 +923,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
           <button
             type="button"
             className="pe-btn"
-            aria-label="Turn left, to the previous key angle"
-            title="Turn left — the previous frame that can carry zones"
+            aria-label={t('editor.turnLeft')}
+            title={t('editor.turnLeftTitle')}
             disabled={sequence.stops.length < 2}
             onClick={() => turn(-1)}
           >
@@ -922,8 +934,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
           <button
             type="button"
             className="pe-btn"
-            aria-label="Turn right, to the next key angle"
-            title="Turn right — the next frame that can carry zones"
+            aria-label={t('editor.turnRight')}
+            title={t('editor.turnRightTitle')}
             disabled={sequence.stops.length < 2}
             onClick={() => turn(1)}
           >
@@ -937,8 +949,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       <button
         type="button"
         className="pe-btn"
-        aria-label="Snap to neighbours (M)"
-        title="Snap to neighbours — M. Closes gaps between neighbouring zones"
+        aria-label={t('editor.snap')}
+        title={t('editor.snapTitle')}
         disabled={!selected}
         onClick={snapSelected}
       >
@@ -947,8 +959,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       <button
         type="button"
         className="pe-btn"
-        aria-label="Undo (Ctrl+Z)"
-        title="Undo — Ctrl+Z"
+        aria-label={t('editor.undo')}
+        title={t('editor.undoTitle')}
         disabled={state.past.length === 0}
         onClick={() => dispatch({ type: 'undo' })}
       >
@@ -957,8 +969,8 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       <button
         type="button"
         className="pe-btn"
-        aria-label="Redo (Ctrl+Shift+Z)"
-        title="Redo — Ctrl+Shift+Z"
+        aria-label={t('editor.redo')}
+        title={t('editor.redoTitle')}
         disabled={state.future.length === 0}
         onClick={() => dispatch({ type: 'redo' })}
       >
@@ -1082,15 +1094,15 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
 
       {showList ? <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel} /> : null}
 
-      <aside className="pe-float pe-float-right" aria-label="Zone properties">
+      <aside className="pe-float pe-float-right" aria-label={t('editor.zoneProperties')}>
         <div className="pe-side-head">
           {toolbarStart}
-          <h2 className="pe-side-title pe-truncate">{selected ? nameOf(selected, selectedIndex) : 'Frame'}</h2>
+          <h2 className="pe-side-title pe-truncate">{selected ? nameOf(selected, selectedIndex) : t('editor.frame')}</h2>
           <div className="pe-head-end">
-            {autosave ? <span className="pe-save" data-error={saveStatus === 'error' || undefined}>{SAVE_LABELS[saveStatus]}</span> : null}
+            {autosave ? <span className="pe-save" data-error={saveStatus === 'error' || undefined}>{t(SAVE_LABELS[saveStatus])}</span> : null}
             {autosave && saveStatus === 'error' ? (
               <button type="button" className="pe-btn pe-btn-outline" onClick={() => flushRef.current()}>
-                Retry
+                {t('editor.retry')}
               </button>
             ) : null}
             {toolbarEnd}
@@ -1111,7 +1123,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
               <ZoneTargetEditor zone={selected} dispatch={dispatch} catalog={catalog} />
             </>
           ) : (
-            <p className="pe-empty">Select a zone on the image or in the list to set what it points to.</p>
+            <p className="pe-empty">{t('editor.selectPrompt')}</p>
           )}
         </div>
       </aside>

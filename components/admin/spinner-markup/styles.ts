@@ -97,7 +97,12 @@ export const EDITOR_STYLES = `
   .pe-panel-section { padding: 12px; }
   .pe-section-heading { margin: 0 0 10px; font-size: 13px; font-weight: 600; }
 
-  /* The dock: the draw tools, bottom centre. */
+  /*
+   * The dock: the draw tools, bottom centre. Its natural width (draw tools +
+   * turn + snap/undo/redo) can exceed a narrow canvas — capped and made
+   * internally scrollable so .pe-root's own overflow:hidden never clips
+   * a tool out of reach the way centring-and-overflowing would.
+   */
   .pe-dock {
     bottom: var(--pe-gap);
     left: 50%;
@@ -106,11 +111,31 @@ export const EDITOR_STYLES = `
     align-items: center;
     gap: 2px;
     padding: 6px;
+    max-width: calc(100% - var(--pe-gap) * 2);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .pe-dock::-webkit-scrollbar { display: none; height: 0; }
   .pe-dock .pe-btn { min-width: 36px; height: 36px; padding: 0 9px; border-radius: 10px; }
   .pe-dock .pe-icon { width: 18px; height: 18px; }
   .pe-dock-label { padding: 0 2px; font-size: 13px; font-weight: 500; }
   .pe-dock-sep { width: 1px; height: 20px; margin: 0 6px; background: var(--pe-border); }
+
+  /*
+   * On a narrow canvas the dock, still centred, would run its rightmost
+   * tools under the admin assistant's launcher — a circle fixed to the
+   * viewport's own bottom-right, not the canvas's (admin-assistant-launcher.tsx),
+   * so it sits over the canvas regardless of how the dock is laid out.
+   * Anchoring left and stopping short of the launcher's footprint keeps
+   * every tool clickable; the scroll above reaches whatever still doesn't fit.
+   */
+  @container (max-width: 480px) {
+    .pe-dock {
+      left: var(--pe-gap);
+      transform: none;
+      max-width: calc(100% - var(--pe-gap) - 76px);
+    }
+  }
 
   /* Help: a round "?" in the bottom-right corner, its popover above it. */
   .pe-help-toggle {

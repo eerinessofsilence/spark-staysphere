@@ -2,12 +2,18 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { pluralCount } from '@/lib/i18n/plural';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { MarkupEditor } from './markup-editor';
 
-export const metadata: Metadata = { title: 'Markup — 360 Orbit | SPARK StaySphere 360' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, `${t('markup.title')} — ${t('nav.orbit')}`) };
+}
 export const dynamic = 'force-dynamic';
 
 export default async function SpinnerMarkupPage({
@@ -15,6 +21,9 @@ export default async function SpinnerMarkupPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getAdminLocale();
+  const t = adminT(locale);
+  const zoneForms = { one: t('zones.countOne'), few: t('zones.countFew'), many: t('zones.countMany'), other: t('zones.countOther') };
   const content = await contentService.getSpinnerMarkupContent();
   if (!content) notFound();
 
@@ -48,17 +57,17 @@ export default async function SpinnerMarkupPage({
   return (
     <AdminPage width="wide">
       <AdminPageHeader
-        breadcrumbs={[{ label: 'Content' }, { label: '360 Orbit', href: '/admin/content/spinner' }]}
-        title="Markup"
-        description="Draw the zones on each key-angle frame, then bind every zone to a room, a floor, a room type, or a link."
+        breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.orbit'), href: '/admin/content/spinner' }]}
+        title={t('markup.title')}
+        description={t('markup.description')}
         actions={
           <Link href="/admin/content/spinner/frames" className={pill('secondary')}>
-            Frames & key angles
+            {t('orbit.framesLink')}
           </Link>
         }
       />
 
-      <nav aria-label="Key-angle frames" className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
+      <nav aria-label={t('orbit.keyAngleFrames')} className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
         {content.keyAngles.map((angle) => {
           const frame = content.frames.find((candidate) => candidate.index === angle);
           const active = angle === frameIndex;
@@ -78,10 +87,15 @@ export default async function SpinnerMarkupPage({
               ) : (
                 <span className="h-14 w-24 rounded-lg bg-stone" />
               )}
-              <span className="text-xs font-medium text-foreground">Frame {angle}</span>
-              <span className="text-[11px] text-muted-foreground">{zonesByFrame.get(angle) ?? 0} zones</span>
+              <span className="text-xs font-medium text-foreground">{t('frames.frameN', { n: angle })}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {pluralCount(locale, zonesByFrame.get(angle) ?? 0, zoneForms)}
+              </span>
               {unresolved > 0 ? (
-                <span aria-label={`${unresolved} unbound`} className="absolute top-1 right-1 size-2 rounded-full bg-[#dc2626]" />
+                <span
+                  aria-label={t('markup.unbound', { count: unresolved })}
+                  className="absolute top-1 right-1 size-2 rounded-full bg-[#dc2626]"
+                />
               ) : null}
             </Link>
           );

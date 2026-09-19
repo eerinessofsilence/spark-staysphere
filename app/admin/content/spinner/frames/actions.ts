@@ -2,6 +2,7 @@
 
 import { contentService } from '@/lib/application/container';
 import type { SpinnerFrame } from '@/lib/domain/schemas';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import { revalidateContent } from '../../_lib/revalidate';
 
 /**
@@ -13,16 +14,20 @@ import { revalidateContent } from '../../_lib/revalidate';
 export async function uploadSpinnerFrameAction(
   formData: FormData,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const t = await getAdminT();
   const frameSetId = String(formData.get('frameSetId') ?? '');
   const rawIndex = formData.get('index');
   const file = formData.get('file');
-  if (typeof rawIndex !== 'string' || rawIndex === '') return { ok: false, error: 'Missing frame index.' };
+  if (typeof rawIndex !== 'string' || rawIndex === '') return { ok: false, error: t('frames.errMissingIndex') };
   const index = Number(rawIndex);
-  if (!(file instanceof Blob)) return { ok: false, error: 'No file received.' };
+  if (!(file instanceof Blob)) return { ok: false, error: t('frames.errNoFile') };
 
   const result = await contentService.uploadSpinnerFrame(frameSetId, index, file.type, await file.arrayBuffer());
   if (!result.ok) {
-    return { ok: false, error: result.error.kind === 'rule' ? result.error.message : 'Upload failed.' };
+    return {
+      ok: false,
+      error: result.error.kind === 'rule' || result.error.kind === 'forbidden' ? result.error.message : t('frames.errUpload'),
+    };
   }
   return { ok: true, url: result.value.url };
 }
@@ -59,16 +64,17 @@ export async function applySpinnerSceneAction(
     revalidateContent();
     return { ok: true };
   }
+  const t = await getAdminT();
   const error = result.error;
   return {
     ok: false,
     error:
-      error.kind === 'rule'
+      error.kind === 'rule' || error.kind === 'forbidden'
         ? error.message
         : error.kind === 'conflict'
-          ? 'Someone else changed the spinner while you were editing — reload and try again.'
+          ? t('frames.errConflict')
           : error.kind === 'validation'
-            ? Object.values(error.fieldErrors)[0]?.[0] ?? 'Invalid input.'
-            : 'Could not save.',
+            ? Object.values(error.fieldErrors)[0]?.[0] ?? t('frames.errInvalid')
+            : t('frames.errSave'),
   };
 }

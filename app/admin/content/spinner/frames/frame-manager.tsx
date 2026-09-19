@@ -6,6 +6,8 @@ import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
 import type { SpinnerFrame } from '@/lib/domain/schemas';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { pluralCount } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import {
@@ -54,13 +56,16 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
 }
 
 /** Draws `bitmap` onto a canvas no larger than `MAX_DIMENSION` on its long side, and encodes it. */
-async function encodeFrame(bitmap: ImageBitmap): Promise<{ blob: Blob; width: number; height: number }> {
+async function encodeFrame(
+  bitmap: ImageBitmap,
+  unsupportedMessage: string,
+): Promise<{ blob: Blob; width: number; height: number }> {
   const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('This browser cannot re-encode images — try a recent Chrome, Firefox or Safari.');
+  if (!ctx) throw new Error(unsupportedMessage);
   ctx.drawImage(bitmap, 0, 0, width, height);
   const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.82 });
   return { blob, width, height };
@@ -91,6 +96,12 @@ export function FrameManager({
   zoneCount: number;
   hotspotCount: number;
 }) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
+  const frameForms = { one: t('frames.countOne'), few: t('frames.countFew'), many: t('frames.countMany'), other: t('frames.countOther') };
+  const markerForms = { one: t('frames.markerOne'), few: t('frames.markerFew'), many: t('frames.markerMany'), other: t('frames.markerOther') };
+  const zoneForms = { one: t('zones.countOne'), few: t('zones.countFew'), many: t('zones.countMany'), other: t('zones.countOther') };
+
   const [frames, setFrames] = React.useState(initialFrames);
   const [frameWidth, setFrameWidth] = React.useState(initialFrameWidth);
   const [frameHeight, setFrameHeight] = React.useState(initialFrameHeight);
@@ -128,7 +139,7 @@ export function FrameManager({
       // first").
       const encoded = await mapWithConcurrency(files, UPLOAD_CONCURRENCY, async (file, index) => {
         const bitmap = await createImageBitmap(file);
-        const { blob, width, height } = await encodeFrame(bitmap);
+        const { blob, width, height } = await encodeFrame(bitmap, t('frames.errBrowser'));
         bitmap.close();
         return { index, file, blob, width, height };
       });
@@ -137,7 +148,14 @@ export function FrameManager({
       const mismatch = encoded.find((frame) => frame.width !== commonWidth || frame.height !== commonHeight);
       if (mismatch) {
         throw new Error(
-          `Frame ${mismatch.index + 1} (${mismatch.file.name}) is ${mismatch.width}×${mismatch.height}, but frame 1 is ${commonWidth}×${commonHeight} — every frame must share one framing.`,
+          t('frames.errMismatch', {
+            index: mismatch.index + 1,
+            name: mismatch.file.name,
+            width: mismatch.width,
+            height: mismatch.height,
+            firstWidth: commonWidth,
+            firstHeight: commonHeight,
+          }),
         );
       }
 
@@ -160,9 +178,9 @@ export function FrameManager({
       const defaults = defaultKeyAngles(uploaded.length);
       setKeyAngles(new Set(defaults));
       setStartFrame(defaults[0] ?? 0);
-      toast.success(`Uploaded ${uploaded.length} frames.`);
+      toast.success(t('frames.uploaded', { frames: pluralCount(locale, uploaded.length, frameForms) }));
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : 'Upload failed.');
+      setError(thrown instanceof Error ? thrown.message : t('frames.errUpload'));
     } finally {
       setUploading(null);
     }
@@ -173,7 +191,7 @@ export function FrameManager({
       const next = new Set(current);
       if (next.has(index)) {
         if (next.size <= 2) {
-          toast.error('At least two key angles are needed — the arrows have to have somewhere to jump between.');
+          toast.error(t('frames.errMinKeyAngles'));
           return current;
         }
         next.delete(index);
@@ -187,7 +205,7 @@ export function FrameManager({
 
   function requestApply() {
     if (keyAngles.size < 2) {
-      toast.error('Pick at least two key angles first.');
+      toast.error(t('frames.errPickTwo'));
       return;
     }
     if (framesReplaced && (zoneCount > 0 || hotspotCount > 0)) {
@@ -210,7 +228,7 @@ export function FrameManager({
     const result = await applySpinnerSceneAction(input, version);
     setSaving(false);
     if (result.ok) {
-      toast.success('Spinner updated.');
+      toast.success(t('frames.updated'));
       pendingFrameSetIdRef.current = null;
       window.location.reload(); // picks up the new version and, if frames were replaced, the cleared zones
     } else {
@@ -218,13 +236,23 @@ export function FrameManager({
     }
   }
 
+  // The confirm only opens when at least one of the two counts is non-zero
+  // (`requestApply`), so one of the three templates always applies.
+  const markers = pluralCount(locale, hotspotCount, markerForms);
+  const zones = pluralCount(locale, zoneCount, zoneForms);
+  const replaceBody =
+    hotspotCount > 0 && zoneCount > 0
+      ? t('frames.replaceBodyBoth', { markers, zones })
+      : hotspotCount > 0
+        ? t('frames.replaceBodyMarkers', { markers })
+        : t('frames.replaceBodyZones', { zones });
+
   return (
     <div className="mt-8 grid gap-6">
       <div className="rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
-        <h2 className="font-medium">Frames</h2>
+        <h2 className="font-medium">{t('frames.heading')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {frames.length} frames, {frameWidth}×{frameHeight}. Choosing a new set re-encodes every image to WebP in your
-          browser before uploading — nothing leaves the tab unresized.
+          {t('frames.summary', { frames: pluralCount(locale, frames.length, frameForms), width: frameWidth, height: frameHeight })}
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -244,27 +272,21 @@ export function FrameManager({
             onClick={() => fileInputRef.current?.click()}
           >
             <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
-            Choose frame images…
+            {t('frames.choose')}
           </button>
           {uploading ? (
             <span className="text-sm text-muted-foreground">
-              Uploading {uploading.done} of {uploading.total}…
+              {t('frames.uploading', { done: uploading.done, total: uploading.total })}
             </span>
           ) : null}
         </div>
         {error ? <p className="mt-3 text-sm text-[#dc2626]">{error}</p> : null}
-        {framesReplaced ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            A new set is ready below — nothing is saved until you apply it.
-          </p>
-        ) : null}
+        {framesReplaced ? <p className="mt-3 text-sm text-muted-foreground">{t('frames.newSetReady')}</p> : null}
       </div>
 
       <div className="rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
-        <h2 className="font-medium">Key angles and start frame</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Click a frame to make it a stop the arrows jump between. The star picks which one the orbit opens on.
-        </p>
+        <h2 className="font-medium">{t('frames.keyAnglesHeading')}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('frames.keyAnglesBody')}</p>
 
         <ul className="mt-4 flex flex-wrap gap-3">
           {frames.map((frame) => {
@@ -283,12 +305,14 @@ export function FrameManager({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={frame.imageUrl} alt="" width={96} height={54} className="h-14 w-24 bg-stone object-cover" />
                 </button>
-                <span className="mt-1 block text-center text-[11px] text-muted-foreground">Frame {frame.index}</span>
+                <span className="mt-1 block text-center text-[11px] text-muted-foreground">
+                  {t('frames.frameN', { n: frame.index })}
+                </span>
                 {isKey ? (
                   <button
                     type="button"
-                    aria-label={isStart ? `Frame ${frame.index} opens the orbit` : `Open the orbit on frame ${frame.index}`}
-                    title="Set as start frame"
+                    aria-label={isStart ? t('frames.opensOrbit', { n: frame.index }) : t('frames.openOn', { n: frame.index })}
+                    title={t('frames.setStart')}
                     onClick={() => setStartFrame(frame.index)}
                     className={cn(
                       'absolute top-1 right-1 grid size-6 place-items-center rounded-full',
@@ -308,24 +332,18 @@ export function FrameManager({
         </ul>
 
         <button type="button" className={cn(pill('primary'), 'mt-6')} disabled={saving || Boolean(uploading)} onClick={requestApply}>
-          {saving ? 'Saving…' : 'Apply'}
+          {saving ? t('frames.saving') : t('frames.apply')}
         </button>
       </div>
 
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Replace the spinner's frames?">
-        <p className="text-sm text-muted-foreground">
-          {hotspotCount > 0 ? `${hotspotCount} marker${hotspotCount === 1 ? '' : 's'} (sea-view, floor pins, …) ` : ''}
-          {hotspotCount > 0 && zoneCount > 0 ? 'and ' : ''}
-          {zoneCount > 0 ? `${zoneCount} zone${zoneCount === 1 ? '' : 's'} drawn in Markup ` : ''}
-          {hotspotCount > 0 || zoneCount > 0 ? 'name frame numbers from the current sequence and ' : ''}
-          will be cleared, since they can no longer be trusted to line up with the new one. This cannot be undone.
-        </p>
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title={t('frames.replaceTitle')}>
+        <p className="text-sm text-muted-foreground">{replaceBody}</p>
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" className={pill('secondary')} onClick={() => setConfirmOpen(false)}>
-            Cancel
+            {t('frames.cancel')}
           </button>
           <button type="button" className={pill('primary')} onClick={() => void apply()}>
-            Replace and clear them
+            {t('frames.replaceConfirm')}
           </button>
         </div>
       </Modal>
