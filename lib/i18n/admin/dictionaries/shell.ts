@@ -1,0 +1,164 @@
+import { defineArea } from './area';
+
+/** The shell around every screen: sidebar, property switcher, bell, toasts, the unsaved-changes guard, page chrome. */
+export const shell = defineArea({
+  en: {
+    'nav.admin': 'Admin',
+    'nav.operations': 'Operations',
+    'nav.content': 'Content',
+    'nav.featured': 'Featured',
+    'nav.dashboard': 'Dashboard',
+    'nav.frontDesk': 'Front Desk',
+    'nav.reservations': 'Reservations',
+    'nav.services': 'Services',
+    'nav.roomRates': 'Room Rates',
+    'nav.accounting': 'Accounting',
+    'nav.channelManager': 'Channel Manager',
+    'nav.rooms': 'Rooms',
+    'nav.hotelSettings': 'Hotel Settings',
+    'nav.team': 'Users',
+    'nav.orbit': '360 Orbit',
+
+    'property.switch': 'Switch property',
+    'property.search': 'Search hotels',
+    'property.none': 'No hotels found.',
+    'property.switched': 'Switched to {name}.',
+    'property.that': 'that property',
+
+    'account.demo': '{role}',
+
+    'role.owner': 'Owner',
+    'role.generalManager': 'General manager',
+    'role.revenueManager': 'Revenue manager',
+    'role.frontDesk': 'Front desk',
+    'role.contentEditor': 'Content editor',
+
+    'menu.open': 'Open admin menu',
+    'menu.title': 'Admin menu',
+    'menu.close': 'Close',
+
+    'bell.reservations': 'Reservations',
+    'bell.reservationsNew': 'Reservations, {count} new',
+    'bell.title': 'Recent reservations',
+    'bell.empty': 'New bookings show up here.',
+    'bell.seeAll': 'See all reservations',
+
+    'toast.region': 'Notifications',
+    'toast.dismiss': 'Dismiss',
+
+    'unsaved.title': 'Leave without saving?',
+    'unsaved.body': "Changes on this page haven't been saved. If you leave now, they're lost.",
+    'unsaved.stay': 'Stay on this page',
+    'unsaved.leave': 'Leave without saving',
+
+    'page.backTo': 'Back to {label}',
+    'page.breadcrumb': 'Breadcrumb',
+    'page.hotelAdmin': 'Hotel admin',
+  },
+  de: {
+    'nav.admin': 'Verwaltung',
+    'nav.operations': 'Betrieb',
+    'nav.content': 'Inhalte',
+    'nav.featured': 'Hervorgehoben',
+    'nav.dashboard': 'Übersicht',
+    'nav.frontDesk': 'Rezeption',
+    'nav.reservations': 'Reservierungen',
+    'nav.services': 'Leistungen',
+    'nav.roomRates': 'Zimmerpreise',
+    'nav.accounting': 'Buchhaltung',
+    'nav.channelManager': 'Channel-Manager',
+    'nav.rooms': 'Zimmer',
+    'nav.hotelSettings': 'Hoteleinstellungen',
+    'nav.team': 'Benutzer',
+    'nav.orbit': '360 Orbit',
+
+    'property.switch': 'Hotel wechseln',
+    'property.search': 'Hotels suchen',
+    'property.none': 'Keine Hotels gefunden.',
+    'property.switched': 'Gewechselt zu {name}.',
+    'property.that': 'diesem Hotel',
+
+    'account.demo': '{role}',
+
+    'role.owner': 'Inhaberin',
+    'role.generalManager': 'Geschäftsführung',
+    'role.revenueManager': 'Revenue Management',
+    'role.frontDesk': 'Rezeption',
+    'role.contentEditor': 'Content-Redaktion',
+
+    'menu.open': 'Menü öffnen',
+    'menu.title': 'Menü',
+    'menu.close': 'Schließen',
+
+    'bell.reservations': 'Reservierungen',
+    'bell.reservationsNew': 'Reservierungen, {count} neu',
+    'bell.title': 'Neueste Reservierungen',
+    'bell.empty': 'Neue Buchungen erscheinen hier.',
+    'bell.seeAll': 'Alle Reservierungen',
+
+    'toast.region': 'Benachrichtigungen',
+    'toast.dismiss': 'Schließen',
+
+    'unsaved.title': 'Ohne Speichern verlassen?',
+    'unsaved.body': 'Die Änderungen auf dieser Seite sind nicht gespeichert. Wenn Sie jetzt gehen, gehen sie verloren.',
+    'unsaved.stay': 'Auf dieser Seite bleiben',
+    'unsaved.leave': 'Ohne Speichern verlassen',
+
+    'page.backTo': 'Zurück zu {label}',
+    'page.breadcrumb': 'Navigationspfad',
+    'page.hotelAdmin': 'Hotelverwaltung',
+  },
+  ru: {
+    'nav.admin': 'Админ',
+    'nav.operations': 'Операции',
+    'nav.content': 'Контент',
+    'nav.featured': 'Избранное',
+    'nav.dashboard': 'Обзор',
+    'nav.frontDesk': 'Ресепшен',
+    'nav.reservations': 'Брони',
+    'nav.services': 'Услуги',
+    'nav.roomRates': 'Тарифы',
+    'nav.accounting': 'Финансы',
+    'nav.channelManager': 'Каналы продаж',
+    'nav.rooms': 'Номера',
+    'nav.hotelSettings': 'Настройки отеля',
+    'nav.team': 'Пользователи',
+    'nav.orbit': '360 Orbit',
+
+    'property.switch': 'Сменить отель',
+    'property.search': 'Поиск отелей',
+    'property.none': 'Отели не найдены.',
+    'property.switched': 'Переключено на {name}.',
+    'property.that': 'этот отель',
+
+    'account.demo': '{role}',
+
+    'role.owner': 'Владелец',
+    'role.generalManager': 'Генеральный менеджер',
+    'role.revenueManager': 'Ревеню-менеджер',
+    'role.frontDesk': 'Ресепшен',
+    'role.contentEditor': 'Редактор контента',
+
+    'menu.open': 'Открыть меню',
+    'menu.title': 'Меню',
+    'menu.close': 'Закрыть',
+
+    'bell.reservations': 'Брони',
+    'bell.reservationsNew': 'Брони, новых: {count}',
+    'bell.title': 'Последние брони',
+    'bell.empty': 'Новые брони появятся здесь.',
+    'bell.seeAll': 'Все брони',
+
+    'toast.region': 'Уведомления',
+    'toast.dismiss': 'Закрыть',
+
+    'unsaved.title': 'Уйти без сохранения?',
+    'unsaved.body': 'Изменения на этой странице не сохранены. Если уйти сейчас, они пропадут.',
+    'unsaved.stay': 'Остаться на странице',
+    'unsaved.leave': 'Уйти без сохранения',
+
+    'page.backTo': 'Назад: {label}',
+    'page.breadcrumb': 'Навигация',
+    'page.hotelAdmin': 'Админ отеля',
+  },
+});

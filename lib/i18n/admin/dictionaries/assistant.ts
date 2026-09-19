@@ -1,0 +1,261 @@
+import { defineArea } from './area';
+
+/**
+ * The admin assistant: its chat window (`components/admin/assistant`) and
+ * every sentence the panel composes from a proposal or a result
+ * (`formatAdmin*` in `lib/formatting.ts`). The example chips stay English in
+ * every language on purpose: a chip is the request it sends, not a label,
+ * and the keyless fallback interpreter only resolves English.
+ */
+export const assistant = defineArea({
+  en: {
+    'assistant.title': 'Admin assistant',
+    'assistant.close': 'Close the admin assistant',
+    'assistant.welcome': 'Tell me what to set up or change. I show you exactly what would change, and nothing is written until you confirm.',
+    'assistant.settingUp': 'Setting up…',
+    'assistant.placeholder': 'Set a rate, create a room type, open a screen…',
+    'assistant.answerPlaceholder': 'Your answer…',
+    'assistant.inputLabel': 'Message the admin assistant',
+    'assistant.send': 'Send',
+
+    'assistant.notThat': 'Not that',
+    'assistant.open': 'Open',
+    'assistant.apply': 'Apply',
+    'assistant.done': 'Done',
+    'assistant.dropped': 'Dropped',
+    'assistant.droppedWhatElse': 'Dropped that. What else?',
+
+    'assistant.error.unreachable': 'Could not reach the assistant. Try again.',
+    'assistant.error.tooMany': 'Too many requests in a minute — give it a moment.',
+    'assistant.error.busy': 'Still working on the last one.',
+    'assistant.error.unknown': 'I could not make sense of that. Try again.',
+
+    'assistant.note.ignored': 'Ignored: {items}',
+    'assistant.note.keywords': 'Matching on keywords — add an OpenAI key for natural language.',
+
+    'assistant.status.auto': 'automatic, from availability',
+
+    'assistant.proposal.setRate.lead': 'Change {rate} for {roomType}',
+    'assistant.proposal.setRate.detail': '{from} → {to} a night',
+    'assistant.proposal.hide.lead': 'Hide {roomType} from the site',
+    'assistant.proposal.hide.detail': 'Guests stop seeing it; its rooms and rates stay.',
+    'assistant.proposal.show.lead': 'Show {roomType} on the site',
+    'assistant.proposal.show.detail': 'Guests can find and book it again.',
+    'assistant.proposal.status.lead': 'Set {roomType} to {status}',
+    'assistant.proposal.status.detail': 'Currently {status}.',
+    'assistant.proposal.addOnOn.lead': 'Put {addOn} on sale',
+    'assistant.proposal.addOnOff.lead': 'Take {addOn} off sale',
+    'assistant.proposal.createType.lead': 'Create {name}',
+    'assistant.proposal.createType.detail':
+      '{floor} · {area} m² · sleeps {capacity} · {bed} · {view}. Hidden from guests until it has a room, a rate and a photo.',
+    'assistant.proposal.createRoom.lead': 'Add room {number} to {roomType}',
+    'assistant.proposal.navigate.lead': 'Open {label}',
+
+    'assistant.question.name': 'What is the new room type called?',
+    'assistant.question.description': 'Give guests one line about it — what is the room like?',
+    'assistant.question.floor': 'Which floor is it on?',
+    'assistant.question.areaM2': 'How big is it, in m²?',
+    'assistant.question.capacity': 'How many guests does it sleep?',
+    'assistant.question.bedType': 'King, twin or queen bed?',
+    'assistant.question.view': 'Sea, garden, pool or city view?',
+    'assistant.question.known': '{name}: {question}',
+    'assistant.question.numberSuggested':
+      'Which room number for {roomType}? {suggested} is the next free one on that floor — say yes to take it.',
+    'assistant.question.number': 'Which room number? The floor, then a two-digit position: 305, or G04 on the ground floor.',
+
+    'assistant.incomplete.setRate': 'Which room type, and what nightly price? For example "set Deluxe Sea View to 320".',
+    'assistant.incomplete.setHidden': 'Which room type? For example "hide Garden Studio".',
+    'assistant.incomplete.setStatus': 'Which room type, and which status — available, limited, last room, sold out, or automatic?',
+    'assistant.incomplete.setAddOn': 'Which service or dish? For example "take the airport transfer off sale".',
+    'assistant.incomplete.createRoom': 'Which room type is the room for?',
+
+    'assistant.reply.proposal': 'Here is what would change.',
+    'assistant.reply.cancelled': 'Dropped that.',
+    'assistant.reply.ambiguous': '"{target}" could mean {candidates} — which one?',
+    'assistant.reply.or': 'or',
+    'assistant.reply.notFound': 'Nothing in the catalog is called "{target}".',
+    'assistant.reply.noRate': '{roomType} has no rate yet — add one under {screen} first.',
+    'assistant.reply.unknown':
+      'I can change a nightly rate, hide or show a room type, set its availability, put a service on or off sale, create a room type and its rooms, or open a screen. Try one of those.',
+
+    'assistant.applied.setRate': '{rate} for {roomType} is now {price} a night — live on the site.',
+    'assistant.applied.hidden': '{roomType} is hidden from the site.',
+    'assistant.applied.shown': '{roomType} is back on the site.',
+    'assistant.applied.status': '{roomType} now shows as {status}.',
+    'assistant.applied.addOnOn': '{addOn} is on sale.',
+    'assistant.applied.addOnOff': '{addOn} is off sale.',
+    'assistant.applied.createType': '{name} is created — hidden from guests until it has a room, a rate and a photo.',
+    'assistant.applied.createRoom': 'Room {number} is added to {roomType}.',
+    'assistant.applied.navigate': 'Opening {label}.',
+    'assistant.failed.conflict': 'Someone changed this just now. Ask again to see the current value.',
+    'assistant.failed.notFound': 'That no longer exists — it may have been removed since.',
+  },
+  de: {
+    'assistant.title': 'Admin-Assistent',
+    'assistant.close': 'Admin-Assistenten schließen',
+    'assistant.welcome':
+      'Sagen Sie mir, was eingerichtet oder geändert werden soll. Ich zeige Ihnen genau, was sich ändern würde – geschrieben wird erst, wenn Sie bestätigen.',
+    'assistant.settingUp': 'Wird eingerichtet…',
+    'assistant.placeholder': 'Preis setzen, Zimmertyp anlegen, Seite öffnen…',
+    'assistant.answerPlaceholder': 'Ihre Antwort…',
+    'assistant.inputLabel': 'Nachricht an den Admin-Assistenten',
+    'assistant.send': 'Senden',
+
+    'assistant.notThat': 'Nicht das',
+    'assistant.open': 'Öffnen',
+    'assistant.apply': 'Anwenden',
+    'assistant.done': 'Erledigt',
+    'assistant.dropped': 'Verworfen',
+    'assistant.droppedWhatElse': 'Verworfen. Was noch?',
+
+    'assistant.error.unreachable': 'Der Assistent ist nicht erreichbar. Versuchen Sie es erneut.',
+    'assistant.error.tooMany': 'Zu viele Anfragen in einer Minute – warten Sie einen Moment.',
+    'assistant.error.busy': 'Die letzte Anfrage wird noch bearbeitet.',
+    'assistant.error.unknown': 'Das konnte ich nicht verstehen. Versuchen Sie es erneut.',
+
+    'assistant.note.ignored': 'Ignoriert: {items}',
+    'assistant.note.keywords': 'Abgleich über Schlüsselwörter – für natürliche Sprache einen OpenAI-Schlüssel hinterlegen.',
+
+    'assistant.status.auto': 'automatisch, nach Verfügbarkeit',
+
+    'assistant.proposal.setRate.lead': '{rate} für {roomType} ändern',
+    'assistant.proposal.setRate.detail': '{from} → {to} pro Nacht',
+    'assistant.proposal.hide.lead': '{roomType} von der Website ausblenden',
+    'assistant.proposal.hide.detail': 'Gäste sehen den Typ nicht mehr; seine Zimmer und Preise bleiben erhalten.',
+    'assistant.proposal.show.lead': '{roomType} auf der Website anzeigen',
+    'assistant.proposal.show.detail': 'Gäste können den Typ wieder finden und buchen.',
+    'assistant.proposal.status.lead': '{roomType} auf „{status}“ setzen',
+    'assistant.proposal.status.detail': 'Derzeit: {status}.',
+    'assistant.proposal.addOnOn.lead': '{addOn} in den Verkauf nehmen',
+    'assistant.proposal.addOnOff.lead': '{addOn} aus dem Verkauf nehmen',
+    'assistant.proposal.createType.lead': '{name} anlegen',
+    'assistant.proposal.createType.detail':
+      '{floor} · {area} m² · für {capacity} Gäste · {bed} · {view}. Für Gäste ausgeblendet, bis ein Zimmer, ein Preis und ein Foto vorhanden sind.',
+    'assistant.proposal.createRoom.lead': 'Zimmer {number} zu {roomType} hinzufügen',
+    'assistant.proposal.navigate.lead': '{label} öffnen',
+
+    'assistant.question.name': 'Wie heißt der neue Zimmertyp?',
+    'assistant.question.description': 'Eine Zeile für die Gäste – wie ist das Zimmer?',
+    'assistant.question.floor': 'Auf welcher Etage liegt es?',
+    'assistant.question.areaM2': 'Wie groß ist es, in m²?',
+    'assistant.question.capacity': 'Für wie viele Gäste ist es?',
+    'assistant.question.bedType': 'Kingsize-, Queensize- oder zwei Einzelbetten?',
+    'assistant.question.view': 'Blick auf Meer, Garten, Pool oder Stadt?',
+    'assistant.question.known': '{name}: {question}',
+    'assistant.question.numberSuggested':
+      'Welche Zimmernummer für {roomType}? {suggested} ist die nächste freie auf dieser Etage – sagen Sie „yes“, um sie zu nehmen.',
+    'assistant.question.number': 'Welche Zimmernummer? Die Etage, dann zwei Stellen für die Position: 305, oder G04 im Erdgeschoss.',
+
+    'assistant.incomplete.setRate': 'Welcher Zimmertyp, und welcher Preis pro Nacht? Zum Beispiel „set Deluxe Sea View to 320“.',
+    'assistant.incomplete.setHidden': 'Welcher Zimmertyp? Zum Beispiel „hide Garden Studio“.',
+    'assistant.incomplete.setStatus':
+      'Welcher Zimmertyp, und welcher Status – „available“, „limited“, „last room“, „sold out“ oder „automatic“?',
+    'assistant.incomplete.setAddOn': 'Welche Leistung oder welches Gericht? Zum Beispiel „take the airport transfer off sale“.',
+    'assistant.incomplete.createRoom': 'Zu welchem Zimmertyp gehört das Zimmer?',
+
+    'assistant.reply.proposal': 'Das würde sich ändern.',
+    'assistant.reply.cancelled': 'Verworfen.',
+    'assistant.reply.ambiguous': '„{target}“ könnte {candidates} bedeuten – welcher ist gemeint?',
+    'assistant.reply.or': 'oder',
+    'assistant.reply.notFound': 'Im Katalog gibt es nichts mit dem Namen „{target}“.',
+    'assistant.reply.noRate': '{roomType} hat noch keinen Preis – legen Sie zuerst einen unter {screen} an.',
+    'assistant.reply.unknown':
+      'Ich kann einen Nachtpreis ändern, einen Zimmertyp aus- oder einblenden, seine Verfügbarkeit setzen, eine Leistung in den oder aus dem Verkauf nehmen, einen Zimmertyp mit seinen Zimmern anlegen oder eine Seite öffnen. Versuchen Sie eines davon.',
+
+    'assistant.applied.setRate': '{rate} für {roomType} kostet jetzt {price} pro Nacht – live auf der Website.',
+    'assistant.applied.hidden': '{roomType} ist von der Website ausgeblendet.',
+    'assistant.applied.shown': '{roomType} ist wieder auf der Website.',
+    'assistant.applied.status': '{roomType} wird jetzt als „{status}“ angezeigt.',
+    'assistant.applied.addOnOn': '{addOn} ist im Verkauf.',
+    'assistant.applied.addOnOff': '{addOn} ist aus dem Verkauf genommen.',
+    'assistant.applied.createType': '{name} ist angelegt – für Gäste ausgeblendet, bis ein Zimmer, ein Preis und ein Foto vorhanden sind.',
+    'assistant.applied.createRoom': 'Zimmer {number} ist zu {roomType} hinzugefügt.',
+    'assistant.applied.navigate': '{label} wird geöffnet.',
+    'assistant.failed.conflict': 'Jemand hat das gerade geändert. Fragen Sie erneut, um den aktuellen Wert zu sehen.',
+    'assistant.failed.notFound': 'Das gibt es nicht mehr – es wurde womöglich inzwischen entfernt.',
+  },
+  ru: {
+    'assistant.title': 'Админ-ассистент',
+    'assistant.close': 'Закрыть админ-ассистента',
+    'assistant.welcome':
+      'Скажите, что настроить или изменить. Я покажу, что именно изменится, и ничего не запишу, пока вы не подтвердите.',
+    'assistant.settingUp': 'Настраиваем…',
+    'assistant.placeholder': 'Задать тариф, создать тип номера, открыть раздел…',
+    'assistant.answerPlaceholder': 'Ваш ответ…',
+    'assistant.inputLabel': 'Сообщение админ-ассистенту',
+    'assistant.send': 'Отправить',
+
+    'assistant.notThat': 'Не то',
+    'assistant.open': 'Открыть',
+    'assistant.apply': 'Применить',
+    'assistant.done': 'Готово',
+    'assistant.dropped': 'Отменено',
+    'assistant.droppedWhatElse': 'Отменено. Что ещё?',
+
+    'assistant.error.unreachable': 'Не удалось связаться с ассистентом. Попробуйте ещё раз.',
+    'assistant.error.tooMany': 'Слишком много запросов за минуту — подождите немного.',
+    'assistant.error.busy': 'Предыдущий запрос ещё обрабатывается.',
+    'assistant.error.unknown': 'Не удалось понять запрос. Попробуйте ещё раз.',
+
+    'assistant.note.ignored': 'Пропущено: {items}',
+    'assistant.note.keywords': 'Подбор по ключевым словам — добавьте ключ OpenAI для естественного языка.',
+
+    'assistant.status.auto': 'автоматически, по доступности',
+
+    'assistant.proposal.setRate.lead': 'Изменить {rate} для {roomType}',
+    'assistant.proposal.setRate.detail': '{from} → {to} за ночь',
+    'assistant.proposal.hide.lead': 'Скрыть {roomType} с сайта',
+    'assistant.proposal.hide.detail': 'Гости перестанут его видеть; его номера и тарифы останутся.',
+    'assistant.proposal.show.lead': 'Показать {roomType} на сайте',
+    'assistant.proposal.show.detail': 'Гости снова смогут найти и забронировать его.',
+    'assistant.proposal.status.lead': 'Установить для {roomType} статус «{status}»',
+    'assistant.proposal.status.detail': 'Сейчас: {status}.',
+    'assistant.proposal.addOnOn.lead': 'Вернуть {addOn} в продажу',
+    'assistant.proposal.addOnOff.lead': 'Снять {addOn} с продажи',
+    'assistant.proposal.createType.lead': 'Создать {name}',
+    'assistant.proposal.createType.detail':
+      '{floor} · {area} м² · вмещает {capacity} · {bed} · {view}. Скрыт от гостей, пока у него нет номера, тарифа и фото.',
+    'assistant.proposal.createRoom.lead': 'Добавить номер {number} к {roomType}',
+    'assistant.proposal.navigate.lead': 'Открыть {label}',
+
+    'assistant.question.name': 'Как называется новый тип номера?',
+    'assistant.question.description': 'Одна строка для гостей — какой это номер?',
+    'assistant.question.floor': 'На каком этаже он находится?',
+    'assistant.question.areaM2': 'Какая у него площадь, в м²?',
+    'assistant.question.capacity': 'Сколько гостей он вмещает?',
+    'assistant.question.bedType': 'Кровать king-size, queen-size или две отдельные?',
+    'assistant.question.view': 'Вид на море, сад, бассейн или город?',
+    'assistant.question.known': '{name}: {question}',
+    'assistant.question.numberSuggested':
+      'Какой номер комнаты для {roomType}? {suggested} — следующий свободный на этом этаже; скажите «yes», чтобы взять его.',
+    'assistant.question.number': 'Какой номер комнаты? Этаж, затем две цифры позиции: 305, или G04 на первом этаже.',
+
+    'assistant.incomplete.setRate': 'Какой тип номера и какая цена за ночь? Например, «set Deluxe Sea View to 320».',
+    'assistant.incomplete.setHidden': 'Какой тип номера? Например, «hide Garden Studio».',
+    'assistant.incomplete.setStatus':
+      'Какой тип номера и какой статус — «available», «limited», «last room», «sold out» или «automatic»?',
+    'assistant.incomplete.setAddOn': 'Какая услуга или блюдо? Например, «take the airport transfer off sale».',
+    'assistant.incomplete.createRoom': 'К какому типу номера относится комната?',
+
+    'assistant.reply.proposal': 'Вот что изменится.',
+    'assistant.reply.cancelled': 'Отменено.',
+    'assistant.reply.ambiguous': '«{target}» может означать {candidates} — что именно?',
+    'assistant.reply.or': 'или',
+    'assistant.reply.notFound': 'В каталоге нет ничего с названием «{target}».',
+    'assistant.reply.noRate': 'У {roomType} ещё нет тарифа — сначала добавьте его в разделе «{screen}».',
+    'assistant.reply.unknown':
+      'Я могу изменить цену за ночь, скрыть или показать тип номера, задать его доступность, вернуть услугу в продажу или снять с неё, создать тип номера с его комнатами или открыть раздел. Попробуйте что-то из этого.',
+
+    'assistant.applied.setRate': '{rate} для {roomType} теперь {price} за ночь — уже на сайте.',
+    'assistant.applied.hidden': '{roomType} скрыт с сайта.',
+    'assistant.applied.shown': '{roomType} снова на сайте.',
+    'assistant.applied.status': '{roomType} теперь показывается как «{status}».',
+    'assistant.applied.addOnOn': '{addOn} в продаже.',
+    'assistant.applied.addOnOff': '{addOn} снят с продажи.',
+    'assistant.applied.createType': '{name} создан — скрыт от гостей, пока у него нет номера, тарифа и фото.',
+    'assistant.applied.createRoom': 'Номер {number} добавлен к {roomType}.',
+    'assistant.applied.navigate': 'Открываем {label}.',
+    'assistant.failed.conflict': 'Кто-то только что это изменил. Спросите ещё раз, чтобы увидеть текущее значение.',
+    'assistant.failed.notFound': 'Этого больше нет — возможно, его уже удалили.',
+  },
+});
