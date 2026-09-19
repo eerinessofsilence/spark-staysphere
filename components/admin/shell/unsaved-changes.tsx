@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/site/modal';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 
 /**
@@ -36,6 +37,7 @@ export function discardUnsavedChanges(): void {
 export function UnsavedChangesGuard() {
   const router = useRouter();
   const [destination, setDestination] = React.useState<string | null>(null);
+  const t = useAdminT();
 
   React.useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -69,16 +71,14 @@ export function UnsavedChangesGuard() {
   };
 
   return (
-    <Modal open={destination !== null} onClose={stay} title="Leave without saving?">
-      <p className="text-sm">
-        Changes on this page haven&apos;t been saved. If you leave now, they&apos;re lost.
-      </p>
+    <Modal open={destination !== null} onClose={stay} title={t('unsaved.title')}>
+      <p className="text-sm">{t('unsaved.body')}</p>
       <div className="mt-5 flex flex-wrap gap-3">
         <button type="button" onClick={stay} className={pill('primary')}>
-          Stay on this page
+          {t('unsaved.stay')}
         </button>
         <button type="button" onClick={leave} className={pill('secondary')}>
-          Leave without saving
+          {t('unsaved.leave')}
         </button>
       </div>
     </Modal>

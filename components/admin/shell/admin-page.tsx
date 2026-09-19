@@ -1,6 +1,9 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +18,7 @@ export function AdminPage({
     <main
       id="main"
       className={cn(
-        width === 'wide' ? 'container-page' : 'container-form',
+        width === 'wide' ? 'container-page-start' : 'container-form',
         'pt-4 pb-16 lg:pt-10',
       )}
     >
@@ -45,14 +48,15 @@ export interface AdminCrumb {
  */
 function AdminBreadcrumbs({ items }: { items: AdminCrumb[] }) {
   const back = [...items].reverse().find((item) => item.href);
+  const t = useAdminT();
   return (
     <div className="flex items-center gap-3">
       {back ? (
-        <Link href={back.href!} aria-label={`Back to ${back.label}`} className={iconButton('light', 'size-8 shrink-0')}>
+        <Link href={back.href!} aria-label={t('page.backTo', { label: back.label })} className={iconButton('light', 'size-8 shrink-0')}>
           <ArrowLeftIcon className="size-4" aria-hidden="true" />
         </Link>
       ) : null}
-      <nav aria-label="Breadcrumb">
+      <nav aria-label={t('page.breadcrumb')}>
         <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
           {items.map((item, index) => (
             <li key={`${item.label}-${index}`} className="flex items-center gap-1.5">

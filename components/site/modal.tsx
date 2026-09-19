@@ -160,7 +160,13 @@ export function Modal({ open, onClose, title, children, className, chrome = true
             <div className="flex-1 overflow-y-auto p-5 sm:p-6">{children}</div>
           </>
         ) : (
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          // A plain block, not `overflow-y-auto`: a caller with a single,
+          // simple panel (the common case) never notices, but one building
+          // its own fixed header/scrolling middle/fixed footer split (see
+          // `AdminMobileMenu`) needs this to actually be a flex container —
+          // otherwise nothing inside can negotiate a height against it; a
+          // block sized by `flex-1` alone isn't one.
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         )}
       </div>
     </div>,

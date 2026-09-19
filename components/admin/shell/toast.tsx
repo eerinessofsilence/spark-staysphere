@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { CheckCircle, WarningCircle } from '@phosphor-icons/react/dist/ssr';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { cn } from '@/lib/utils';
 
 type ToastTone = 'success' | 'error';
@@ -64,11 +65,13 @@ export function Toaster() {
     () => items,
     () => empty,
   );
+  const t = useAdminT();
 
   return (
     <div
-      aria-label="Notifications"
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 p-3 pt-20 sm:top-auto sm:bottom-0 sm:items-end sm:p-6"
+      aria-label={t('toast.region')}
+      // Past `lg` the stack sits above the assistant launcher's corner, not on it.
+      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 p-3 pt-20 sm:top-auto sm:bottom-0 sm:items-end sm:p-6 lg:pb-28"
     >
       {current.map((item) => (
         <div
@@ -88,7 +91,7 @@ export function Toaster() {
           <button
             type="button"
             onClick={() => dismiss(item.id)}
-            aria-label="Dismiss"
+            aria-label={t('toast.dismiss')}
             className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground hover:bg-stone hover:text-foreground"
           >
             <XMarkIcon className="size-4" aria-hidden="true" />
