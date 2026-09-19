@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { Switch } from '@/components/ui/switch';
 import { ContentForm } from './content-form';
 import { Field, TextInput } from './fields';
@@ -36,7 +37,7 @@ interface RateFormProps {
   versionKey?: string;
   /** The add-a-rate form clears itself after each rate it adds. */
   resetOnSuccess?: boolean;
-  /** An existing rate's price is also on Rates & availability — say so, so the two never look like different numbers. */
+  /** An existing rate's price is also on Room Rates — say so, so the two never look like different numbers. */
   showRatesLink?: boolean;
   /** For a rate form already sitting inside a `Modal` — see `ContentForm`'s own `bare`. */
   bare?: boolean;
@@ -56,6 +57,10 @@ export function RateForm({
   showRatesLink = false,
   bare = false,
 }: RateFormProps) {
+  const t = useAdminT();
+  // The Room Rates link sits inside the sentence, so the template is split around it.
+  const [linkBefore, linkAfter] = t('rate.samePriceHint').split('{link}');
+
   return (
     <ContentForm
       action={formAction}
@@ -68,21 +73,21 @@ export function RateForm({
     >
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id={`${idPrefix}-name`} name="name" label="Name">
+          <Field id={`${idPrefix}-name`} name="name" label={t('rate.name')}>
             <TextInput id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
           </Field>
           <Field
             id={`${idPrefix}-nightlyPrice`}
             name="nightlyPrice"
-            label={`Nightly price (${currency})`}
+            label={t('rate.nightlyPrice', { currency })}
             hint={
               showRatesLink ? (
                 <>
-                  The same price as in{' '}
+                  {linkBefore}
                   <Link href="/admin/rates" className="underline underline-offset-2 hover:text-accent-strong">
-                    Rates &amp; availability
+                    {t('nav.roomRates')}
                   </Link>
-                  .
+                  {linkAfter}
                 </>
               ) : undefined
             }
@@ -101,8 +106,8 @@ export function RateForm({
         <Field
           id={`${idPrefix}-otaComparisonPrice`}
           name="otaComparisonPrice"
-          label={`Booking-site price (${currency})`}
-          hint="Optional. Guests see the difference as their saving for booking direct. A demo figure — nothing is read from booking sites."
+          label={t('rate.bookingSitePrice', { currency })}
+          hint={t('rate.bookingSiteHint')}
         >
           <TextInput
             id={`${idPrefix}-otaComparisonPrice`}
@@ -120,21 +125,21 @@ export function RateForm({
             defaultChecked={initial.breakfastIncluded}
             className="shrink-0"
           />
-          Breakfast included
+          {t('rate.breakfastIncluded')}
         </label>
-        <Field id={`${idPrefix}-cancellationPolicy`} name="cancellationPolicy" label="Cancellation policy">
+        <Field id={`${idPrefix}-cancellationPolicy`} name="cancellationPolicy" label={t('rate.cancellationPolicy')}>
           <TextInput id={`${idPrefix}-cancellationPolicy`} name="cancellationPolicy" defaultValue={initial.cancellationPolicy} required />
         </Field>
         <div role="group" aria-labelledby={`${idPrefix}-includedServices-heading`}>
           <h4 id={`${idPrefix}-includedServices-heading`} className="text-sm font-medium">
-            What the rate includes
+            {t('rate.includes')}
           </h4>
           <div className="mt-2">
             <OrderedStringList
               name="includedServices"
               initial={initial.includedServices}
-              addPlaceholder="Add what's included"
-              itemNoun="inclusion"
+              addPlaceholder={t('rate.addInclusion')}
+              itemNoun={t('rate.inclusionNoun')}
             />
           </div>
         </div>

@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { INTL_TAGS } from '@/lib/i18n/locale';
 import { pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
@@ -14,13 +16,8 @@ interface RoomVisibilityToggleProps {
   version: number;
   action: (id: string, hidden: boolean, version: number) => Promise<ContentFormState>;
   roomId: string;
-  /** What a hidden room still lacks before it may go on the site: "a photo", "a rate". */
+  /** What a hidden room still lacks before it may go on the site, already in the team member's language: "a photo", "a rate". */
   missing?: string[];
-}
-
-function sentenceList(items: string[]): string {
-  if (items.length <= 1) return items.join('');
-  return `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
 
 /**
@@ -31,6 +28,8 @@ function sentenceList(items: string[]): string {
  * mistaken for a conflict with this click.
  */
 export function RoomVisibilityToggle({ hidden, version: savedVersion, action, roomId, missing = [] }: RoomVisibilityToggleProps) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const router = useRouter();
   const versionKey = `room:${roomId}`;
   const [version, setVersion] = useSharedVersion(versionKey, savedVersion);
@@ -57,6 +56,8 @@ export function RoomVisibilityToggle({ hidden, version: savedVersion, action, ro
   };
 
   const blocked = hidden && missing.length > 0;
+  // "a room, a photo and a rate" — the language's own list punctuation and conjunction.
+  const missingList = new Intl.ListFormat(INTL_TAGS[locale], { style: 'long', type: 'conjunction' }).format(missing);
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -73,17 +74,17 @@ export function RoomVisibilityToggle({ hidden, version: savedVersion, action, ro
         ) : (
           <EyeSlashIcon className="size-4" aria-hidden="true" />
         )}
-        {hidden ? 'Show on the site' : 'Hide from the site'}
+        {hidden ? t('room.showOnSite') : t('room.hideFromSite')}
       </button>
       <p role="status" aria-live="polite" className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-        {message || (blocked ? `Add ${sentenceList(missing)} first.` : '')}
+        {message || (blocked ? t('room.addFirst', { items: missingList }) : '')}
         {undoTo !== null && !pending ? (
           <button
             type="button"
             onClick={() => apply(undoTo, false)}
             className="cursor-pointer font-medium text-foreground underline underline-offset-2"
           >
-            Undo
+            {t('room.undo')}
           </button>
         ) : null}
       </p>

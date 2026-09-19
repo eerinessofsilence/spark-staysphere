@@ -1,31 +1,44 @@
 'use client';
 
 import * as React from 'react';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { Modal } from '@/components/site/modal';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
 interface IntegrationConnectProps {
+  /** Already in the team member's language — the page translates the adapter's name and steps. */
   name: string;
   connected: boolean;
   steps: string[];
 }
 
 export function IntegrationConnect({ name, connected, steps }: IntegrationConnectProps) {
+  const t = useAdminT();
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
-  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const id = React.useId();
+
+  const fields = [
+    { id: 'endpoint', label: t('integrations.apiEndpoint'), placeholder: 'https://', type: 'url' },
+    { id: 'client-id', label: t('integrations.clientId'), placeholder: t('integrations.clientIdPlaceholder'), type: 'text' },
+    { id: 'secret', label: t('integrations.secret'), placeholder: '••••••••', type: 'password' },
+  ];
 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={pill('secondary')}>
-        {connected ? 'Manage' : 'Connect'}
+        {connected ? t('integrations.manage') : t('integrations.connect')}
         <span className="sr-only"> {name}</span>
       </button>
-      <Modal open={open} onClose={close} title={`${connected ? 'Manage' : 'Connect'} ${name}`}>
+      <Modal
+        open={open}
+        onClose={close}
+        title={connected ? t('integrations.manageName', { name }) : t('integrations.connectName', { name })}
+      >
         <div className="grid gap-5">
           <div>
-            <p className="text-sm font-medium">What connecting does</p>
+            <p className="text-sm font-medium">{t('integrations.whatConnecting')}</p>
             <ul className="mt-2 grid gap-1.5 text-sm text-muted-foreground">
               {steps.map((step) => (
                 <li key={step} className="flex gap-2">
@@ -38,19 +51,15 @@ export function IntegrationConnect({ name, connected, steps }: IntegrationConnec
 
           <div role="group" aria-labelledby={`${id}-credentials`} className="grid gap-3">
             <h3 id={`${id}-credentials`} className="text-sm font-medium">
-              Credentials
+              {t('integrations.credentials')}
             </h3>
-            {[
-              { label: 'API endpoint', placeholder: 'https://', type: 'url' },
-              { label: 'Client ID', placeholder: 'Provided by the system you connect', type: 'text' },
-              { label: 'Secret', placeholder: '••••••••', type: 'password' },
-            ].map((field) => (
-              <div key={field.label}>
-                <label htmlFor={`${id}-${field.label}`} className="mb-1.5 block text-sm text-muted-foreground">
+            {fields.map((field) => (
+              <div key={field.id}>
+                <label htmlFor={`${id}-${field.id}`} className="mb-1.5 block text-sm text-muted-foreground">
                   {field.label}
                 </label>
                 <input
-                  id={`${id}-${field.label}`}
+                  id={`${id}-${field.id}`}
                   type={field.type}
                   disabled
                   placeholder={field.placeholder}
@@ -61,16 +70,15 @@ export function IntegrationConnect({ name, connected, steps }: IntegrationConnec
           </div>
 
           <p className="rounded-2xl bg-stone/60 px-4 py-3 text-sm text-muted-foreground">
-            Nothing is stored in this demo. Credentials are entered here once a live adapter replaces
-            the mock.
+            {t('integrations.nothingStored')}
           </p>
 
           <div className="flex flex-wrap gap-3">
             <button type="button" disabled className={pill('primary')}>
-              {connected ? 'Save' : 'Connect'}
+              {connected ? t('integrations.save') : t('integrations.connect')}
             </button>
             <button type="button" onClick={close} className={pill('secondary')}>
-              Close
+              {t('integrations.close')}
             </button>
           </div>
         </div>

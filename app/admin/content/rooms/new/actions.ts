@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import type { MediaItemDraft } from '@/components/admin/content/media-list-editor';
 import { formStateFromError, parseJsonList, parseNumber, type ContentFormState } from '../../_lib/form-state';
 import { revalidateContent } from '../../_lib/revalidate';
@@ -20,11 +21,12 @@ export async function createRoomAction(
     bedType: String(formData.get('bedType') ?? ''),
     view: String(formData.get('view') ?? ''),
     amenities: parseJsonList<string>(formData, 'amenities'),
+    facilities: parseJsonList<string>(formData, 'facilities'),
     media: parseJsonList<MediaItemDraft>(formData, 'media'),
   };
 
   const result = await contentService.createRoom(input);
-  if (!result.ok) return formStateFromError(result.error);
+  if (!result.ok) return formStateFromError(result.error, await getAdminT());
 
   revalidateContent();
   redirect(`/admin/content/rooms/${result.value.id}?created=1`);

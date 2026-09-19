@@ -4,15 +4,23 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { EyeSlash } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
 import { byRoomNumber, facadeOf } from '@/lib/domain/room-units';
-import { facadeLabels, formatFloor } from '@/lib/formatting';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { lFacade, lFloor, lRoomCount, lRoomNumber } from '@/lib/i18n/format';
 import { pill, tag } from '@/lib/ui';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Rooms — Hotel admin | SPARK StaySphere 360' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.rooms')) };
+}
+
 export const dynamic = 'force-dynamic';
 
 export default async function PhysicalRoomsPage() {
+  const locale = await getAdminLocale();
+  const t = adminT(locale);
   const [types, rooms] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
@@ -21,12 +29,12 @@ export default async function PhysicalRoomsPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Rooms"
+        title={t('nav.rooms')}
         actions={
           types.length > 0 ? (
             <Link href="/admin/content/units/new" className={pill('primary')}>
               <PlusIcon className="size-4" aria-hidden="true" />
-              New room
+              {t('units.newRoom')}
             </Link>
           ) : null
         }
@@ -37,15 +45,12 @@ export default async function PhysicalRoomsPage() {
       {types.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
           <div>
-            <h2 className="text-display text-2xl">Start with a room type</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              Every room belongs to a room type — its size, bed, view, photos and rates. Create the type, then
-              add its rooms here.
-            </p>
+            <h2 className="text-display text-2xl">{t('units.startWithType')}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t('units.startBody')}</p>
           </div>
           <Link href="/admin/content/rooms/new" className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
-            New room type
+            {t('rooms.newType')}
           </Link>
         </div>
       ) : (
@@ -66,29 +71,28 @@ export default async function PhysicalRoomsPage() {
                       <Link href={`/admin/content/rooms/${type.id}`} className="hover:text-accent-strong">
                         {type.name}
                       </Link>
-                      <span className="font-normal text-muted-foreground">
-                        · {own.length === 1 ? '1 room' : `${own.length} rooms`}
-                      </span>
+                      <span className="font-normal text-muted-foreground">· {lRoomCount(own.length, locale)}</span>
                       {type.hidden ? (
                         <span className={tag('py-0.5')}>
                           <EyeSlash weight="fill" className="size-3.5" aria-hidden="true" />
-                          Hidden
+                          {t('units.hidden')}
                         </span>
                       ) : null}
                     </h2>
                     <p className="mt-0.5 text-sm text-muted-foreground">
-                      {formatFloor(type.floor)} · {facadeLabels[facadeOf(type.view)]}
+                      {lFloor(type.floor, locale)} · {lFacade(facadeOf(type.view), locale)}
                     </p>
                   </div>
                   <Link href={`/admin/content/units/new?type=${type.id}`} className={pill('secondary')}>
                     <PlusIcon className="size-4" aria-hidden="true" />
-                    Add room<span className="sr-only"> to {type.name}</span>
+                    <span aria-hidden="true">{t('units.addRoom')}</span>
+                    <span className="sr-only">{t('units.addRoomTo', { name: type.name })}</span>
                   </Link>
                 </div>
 
                 {own.length === 0 ? (
                   <p className="mt-4 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No rooms yet, so guests can&apos;t book {type.name}.
+                    {t('units.noneForType', { name: type.name })}
                   </p>
                 ) : (
                   <ul className="mt-4 flex flex-wrap gap-2">
@@ -96,7 +100,7 @@ export default async function PhysicalRoomsPage() {
                       <li key={room.id}>
                         <Link
                           href={`/admin/content/units/${room.id}`}
-                          aria-label={`Room ${room.number}`}
+                          aria-label={lRoomNumber(room.number, locale)}
                           className={pill('secondary', 'min-w-18 px-4 tabular-nums')}
                         >
                           {room.number}

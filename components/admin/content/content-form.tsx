@@ -4,6 +4,8 @@ import * as React from 'react';
 import { useActionState } from 'react';
 import { Warning } from '@phosphor-icons/react/dist/ssr';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
@@ -32,6 +34,7 @@ interface ContentFormProps {
   /** The version this form was loaded with. */
   initialVersion: number;
   children: React.ReactNode;
+  /** Already in the team member's language; without one the button says "Save changes" in it. */
   submitLabel?: string;
   onSuccess?: (state: ContentFormState) => void;
   /** A delete button or a secondary link, shown beside Save. */
@@ -104,7 +107,7 @@ export function ContentForm({
   action,
   initialVersion,
   children,
-  submitLabel = 'Save changes',
+  submitLabel,
   onSuccess,
   extraActions,
   resetOnSuccess = false,
@@ -112,6 +115,9 @@ export function ContentForm({
   dock = false,
   bare = false,
 }: ContentFormProps) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
+  const buttonLabel = submitLabel ?? t('form.saveChanges');
   const formId = React.useId();
   const formRef = React.useRef<HTMLFormElement>(null);
   const bannerRef = React.useRef<HTMLDivElement>(null);
@@ -203,9 +209,9 @@ export function ContentForm({
         setDirty(false);
       }
       onSuccess?.(state);
-      toast.success(state.message || 'Saved.');
+      toast.success(state.message || t('form.savedToast'));
     } else if (state.status === 'error') {
-      toast.error('Not saved. Check the form and try again.');
+      toast.error(t('form.notSavedToast'));
       revealFirstError(formRef.current, bannerRef.current);
     }
     // Runs once per submit result, not per render: `state` is a fresh object each dispatch.
@@ -239,21 +245,28 @@ export function ContentForm({
   let statusText = '';
   let statusTone: 'muted' | 'danger' | 'success' = 'muted';
   let offerJump = false;
+  let unsavedDot = false;
   if (isPending) {
-    statusText = 'Saving…';
+    statusText = t('form.saving');
   } else if (state.status === 'error') {
     statusTone = 'danger';
     offerJump = true;
     statusText =
       errorCount > 0
-        ? `Not saved — ${errorCount === 1 ? '1 field needs' : `${errorCount} fields need`} attention.`
-        : 'Not saved — see the message at the top of the form.';
+        ? pluralForm(locale, errorCount, {
+            one: t('form.notSavedFieldsOne', { count: errorCount }),
+            few: t('form.notSavedFieldsFew', { count: errorCount }),
+            many: t('form.notSavedFieldsMany', { count: errorCount }),
+            other: t('form.notSavedFieldsMany', { count: errorCount }),
+          })
+        : t('form.notSavedSeeMessage');
   } else if (dirty) {
-    statusText = 'Unsaved changes';
+    statusText = t('form.unsaved');
+    unsavedDot = true;
   } else if (state.status === 'success') {
     statusTone = 'success';
     // The full message goes out as a toast; beside the button a short word is enough.
-    statusText = 'Saved';
+    statusText = t('form.saved');
   }
 
   return (
@@ -273,10 +286,10 @@ export function ContentForm({
             {state.conflict ? (
               <div className="flex flex-wrap gap-2 sm:pl-8">
                 <button type="button" onClick={keepMine} disabled={isPending} className={pill('primary')}>
-                  Save my version
+                  {t('form.saveMine')}
                 </button>
                 <button type="button" onClick={loadLatest} className={pill('secondary')}>
-                  Discard mine and load theirs
+                  {t('form.loadTheirs')}
                 </button>
               </div>
             ) : null}
@@ -297,7 +310,7 @@ export function ContentForm({
                 statusTone === 'muted' && 'text-muted-foreground',
               )}
             >
-              {statusText === 'Unsaved changes' ? (
+              {unsavedDot ? (
                 <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-accent" />
               ) : null}
               {statusText}
@@ -307,7 +320,7 @@ export function ContentForm({
                   onClick={() => revealFirstError(formRef.current, bannerRef.current)}
                   className="cursor-pointer underline underline-offset-2"
                 >
-                  Show me
+                  {t('form.showMe')}
                 </button>
               ) : null}
             </p>
@@ -326,7 +339,7 @@ export function ContentForm({
                 <div className="glass-bar pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-full p-1.5 [&>[role=status]]:pr-3 [&>[role=status]]:pl-1 [&>[role=status]:empty]:-ml-2 [&>[role=status]:empty]:p-0">
                   <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
                     {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-                    {submitLabel}
+                    {buttonLabel}
                   </button>
                   {extraActions}
                   {statusParagraph}
@@ -342,7 +355,7 @@ export function ContentForm({
             >
               <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
                 {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-                {submitLabel}
+                {buttonLabel}
               </button>
               {extraActions}
               {statusParagraph}

@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import { formStateFromError, type ContentFormState } from '../../_lib/form-state';
 import { revalidateContent } from '../../_lib/revalidate';
 
@@ -14,7 +15,7 @@ export async function createPhysicalRoomAction(
     roomTypeId,
     number: String(formData.get('number') ?? ''),
   });
-  if (!result.ok) return formStateFromError(result.error);
+  if (!result.ok) return formStateFromError(result.error, await getAdminT());
 
   revalidateContent();
   redirect(`/admin/content/units#type-${roomTypeId}`);

@@ -3,7 +3,9 @@
 import * as React from 'react';
 import { CreditCard } from '@phosphor-icons/react/dist/ssr';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import { formatDate, formatMoney } from '@/lib/formatting';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
+import { lDate, lMoney } from '@/lib/i18n/format';
 import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Meter } from '@/components/admin/operations/metric-card';
@@ -18,66 +20,99 @@ import {
 } from './subscription-data';
 
 /**
+ * Each plan's tagline and feature list in the team member's language, keyed
+ * by plan id — the English copy in `subscription-data.ts` is the source these
+ * were translated from. The plan's name is a product name and stays as is.
+ */
+const PLAN_COPY: Record<PlanId, { tagline: AdminTranslationKey; features: AdminTranslationKey[] }> = {
+  starter: {
+    tagline: 'subscription.starterTagline',
+    features: ['subscription.starterF1', 'subscription.starterF2', 'subscription.starterF3', 'subscription.starterF4'],
+  },
+  growth: {
+    tagline: 'subscription.growthTagline',
+    features: [
+      'subscription.growthF1',
+      'subscription.growthF2',
+      'subscription.growthF3',
+      'subscription.growthF4',
+      'subscription.growthF5',
+    ],
+  },
+  scale: {
+    tagline: 'subscription.scaleTagline',
+    features: [
+      'subscription.scaleF1',
+      'subscription.scaleF2',
+      'subscription.scaleF3',
+      'subscription.scaleF4',
+      'subscription.scaleF5',
+    ],
+  },
+};
+
+/**
  * `/admin/account`'s "Subscription" section: the hotel's own plan on
  * StaySphere, not a guest's booking. Same shape as `AccountSettings` next to
  * it — local state only, nothing saved, a plan change previews instantly and
  * says so rather than pretending to charge a card.
  */
 export function SubscriptionSettings() {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const [planId, setPlanId] = React.useState<PlanId>(currentPlanId);
-  const [notice, setNotice] = React.useState('');
+  const [notice, setNotice] = React.useState<'up' | 'down' | 'noCard' | 'cancelDisabled' | ''>('');
   const plan = plans.find((candidate) => candidate.id === planId)!;
 
   const choosePlan = (next: PlanId) => {
     if (next === planId) return;
     setPlanId(next);
-    const direction = plans.findIndex((p) => p.id === next) > plans.findIndex((p) => p.id === planId) ? 'up' : 'down';
-    setNotice(
-      `Demo — nothing was charged. A real change would take effect ${direction === 'up' ? 'immediately' : 'at the end of this billing period'}.`,
-    );
+    setNotice(plans.findIndex((p) => p.id === next) > plans.findIndex((p) => p.id === planId) ? 'up' : 'down');
   };
+
+  const noticeText =
+    notice === 'up'
+      ? t('subscription.changedUp')
+      : notice === 'down'
+        ? t('subscription.changedDown')
+        : notice === 'noCard'
+          ? t('subscription.noCard')
+          : notice === 'cancelDisabled'
+            ? t('subscription.cancelDisabled')
+            : '';
 
   return (
     <div className="grid gap-6">
       <Group
         id="plan"
-        title="Current plan"
-        description={`Renews ${formatDate(nextBillingDate)}, ${formatMoney(plan.price, 'EUR')} ${plan.priceUnit}.`}
+        title={t('subscription.currentPlan')}
+        description={t('subscription.renews', {
+          date: lDate(nextBillingDate, locale),
+          price: lMoney(plan.price, 'EUR', locale),
+        })}
       >
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-stone/60 p-5">
           <div>
             <div className="flex items-center gap-2">
               <p className="text-display text-2xl">{plan.name}</p>
-              <span className={tag('bg-success/10 text-success')}>Active</span>
+              <span className={tag('bg-success/10 text-success')}>{t('subscription.active')}</span>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{plan.tagline}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t(PLAN_COPY[plan.id].tagline)}</p>
           </div>
           <p className="text-display text-3xl">
-            {formatMoney(plan.price, 'EUR')}
-            <span className="text-sm font-normal text-muted-foreground"> /mo</span>
+            {lMoney(plan.price, 'EUR', locale)}
+            <span className="text-sm font-normal text-muted-foreground"> {t('subscription.perMonth')}</span>
           </p>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <UsageRow
-            label="Rooms"
-            used={usage.roomsUsed}
-            limit={plan.roomLimit}
-          />
-          <UsageRow
-            label="Team seats"
-            used={usage.seatsUsed}
-            limit={plan.seatLimit}
-          />
-          <UsageRow
-            label="Bookings this month"
-            used={usage.bookingsThisMonth}
-            limit={null}
-          />
+          <UsageRow label={t('subscription.rooms')} used={usage.roomsUsed} limit={plan.roomLimit} />
+          <UsageRow label={t('subscription.seats')} used={usage.seatsUsed} limit={plan.seatLimit} />
+          <UsageRow label={t('subscription.bookingsThisMonth')} used={usage.bookingsThisMonth} limit={null} />
         </div>
       </Group>
 
-      <Group id="plans" title="Change plan" description="Preview only — nothing here is billed.">
+      <Group id="plans" title={t('subscription.changePlan')} description={t('subscription.changePlanBody')}>
         <div className="grid gap-4 sm:grid-cols-3">
           {plans.map((option) => {
             const selected = option.id === planId;
@@ -101,14 +136,14 @@ export function SubscriptionSettings() {
                   ) : null}
                 </div>
                 <p className="mt-2 text-2xl font-semibold tabular-nums">
-                  {formatMoney(option.price, 'EUR')}
-                  <span className="text-xs font-normal text-muted-foreground"> /mo</span>
+                  {lMoney(option.price, 'EUR', locale)}
+                  <span className="text-xs font-normal text-muted-foreground"> {t('subscription.perMonth')}</span>
                 </p>
                 <ul className="mt-4 grid gap-1.5 text-xs text-muted-foreground">
-                  {option.features.map((feature) => (
+                  {PLAN_COPY[option.id].features.map((feature) => (
                     <li key={feature} className="flex items-start gap-1.5">
                       <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
-                      {feature}
+                      {t(feature)}
                     </li>
                   ))}
                 </ul>
@@ -116,14 +151,14 @@ export function SubscriptionSettings() {
             );
           })}
         </div>
-        {notice ? (
+        {noticeText ? (
           <p role="status" aria-live="polite" className="mt-4 text-sm font-medium text-muted-foreground">
-            {notice}
+            {noticeText}
           </p>
         ) : null}
       </Group>
 
-      <Group id="payment" title="Payment method">
+      <Group id="payment" title={t('subscription.paymentMethod')}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <span className="flex items-center gap-3 text-sm">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-stone">
@@ -133,16 +168,18 @@ export function SubscriptionSettings() {
               <span className="block font-medium">
                 {paymentMethod.brand} •••• {paymentMethod.last4}
               </span>
-              <span className="block text-muted-foreground">Expires {paymentMethod.expiry}</span>
+              <span className="block text-muted-foreground">
+                {t('subscription.expires', { expiry: paymentMethod.expiry })}
+              </span>
             </span>
           </span>
-          <button type="button" onClick={() => setNotice('Demo — no card details are collected here.')} className={pill('secondary')}>
-            Update payment method
+          <button type="button" onClick={() => setNotice('noCard')} className={pill('secondary')}>
+            {t('subscription.updatePayment')}
           </button>
         </div>
       </Group>
 
-      <Group id="history" title="Billing history">
+      <Group id="history" title={t('subscription.billingHistory')}>
         <ul className="grid gap-1">
           {invoices.map((invoice) => (
             <li
@@ -151,12 +188,12 @@ export function SubscriptionSettings() {
             >
               <span className="min-w-0">
                 <span className="block font-medium">{invoice.id}</span>
-                <span className="block text-xs text-muted-foreground">{formatDate(invoice.issuedOn)}</span>
+                <span className="block text-xs text-muted-foreground">{lDate(invoice.issuedOn, locale)}</span>
               </span>
               <span className="flex items-center gap-3">
-                <span className="font-medium tabular-nums">{formatMoney(invoice.amount, 'EUR')}</span>
+                <span className="font-medium tabular-nums">{lMoney(invoice.amount, 'EUR', locale)}</span>
                 <span className={tag(invoice.status === 'paid' ? 'bg-success/10 text-success' : undefined)}>
-                  {invoice.status === 'paid' ? 'Paid' : 'Upcoming'}
+                  {invoice.status === 'paid' ? t('subscription.paid') : t('subscription.upcoming')}
                 </span>
               </span>
             </li>
@@ -164,13 +201,13 @@ export function SubscriptionSettings() {
         </ul>
       </Group>
 
-      <Group id="cancel" title="Cancel subscription" description="This stays here — a real cancel needs a moment's confirmation.">
+      <Group id="cancel" title={t('subscription.cancel')} description={t('subscription.cancelBody')}>
         <button
           type="button"
-          onClick={() => setNotice('Demo — cancellation is disabled in this preview.')}
+          onClick={() => setNotice('cancelDisabled')}
           className={pill('ghost', 'text-danger hover:bg-danger/10')}
         >
-          Cancel subscription
+          {t('subscription.cancel')}
         </button>
       </Group>
     </div>

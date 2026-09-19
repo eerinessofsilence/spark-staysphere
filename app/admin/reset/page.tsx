@@ -1,8 +1,13 @@
 import type { Metadata } from 'next';
+import { getAdminT } from '@/lib/i18n/admin/server';
+import { adminPageTitle } from '@/lib/i18n/admin/translate';
 import { ResetDemoButton } from '@/components/admin/room-controls';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Reset demo state — Hotel admin | SPARK StaySphere 360' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getAdminT();
+  return { title: adminPageTitle(t, t('reset.title')) };
+}
 
 /**
  * Not in the sidebar on purpose — a hotel team shouldn't stumble onto a
@@ -13,13 +18,11 @@ export const metadata: Metadata = { title: 'Reset demo state — Hotel admin | S
  * that control, reachable by URL for the demo owner and the test harness,
  * not by navigation.
  */
-export default function ResetDemoPage() {
+export default async function ResetDemoPage() {
+  const t = await getAdminT();
   return (
     <AdminPage width="narrow">
-      <AdminPageHeader
-        title="Reset demo state"
-        description="Clears every demo booking, payment attempt, availability override and CMS edit, back to the seed catalog. There is no undo."
-      />
+      <AdminPageHeader title={t('reset.title')} description={t('reset.body')} />
       <div className="mt-8">
         <ResetDemoButton />
       </div>

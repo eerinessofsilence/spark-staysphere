@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/site/modal';
 import { discardUnsavedChanges } from '@/components/admin/shell/unsaved-changes';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton, pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
@@ -22,7 +23,10 @@ interface DeleteEntityButtonProps {
    */
   version?: number;
   label: string;
-  /** What is being removed, in the dialog's words: "rate", "add-on". Used with `version`. */
+  /**
+   * What is being removed, in the dialog's words. The two the CMS has — "rate", "add-on" —
+   * are translated here; anything else is shown as given. Used with `version`.
+   */
   noun?: string;
   /** A fully custom confirm message for an entity that doesn't fit the `noun` dialog template. */
   confirmMessage?: string;
@@ -50,6 +54,7 @@ export function DeleteEntityButton({
   redirectTo,
   onDeleted,
 }: DeleteEntityButtonProps) {
+  const t = useAdminT();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -57,10 +62,11 @@ export function DeleteEntityButton({
   const close = React.useCallback(() => {
     if (!pending) setOpen(false);
   }, [pending]);
+  const nounText = noun === 'rate' ? t('form.nounRate') : noun === 'add-on' ? t('form.nounAddOn') : (noun ?? '');
 
   const finish = async (result: ContentFormState) => {
     if (result.status === 'success') {
-      toast.success(result.message || `${label} removed.`);
+      toast.success(result.message || t('form.labelRemoved', { label }));
       if (afterDeleteHref) {
         discardUnsavedChanges();
         router.replace(afterDeleteHref);
@@ -89,7 +95,7 @@ export function DeleteEntityButton({
       <button
         type="button"
         disabled={pending}
-        aria-label={`Remove ${label}`}
+        aria-label={t('form.removeLabel', { label })}
         onClick={() => {
           setError('');
           if (confirmMessage !== undefined) {
@@ -108,10 +114,8 @@ export function DeleteEntityButton({
       </button>
 
       {confirmMessage === undefined ? (
-        <Modal open={open} onClose={close} title={`Remove ${label}?`}>
-          <p className="text-sm">
-            The {noun} comes off the site and out of this admin. It can&apos;t be brought back.
-          </p>
+        <Modal open={open} onClose={close} title={t('form.removeLabelQuestion', { label })}>
+          <p className="text-sm">{t('form.deleteBody', { noun: nounText })}</p>
           {error ? (
             <p role="alert" className="mt-3 text-sm font-medium text-danger">
               {error}
@@ -120,10 +124,10 @@ export function DeleteEntityButton({
           <div className="mt-5 flex flex-wrap gap-3">
             <button type="button" onClick={remove} disabled={pending} className={pill('primary')}>
               {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-              Remove {noun}
+              {t('form.removeNoun', { noun: nounText })}
             </button>
             <button type="button" onClick={close} disabled={pending} className={pill('secondary')}>
-              Keep it
+              {t('form.keepIt')}
             </button>
           </div>
         </Modal>

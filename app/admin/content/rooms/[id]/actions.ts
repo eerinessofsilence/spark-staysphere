@@ -1,6 +1,7 @@
 'use server';
 
 import { contentService } from '@/lib/application/container';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import type { MediaItemDraft } from '@/components/admin/content/media-list-editor';
 import {
   formStateFromError,
@@ -17,6 +18,7 @@ export async function updateRoomAction(
   _prevState: ContentFormState,
   formData: FormData,
 ): Promise<ContentFormState> {
+  const t = await getAdminT();
   const input = {
     name: String(formData.get('name') ?? ''),
     description: String(formData.get('description') ?? ''),
@@ -26,13 +28,14 @@ export async function updateRoomAction(
     bedType: String(formData.get('bedType') ?? ''),
     view: String(formData.get('view') ?? ''),
     amenities: parseJsonList<string>(formData, 'amenities'),
+    facilities: parseJsonList<string>(formData, 'facilities'),
     media: parseJsonList<MediaItemDraft>(formData, 'media'),
   };
   const expectedVersion = Number(formData.get('version'));
 
   const result = await contentService.updateRoom(id, input, expectedVersion);
   if (result.ok) revalidateContent();
-  return formStateFromResult(result, 'Room saved.');
+  return formStateFromResult(result, t('room.saved'), t);
 }
 
 export async function setRoomHiddenAction(
@@ -40,9 +43,10 @@ export async function setRoomHiddenAction(
   hidden: boolean,
   expectedVersion: number,
 ): Promise<ContentFormState> {
+  const t = await getAdminT();
   const result = await contentService.setRoomHidden(id, hidden, expectedVersion);
   if (result.ok) revalidateContent();
-  return formStateFromResult(result, hidden ? 'Room hidden from the site.' : 'Room is now on the site.');
+  return formStateFromResult(result, hidden ? t('room.nowHidden') : t('room.nowOnSite'), t);
 }
 
 export async function createRateAction(
@@ -50,6 +54,7 @@ export async function createRateAction(
   _prevState: ContentFormState,
   formData: FormData,
 ): Promise<ContentFormState> {
+  const t = await getAdminT();
   const input = {
     name: String(formData.get('name') ?? ''),
     nightlyPrice: parseNumber(formData.get('nightlyPrice')),
@@ -60,7 +65,7 @@ export async function createRateAction(
   };
   const result = await contentService.createRate(roomTypeId, input);
   if (result.ok) revalidateContent();
-  return formStateFromResult(result, 'Rate added.');
+  return formStateFromResult(result, t('room.rateAdded'), t);
 }
 
 export async function updateRateAction(
@@ -68,6 +73,7 @@ export async function updateRateAction(
   _prevState: ContentFormState,
   formData: FormData,
 ): Promise<ContentFormState> {
+  const t = await getAdminT();
   const input = {
     name: String(formData.get('name') ?? ''),
     nightlyPrice: parseNumber(formData.get('nightlyPrice')),
@@ -79,19 +85,21 @@ export async function updateRateAction(
   const expectedVersion = Number(formData.get('version'));
   const result = await contentService.updateRate(id, input, expectedVersion);
   if (result.ok) revalidateContent();
-  return formStateFromResult(result, 'Rate saved.');
+  return formStateFromResult(result, t('room.rateSaved'), t);
 }
 
 export async function deleteRateAction(id: string, expectedVersion: number): Promise<ContentFormState> {
+  const t = await getAdminT();
   const result = await contentService.deleteRate(id, expectedVersion);
-  if (!result.ok) return formStateFromError(result.error);
+  if (!result.ok) return formStateFromError(result.error, t);
   revalidateContent();
-  return { status: 'success', message: 'Rate removed.' };
+  return { status: 'success', message: t('room.rateRemoved') };
 }
 
 export async function deleteRoomAction(id: string): Promise<ContentFormState> {
+  const t = await getAdminT();
   const result = await contentService.deleteRoom(id);
-  if (!result.ok) return formStateFromError(result.error);
+  if (!result.ok) return formStateFromError(result.error, t);
   revalidateContent();
-  return { status: 'success', message: 'Room type removed.' };
+  return { status: 'success', message: t('rooms.removed') };
 }

@@ -4,6 +4,8 @@ import * as React from 'react';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { folderLabel, labelFromFilename, mediaTypeOf } from '@/lib/domain/media';
 import { Modal } from '@/components/site/modal';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { pluralForm } from '@/lib/i18n/plural';
 import { fieldClass, tag } from '@/lib/ui';
 import { Select } from './fields';
 
@@ -25,6 +27,8 @@ interface MediaPickerProps {
  * one, searches by name, and marks what the gallery already holds.
  */
 export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], suggestedFolder }: MediaPickerProps) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const folders = React.useMemo(
     () => [...new Set(assets.map((asset) => asset.folder))].sort((a, b) => a.localeCompare(b)),
     [assets],
@@ -51,26 +55,32 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
       (folder === 'all' || asset.folder === folder) &&
       (!needle || asset.filename.toLowerCase().includes(needle) || folderLabel(asset.folder).toLowerCase().includes(needle)),
   );
+  const photoCount = `${visible.length} ${pluralForm(locale, visible.length, {
+    one: t('media.photoOne'),
+    few: t('media.photoFew'),
+    many: t('media.photoMany'),
+    other: t('media.photoMany'),
+  })}`;
 
   return (
-    <Modal open={open} onClose={onClose} title="Pick a photo" className="sm:max-w-3xl">
+    <Modal open={open} onClose={onClose} title={t('media.pick')} className="sm:max-w-3xl">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_15rem]">
         <label htmlFor="media-picker-search" className="sr-only">
-          Search photos
+          {t('media.search')}
         </label>
         <input
           id="media-picker-search"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name or folder"
+          placeholder={t('media.searchPlaceholder')}
           className={fieldClass}
         />
         <label htmlFor="media-picker-folder" className="sr-only">
-          Folder
+          {t('media.folder')}
         </label>
         <Select id="media-picker-folder" value={folder} onChange={setFolder}>
-          <option value="all">All folders</option>
+          <option value="all">{t('media.allFolders')}</option>
           {folders.map((name) => (
             <option key={name} value={name}>
               {folderLabel(name)}
@@ -80,13 +90,12 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
       </div>
 
       <p className="mt-3 mb-3 text-xs text-muted-foreground" aria-live="polite">
-        {visible.length === 1 ? '1 photo' : `${visible.length} photos`}
-        {folder !== 'all' ? ` in ${folderLabel(folder)}` : ''}
+        {folder !== 'all' ? t('media.photosIn', { photos: photoCount, folder: folderLabel(folder) }) : photoCount}
       </p>
 
       {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nothing matches.{' '}
+          {t('media.nothingMatches')}{' '}
           <button
             type="button"
             onClick={() => {
@@ -95,7 +104,7 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
             }}
             className="cursor-pointer font-medium text-foreground underline underline-offset-2"
           >
-            Show every photo
+            {t('media.showAll')}
           </button>
         </p>
       ) : (
@@ -104,6 +113,14 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
             const added = used.has(asset.url);
             const panorama = mediaTypeOf(asset) === '360';
             const name = labelFromFilename(asset.filename);
+            const description = [
+              name,
+              folderLabel(asset.folder),
+              panorama ? t('media.view360') : null,
+              added ? t('media.alreadyAdded') : null,
+            ]
+              .filter((part): part is string => part !== null)
+              .join(', ');
             return (
               <li key={asset.url} className="min-w-0">
                 <button
@@ -113,9 +130,9 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
                     onPick(asset);
                     onClose();
                   }}
-                  aria-label={`${name}, ${folderLabel(asset.folder)}${panorama ? ', 360° view' : ''}${added ? ', already added' : ''}`}
+                  aria-label={description}
                   title={asset.filename}
-                  className="group relative block w-full cursor-pointer overflow-hidden rounded-2xl border border-border text-left transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border"
+                  className="group relative block w-full cursor-pointer overflow-hidden rounded-[18px] border border-border text-left transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border"
                 >
                   <span className="block aspect-[4/3] overflow-hidden bg-stone">
                     <img
@@ -134,7 +151,7 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
                   {panorama || added ? (
                     <span className="absolute top-2 left-2 flex flex-wrap gap-1">
                       {panorama ? <span className={tag('bg-card/90 py-0.5')}>360°</span> : null}
-                      {added ? <span className={tag('bg-card/90 py-0.5')}>Added</span> : null}
+                      {added ? <span className={tag('bg-card/90 py-0.5')}>{t('media.added')}</span> : null}
                     </span>
                   ) : null}
                 </button>

@@ -2,16 +2,9 @@
 
 import * as React from 'react';
 import { roomCategory } from '@/lib/domain/room-attributes';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { lCategory } from '@/lib/i18n/format';
 import { Field, TextInput } from './fields';
-
-const CATEGORY_LABELS: Record<ReturnType<typeof roomCategory>, string> = {
-  room: 'Room',
-  studio: 'Studio',
-  suite: 'Suite',
-  loft: 'Loft',
-  residence: 'Residence',
-  penthouse: 'Penthouse',
-};
 
 /**
  * The room's catalog category is derived from its name (`roomCategory` in
@@ -19,14 +12,16 @@ const CATEGORY_LABELS: Record<ReturnType<typeof roomCategory>, string> = {
  * so this shows where the catalog will list the room as the name is typed.
  */
 export function RoomNameField({ initial }: { initial: string }) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const [value, setValue] = React.useState(initial);
 
   return (
     <Field
       id="room-name"
       name="name"
-      label="Name"
-      hint={`Listed in the catalog under ${CATEGORY_LABELS[roomCategory({ name: value })]} — it follows the name.`}
+      label={t('room.name')}
+      hint={t('room.nameHint', { category: lCategory(roomCategory({ name: value }), locale) })}
     >
       <TextInput
         id="room-name"

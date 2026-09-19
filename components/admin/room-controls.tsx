@@ -8,19 +8,14 @@ import { resetDemoState, setRoomStatus } from '@/app/admin/actions';
 import type { SaleToggleResult } from '@/components/admin/content/add-on-sale-toggle';
 import { useUndoableToggle } from '@/components/admin/content/use-undoable-toggle';
 import type { RoomStatus } from '@/lib/domain/schemas';
-import { statusLabels } from '@/lib/formatting';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { STATUS_LABEL } from '@/lib/i18n/format';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/admin/shell/toast';
 
-const overrideOptions: { value: RoomStatus | 'auto'; label: string }[] = [
-  { value: 'auto', label: 'Auto (simulated)' },
-  { value: 'available', label: statusLabels.available },
-  { value: 'limited', label: statusLabels.limited },
-  { value: 'last_room', label: statusLabels.last_room },
-  { value: 'sold_out', label: statusLabels.sold_out },
-];
+const OVERRIDE_VALUES: (RoomStatus | 'auto')[] = ['auto', 'available', 'limited', 'last_room', 'sold_out'];
 
 /** Forces a room's status for every date, overriding the simulated demand curve. */
 export function RoomStatusControl({
@@ -33,13 +28,23 @@ export function RoomStatusControl({
   value: RoomStatus | 'auto';
 }) {
   const router = useRouter();
+  const locale = useAdminLocale();
+  const t = useAdminT();
   const [pending, setPending] = React.useState(false);
   const id = `status-${roomTypeId}`;
+  const overrideOptions = React.useMemo(
+    () =>
+      OVERRIDE_VALUES.map((option) => ({
+        value: option,
+        label: option === 'auto' ? t('ops.overrideAuto') : STATUS_LABEL[locale][option],
+      })),
+    [locale, t],
+  );
 
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={id} className="sr-only">
-        Availability override for {roomName}
+        {t('ops.overrideLabel', { room: roomName })}
       </label>
       <Select
         items={overrideOptions}
@@ -51,9 +56,9 @@ export function RoomStatusControl({
           try {
             await setRoomStatus({ roomTypeId, status });
             const label = overrideOptions.find((option) => option.value === status)?.label ?? status;
-            toast.success(`${roomName}: availability set to ${label}.`);
+            toast.success(t('ops.overrideSaved', { room: roomName, label }));
           } catch {
-            toast.error(`${roomName}: the availability override didn't save. Try again.`);
+            toast.error(t('ops.overrideFailed', { room: roomName }));
           }
           router.refresh();
           setPending(false);
@@ -101,6 +106,7 @@ export function AddOnToggle({
   action: (id: string, enabled: boolean) => Promise<SaleToggleResult>;
 }) {
   const router = useRouter();
+  const t = useAdminT();
   const { pending, setPending, message, setMessage, undoTo, setUndoTo } = useUndoableToggle<boolean>();
   const id = `addon-toggle-${addOnId}`;
 
@@ -110,7 +116,9 @@ export function AddOnToggle({
     const result = await action(addOnId, checked);
     if (result.ok) {
       setUndoTo(offerUndo ? !checked : null);
-      toast.success(result.message || `${addOnName}: ${checked ? 'on sale' : 'withdrawn'}.`);
+      toast.success(
+        result.message || (checked ? t('ops.addOnOnSale', { addOn: addOnName }) : t('ops.addOnWithdrawn', { addOn: addOnName })),
+      );
       router.refresh();
     } else {
       // A version conflict or a validation failure must not look like it
@@ -137,7 +145,7 @@ export function AddOnToggle({
           className="shrink-0"
         />
         <span className={cn('font-medium', !enabled && 'text-muted-foreground')}>
-          {enabled ? 'On sale' : 'Withdrawn'}
+          {enabled ? t('ops.onSale') : t('ops.withdrawn')}
           <span className="sr-only"> — {addOnName}</span>
         </span>
       </label>
@@ -149,7 +157,8 @@ export function AddOnToggle({
           onClick={() => change(undoTo, false)}
           className="cursor-pointer font-medium underline underline-offset-2"
         >
-          Undo<span className="sr-only"> for {addOnName}</span>
+          <span aria-hidden="true">{t('ops.undo')}</span>
+          <span className="sr-only">{t('ops.undoFor', { addOn: addOnName })}</span>
         </button>
       ) : null}
       {message ? (
@@ -163,6 +172,7 @@ export function AddOnToggle({
 
 export function ResetDemoButton() {
   const router = useRouter();
+  const t = useAdminT();
   const [pending, setPending] = React.useState(false);
 
   return (
@@ -173,9 +183,9 @@ export function ResetDemoButton() {
         setPending(true);
         try {
           await resetDemoState();
-          toast.success('Demo state reset.');
+          toast.success(t('ops.demoReset'));
         } catch {
-          toast.error("Demo state didn't reset. Try again.");
+          toast.error(t('ops.demoResetFailed'));
         }
         router.refresh();
         setPending(false);
@@ -183,7 +193,7 @@ export function ResetDemoButton() {
       className={pill('secondary')}
     >
       {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-      Reset demo state
+      {t('ops.resetDemo')}
     </button>
   );
 }

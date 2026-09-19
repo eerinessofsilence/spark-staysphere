@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
+import { getAdminT } from '@/lib/i18n/admin/server';
+import { adminPageTitle } from '@/lib/i18n/admin/translate';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { AddOnFields } from '@/components/admin/content/add-on-fields';
@@ -12,9 +14,9 @@ import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page'
 import { deleteAddOnAction, setAddOnOnSaleAction, updateAddOnAction } from './actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
+  const [{ id }, t] = await Promise.all([params, getAdminT()]);
   const addOn = await contentService.getAddOnContent(id);
-  return { title: `${addOn?.name ?? id} — Services | SPARK StaySphere 360` };
+  return { title: adminPageTitle(t, addOn?.name ?? id) };
 }
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +28,7 @@ export default async function AddOnContentPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, t] = await Promise.all([params, searchParams, getAdminT()]);
   const [addOn, addOns, assets] = await Promise.all([
     contentService.getAddOnContent(id),
     contentService.listAddOnsContent(),
@@ -42,13 +44,13 @@ export default async function AddOnContentPage({
   return (
     <AdminPage width="narrow">
       <AdminPageHeader
-        breadcrumbs={[{ label: 'Content' }, { label: 'Services', href: '/admin/content/add-ons' }]}
+        breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.services'), href: '/admin/content/add-ons' }]}
         title={addOn.name}
         actions={
           <>
             <AddOnSaleToggle addOnId={addOn.id} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
             <a href="/rooms" target="_blank" rel="noreferrer" className={pill('secondary')}>
-              Open the site
+              {t('addOn.openSite')}
               <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
             </a>
           </>
@@ -59,8 +61,8 @@ export default async function AddOnContentPage({
         <p role="status" className="mt-6 flex items-start gap-3 rounded-3xl border border-success/30 bg-success/10 p-4 text-sm">
           <CheckCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
           <span>
-            <span className="font-medium">Add-on created.</span>{' '}
-            {addOn.enabled ? 'Guests can add it to their stay now.' : 'It stays withdrawn until you put it on sale.'}
+            <span className="font-medium">{t('addOn.created')}</span>{' '}
+            {addOn.enabled ? t('addOn.createdOnSale') : t('addOn.createdWithdrawn')}
           </span>
         </p>
       ) : null}
@@ -69,7 +71,7 @@ export default async function AddOnContentPage({
         <ContentForm
           action={boundUpdate}
           initialVersion={addOn.version}
-          submitLabel="Save add-on"
+          submitLabel={t('addOn.save')}
           versionKey={`addon:${addOn.id}`}
           dock
           extraActions={
@@ -78,7 +80,7 @@ export default async function AddOnContentPage({
                 id={addOn.id}
                 version={addOn.version}
                 label={addOn.name}
-                noun="add-on"
+                noun={t('addOn.noun')}
                 action={deleteAddOnAction}
                 afterDeleteHref={`/admin/content/add-ons?removed=${encodeURIComponent(addOn.name)}`}
               />

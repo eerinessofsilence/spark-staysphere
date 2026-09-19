@@ -2,50 +2,51 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import type { TeamRoleDefinition } from '@/lib/domain/schemas';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
-import { demoMembers, initialsOf } from './team-data';
-
-const me = demoMembers[0]!;
-const [meFirstName, meLastName] = me.name.split(' ');
+import { initialsOf, roleLabel, type TeamMember } from './team-data';
 
 /**
  * `/admin/account` — same shape as `BrandSettings`: local state only, a
  * "Save changes" button that never leaves the browser, no server action.
- * `me` is `demoMembers[0]` (Elena, Owner), the person `DemoAccount` in the
- * sidebar names — this page is what clicking that block opens.
+ * `member` is whoever signed in (`admin-session.ts`), the person the
+ * sidebar's `AccountMenu` names — this page is what its "Account" opens.
  */
-export function AccountSettings() {
+export function AccountSettings({ member: me, roles }: { member: TeamMember; roles: TeamRoleDefinition[] }) {
+  const [meFirstName, meLastName] = me.name.split(' ');
   const [firstName, setFirstName] = React.useState(meFirstName ?? '');
   const [lastName, setLastName] = React.useState(meLastName ?? '');
   const [email, setEmail] = React.useState(me.email);
   const [phone, setPhone] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [error, setError] = React.useState('');
-  const [saved, setSaved] = React.useState('');
+  const [error, setError] = React.useState<'tooShort' | 'mismatch' | ''>('');
+  const [saved, setSaved] = React.useState(false);
+  const t = useAdminT();
 
   const initials = initialsOf(`${firstName} ${lastName}`.trim() || me.name);
 
   const save = () => {
     if (password && password.length < 8) {
-      setError('New password must be at least 8 characters.');
-      setSaved('');
+      setError('tooShort');
+      setSaved(false);
       return;
     }
     if (password !== confirmPassword) {
-      setError("New password and confirmation don't match.");
-      setSaved('');
+      setError('mismatch');
+      setSaved(false);
       return;
     }
     setError('');
     setPassword('');
     setConfirmPassword('');
-    setSaved('Demo — nothing was saved.');
+    setSaved(true);
   };
 
   return (
     <div className="grid gap-6">
-      <Group id="profile" title="Profile" description="How your name appears across this admin.">
+      <Group id="profile" title={t('account.profile')} description={t('account.profileBody')}>
         <div className="flex items-center gap-4">
           <span
             aria-hidden="true"
@@ -54,22 +55,22 @@ export function AccountSettings() {
             {initials}
           </span>
           <div className="min-w-0">
-            <p className="text-display truncate text-2xl">{`${firstName} ${lastName}`.trim() || 'Unnamed'}</p>
-            <p className="text-sm text-muted-foreground">{me.role} · demo account</p>
+            <p className="text-display truncate text-2xl">{`${firstName} ${lastName}`.trim() || t('account.unnamed')}</p>
+            <p className="text-sm text-muted-foreground">{t('account.demo', { role: roleLabel(me.role, roles, t) })}</p>
           </div>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="account-firstName" className="mb-1.5 block text-sm text-muted-foreground">
-              First name
+              {t('account.firstName')}
             </label>
             <input
               id="account-firstName"
               value={firstName}
               onChange={(event) => {
                 setFirstName(event.target.value);
-                setSaved('');
+                setSaved(false);
               }}
               className={fieldClass}
               autoComplete="given-name"
@@ -77,14 +78,14 @@ export function AccountSettings() {
           </div>
           <div>
             <label htmlFor="account-lastName" className="mb-1.5 block text-sm text-muted-foreground">
-              Last name
+              {t('account.lastName')}
             </label>
             <input
               id="account-lastName"
               value={lastName}
               onChange={(event) => {
                 setLastName(event.target.value);
-                setSaved('');
+                setSaved(false);
               }}
               className={fieldClass}
               autoComplete="family-name"
@@ -93,11 +94,11 @@ export function AccountSettings() {
         </div>
       </Group>
 
-      <Group id="contact" title="Contact">
+      <Group id="contact" title={t('account.contact')}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="account-email" className="mb-1.5 block text-sm text-muted-foreground">
-              Email
+              {t('account.email')}
             </label>
             <input
               id="account-email"
@@ -105,16 +106,16 @@ export function AccountSettings() {
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setSaved('');
+                setSaved(false);
               }}
               className={fieldClass}
               autoComplete="email"
             />
-            <p className="mt-1.5 text-xs text-muted-foreground">What you&apos;d sign in with, once /admin has sign-in.</p>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t('account.emailHint')}</p>
           </div>
           <div>
             <label htmlFor="account-phone" className="mb-1.5 block text-sm text-muted-foreground">
-              Phone
+              {t('account.phone')}
             </label>
             <input
               id="account-phone"
@@ -122,9 +123,9 @@ export function AccountSettings() {
               value={phone}
               onChange={(event) => {
                 setPhone(event.target.value);
-                setSaved('');
+                setSaved(false);
               }}
-              placeholder="Not set"
+              placeholder={t('account.notSet')}
               className={fieldClass}
               autoComplete="tel"
             />
@@ -132,22 +133,22 @@ export function AccountSettings() {
         </div>
       </Group>
 
-      <Group id="role" title="Role" description="Set by whoever manages the team.">
-        <Row label="Role">
-          <span className="font-medium">{me.role}</span>
+      <Group id="role" title={t('account.role')} description={t('account.roleBody')}>
+        <Row label={t('account.role')}>
+          <span className="font-medium">{roleLabel(me.role, roles, t)}</span>
         </Row>
-        <Row label="Team">
+        <Row label={t('account.team')}>
           <Link href="/admin/settings/team" className="font-medium hover:text-accent-strong">
-            Team & roles
+            {t('account.teamRoles')}
           </Link>
         </Row>
       </Group>
 
-      <Group id="password" title="Password" description="Demo — sign-in arrives with admin auth.">
+      <Group id="password" title={t('account.password')} description={t('account.passwordBody')}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="account-password" className="mb-1.5 block text-sm text-muted-foreground">
-              New password
+              {t('account.newPassword')}
             </label>
             <input
               id="account-password"
@@ -156,7 +157,7 @@ export function AccountSettings() {
               onChange={(event) => {
                 setPassword(event.target.value);
                 setError('');
-                setSaved('');
+                setSaved(false);
               }}
               placeholder="••••••••"
               className={fieldClass}
@@ -165,7 +166,7 @@ export function AccountSettings() {
           </div>
           <div>
             <label htmlFor="account-confirmPassword" className="mb-1.5 block text-sm text-muted-foreground">
-              Confirm new password
+              {t('account.confirmPassword')}
             </label>
             <input
               id="account-confirmPassword"
@@ -174,7 +175,7 @@ export function AccountSettings() {
               onChange={(event) => {
                 setConfirmPassword(event.target.value);
                 setError('');
-                setSaved('');
+                setSaved(false);
               }}
               placeholder="••••••••"
               className={fieldClass}
@@ -184,17 +185,17 @@ export function AccountSettings() {
         </div>
         {error ? (
           <p role="alert" className="mt-3 text-sm font-medium text-danger">
-            {error}
+            {error === 'tooShort' ? t('account.passwordTooShort') : t('account.passwordMismatch')}
           </p>
         ) : null}
       </Group>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
         <button type="button" onClick={save} className={pill('primary')}>
-          Save changes
+          {t('account.save')}
         </button>
         <p role="status" aria-live="polite" className="text-sm font-medium text-muted-foreground">
-          {saved}
+          {saved ? t('account.demoNothingSaved') : ''}
         </p>
       </div>
     </div>

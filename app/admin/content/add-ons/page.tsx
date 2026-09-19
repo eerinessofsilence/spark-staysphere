@@ -3,50 +3,108 @@ import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { contentService } from '@/lib/application/container';
-import { formatMoney, formatPricingUnit } from '@/lib/formatting';
+import type { AddOn } from '@/lib/domain/schemas';
+import { lAddOnCategory, lMoney, lPricingUnit } from '@/lib/i18n/format';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RowActions } from '@/components/admin/content/row-actions';
 import { AddOnToggle } from '@/components/admin/room-controls';
+import { FilterPills } from '@/components/admin/operations/filter-pills';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteAddOnAction, setAddOnOnSaleAction } from './[id]/actions';
 
-export const metadata: Metadata = {
-  title: 'Services — Hotel admin | SPARK StaySphere 360',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.services')) };
+}
 
 export const dynamic = 'force-dynamic';
 
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+/** Columns a phone can do without: what they say is folded into the first cell there. */
+const deskOnly = 'hidden sm:table-cell';
+
+const categories = ['service', 'dining'] as const satisfies readonly AddOn['category'][];
+type CategoryFilter = 'all' | AddOn['category'];
+
+/**
+ * Half the shared `PAGE_SIZE`, because a row here is not an item: a service
+ * brings its own extras down with it (a little over two rows per service in
+ * the seed catalog), so ten services fill roughly the same screen twenty
+ * flat rows do on every other grid.
+ */
+const SERVICES_PER_PAGE = 10;
+
+function parseCategory(value: string | string[] | undefined): CategoryFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return categories.some((category) => category === raw) ? (raw as AddOn['category']) : 'all';
+}
+
+function hrefFor(category: CategoryFilter, page?: number): string {
+  const params = new URLSearchParams();
+  if (category !== 'all') params.set('category', category);
+  if (page && page > 1) params.set('page', String(page));
+  const search = params.toString();
+  return search ? `/admin/content/add-ons?${search}` : '/admin/content/add-ons';
 }
 
 /**
  * Everything a guest can add to a stay — services and the kitchen's dishes —
  * as its own sidebar item rather than a third tab under Rooms. The route stays
  * `/admin/content/add-ons`: the entity is still an add-on everywhere below.
+ *
+ * One grid, the same as every other admin list: the category is a filter and
+ * a column, not a second table stacked under the first, so the page pages
+ * instead of growing without end. A page is 20 *top-level* add-ons — an
+ * extra rides along under the one it belongs to, since it is offered inside
+ * that service rather than on its own, and splitting a parent from its
+ * extras across two pages would say otherwise.
  */
 export default async function ServicesPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
+  const [params, locale] = await Promise.all([searchParams, getAdminLocale()]);
+  const t = adminT(locale);
   const removed = typeof params.removed === 'string' ? params.removed : null;
+  const category = parseCategory(params.category);
+  const page = parsePage(params.page);
+
   const addOns = await contentService.listAddOnsContent();
-  const onSale = addOns.filter((addOn) => addOn.enabled).length;
   const topLevel = addOns.filter((addOn) => !addOn.parentId);
-  const categories = [...new Set(topLevel.map((addOn) => addOn.category))];
+  // By service, not by row: an extra is offered inside its parent rather than
+  // sold on its own, so it isn't a second thing "on sale" — matching what the
+  // filter pills and the pager below already count.
+  const onSale = topLevel.filter((addOn) => addOn.enabled).length;
+  const counts: Record<CategoryFilter, number> = {
+    all: topLevel.length,
+    service: topLevel.filter((addOn) => addOn.category === 'service').length,
+    dining: topLevel.filter((addOn) => addOn.category === 'dining').length,
+  };
+
+  // Services before food and drink, catalog order within each: one grid, but
+  // a category still arrives in one run rather than interleaved, which is the
+  // one thing the two stacked tables this replaced did well.
+  const visible = (category === 'all' ? topLevel : topLevel.filter((addOn) => addOn.category === category))
+    .slice()
+    .sort((a, b) => categories.indexOf(a.category) - categories.indexOf(b.category));
+  const { pageItems, page: currentPage, totalPages } = paginate(visible, page, SERVICES_PER_PAGE);
+  const rows = pageItems.flatMap((parent) => [parent, ...addOns.filter((child) => child.parentId === parent.id)]);
+  // The removed name is set in bold inside the sentence, so the template is split around it.
+  const [removedBefore, removedAfter] = t('addOns.removed').split('{name}');
 
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Services"
+        title={t('nav.services')}
         actions={
           <Link href="/admin/content/add-ons/new" className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
-            Add service
+            {t('addOns.add')}
           </Link>
         }
       />
@@ -55,103 +113,125 @@ export default async function ServicesPage({
         <p role="status" className="mt-6 flex items-center gap-3 rounded-3xl border border-success/30 bg-success/10 px-4 py-3 text-sm">
           <CheckCircle weight="fill" className="size-5 shrink-0 text-success" aria-hidden="true" />
           <span>
-            <span className="font-medium">“{removed}”</span> was removed.
+            {removedBefore}
+            <span className="font-medium">{removed}</span>
+            {removedAfter}
           </span>
         </p>
       ) : null}
 
       {addOns.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">No add-ons yet.</p>
+        <p className="mt-6 text-sm text-muted-foreground">{t('addOns.empty')}</p>
       ) : (
         <>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {onSale} of {addOns.length} on sale. An extra listed under a service is offered inside it.
-          </p>
-          <div className="mt-6 grid gap-8">
-            {categories.map((category) => {
-              const rows = topLevel
-                .filter((addOn) => addOn.category === category)
-                .flatMap((parent) => [parent, ...addOns.filter((child) => child.parentId === parent.id)]);
-              return (
-                <section key={category} aria-labelledby={`category-${category}`}>
-                  <h2 id={`category-${category}`} className="mb-3 text-base font-medium">
-                    {capitalize(category)} <span className="font-normal text-muted-foreground">· {rows.length}</span>
-                  </h2>
-                  <TableCard caption={`${capitalize(category)} add-ons`} className="sm:min-w-[40rem]">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <Th>Add-on</Th>
-                        <Th>Price</Th>
-                        <Th>On sale</Th>
-                        <Th className="w-14">
-                          <span className="sr-only">Actions</span>
-                        </Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((addOn) => {
-                        const href = `/admin/content/add-ons/${addOn.id}`;
-                        return (
-                          <tr
-                            key={addOn.id}
-                            className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
-                          >
-                            <Td className="align-middle">
-                              {/* Stretched: the row opens the add-on's own page from anywhere
-                                  in it — the switch and row menu sit at a higher stacking level
-                                  so their own clicks still reach them. */}
-                              <Link
-                                href={href}
-                                className={cn(
-                                  'block hover:text-accent-strong before:absolute before:inset-0',
-                                  addOn.parentId ? 'pl-4 sm:pl-6' : 'font-medium',
-                                )}
-                              >
-                                {addOn.parentId ? (
-                                  <span className="text-muted-foreground" aria-hidden="true">
-                                    +{' '}
-                                  </span>
-                                ) : null}
-                                {addOn.name}
-                              </Link>
-                            </Td>
-                            <Td className="align-middle tabular-nums">
-                              <span className="whitespace-nowrap">{formatMoney(addOn.price, addOn.currency)}</span>{' '}
-                              <span className="block text-xs text-muted-foreground sm:inline sm:text-sm">
-                                {formatPricingUnit(addOn.pricingUnit)}
-                              </span>
-                            </Td>
-                            <Td className="relative z-10 align-middle">
-                              {/* The 44px switch target sits on the row's text line, not below it. */}
-                              <div className="-my-2.5">
-                                <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
-                              </div>
-                            </Td>
-                            <Td className="relative z-10 align-middle text-right">
-                              <RowActions
-                                id={addOn.id}
-                                version={addOn.version}
-                                label={addOn.name}
-                                editHref={href}
-                                deleteAction={deleteAddOnAction}
-                                confirmMessage={`Remove the add-on "${addOn.name}"? This can't be undone.`}
-                                deleteBlockedReason={
-                                  contentService.isSeedEntry('addon', addOn.id)
-                                    ? 'Came with the demo catalog'
-                                    : addOns.some((child) => child.parentId === addOn.id)
-                                      ? 'Remove its extras first'
-                                      : undefined
-                                }
-                              />
-                            </Td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </TableCard>
-                </section>
-              );
-            })}
+          <p className="mt-4 text-sm text-muted-foreground">{t('addOns.summary', { onSale, total: topLevel.length })}</p>
+
+          <div className="mt-4">
+            <FilterPills
+              label={t('addOns.filterByCategory')}
+              sheetTitle={t('addOns.filterTitle')}
+              options={(['all', ...categories] as CategoryFilter[]).map((option) => ({
+                key: option,
+                label: option === 'all' ? t('addOns.all') : lAddOnCategory(option, locale),
+                count: counts[option],
+                href: hrefFor(option),
+                current: option === category,
+              }))}
+            />
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
+            <TableCard caption={t('addOns.caption')} className="sm:min-w-[44rem]" attached>
+              <thead>
+                <tr className="border-b border-border">
+                  <Th>{t('addOns.thAddOn')}</Th>
+                  <Th className={deskOnly}>{t('addOns.thCategory')}</Th>
+                  <Th>{t('addOns.thPrice')}</Th>
+                  <Th>{t('addOns.thOnSale')}</Th>
+                  <Th className="w-14">
+                    <span className="sr-only">{t('addOns.thActions')}</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((addOn) => {
+                  const href = `/admin/content/add-ons/${addOn.id}`;
+                  return (
+                    <tr
+                      key={addOn.id}
+                      className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
+                    >
+                      <Td className="align-middle">
+                        {/* Stretched: the row opens the add-on's own page from anywhere
+                            in it — the switch and row menu sit at a higher stacking level
+                            so their own clicks still reach them. */}
+                        <Link
+                          href={href}
+                          className={cn(
+                            'block hover:text-accent-strong before:absolute before:inset-0',
+                            addOn.parentId ? 'pl-4 sm:pl-6' : 'font-medium',
+                          )}
+                        >
+                          {addOn.parentId ? (
+                            <span className="text-muted-foreground" aria-hidden="true">
+                              +{' '}
+                            </span>
+                          ) : null}
+                          {addOn.name}
+                        </Link>
+                        {/* The category column is desk-only, so on a phone a top-level
+                            row carries its category under the name instead. An extra
+                            never repeats it: it is already under its parent. */}
+                        {addOn.parentId ? null : (
+                          <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">
+                            {lAddOnCategory(addOn.category, locale)}
+                          </span>
+                        )}
+                      </Td>
+                      <Td className={cn(deskOnly, 'align-middle text-muted-foreground')}>
+                        {addOn.parentId ? null : lAddOnCategory(addOn.category, locale)}
+                      </Td>
+                      <Td className="align-middle tabular-nums">
+                        <span className="whitespace-nowrap">{lMoney(addOn.price, addOn.currency, locale)}</span>{' '}
+                        <span className="block text-xs text-muted-foreground sm:inline sm:text-sm">
+                          {lPricingUnit(addOn.pricingUnit, locale)}
+                        </span>
+                      </Td>
+                      <Td className="relative z-10 align-middle">
+                        {/* The 44px switch target sits on the row's text line, not below it. */}
+                        <div className="-my-2.5">
+                          <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
+                        </div>
+                      </Td>
+                      <Td className="relative z-10 align-middle text-right">
+                        <RowActions
+                          id={addOn.id}
+                          version={addOn.version}
+                          label={addOn.name}
+                          editHref={href}
+                          deleteAction={deleteAddOnAction}
+                          confirmMessage={t('addOns.confirmRemove', { name: addOn.name })}
+                          deleteBlockedReason={
+                            contentService.isSeedEntry('addon', addOn.id)
+                              ? t('addOns.seedEntry')
+                              : addOns.some((child) => child.parentId === addOn.id)
+                                ? t('addOns.removeExtrasFirst')
+                                : undefined
+                          }
+                        />
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TableCard>
+            <Pagination
+              attached
+              page={currentPage}
+              totalPages={totalPages}
+              total={visible.length}
+              hrefFor={(next) => hrefFor(category, next)}
+            />
           </div>
         </>
       )}

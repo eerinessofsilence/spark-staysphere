@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { ArrowTopRightOnSquareIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { FacilitiesEditor } from '@/components/admin/content/facilities-editor';
@@ -11,27 +14,37 @@ import { StarRatingField } from '@/components/admin/content/star-rating-field';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { updateHotelAction } from './actions';
 
-export const metadata: Metadata = {
-  title: 'Hotel Settings — Hotel admin | SPARK StaySphere 360',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.hotelSettings')) };
+}
 
 export const dynamic = 'force-dynamic';
 
 const card = 'rounded-[18px] bg-card p-5 shadow-soft sm:p-6';
 
 export default async function HotelContentPage() {
-  const [{ hotel, version }, assets] = await Promise.all([
+  const [{ hotel, version }, assets, locale] = await Promise.all([
     contentService.getHotelContent(),
     contentService.listMedia(),
+    getAdminLocale(),
   ]);
+  const t = adminT(locale);
+  const points = (count: number) =>
+    pluralForm(locale, count, {
+      one: t('hotel.pointsOne', { count }),
+      few: t('hotel.pointsFew', { count }),
+      many: t('hotel.pointsMany', { count }),
+      other: t('hotel.pointsMany', { count }),
+    });
 
   return (
     <AdminPage width="narrow">
       <AdminPageHeader
-        title="Hotel Settings"
+        title={t('nav.hotelSettings')}
         actions={
           <a href="/" target="_blank" rel="noreferrer" className={pill('secondary')}>
-            Preview
+            {t('hotel.preview')}
             <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
           </a>
         }
@@ -41,7 +54,7 @@ export default async function HotelContentPage() {
         <ContentForm
           action={updateHotelAction}
           initialVersion={version}
-          submitLabel="Save hotel details"
+          submitLabel={t('hotel.save')}
           versionKey="hotel"
           dock
         >
@@ -49,20 +62,20 @@ export default async function HotelContentPage() {
             tabs={[
               {
                 value: 'details',
-                label: 'Details',
+                label: t('hotel.tabDetails'),
                 content: (
                   <div className={card}>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <Field id="hotel-name" name="name" label="Name">
+                      <Field id="hotel-name" name="name" label={t('hotel.name')}>
                         <TextInput id="hotel-name" name="name" defaultValue={hotel.name} required />
                       </Field>
-                      <Field id="hotel-tagline" name="tagline" label="Tagline">
+                      <Field id="hotel-tagline" name="tagline" label={t('hotel.tagline')}>
                         <TextInput id="hotel-tagline" name="tagline" defaultValue={hotel.tagline} required />
                       </Field>
-                      <Field id="hotel-location" name="location" label="Location">
+                      <Field id="hotel-location" name="location" label={t('hotel.location')}>
                         <TextInput id="hotel-location" name="location" defaultValue={hotel.location} required />
                       </Field>
-                      <Field id="hotel-starRating" name="starRating" label="Star rating">
+                      <Field id="hotel-starRating" name="starRating" label={t('hotel.starRating')}>
                         <StarRatingField id="hotel-starRating" name="starRating" defaultValue={hotel.starRating} />
                       </Field>
                     </div>
@@ -72,17 +85,15 @@ export default async function HotelContentPage() {
                         a room's own description and gallery. */}
                     <div role="group" aria-labelledby="hotel-about-heading" className="mt-8">
                       <h3 id="hotel-about-heading" className="text-base font-medium">
-                        About the hotel
+                        {t('hotel.about')}
                       </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        The paragraph and photograph on the arrival page, below the building.
-                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">{t('hotel.aboutBody')}</p>
                       <div className="mt-4 grid gap-4">
                         <Field
                           id="hotel-description"
                           name="description"
-                          label="Description"
-                          hint="Plain text, no formatting."
+                          label={t('hotel.description')}
+                          hint={t('hotel.plainText')}
                         >
                           <TextArea
                             id="hotel-description"
@@ -92,23 +103,21 @@ export default async function HotelContentPage() {
                           />
                         </Field>
                         <div>
-                          <label className="mb-1.5 block text-sm text-muted-foreground">Photo</label>
+                          <label className="mb-1.5 block text-sm text-muted-foreground">{t('hotel.photo')}</label>
                           <PhotoField name="aboutPhoto" initial={hotel.aboutPhoto.url} assets={assets} />
                         </div>
                       </div>
                     </div>
 
                     <p className="mt-8 text-xs text-muted-foreground">
-                      Currency ({hotel.currency}) and timezone ({hotel.timezone}) are set when the property is
-                      onboarded. The hotel&apos;s hero photographs come with the property&apos;s own photography;
-                      their words are under Photos.
+                      {t('hotel.onboardingNote', { currency: hotel.currency, timezone: hotel.timezone })}
                     </p>
                   </div>
                 ),
               },
               {
                 value: 'photos',
-                label: 'Photos',
+                label: t('hotel.tabPhotos'),
                 content: (
                   <div className="grid gap-6">
                     {hotel.areas.map((area) => (
@@ -128,8 +137,7 @@ export default async function HotelContentPage() {
                             className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
                           />
                           <p className="mt-2 text-xs text-muted-foreground">
-                            {area.hotspots.length === 1 ? '1 point' : `${area.hotspots.length} points`} to tap on this
-                            photograph. Where a point sits comes with the photograph; only its words are edited here.
+                            {t('hotel.pointsHint', { points: points(area.hotspots.length) })}
                           </p>
                         </div>
 
@@ -138,7 +146,7 @@ export default async function HotelContentPage() {
                             {area.name}
                           </h3>
                           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                            <Field id={`area-${area.id}-name`} name={`areas.${area.id}.name`} label="Name">
+                            <Field id={`area-${area.id}-name`} name={`areas.${area.id}.name`} label={t('hotel.name')}>
                               <TextInput
                                 id={`area-${area.id}-name`}
                                 name={`areas.${area.id}.name`}
@@ -149,7 +157,7 @@ export default async function HotelContentPage() {
                             <Field
                               id={`area-${area.id}-photoAlt`}
                               name={`areas.${area.id}.photoAlt`}
-                              label="Photo description for screen readers"
+                              label={t('hotel.photoAlt')}
                             >
                               <TextInput
                                 id={`area-${area.id}-photoAlt`}
@@ -163,8 +171,8 @@ export default async function HotelContentPage() {
                             <Field
                               id={`area-${area.id}-description`}
                               name={`areas.${area.id}.description`}
-                              label="Description"
-                              hint="Plain text, no formatting."
+                              label={t('hotel.description')}
+                              hint={t('hotel.plainText')}
                             >
                               <TextArea
                                 id={`area-${area.id}-description`}
@@ -177,7 +185,7 @@ export default async function HotelContentPage() {
 
                           {area.hotspots.length > 0 ? (
                             <div className="mt-6 grid gap-3 border-t border-border pt-6">
-                              <h4 className="text-sm font-medium">Points on the photo</h4>
+                              <h4 className="text-sm font-medium">{t('hotel.pointsOnPhoto')}</h4>
                               {area.hotspots.map((hotspot) => {
                                 const path = `areas.${area.id}.hotspots.${hotspot.id}`;
                                 return (
@@ -195,7 +203,7 @@ export default async function HotelContentPage() {
                                       className="grid gap-3 px-4 pb-4"
                                     >
                                       <div className="grid gap-3 sm:grid-cols-2">
-                                        <Field id={`hotspot-${hotspot.id}-label`} name={`${path}.label`} label="Label">
+                                        <Field id={`hotspot-${hotspot.id}-label`} name={`${path}.label`} label={t('hotel.label')}>
                                           <TextInput
                                             id={`hotspot-${hotspot.id}-label`}
                                             name={`${path}.label`}
@@ -203,7 +211,7 @@ export default async function HotelContentPage() {
                                             required
                                           />
                                         </Field>
-                                        <Field id={`hotspot-${hotspot.id}-cta`} name={`${path}.cta`} label="Button text">
+                                        <Field id={`hotspot-${hotspot.id}-cta`} name={`${path}.cta`} label={t('hotel.buttonText')}>
                                           <TextInput
                                             id={`hotspot-${hotspot.id}-cta`}
                                             name={`${path}.cta`}
@@ -215,7 +223,7 @@ export default async function HotelContentPage() {
                                       <Field
                                         id={`hotspot-${hotspot.id}-description`}
                                         name={`${path}.description`}
-                                        label="Description"
+                                        label={t('hotel.description')}
                                       >
                                         <TextArea
                                           id={`hotspot-${hotspot.id}-description`}
@@ -226,7 +234,7 @@ export default async function HotelContentPage() {
                                       </Field>
                                       {hotspot.roomSlug ? (
                                         <p className="text-xs text-muted-foreground">
-                                          The button opens /rooms/{hotspot.roomSlug}
+                                          {t('hotel.buttonOpens', { path: `/rooms/${hotspot.roomSlug}` })}
                                         </p>
                                       ) : null}
                                     </div>
@@ -243,16 +251,13 @@ export default async function HotelContentPage() {
               },
               {
                 value: 'facilities',
-                label: 'Facilities',
+                label: t('hotel.tabFacilities'),
                 content: (
                   <div role="group" aria-labelledby="hotel-facilities-heading" className={card}>
                     <h3 id="hotel-facilities-heading" className="text-base font-medium">
-                      Facilities
+                      {t('hotel.facilities')}
                     </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      What the property offers as a whole — the pool, the spa, parking. Shown on every room&apos;s page,
-                      after what is in the room, in this order. A room&apos;s own amenities live on the room type.
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t('hotel.facilitiesBody')}</p>
                     <div className="mt-4">
                       <FacilitiesEditor name="facilities" initial={hotel.facilities ?? []} />
                     </div>

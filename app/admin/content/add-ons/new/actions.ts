@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import { formStateFromError, parseJsonList, parseNumber, type ContentFormState } from '../../_lib/form-state';
 import { revalidateContent } from '../../_lib/revalidate';
 
@@ -24,7 +25,7 @@ export async function createAddOnAction(
   };
 
   const result = await contentService.createAddOn(input);
-  if (!result.ok) return formStateFromError(result.error);
+  if (!result.ok) return formStateFromError(result.error, await getAdminT());
 
   revalidateContent();
   redirect(`/admin/content/add-ons/${result.value.id}?created=1`);

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { addOnIcon } from '@/components/rooms/add-on-icon';
 import { Field, TextInput } from './fields';
 
@@ -10,11 +11,12 @@ import { Field, TextInput } from './fields';
  * shown live beside the name as it's typed.
  */
 export function AddOnNameField({ initial }: { initial: string }) {
+  const t = useAdminT();
   const [value, setValue] = React.useState(initial);
   const Icon = addOnIcon(value || 'add-on');
 
   return (
-    <Field id="addon-name" name="name" label="Name">
+    <Field id="addon-name" name="name" label={t('addOn.name')}>
       <div className="flex items-center gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-stone text-foreground">
           <Icon className="size-5" weight="fill" aria-hidden="true" />

@@ -5,6 +5,7 @@ import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XMarkIcon } from '@heroicons/
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { labelFromFilename, mediaTypeOf } from '@/lib/domain/media';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { useFieldErrors } from './content-form';
@@ -37,6 +38,7 @@ export function MediaListEditor({
   assets: MediaAsset[];
   suggestedFolder?: string;
 }) {
+  const t = useAdminT();
   const { rows, values: items, move, remove, add, update: updateRow } = useOrderedList(initial);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
@@ -52,21 +54,21 @@ export function MediaListEditor({
       <input type="hidden" name={name} value={JSON.stringify(items)} />
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No photos yet. The first one you add becomes the cover.</p>
+        <p className="text-sm text-muted-foreground">{t('media.noPhotosCover')}</p>
       ) : (
         <ul className="grid gap-3">
           {rows.map(({ id, value: item }, index) => {
             const asset = byUrl.get(item.url);
             const labelId = `${name}-${index}-label`;
             const rowError = errors[`${name}.${index}.label`]?.[0] ?? errors[`${name}.${index}.url`]?.[0];
-            const title = item.label?.trim() ? `“${item.label.trim()}”` : `photo ${index + 1}`;
+            const title = item.label?.trim() ? `“${item.label.trim()}”` : t('media.photoN', { n: index + 1 });
             return (
               <li
                 key={id}
                 className={cn('grid gap-2 rounded-2xl border p-3', rowError ? 'border-danger/60' : 'border-border')}
               >
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="block size-16 shrink-0 overflow-hidden rounded-xl bg-stone">
+                  <span className="block size-16 shrink-0 overflow-hidden rounded-[18px] bg-stone">
                     {asset ? (
                       // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
                       <img src={asset.url} alt="" className="size-full object-cover" />
@@ -79,15 +81,15 @@ export function MediaListEditor({
                   <div className="grid min-w-0 flex-1 basis-40 gap-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <label htmlFor={labelId} className="text-xs text-muted-foreground">
-                        {index === 0 ? 'Cover label' : `Label for photo ${index + 1}`}
+                        {index === 0 ? t('media.coverLabel') : t('media.labelFor', { n: index + 1 })}
                       </label>
-                      <span className={tag('py-0 text-[11px]')}>{item.type === '360' ? '360° view' : 'Photo'}</span>
+                      <span className={tag('py-0 text-[11px]')}>{item.type === '360' ? t('media.view360') : t('media.photo')}</span>
                     </div>
                     <TextInput
                       id={labelId}
                       value={item.label ?? ''}
                       onChange={(event) => update(index, { label: event.target.value })}
-                      placeholder="e.g. Bedroom"
+                      placeholder={t('media.labelPlaceholder')}
                       aria-invalid={rowError ? true : undefined}
                     />
                   </div>
@@ -96,7 +98,7 @@ export function MediaListEditor({
                       type="button"
                       onClick={() => move(index, -1)}
                       disabled={index === 0}
-                      aria-label={`Move ${title} up`}
+                      aria-label={t('form.moveUp', { title })}
                       className={iconButton('light', 'size-11 sm:size-9')}
                     >
                       <ChevronUpIcon className="size-4" aria-hidden="true" />
@@ -105,7 +107,7 @@ export function MediaListEditor({
                       type="button"
                       onClick={() => move(index, 1)}
                       disabled={index === items.length - 1}
-                      aria-label={`Move ${title} down`}
+                      aria-label={t('form.moveDown', { title })}
                       className={iconButton('light', 'size-11 sm:size-9')}
                     >
                       <ChevronDownIcon className="size-4" aria-hidden="true" />
@@ -113,7 +115,7 @@ export function MediaListEditor({
                     <button
                       type="button"
                       onClick={() => remove(index)}
-                      aria-label={`Remove ${title}`}
+                      aria-label={t('form.removeTitle', { title })}
                       className={iconButton('light', 'size-11 sm:size-9')}
                     >
                       <XMarkIcon className="size-4" aria-hidden="true" />
@@ -125,7 +127,7 @@ export function MediaListEditor({
                     {rowError}
                   </p>
                 ) : !item.label?.trim() ? (
-                  <p className="text-xs text-muted-foreground">Guests see the label as the name of this view.</p>
+                  <p className="text-xs text-muted-foreground">{t('media.labelHint')}</p>
                 ) : null}
               </li>
             );
@@ -141,7 +143,7 @@ export function MediaListEditor({
 
       <button type="button" onClick={() => setPickerOpen(true)} className={pill('secondary', 'self-start')}>
         <PlusIcon className="size-4" aria-hidden="true" />
-        Add a photo
+        {t('media.addPhoto')}
       </button>
 
       <MediaPicker
@@ -152,6 +154,8 @@ export function MediaListEditor({
         suggestedFolder={suggestedFolder}
         onPick={(asset) => {
           const type = mediaTypeOf(asset);
+          // The prefilled label is the hotel's own content once saved (guests read it as the
+          // view's name), so it is seeded in the catalog's language, not the team member's.
           add({ type, url: asset.url, label: type === '360' ? '360° view' : labelFromFilename(asset.filename) });
         }}
       />

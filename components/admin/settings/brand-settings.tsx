@@ -4,6 +4,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, Clock, WarningCircle } from '@phosphor-icons/react/dist/ssr';
+import { useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { fieldClass, pill } from '@/lib/ui';
 import { Switch } from '@/components/ui/switch';
 import { SectionLabel } from '@/components/site/section-label';
@@ -11,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 interface Accent {
   id: string;
-  label: string;
+  label: AdminTranslationKey;
   swatch: string;
   strong: string;
   hover: string;
@@ -19,13 +21,14 @@ interface Accent {
 }
 
 const accents: Accent[] = [
-  { id: 'clay', label: 'Clay', swatch: '#B8603A', strong: '#9A4E2C', hover: '#7F3F23', soft: '#F4E6DD' },
-  { id: 'olive', label: 'Olive', swatch: '#6B7A3A', strong: '#4F5B2A', hover: '#3F4922', soft: '#E7EBDA' },
-  { id: 'terracotta', label: 'Terracotta', swatch: '#A4503C', strong: '#8A402F', hover: '#733426', soft: '#F2E1DB' },
-  { id: 'sand', label: 'Sand', swatch: '#9A7B4F', strong: '#7F6A35', hover: '#66552A', soft: '#EFE7D3' },
-  { id: 'ink', label: 'Ink', swatch: '#161616', strong: '#161616', hover: '#2B2B2B', soft: '#E9E5DD' },
+  { id: 'clay', label: 'settings.accentClay', swatch: '#B8603A', strong: '#9A4E2C', hover: '#7F3F23', soft: '#F4E6DD' },
+  { id: 'olive', label: 'settings.accentOlive', swatch: '#6B7A3A', strong: '#4F5B2A', hover: '#3F4922', soft: '#E7EBDA' },
+  { id: 'terracotta', label: 'settings.accentTerracotta', swatch: '#A4503C', strong: '#8A402F', hover: '#733426', soft: '#F2E1DB' },
+  { id: 'sand', label: 'settings.accentSand', swatch: '#9A7B4F', strong: '#7F6A35', hover: '#66552A', soft: '#EFE7D3' },
+  { id: 'ink', label: 'settings.accentInk', swatch: '#161616', strong: '#161616', hover: '#2B2B2B', soft: '#E9E5DD' },
 ];
 
+/** Each language in its own name and region, as a language picker does — not translated into the admin's language. */
 const languages = [
   { label: 'English', region: 'United Kingdom', live: true },
   { label: 'Русский', region: 'Россия', live: false },
@@ -52,9 +55,10 @@ interface BrandSettingsProps {
 }
 
 export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
+  const t = useAdminT();
   const [accentId, setAccentId] = React.useState('clay');
   const [accentButtons, setAccentButtons] = React.useState(false);
-  const [saved, setSaved] = React.useState('');
+  const [saved, setSaved] = React.useState(false);
   const [demoHost, setDemoHost] = React.useState('');
   const accent = accents.find((option) => option.id === accentId) ?? accents[0]!;
 
@@ -67,20 +71,24 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
   return (
     <div className="mt-10 grid gap-6 lg:grid-cols-sidebar">
       <div className="grid gap-6">
-        <Group id="identity" title="Identity" description="Read live from the site content.">
+        <Group id="identity" title={t('settings.identity')} description={t('settings.identityBody')}>
           <dl className="grid gap-4 sm:grid-cols-3">
-            <Fact label="Hotel name">{hotel.name}</Fact>
-            <Fact label="Tagline">{hotel.tagline}</Fact>
-            <Fact label="Location">{hotel.location}</Fact>
+            <Fact label={t('settings.hotelName')}>{hotel.name}</Fact>
+            <Fact label={t('settings.tagline')}>{hotel.tagline}</Fact>
+            <Fact label={t('settings.location')}>{hotel.location}</Fact>
           </dl>
           <Link href="/admin/content/hotel" className={pill('secondary', 'mt-5')}>
-            Edit in Hotel Settings
+            {t('settings.editInHotelSettings')}
           </Link>
         </Group>
 
-        <Group id="logo" title="Logo" description="Shown in the header and footer of the booking site.">
+        <Group id="logo" title={t('settings.logo')} description={t('settings.logoBody')}>
           <div className="flex min-h-24 items-center justify-center rounded-3xl bg-stone/60 px-6">
-            <img src="/brand/staysphere-logo-on-light.svg" alt="Current logo" className="h-9 w-auto dark:hidden" />
+            <img
+              src="/brand/staysphere-logo-on-light.svg"
+              alt={t('settings.currentLogo')}
+              className="h-9 w-auto dark:hidden"
+            />
             <img
               src="/brand/staysphere-logo.svg"
               alt=""
@@ -91,17 +99,13 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button type="button" disabled className={pill('secondary')}>
               <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
-              Upload logo
+              {t('settings.uploadLogo')}
             </button>
-            <p className="text-sm text-muted-foreground">Uploads arrive with media storage.</p>
+            <p className="text-sm text-muted-foreground">{t('settings.uploadsArrive')}</p>
           </div>
         </Group>
 
-        <Group
-          id="accent"
-          title="Accent colour"
-          description="Marks active states, focus rings, savings and section labels across the site."
-        >
+        <Group id="accent" title={t('settings.accent')} description={t('settings.accentBody')}>
           <div role="radiogroup" aria-labelledby="accent-heading" className="flex flex-wrap gap-2">
             {accents.map((option) => {
               const checked = option.id === accentId;
@@ -131,68 +135,69 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
                     />
                   </span>
                   <span className={cn(checked ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-                    {option.label}
+                    {t(option.label)}
                   </span>
-                  {option.id === 'clay' ? <span className="text-[11px] text-muted-foreground">Current</span> : null}
+                  {option.id === 'clay' ? (
+                    <span className="text-[11px] text-muted-foreground">{t('settings.current')}</span>
+                  ) : null}
                 </label>
               );
             })}
           </div>
           <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
             <Switch checked={accentButtons} onCheckedChange={setAccentButtons} className="shrink-0" />
-            Use the accent on primary buttons
+            {t('settings.accentButtons')}
           </label>
           <div className="mt-4 lg:hidden">{previewCard}</div>
         </Group>
 
-        <Group id="type" title="Typography" description="Set by the design system.">
+        <Group id="type" title={t('settings.typography')} description={t('settings.typographyBody')}>
           <dl className="grid gap-4 sm:grid-cols-2">
-            <Fact label="Interface">
-              <span className="block text-base">San Francisco, with Inter elsewhere</span>
-              <span className="block text-xs text-muted-foreground">Weights 400–700, every title and label</span>
+            <Fact label={t('settings.interface')}>
+              <span className="block text-base">{t('settings.interfaceFont')}</span>
+              <span className="block text-xs text-muted-foreground">{t('settings.interfaceWeights')}</span>
             </Fact>
-            <Fact label="Accent">
-              <span className="text-accent-italic block text-xl">One phrase per screen</span>
-              <span className="block text-xs text-muted-foreground">Instrument Serif italic</span>
+            <Fact label={t('settings.accentType')}>
+              <span className="text-accent-italic block text-xl">{t('settings.accentSample')}</span>
+              <span className="block text-xs text-muted-foreground">{t('settings.accentFont')}</span>
             </Fact>
           </dl>
         </Group>
 
-        <Group id="domain" title="Domain" description="Where guests find the booking site.">
+        <Group id="domain" title={t('settings.domain')} description={t('settings.domainBody')}>
           <dl className="grid gap-4">
-            <Row label="Booking site">
+            <Row label={t('settings.bookingSite')}>
               <span className="font-medium">book.asteriacove.com</span>
               <span className="inline-flex items-center gap-1.5 text-warning">
                 <WarningCircle weight="fill" className="size-4" aria-hidden="true" />
-                DNS not connected
+                {t('settings.dnsNotConnected')}
               </span>
             </Row>
-            <Row label="This demo">
+            <Row label={t('settings.thisDemo')}>
               <span className="font-medium">{demoHost || '—'}</span>
               <span className="inline-flex items-center gap-1.5 text-success">
                 <CheckCircle weight="fill" className="size-4" aria-hidden="true" />
-                Serving
+                {t('settings.serving')}
               </span>
             </Row>
-            <Row label="SSL certificate">
-              <span className="text-muted-foreground">Issued automatically once DNS points here</span>
+            <Row label={t('settings.ssl')}>
+              <span className="text-muted-foreground">{t('settings.sslBody')}</span>
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Clock weight="fill" className="size-4" aria-hidden="true" />
-                Pending
+                {t('settings.pending')}
               </span>
             </Row>
           </dl>
           <p className="mt-4 rounded-2xl bg-stone/60 px-4 py-3 text-sm text-muted-foreground">
-            To connect: add a CNAME record for <code className="text-foreground">book</code> pointing to{' '}
-            <code className="text-foreground">cname.spark-staysphere.example</code>.
+            <WithCode template={t('settings.cnameHint')} values={{ record: 'book', target: 'cname.spark-staysphere.example' }} />
           </p>
         </Group>
 
-        <Group id="languages" title="Languages & currency">
+        <Group id="languages" title={t('settings.languagesCurrency')}>
           <dl className="grid gap-4">
-            <Row label="Currency">
+            <Row label={t('settings.currency')}>
               <span className="font-medium">{hotel.currency}</span>
-              <span className="text-muted-foreground">Set by the property</span>
+              <span className="text-muted-foreground">{t('settings.setByProperty')}</span>
             </Row>
           </dl>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -208,12 +213,12 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
                 {language.live ? (
                   <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-success">
                     <CheckCircle weight="fill" className="size-4" aria-hidden="true" />
-                    Live
+                    {t('settings.live')}
                   </span>
                 ) : (
                   <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock weight="fill" className="size-4" aria-hidden="true" />
-                    Planned
+                    {t('settings.planned')}
                   </span>
                 )}
               </li>
@@ -221,11 +226,11 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
           </ul>
         </Group>
 
-        <Group id="emails" title="Guest emails" description="Confirmation emails are not sent in this demo.">
+        <Group id="emails" title={t('settings.guestEmails')} description={t('settings.guestEmailsBody')}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="sender-name" className="mb-1.5 block text-sm text-muted-foreground">
-                Sender name
+                {t('settings.senderName')}
               </label>
               <input
                 id="sender-name"
@@ -236,7 +241,7 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
             </div>
             <div>
               <label htmlFor="reply-to" className="mb-1.5 block text-sm text-muted-foreground">
-                Reply-to
+                {t('settings.replyTo')}
               </label>
               <input
                 id="reply-to"
@@ -249,26 +254,46 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
         </Group>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
-          <button
-            type="button"
-            onClick={() => setSaved('Demo — nothing was saved.')}
-            className={pill('primary')}
-          >
-            Save changes
+          <button type="button" onClick={() => setSaved(true)} className={pill('primary')}>
+            {t('settings.save')}
           </button>
           <p role="status" aria-live="polite" className="text-sm font-medium text-muted-foreground">
-            {saved}
+            {saved ? t('settings.demoNothingSaved') : ''}
           </p>
         </div>
       </div>
 
-      <aside aria-label="Preview" className="hidden lg:block">
+      <aside aria-label={t('settings.previewAside')} className="hidden lg:block">
         <div className="sticky top-6">
-          <p className="mb-3 text-sm text-muted-foreground">Preview of a room card on the booking site</p>
+          <p className="mb-3 text-sm text-muted-foreground">{t('settings.previewCaption')}</p>
           {previewCard}
         </div>
       </aside>
     </div>
+  );
+}
+
+/**
+ * A translated sentence with `<code>` in the middle of it: the template keeps
+ * its `{placeholders}` (`t()` leaves an unfilled one in place), and each is
+ * rendered as code here, so the words around them can sit in any order.
+ */
+function WithCode({ template, values }: { template: string; values: Record<string, string> }) {
+  const parts = template.split(/(\{\w+\})/);
+  return (
+    <>
+      {parts.map((part, index) => {
+        const name = part.match(/^\{(\w+)\}$/)?.[1];
+        const value = name ? values[name] : undefined;
+        return value !== undefined ? (
+          <code key={index} className="text-foreground">
+            {value}
+          </code>
+        ) : (
+          <React.Fragment key={index}>{part}</React.Fragment>
+        );
+      })}
+    </>
   );
 }
 
@@ -283,6 +308,7 @@ function PreviewCard({
   accent: Accent;
   accentButtons: boolean;
 }) {
+  const t = useAdminT();
   // The guest site's day scheme, whatever scheme this admin is in.
   const scheme = {
     '--accent': accent.swatch,
@@ -321,18 +347,20 @@ function PreviewCard({
         />
       ) : null}
       <div className="px-2 pt-4 pb-2">
-        <SectionLabel>Book direct</SectionLabel>
-        <p className="text-display mt-2 text-2xl">{preview?.roomName ?? 'Room type'}</p>
+        <SectionLabel>{t('settings.cardBookDirect')}</SectionLabel>
+        <p className="text-display mt-2 text-2xl">{preview?.roomName ?? t('settings.cardRoomType')}</p>
         {preview ? <p className="mt-1 text-sm text-muted-foreground">{preview.view}</p> : null}
         {preview ? (
           <p className="text-display mt-3 text-3xl">
             {preview.price}
-            <span className="ml-1 font-sans text-sm font-normal tracking-normal text-muted-foreground">/ night</span>
+            <span className="ml-1 font-sans text-sm font-normal tracking-normal text-muted-foreground">
+              {t('settings.cardPerNight')}
+            </span>
           </p>
         ) : null}
-        <p className="mt-1 text-sm font-medium text-accent-strong">Best rate when you book direct</p>
+        <p className="mt-1 text-sm font-medium text-accent-strong">{t('settings.cardBestRate')}</p>
         <span aria-hidden="true" className={pill('primary', 'mt-4 w-full')}>
-          Book this room
+          {t('settings.cardBook')}
         </span>
       </div>
     </div>

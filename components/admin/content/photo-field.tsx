@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { MediaPicker } from './media-picker';
 
@@ -14,6 +15,7 @@ import { MediaPicker } from './media-picker';
  * it's the whole picture rather than one of several.
  */
 export function PhotoField({ name, initial, assets }: { name: string; initial: string; assets: MediaAsset[] }) {
+  const t = useAdminT();
   const [url, setUrl] = React.useState(initial);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const asset = React.useMemo(() => assets.find((candidate) => candidate.url === url), [assets, url]);
@@ -32,7 +34,7 @@ export function PhotoField({ name, initial, assets }: { name: string; initial: s
         )}
       </span>
       <button type="button" onClick={() => setPickerOpen(true)} className={pill('secondary', 'self-start')}>
-        {asset ? 'Change photo' : 'Add a photo'}
+        {asset ? t('media.changePhoto') : t('media.addPhoto')}
       </button>
 
       <MediaPicker

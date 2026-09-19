@@ -7,6 +7,7 @@ import { Menu } from '@base-ui/react/menu';
 import { ArrowPathIcon, EllipsisHorizontalIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { Modal } from '@/components/site/modal';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ interface RowActionsProps {
   label: string;
   editHref: string;
   deleteAction: (id: string, expectedVersion: number) => Promise<ContentFormState>;
+  /** Already in the team member's language. */
   confirmMessage: string;
   /** Set when the service would refuse the delete anyway; the item shows disabled with this reason. */
   deleteBlockedReason?: string;
@@ -34,6 +36,7 @@ const itemClass =
  * service enforces on its own (a booking against it, say) comes back there.
  */
 export function RowActions({ id, version, label, editHref, deleteAction, confirmMessage, deleteBlockedReason }: RowActionsProps) {
+  const t = useAdminT();
   const router = useRouter();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -50,7 +53,7 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
     setPending(false);
     if (result.status === 'success') {
       setConfirming(false);
-      toast.success(result.message || `${label} removed.`);
+      toast.success(result.message || t('form.labelRemoved', { label }));
       router.refresh();
     } else {
       setError(result.message);
@@ -65,7 +68,7 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
           openOnHover
           delay={80}
           closeDelay={150}
-          aria-label={`Actions for ${label}`}
+          aria-label={t('form.actionsFor', { label })}
           className="inline-flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-stone hover:text-foreground data-popup-open:bg-stone data-popup-open:text-foreground"
         >
           <EllipsisHorizontalIcon className="size-5" aria-hidden="true" />
@@ -73,9 +76,9 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50 outline-none">
             <Menu.Popup className="min-w-44 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
-              <Menu.LinkItem render={<Link href={editHref} />} className={itemClass}>
+              <Menu.LinkItem render={<Link href={editHref} />} closeOnClick className={itemClass}>
                 <PencilSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                Edit
+                {t('form.edit')}
               </Menu.LinkItem>
               <Menu.Item
                 disabled={Boolean(deleteBlockedReason)}
@@ -84,7 +87,7 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
               >
                 <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
                 <span className="flex flex-col py-2 text-left">
-                  Delete
+                  {t('form.delete')}
                   {deleteBlockedReason ? (
                     <span className="text-xs text-muted-foreground">{deleteBlockedReason}</span>
                   ) : null}
@@ -95,7 +98,7 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
         </Menu.Portal>
       </Menu.Root>
 
-      <Modal open={confirming} onClose={close} title={`Remove ${label}`}>
+      <Modal open={confirming} onClose={close} title={t('form.removeLabel', { label })}>
         <p className="text-sm">{confirmMessage}</p>
         {error ? (
           <p role="alert" className="mt-3 text-sm font-medium text-danger">
@@ -105,10 +108,10 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
         <div className="mt-5 flex flex-wrap gap-3">
           <button type="button" onClick={remove} disabled={pending} className={pill('primary')}>
             {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-            Remove
+            {t('form.remove')}
           </button>
           <button type="button" onClick={close} className={pill('secondary')}>
-            Keep it
+            {t('form.keepIt')}
           </button>
         </div>
       </Modal>

@@ -2,8 +2,9 @@
 
 import { contentService } from '@/lib/application/container';
 import type { HotelContentInput } from '@/lib/application/content-service';
-import type { HotelFacility } from '@/lib/domain/schemas';
-import { formStateFromResult, parseJsonList, type ContentFormState } from '../_lib/form-state';
+import { getAdminT } from '@/lib/i18n/admin/server';
+import type { FacilityIcon, HotelFacility } from '@/lib/domain/schemas';
+import { formStateFromError, formStateFromResult, parseJsonList, type ContentFormState } from '../_lib/form-state';
 import { revalidateContent } from '../_lib/revalidate';
 
 const AREA_FIELD = /^areas\.([^.]+)\.(name|description|photoAlt)$/;
@@ -64,5 +65,21 @@ export async function updateHotelAction(
   const expectedVersion = Number(formData.get('version'));
   const result = await contentService.updateHotel(input, expectedVersion);
   if (result.ok) revalidateContent();
-  return formStateFromResult(result, 'Hotel details saved.');
+  const t = await getAdminT();
+  return formStateFromResult(result, t('hotel.saved'), t);
+}
+
+export type AddFacilityState =
+  | { status: 'success'; facilities: HotelFacility[] }
+  | { status: 'error'; message: string };
+
+/** `RoomFacilitiesPicker`'s own "add new" — see `ContentService.addFacility`'s doc comment. */
+export async function addFacilityAction(icon: FacilityIcon, name: string): Promise<AddFacilityState> {
+  const result = await contentService.addFacility(icon, name);
+  if (!result.ok) {
+    const t = await getAdminT();
+    return { status: 'error', message: formStateFromError(result.error, t).message };
+  }
+  revalidateContent();
+  return { status: 'success', facilities: result.value.facilities };
 }

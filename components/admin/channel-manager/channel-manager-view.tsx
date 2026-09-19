@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Field, Select, TextInput } from '@/components/admin/content/fields';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
+import type { AdminT } from '@/lib/i18n/admin/translate';
+import { pluralForm } from '@/lib/i18n/plural';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
@@ -38,15 +42,57 @@ function uniqueChannelId(base: string, taken: ReadonlySet<string>): string {
 }
 
 /** What "Bookings pulled" says for a channel, by how it actually connects — built-in demo channels have no `connection` and keep the original copy. */
-function bookingsPulledLabel(channel: Channel): string {
+function bookingsPulledKey(channel: Channel): AdminTranslationKey {
   switch (channel.connection?.method) {
     case 'one_way':
-      return 'Not pulled — availability only';
+      return 'channel.pulledOneWay';
     case 'feed':
-      return 'By email, as they come in';
+      return 'channel.pulledFeed';
     default:
-      return 'Every 5 minutes';
+      return 'channel.pulledEvery5';
   }
+}
+
+/**
+ * The vocabulary `channel-data.ts` describes a channel in — its kind, its
+ * markets, how it connects — keyed from those English values so the data file
+ * stays the one source. A market a team member typed for a custom channel is
+ * theirs and shows as typed.
+ */
+const KIND_KEY: Record<(typeof CHANNEL_KINDS)[number] | 'Business travel', AdminTranslationKey> = {
+  OTA: 'channel.kindOta',
+  Metasearch: 'channel.kindMetasearch',
+  'Home-sharing': 'channel.kindHomeSharing',
+  'Business travel': 'channel.kindBusinessTravel',
+  Wholesaler: 'channel.kindWholesaler',
+  'Corporate / business travel': 'channel.kindCorporate',
+  GDS: 'channel.kindGds',
+  Other: 'channel.kindOther',
+};
+
+const MARKET_KEY: Record<string, AdminTranslationKey> = {
+  Worldwide: 'channel.marketWorldwide',
+  Europe: 'channel.marketEurope',
+  'Asia-Pacific': 'channel.marketAsiaPacific',
+  'Asia, Europe': 'channel.marketAsiaEurope',
+  'US, Europe': 'channel.marketUsEurope',
+  'Latin America': 'channel.marketLatinAmerica',
+};
+
+const METHOD_KEY: Record<ConnectionMethod, { label: AdminTranslationKey; hint: AdminTranslationKey }> = {
+  two_way: { label: 'channel.methodTwoWay', hint: 'channel.methodTwoWayHint' },
+  one_way: { label: 'channel.methodOneWay', hint: 'channel.methodOneWayHint' },
+  feed: { label: 'channel.methodFeed', hint: 'channel.methodFeedHint' },
+};
+
+function kindLabel(kind: string, t: AdminT): string {
+  const key = (KIND_KEY as Record<string, AdminTranslationKey | undefined>)[kind];
+  return key ? t(key) : kind;
+}
+
+function marketsLabel(markets: string, t: AdminT): string {
+  const key = MARKET_KEY[markets];
+  return key ? t(key) : markets;
 }
 
 /**
@@ -55,6 +101,8 @@ function bookingsPulledLabel(channel: Channel): string {
  * Connecting or disconnecting a channel is local state — nothing leaves the page.
  */
 export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount: number; rateCount: number }) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
   const [customChannels, setCustomChannels] = React.useState<Channel[]>([]);
   const [connected, setConnected] = React.useState<string[]>(initiallyConnected);
   const [adding, setAdding] = React.useState(false);
@@ -76,37 +124,46 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
 
   const connect = (channel: Channel) => {
     setConnected((current) => [...current, channel.id]);
-    toast.success(`${channel.name} connected.`);
+    toast.success(t('channel.connectedToast', { name: channel.name }));
     closeAdding();
   };
 
   const addCustom = (channel: Channel) => {
     setCustomChannels((current) => [...current, channel]);
     setConnected((current) => [...current, channel.id]);
-    toast.success(`${channel.name} connected.`);
+    toast.success(t('channel.connectedToast', { name: channel.name }));
     setCustomOpen(false);
   };
 
   const disconnect = (channel: Channel) => {
     setConnected((current) => current.filter((id) => id !== channel.id));
-    toast.success(`${channel.name} disconnected.`);
+    toast.success(t('channel.disconnectedToast', { name: channel.name }));
     setViewing(null);
   };
 
   return (
     <>
       <AdminPageHeader
-        title="Channel Manager"
-        description={`${connectedChannels.length} of ${channels.length} channels connected`}
+        title={t('nav.channelManager')}
+        description={t('channel.connectedCount', {
+          connected: connectedChannels.length,
+          total: channels.length,
+          channels: pluralForm(locale, channels.length, {
+            one: t('channel.channelOne'),
+            few: t('channel.channelFew'),
+            many: t('channel.channelMany'),
+            other: t('channel.channelMany'),
+          }),
+        })}
         actions={
           <>
             <button type="button" onClick={() => setCustomOpen(true)} className={pill('secondary')}>
               <PlusIcon className="size-4" aria-hidden="true" />
-              Add custom channel
+              {t('channel.addCustom')}
             </button>
             <button type="button" onClick={() => setAdding(true)} className={pill('primary')}>
               <PlusIcon className="size-4" aria-hidden="true" />
-              Add channel
+              {t('channel.add')}
             </button>
           </>
         }
@@ -115,57 +172,64 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
       <section aria-labelledby="channex-heading" className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4 sm:px-6">
           <h2 id="channex-heading" className="font-medium">
-            Channex connection
+            {t('channel.channexConnection')}
           </h2>
-          <span className={tag('bg-success/10 text-success')}>Live (mock)</span>
+          <span className={tag('bg-success/10 text-success')}>{t('channel.liveMock')}</span>
         </div>
         <ol className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
-          <Step title="Property ID" action={<span className="text-xs text-muted-foreground">Synced every 5 minutes</span>}>
+          <Step
+            title={t('channel.propertyId')}
+            doneLabel={t('channel.stepDone')}
+            action={<span className="text-xs text-muted-foreground">{t('channel.syncedEvery5')}</span>}
+          >
             <span className="font-mono text-xs break-all">{channexPropertyId}</span>
           </Step>
           <Step
-            title="Room types"
+            title={t('channel.roomTypes')}
+            doneLabel={t('channel.stepDone')}
             action={
               <Link href="/admin/content" className="text-sm font-medium hover:text-accent-strong">
-                Manage
+                {t('channel.manage')}
               </Link>
             }
           >
-            {roomTypeCount} room types mapped, each with its own availability.
+            {t('channel.roomTypesMapped', { count: roomTypeCount })}
           </Step>
           <Step
-            title="Room rates"
+            title={t('channel.roomRates')}
+            doneLabel={t('channel.stepDone')}
             action={
               <Link href="/admin/rates" className="text-sm font-medium hover:text-accent-strong">
-                Manage
+                {t('channel.manage')}
               </Link>
             }
           >
-            {rateCount} rate plans and their meal conditions sent to every channel.
+            {t('channel.ratePlansSent', { count: rateCount })}
           </Step>
           <Step
-            title="Restrictions"
+            title={t('channel.restrictions')}
+            doneLabel={t('channel.stepDone')}
             action={
               <Link href="/admin/rates" className={pill('secondary', 'min-h-9 px-4')}>
-                Set restrictions
+                {t('channel.setRestrictions')}
               </Link>
             }
           >
-            Stop-sells and last-room overrides apply on every channel at once.
+            {t('channel.restrictionsBody')}
           </Step>
         </ol>
       </section>
 
       <section aria-labelledby="channels-heading" className="mt-8">
         <h2 id="channels-heading" className="font-medium">
-          Connected channels
+          {t('channel.connected')}
         </h2>
         {connectedChannels.length === 0 ? (
           <div className="mt-3 flex flex-col items-center gap-3 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
-            <p className="text-sm text-muted-foreground">No channels connected. Add one to start selling through it.</p>
+            <p className="text-sm text-muted-foreground">{t('channel.noneConnected')}</p>
             <button type="button" onClick={() => setAdding(true)} className={pill('primary')}>
               <PlusIcon className="size-4" aria-hidden="true" />
-              Add channel
+              {t('channel.add')}
             </button>
           </div>
         ) : (
@@ -178,17 +242,17 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
                     <p className="font-medium">{channel.name}</p>
                     <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-success">
                       <CheckCircle weight="fill" className="size-3.5" aria-hidden="true" />
-                      Connected
+                      {t('channel.connectedStatus')}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setViewing(channel)}
+                  aria-label={t('channel.viewInfoFor', { name: channel.name })}
                   className="cursor-pointer border-t border-border py-3 text-sm font-medium transition-colors hover:bg-stone"
                 >
-                  View info
-                  <span className="sr-only"> for {channel.name}</span>
+                  {t('channel.viewInfo')}
                 </button>
               </li>
             ))}
@@ -196,7 +260,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         )}
       </section>
 
-      <Modal open={adding} onClose={closeAdding} title="Add channel">
+      <Modal open={adding} onClose={closeAdding} title={t('channel.add')}>
         <div className="relative">
           <MagnifyingGlassIcon
             className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
@@ -206,15 +270,15 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search channels"
-            aria-label="Search channels"
+            placeholder={t('channel.searchChannels')}
+            aria-label={t('channel.searchChannels')}
             className={cn(fieldClass, 'pl-10')}
           />
         </div>
         <ul className="mt-4 grid gap-1">
           {available.length === 0 ? (
             <li className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-              {query ? 'No channels match.' : 'Every channel is already connected.'}
+              {query ? t('channel.noMatch') : t('channel.allConnected')}
             </li>
           ) : (
             available.map((channel) => (
@@ -223,12 +287,16 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{channel.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {channel.kind} · {channel.markets}
+                    {kindLabel(channel.kind, t)} · {marketsLabel(channel.markets, t)}
                   </span>
                 </span>
-                <button type="button" onClick={() => connect(channel)} className={pill('secondary', 'min-h-9 px-4')}>
-                  Connect
-                  <span className="sr-only"> {channel.name}</span>
+                <button
+                  type="button"
+                  onClick={() => connect(channel)}
+                  aria-label={t('channel.connectName', { name: channel.name })}
+                  className={pill('secondary', 'min-h-9 px-4')}
+                >
+                  {t('channel.connect')}
                 </button>
               </li>
             ))
@@ -243,7 +311,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
         existingIds={new Set(channels.map((channel) => channel.id))}
       />
 
-      <Modal open={viewing !== null} onClose={() => setViewing(null)} title={viewing?.name ?? 'Channel'}>
+      <Modal open={viewing !== null} onClose={() => setViewing(null)} title={viewing?.name ?? t('channel.fallbackTitle')}>
         {viewing ? (
           <div>
             <div className="flex items-center gap-3">
@@ -252,21 +320,23 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
                 <p className="font-medium">{viewing.name}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-success">
                   <CheckCircle weight="fill" className="size-3.5" aria-hidden="true" />
-                  Connected · last sync 4 minutes ago
+                  {t('channel.connectedLastSync')}
                 </p>
               </div>
             </div>
             <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-              <Fact label="Channel type">{viewing.kind}</Fact>
-              <Fact label="Markets">{viewing.markets}</Fact>
-              <Fact label="Commission">{viewing.commission === 0 ? 'Cost per click' : `${viewing.commission}%`}</Fact>
-              <Fact label="Room types mapped">
-                {roomTypeCount} of {roomTypeCount}
+              <Fact label={t('channel.type')}>{kindLabel(viewing.kind, t)}</Fact>
+              <Fact label={t('channel.markets')}>{marketsLabel(viewing.markets, t)}</Fact>
+              <Fact label={t('channel.commission')}>
+                {viewing.commission === 0 ? t('channel.costPerClick') : `${viewing.commission}%`}
               </Fact>
-              <Fact label="Rate plans mapped">
-                {rateCount} of {rateCount}
+              <Fact label={t('channel.roomTypesMappedLabel')}>
+                {t('channel.ofMapped', { mapped: roomTypeCount, total: roomTypeCount })}
               </Fact>
-              <Fact label="Bookings pulled">{bookingsPulledLabel(viewing)}</Fact>
+              <Fact label={t('channel.ratePlansMappedLabel')}>
+                {t('channel.ofMapped', { mapped: rateCount, total: rateCount })}
+              </Fact>
+              <Fact label={t('channel.bookingsPulled')}>{t(bookingsPulledKey(viewing))}</Fact>
             </dl>
             <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
               <button
@@ -274,10 +344,10 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
                 onClick={() => disconnect(viewing)}
                 className={pill('ghost', 'text-danger hover:bg-danger/10')}
               >
-                Disconnect
+                {t('channel.disconnect')}
               </button>
               <button type="button" onClick={() => setViewing(null)} className={pill('primary', 'ml-auto')}>
-                Done
+                {t('channel.done')}
               </button>
             </div>
           </div>
@@ -287,12 +357,22 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
   );
 }
 
-function Step({ title, action, children }: { title: string; action: React.ReactNode; children: React.ReactNode }) {
+function Step({
+  title,
+  doneLabel,
+  action,
+  children,
+}: {
+  title: string;
+  doneLabel: string;
+  action: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <li className="flex flex-col gap-2 bg-card p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-medium">{title}</h3>
-        <CheckCircle weight="fill" className="size-6 shrink-0 text-success" aria-label="Done" />
+        <CheckCircle weight="fill" className="size-6 shrink-0 text-success" aria-label={doneLabel} />
       </div>
       <p className="flex-1 text-sm text-muted-foreground">{children}</p>
       <div className="mt-2">{action}</div>
@@ -342,6 +422,7 @@ function CustomChannelModal({
   /** Every id already on the page, built-in or custom — so a second channel with the same name gets its own id. */
   existingIds: ReadonlySet<string>;
 }) {
+  const t = useAdminT();
   const [name, setName] = React.useState('');
   const [kind, setKind] = React.useState<(typeof CHANNEL_KINDS)[number]>('OTA');
   const [markets, setMarkets] = React.useState('');
@@ -371,22 +452,21 @@ function CustomChannelModal({
     onClose();
   };
 
-  const methodMeta = CONNECTION_METHODS.find((option) => option.value === method)!;
   const needsCredentials = method === 'two_way' || method === 'one_way';
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Enter the channel’s name.');
+      setError(t('channel.errorName'));
       return;
     }
     if (needsCredentials && !endpoint.trim()) {
-      setError('Enter the endpoint this channel connects to.');
+      setError(t('channel.errorEndpoint'));
       return;
     }
     if (!needsCredentials && !email.trim()) {
-      setError('Enter where booking notifications should go.');
+      setError(t('channel.errorEmail'));
       return;
     }
     const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'channel';
@@ -399,6 +479,7 @@ function CustomChannelModal({
       hue,
       kind,
       commission: Number(commission) || 0,
+      // The English value, like the built-in channels' — `marketsLabel` translates it on display.
       markets: markets.trim() || 'Worldwide',
       connection: needsCredentials
         ? { method, endpoint: endpoint.trim() }
@@ -408,43 +489,39 @@ function CustomChannelModal({
   };
 
   return (
-    <Modal open={open} onClose={close} title="Add custom channel" className="sm:max-w-xl">
+    <Modal open={open} onClose={close} title={t('channel.addCustom')} className="sm:max-w-xl">
       <form onSubmit={submit} className="grid gap-5">
-        <Field id="custom-channel-name" label="Channel name">
+        <Field id="custom-channel-name" label={t('channel.name')}>
           <TextInput
             id="custom-channel-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Nordic Stays"
+            placeholder={t('channel.namePlaceholder')}
             required
           />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="custom-channel-kind" label="Channel type">
+          <Field id="custom-channel-kind" label={t('channel.type')}>
             <Select id="custom-channel-kind" value={kind} onChange={(value) => setKind(value as typeof kind)}>
               {CHANNEL_KINDS.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {t(KIND_KEY[option])}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field id="custom-channel-markets" label="Markets" hint="Optional — defaults to Worldwide.">
+          <Field id="custom-channel-markets" label={t('channel.markets')} hint={t('channel.marketsHint')}>
             <TextInput
               id="custom-channel-markets"
               value={markets}
               onChange={(event) => setMarkets(event.target.value)}
-              placeholder="Worldwide"
+              placeholder={t('channel.marketWorldwide')}
             />
           </Field>
         </div>
 
-        <Field
-          id="custom-channel-commission"
-          label="Commission"
-          hint="As a percentage of the booking. Leave blank for cost-per-click or a flat fee."
-        >
+        <Field id="custom-channel-commission" label={t('channel.commission')} hint={t('channel.commissionHint')}>
           <TextInput
             id="custom-channel-commission"
             type="number"
@@ -461,7 +538,7 @@ function CustomChannelModal({
 
         <div role="group" aria-labelledby="custom-channel-connection-heading" className="grid gap-2">
           <h3 id="custom-channel-connection-heading" className="text-sm text-muted-foreground">
-            How it connects
+            {t('channel.howConnects')}
           </h3>
           <div className="grid gap-2">
             {CONNECTION_METHODS.map((option) => (
@@ -481,8 +558,8 @@ function CustomChannelModal({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-medium">{option.label}</span>
-                  <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                  <span className="block font-medium">{t(METHOD_KEY[option.value].label)}</span>
+                  <span className="block text-xs text-muted-foreground">{t(METHOD_KEY[option.value].hint)}</span>
                 </span>
               </label>
             ))}
@@ -492,9 +569,9 @@ function CustomChannelModal({
         {needsCredentials ? (
           <div role="group" aria-labelledby="custom-channel-credentials-heading" className="grid gap-4">
             <h3 id="custom-channel-credentials-heading" className="text-sm text-muted-foreground">
-              {methodMeta.label} credentials
+              {t('channel.credentials', { method: t(METHOD_KEY[method].label) })}
             </h3>
-            <Field id="custom-channel-endpoint" label="API endpoint">
+            <Field id="custom-channel-endpoint" label={t('channel.apiEndpoint')}>
               <TextInput
                 id="custom-channel-endpoint"
                 type="url"
@@ -504,15 +581,15 @@ function CustomChannelModal({
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="custom-channel-key" label="API key / Client ID">
+              <Field id="custom-channel-key" label={t('channel.apiKey')}>
                 <TextInput
                   id="custom-channel-key"
                   value={apiKey}
                   onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="Provided by the channel"
+                  placeholder={t('channel.apiKeyPlaceholder')}
                 />
               </Field>
-              <Field id="custom-channel-secret" label="Secret">
+              <Field id="custom-channel-secret" label={t('channel.secret')}>
                 <TextInput
                   id="custom-channel-secret"
                   type="password"
@@ -524,11 +601,7 @@ function CustomChannelModal({
             </div>
           </div>
         ) : (
-          <Field
-            id="custom-channel-email"
-            label="Booking notification email"
-            hint="Where a booking made on this channel gets sent, since there is no API to pull it from."
-          >
+          <Field id="custom-channel-email" label={t('channel.notificationEmail')} hint={t('channel.notificationEmailHint')}>
             <TextInput
               id="custom-channel-email"
               type="email"
@@ -545,16 +618,14 @@ function CustomChannelModal({
           </p>
         ) : null}
 
-        <p className="rounded-2xl bg-stone/60 px-4 py-3 text-sm text-muted-foreground">
-          Demo — nothing here is sent anywhere. Connecting adds the channel to this page only.
-        </p>
+        <p className="rounded-2xl bg-stone/60 px-4 py-3 text-sm text-muted-foreground">{t('channel.demoNote')}</p>
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" className={pill('primary')}>
-            Add channel
+            {t('channel.add')}
           </button>
           <button type="button" onClick={close} className={pill('secondary')}>
-            Cancel
+            {t('channel.cancel')}
           </button>
         </div>
       </form>

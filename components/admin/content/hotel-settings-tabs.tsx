@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
+import { useAdminT } from '@/lib/i18n/admin/context';
 
 const tabClass =
   'flex min-h-10 shrink-0 cursor-pointer items-center rounded-full px-4 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent data-active:bg-card data-active:text-foreground data-active:shadow-soft';
@@ -18,10 +19,11 @@ export interface HotelSettingsTab {
  * "Save hotel details" saves the whole hotel either way.
  */
 export function HotelSettingsTabs({ tabs }: { tabs: HotelSettingsTab[] }) {
+  const t = useAdminT();
   return (
     <Tabs.Root defaultValue={tabs[0]?.value}>
       <Tabs.List
-        aria-label="Hotel settings"
+        aria-label={t('hotel.tabsLabel')}
         className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-stone/60 p-1 sm:inline-flex"
       >
         {tabs.map((tab) => (

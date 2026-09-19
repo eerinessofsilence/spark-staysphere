@@ -1,10 +1,16 @@
 import type { Metadata } from 'next';
 import { catalogService, hotelRepository } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { AdminPage } from '@/components/admin/shell/admin-page';
 import { ChannelManagerView } from '@/components/admin/channel-manager/channel-manager-view';
 
-export const metadata: Metadata = { title: 'Channel Manager — Hotel admin | SPARK StaySphere 360' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.channelManager')) };
+}
+
 export const dynamic = 'force-dynamic';
 
 export default async function ChannelManagerPage() {
