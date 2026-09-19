@@ -7,27 +7,34 @@ import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
-import { formatDateRange, formatGuests, formatMoney, formatNights } from '@/lib/formatting';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import {
   stayBucket,
-  stayBucketLabels,
+  stayBucketKey,
   stayBuckets,
   staysOverlap,
   type StayBucket,
 } from '@/components/admin/operations/booking-buckets';
 import { BookingDatesFilter } from '@/components/admin/operations/booking-dates-filter';
 import { BookingRowActions } from '@/components/admin/operations/booking-row-actions';
-import { BookingStatusFilter } from '@/components/admin/operations/booking-status-filter';
+import { BookingSearchFilter } from '@/components/admin/operations/booking-search-filter';
+import { FilterPills } from '@/components/admin/operations/filter-pills';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
-export const metadata: Metadata = { title: 'Reservations — Hotel admin | SPARK StaySphere 360' };
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = adminT(await getAdminLocale());
+  return { title: adminPageTitle(t, t('nav.reservations')) };
+}
 
 type Filter = 'all' | StayBucket;
 
@@ -75,6 +82,8 @@ export default async function BookingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getAdminLocale();
+  const t = adminT(locale);
   const params = await searchParams;
   const query = typeof params.q === 'string' ? params.q.trim() : '';
   const filter = parseFilter(params.status);
@@ -108,27 +117,36 @@ export default async function BookingsPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Reservations" />
+      <AdminPageHeader title={t('nav.reservations')} />
 
-      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <BookingStatusFilter
+      {/* One row of compact controls on a phone — Filters, Any dates and
+          Search each stay their own natural width and wrap only if they
+          truly run out of room — rather than each claiming a full-width
+          row of its own. Past `lg:`, the original two-slot layout returns:
+          status pills on the left, dates and the plain search field on
+          the right. */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-between">
+        <FilterPills
+          label={t('ops.filterByStay')}
+          sheetTitle={t('ops.filterReservations')}
           options={filters.map((option) => ({
             key: option,
-            label: option === 'all' ? 'All' : stayBucketLabels[option],
+            label: option === 'all' ? t('bookings.all') : t(stayBucketKey[option]),
             count: counts[option],
             href: hrefFor(option, query, range),
             current: option === filter,
           }))}
         />
 
-        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
         <BookingDatesFilter from={range?.from ?? null} to={range?.to ?? null} />
-        <form role="search" action="/admin/bookings" method="get" className="flex w-full gap-2 lg:w-auto">
+        <BookingSearchFilter query={query} />
+        <form role="search" action="/admin/bookings" method="get" className="hidden gap-2 lg:flex lg:w-auto">
           {filter !== 'all' ? <input type="hidden" name="status" value={filter} /> : null}
           {range ? <input type="hidden" name="from" value={range.from} /> : null}
           {range ? <input type="hidden" name="to" value={range.to} /> : null}
           <label htmlFor="bookings-search" className="sr-only">
-            Search by booking number, guest, or email
+            {t('ops.searchLabel')}
           </label>
           <div className="relative min-w-0 flex-1 lg:w-56 lg:flex-none">
             <MagnifyingGlassIcon
@@ -140,12 +158,12 @@ export default async function BookingsPage({
               name="q"
               type="search"
               defaultValue={query}
-              placeholder="Booking number, guest, or email"
+              placeholder={t('ops.searchPlaceholder')}
               className={cn(fieldClass, 'pl-10')}
             />
           </div>
           <button type="submit" className={pill('secondary')}>
-            Search
+            {t('ops.search')}
           </button>
         </form>
         </div>
@@ -154,12 +172,12 @@ export default async function BookingsPage({
       <div className="mt-6">
         {sorted.length === 0 ? (
           <EmptyState
-            title="No bookings to show yet"
-            body="Demo bookings made on the guest site appear here with their guest, room, and payment — or fill the demo with sample stays: past, in house, upcoming and cancelled."
+            title={t('bookings.emptyTitle')}
+            body={t('bookings.emptyBody')}
             action={
               <div className="flex flex-wrap items-start justify-center gap-2">
                 <Link href="/rooms" className={pill('primary')}>
-                  Make a demo booking
+                  {t('ops.makeDemoBooking')}
                 </Link>
                 <SampleBookingsButton />
               </div>
@@ -168,32 +186,33 @@ export default async function BookingsPage({
         ) : rows.length === 0 ? (
           <EmptyState
             search
-            title="No bookings match"
+            title={t('bookings.noMatchTitle')}
             body={
               query
-                ? `Nothing matches “${query}” in this view.`
+                ? t('bookings.noMatchQuery', { query })
                 : range
-                  ? 'No stay has a night on those dates in this view.'
-                  : 'There are no bookings in this view.'
+                  ? t('bookings.noMatchDates')
+                  : t('bookings.noMatchView')
             }
             action={
               <Link href="/admin/bookings" className={pill('secondary')}>
-                Clear search and filters
+                {t('bookings.clearFilters')}
               </Link>
             }
           />
         ) : (
-          <TableCard caption="Reservations matching the current search and filter" className="min-w-[62rem]">
+          <div className="overflow-hidden rounded-[18px] bg-card shadow-soft">
+          <TableCard caption={t('bookings.tableCaption')} className="min-w-[62rem]" attached>
             <thead>
               <tr className="border-b border-border">
-                <Th>Booking number</Th>
-                <Th>Guest</Th>
-                <Th>Room</Th>
-                <Th>Stay</Th>
-                <Th className="text-right">Total</Th>
-                <Th>Status</Th>
+                <Th>{t('ops.thBookingNumber')}</Th>
+                <Th>{t('ops.thGuest')}</Th>
+                <Th>{t('ops.thRoom')}</Th>
+                <Th>{t('ops.thStay')}</Th>
+                <Th className="text-right">{t('ops.thTotal')}</Th>
+                <Th>{t('ops.thStatus')}</Th>
                 <Th className="w-14">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('ops.thActions')}</span>
                 </Th>
               </tr>
             </thead>
@@ -201,7 +220,11 @@ export default async function BookingsPage({
               {rows.map(({ booking, room }) => {
                 const canCancel = booking.status === 'confirmed' && booking.checkIn > today;
                 const cancelBlockedReason =
-                  booking.status === 'cancelled' ? 'Already cancelled' : !canCancel ? 'Stay has begun' : undefined;
+                  booking.status === 'cancelled'
+                    ? t('bookings.alreadyCancelled')
+                    : !canCancel
+                      ? t('bookings.stayBegun')
+                      : undefined;
                 return (
                 <tr
                   key={booking.id}
@@ -227,34 +250,36 @@ export default async function BookingsPage({
                     {roomNames.get(booking.roomTypeId) ?? booking.roomTypeId}
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       {room ? (
-                        <>
-                          Room {room.number}
-                          {booking.status === 'cancelled' ? (
-                            ' · released'
-                          ) : room.chosenByGuest ? (
-                            <>
-                              <PushPin weight="fill" className="size-3.5 text-foreground" aria-hidden="true" />
-                              <span className="sr-only">(chosen by the guest)</span>
-                            </>
-                          ) : null}
-                        </>
+                        booking.status === 'cancelled' ? (
+                          t('bookings.roomReleased', { room: lRoomNumber(room.number, locale) })
+                        ) : (
+                          <>
+                            {lRoomNumber(room.number, locale)}
+                            {room.chosenByGuest ? (
+                              <>
+                                <PushPin weight="fill" className="size-3.5 text-foreground" aria-hidden="true" />
+                                <span className="sr-only">{t('bookings.chosenByGuestSr')}</span>
+                              </>
+                            ) : null}
+                          </>
+                        )
                       ) : (
-                        'No room held'
+                        t('bookings.noRoomHeld')
                       )}
                     </span>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatDateRange(booking.checkIn, booking.checkOut)}
+                    {lDateRange(booking.checkIn, booking.checkOut, locale)}
                     <span className="block text-xs text-muted-foreground">
-                      {formatNights(nightsBetween(booking.checkIn, booking.checkOut))} ·{' '}
-                      {formatGuests(booking.adults, booking.children)}
+                      {lNights(nightsBetween(booking.checkIn, booking.checkOut), locale)} ·{' '}
+                      {lGuests(booking.adults, booking.children, locale)}
                     </span>
                   </Td>
                   <Td className="text-right font-medium tabular-nums">
-                    {formatMoney(booking.total, booking.currency)}
+                    {lMoney(booking.total, booking.currency, locale)}
                   </Td>
                   <Td>
-                    <BookingStatusBadge status={booking.status} />
+                    <BookingStatusBadge status={booking.status} stayState={booking.stayState} />
                   </Td>
                   <Td className="relative z-10 text-right">
                     <BookingRowActions
@@ -268,13 +293,15 @@ export default async function BookingsPage({
               })}
             </tbody>
           </TableCard>
+          <Pagination
+            attached
+            page={currentPage}
+            totalPages={totalPages}
+            total={visible.length}
+            hrefFor={(next) => hrefFor(filter, query, range, next)}
+          />
+          </div>
         )}
-        <Pagination
-          page={currentPage}
-          totalPages={totalPages}
-          total={visible.length}
-          hrefFor={(next) => hrefFor(filter, query, range, next)}
-        />
       </div>
     </AdminPage>
   );

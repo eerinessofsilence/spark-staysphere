@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addSampleBookings } from '@/app/admin/actions';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
 
@@ -14,6 +16,8 @@ import { toast } from '@/components/admin/shell/toast';
  */
 export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'primary' | 'secondary' }) {
   const [pending, startTransition] = React.useTransition();
+  const locale = useAdminLocale();
+  const t = useAdminT();
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -23,14 +27,24 @@ export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'pri
         onClick={() =>
           startTransition(async () => {
             const { created } = await addSampleBookings();
-            if (created > 0) toast.success(`${created} sample ${created === 1 ? 'booking' : 'bookings'} added.`);
-            else toast.error('Nothing added — the sample stays are already in, or their rooms are full.');
+            if (created > 0) {
+              toast.success(
+                pluralForm(locale, created, {
+                  one: t('ops.sampleAddedOne', { count: created }),
+                  few: t('ops.sampleAddedFew', { count: created }),
+                  many: t('ops.sampleAddedMany', { count: created }),
+                  other: t('ops.sampleAddedMany', { count: created }),
+                }),
+              );
+            } else {
+              toast.error(t('ops.sampleNothingAdded'));
+            }
           })
         }
         className={pill(variant)}
       >
         {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-        {pending ? 'Adding sample bookings…' : 'Add sample bookings'}
+        {pending ? t('ops.addingSample') : t('ops.addSample')}
       </button>
     </div>
   );

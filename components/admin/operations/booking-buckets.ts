@@ -1,5 +1,6 @@
 import type { StayBucket } from '@/lib/domain/availability';
 import type { Booking } from '@/lib/domain/schemas';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 
 // The rule itself lives in lib/domain so the guest trips list (which folds
 // `in_house` into its own "upcoming" tab) can share it — see
@@ -8,11 +9,12 @@ export { stayBucket, type StayBucket } from '@/lib/domain/availability';
 
 export const stayBuckets: StayBucket[] = ['upcoming', 'in_house', 'past', 'cancelled'];
 
-export const stayBucketLabels: Record<StayBucket, string> = {
-  upcoming: 'Upcoming',
-  in_house: 'In house',
-  past: 'Past',
-  cancelled: 'Cancelled',
+/** The bucket's name in the team member's language: `t(stayBucketKey(bucket))`. */
+export const stayBucketKey: Record<StayBucket, AdminTranslationKey> = {
+  upcoming: 'ops.bucketUpcoming',
+  in_house: 'ops.bucketInHouse',
+  past: 'ops.bucketPast',
+  cancelled: 'ops.bucketCancelled',
 };
 
 /**

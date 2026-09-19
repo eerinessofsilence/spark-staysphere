@@ -3,6 +3,10 @@
 import * as React from 'react';
 import { format, parseISO } from 'date-fns';
 import type { FrontDeskDay } from '@/lib/application/inventory-service';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminT } from '@/lib/i18n/admin/translate';
+import { DATE_FNS_LOCALES, lDateShort, lNights, lRoomCount } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locale';
 import { cn } from '@/lib/utils';
 
 const ticks = [0, 25, 50, 75, 100];
@@ -11,14 +15,24 @@ function share(occupied: number, totalRooms: number): number {
   return totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
 }
 
-function describe(day: FrontDeskDay, totalRooms: number, tonight: boolean): string {
-  const when = tonight ? `Tonight, ${format(parseISO(day.date), 'EEE d MMM')}` : format(parseISO(day.date), 'EEE d MMM');
-  return `${when}: ${day.occupied} of ${totalRooms} rooms occupied (${share(day.occupied, totalRooms)}%), ${day.arrivals} arriving, ${day.departures} leaving`;
+function describe(day: FrontDeskDay, totalRooms: number, tonight: boolean, t: AdminT, locale: Locale): string {
+  const date = lDateShort(day.date, locale);
+  return t('occupancy.describe', {
+    when: tonight ? t('occupancy.tonightWhen', { date }) : date,
+    occupied: day.occupied,
+    total: totalRooms,
+    share: share(day.occupied, totalRooms),
+    arrivals: day.arrivals,
+    departures: day.departures,
+  });
 }
 
 /** Tonight carries the accent as the active day; the rest stay in the neutral stone ink. */
 export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; totalRooms: number }) {
   const [active, setActive] = React.useState<number | null>(null);
+  const t = useAdminT();
+  const locale = useAdminLocale();
+  const dateFns = DATE_FNS_LOCALES[locale];
   const peak = days.reduce((best, day, index) => (day.occupied > (days[best]?.occupied ?? -1) ? index : best), 0);
   const shown = active === null ? undefined : days[active];
   const offset = active === null ? '-50%' : active < 2 ? '-12%' : active > days.length - 3 ? '-88%' : '-50%';
@@ -28,10 +42,8 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
   return (
     <figure className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
       <figcaption>
-        <h3 className="font-medium">Occupied rooms, next {days.length} nights</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Share of all {totalRooms} rooms, including simulated demand. Tonight is highlighted.
-        </p>
+        <h3 className="font-medium">{t('occupancy.title', { nights: lNights(days.length, locale) })}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{t('occupancy.body', { rooms: lRoomCount(totalRooms, locale) })}</p>
       </figcaption>
 
       <div className="mt-8 flex gap-2">
@@ -54,7 +66,7 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
               />
             ))}
 
-            <ol aria-label="Occupancy by night" className="absolute inset-0 flex">
+            <ol aria-label={t('occupancy.byNight')} className="absolute inset-0 flex">
               {days.map((day, index) => {
                 const value = share(day.occupied, totalRooms);
                 const tonight = index === 0;
@@ -63,7 +75,7 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
                   <li key={day.date} className="flex min-w-0 flex-1">
                     <button
                       type="button"
-                      aria-label={describe(day, totalRooms, tonight)}
+                      aria-label={describe(day, totalRooms, tonight, t, locale)}
                       onPointerEnter={() => setActive(index)}
                       onPointerLeave={() => setActive((current) => (current === index ? null : current))}
                       onFocus={() => setActive(index)}
@@ -104,11 +116,11 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
                 }}
               >
                 <p className="text-sm font-semibold">
-                  {shown.occupied} of {totalRooms} rooms · {share(shown.occupied, totalRooms)}%
+                  {t('occupancy.tooltipHead', { occupied: shown.occupied, total: totalRooms, share: share(shown.occupied, totalRooms) })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {active === 0 ? 'Tonight · ' : ''}
-                  {format(parseISO(shown.date), 'EEE d MMM')} · {shown.arrivals} arriving · {shown.departures} leaving
+                  {active === 0 ? `${t('occupancy.tonight')} · ` : ''}
+                  {t('occupancy.tooltipBody', { date: lDateShort(shown.date, locale), arrivals: shown.arrivals, departures: shown.departures })}
                 </p>
               </div>
             ) : null}
@@ -117,8 +129,10 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
           <ol aria-hidden="true" className="mt-2 flex">
             {days.map((day, index) => (
               <li key={day.date} className="min-w-0 flex-1 text-center text-[11px] leading-tight text-muted-foreground">
-                <span className="block sm:hidden">{format(parseISO(day.date), 'EEEEE')}</span>
-                <span className="hidden truncate sm:block">{index === 0 ? 'Today' : format(parseISO(day.date), 'EEE')}</span>
+                <span className="block sm:hidden">{format(parseISO(day.date), 'EEEEE', { locale: dateFns })}</span>
+                <span className="hidden truncate sm:block">
+                  {index === 0 ? t('occupancy.today') : format(parseISO(day.date), 'EEE', { locale: dateFns })}
+                </span>
                 <span className={cn('block tabular-nums', index === 0 && 'font-semibold text-foreground')}>
                   {format(parseISO(day.date), 'd')}
                 </span>
@@ -130,24 +144,24 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
 
       <details className="mt-5 border-t border-border pt-2 text-sm">
         <summary className="flex min-h-11 cursor-pointer items-center text-muted-foreground hover:text-foreground">
-          Show as a table
+          {t('occupancy.showTable')}
         </summary>
         <div className="relative mt-2 overflow-x-auto contain-inline-size">
           <table className="w-full min-w-[28rem] border-collapse text-sm">
-            <caption className="sr-only">Occupied rooms by night</caption>
+            <caption className="sr-only">{t('occupancy.tableCaption')}</caption>
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th scope="col" className="py-2 pr-4 font-normal">Night</th>
-                <th scope="col" className="py-2 pr-4 text-right font-normal">Occupied</th>
-                <th scope="col" className="py-2 pr-4 text-right font-normal">Share</th>
-                <th scope="col" className="py-2 pr-4 text-right font-normal">Arriving</th>
-                <th scope="col" className="py-2 text-right font-normal">Leaving</th>
+                <th scope="col" className="py-2 pr-4 font-normal">{t('occupancy.night')}</th>
+                <th scope="col" className="py-2 pr-4 text-right font-normal">{t('occupancy.occupied')}</th>
+                <th scope="col" className="py-2 pr-4 text-right font-normal">{t('occupancy.share')}</th>
+                <th scope="col" className="py-2 pr-4 text-right font-normal">{t('occupancy.arriving')}</th>
+                <th scope="col" className="py-2 text-right font-normal">{t('occupancy.leaving')}</th>
               </tr>
             </thead>
             <tbody>
               {days.map((day) => (
                 <tr key={day.date} className="border-b border-border last:border-b-0">
-                  <td className="py-2 pr-4">{format(parseISO(day.date), 'EEE d MMM')}</td>
+                  <td className="py-2 pr-4">{lDateShort(day.date, locale)}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">
                     {day.occupied} / {totalRooms}
                   </td>

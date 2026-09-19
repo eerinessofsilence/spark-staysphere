@@ -4,8 +4,9 @@ import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import { CalendarIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { format, parseISO } from 'date-fns';
-import { formatDateShort } from '@/lib/formatting';
+import { format, parseISO, type Locale as DateFnsLocale } from 'date-fns';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { DATE_FNS_LOCALES, lDateShort } from '@/lib/i18n/format';
 import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CALENDAR_CLASS_NAMES, CALENDAR_COMPONENTS } from '@/components/search/stay-dates-field';
@@ -17,13 +18,14 @@ const ISO = 'yyyy-MM-dd';
  * The applied range as short as it can be read: "7–13 Sep" inside one month, "28 Sep – 2 Oct" across
  * two, years only when they differ. The long form, weekdays and all, is the button's accessible name.
  */
-function rangeLabel(from: string, to: string | null): string {
+function rangeLabel(from: string, to: string | null, locale: DateFnsLocale): string {
   const start = parseISO(from);
   const end = parseISO(to ?? from);
-  if (!to || to === from) return format(start, 'd MMM');
-  if (format(start, 'MMM yyyy') === format(end, 'MMM yyyy')) return `${format(start, 'd')}–${format(end, 'd MMM')}`;
-  if (format(start, 'yyyy') === format(end, 'yyyy')) return `${format(start, 'd MMM')} – ${format(end, 'd MMM')}`;
-  return `${format(start, 'd MMM yyyy')} – ${format(end, 'd MMM yyyy')}`;
+  const day = (date: Date, pattern: string) => format(date, pattern, { locale });
+  if (!to || to === from) return day(start, 'd MMM');
+  if (day(start, 'MMM yyyy') === day(end, 'MMM yyyy')) return `${day(start, 'd')}–${day(end, 'd MMM')}`;
+  if (day(start, 'yyyy') === day(end, 'yyyy')) return `${day(start, 'd MMM')} – ${day(end, 'd MMM')}`;
+  return `${day(start, 'd MMM yyyy')} – ${day(end, 'd MMM yyyy')}`;
 }
 
 /**
@@ -38,6 +40,9 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const locale = useAdminLocale();
+  const t = useAdminT();
+  const dateFnsLocale = DATE_FNS_LOCALES[locale];
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DateRange | undefined>(undefined);
   const [months, setMonths] = React.useState(1);
@@ -70,11 +75,11 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
     router.push(search ? `${pathname}?${search}` : pathname);
   }
 
-  const applied = from ? rangeLabel(from, to) : null;
+  const applied = from ? rangeLabel(from, to, dateFnsLocale) : null;
   const appliedInFull = from
     ? to && to !== from
-      ? `${formatDateShort(from)} – ${formatDateShort(to)}`
-      : formatDateShort(from)
+      ? `${lDateShort(from, locale)} – ${lDateShort(to, locale)}`
+      : lDateShort(from, locale)
     : null;
   const draftFrom = draft?.from ? format(draft.from, ISO) : null;
   const draftTo = draft?.to ? format(draft.to, ISO) : draftFrom;
@@ -87,7 +92,7 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={appliedInFull ? `Stay dates: ${appliedInFull}. Change them` : 'Filter by stay dates'}
+          aria-label={appliedInFull ? t('ops.stayDatesChange', { range: appliedInFull }) : t('ops.filterByStayDates')}
           className={cn(
             'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors',
             applied
@@ -96,13 +101,13 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
           )}
         >
           <CalendarIcon className="size-4 shrink-0" aria-hidden="true" />
-          {applied ?? 'Any dates'}
+          {applied ?? t('ops.anyDates')}
         </button>
         {applied ? (
           <button
             type="button"
             onClick={() => navigate(null)}
-            aria-label="Clear stay dates"
+            aria-label={t('ops.clearStayDates')}
             className={iconButton('light')}
           >
             <XMarkIcon className="size-4" aria-hidden="true" />
@@ -110,7 +115,7 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
         ) : null}
       </div>
 
-      <Modal open={open} onClose={close} title="Filter by stay dates" className="sm:max-w-[44rem]">
+      <Modal open={open} onClose={close} title={t('ops.filterByStayDates')} className="sm:max-w-[44rem]">
         <DayPicker
           mode="range"
           selected={draft}
@@ -119,6 +124,7 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
           showOutsideDays={false}
           weekStartsOn={1}
           fixedWeeks
+          locale={dateFnsLocale}
           defaultMonth={draft?.from ?? (from ? parseISO(from) : new Date())}
           classNames={CALENDAR_CLASS_NAMES}
           components={CALENDAR_COMPONENTS}
@@ -127,10 +133,10 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
         <div className="mt-4 border-t border-border pt-4">
           <p role="status" className="text-center text-sm text-muted-foreground">
             {draftFrom && draftTo && draftTo !== draftFrom
-              ? `Stays with a night between ${formatDateShort(draftFrom)} and ${formatDateShort(draftTo)}.`
+              ? t('ops.datesBetween', { from: lDateShort(draftFrom, locale), to: lDateShort(draftTo, locale) })
               : draftFrom
-                ? `Stays with a night on ${formatDateShort(draftFrom)}. Pick a second day for a range.`
-                : 'Pick the first day, then the last.'}
+                ? t('ops.datesOn', { date: lDateShort(draftFrom, locale) })
+                : t('ops.datesPick')}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <button
@@ -144,7 +150,7 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
               }}
               className={pill('ghost', 'min-h-10 px-4')}
             >
-              Clear dates
+              {t('ops.clearDates')}
             </button>
             <button
               type="button"
@@ -156,7 +162,7 @@ export function BookingDatesFilter({ from, to }: { from: string | null; to: stri
               }}
               className={pill('primary', 'min-h-10 px-5')}
             >
-              Show stays
+              {t('ops.showStays')}
             </button>
           </div>
         </div>

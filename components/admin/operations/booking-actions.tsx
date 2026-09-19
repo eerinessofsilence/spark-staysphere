@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { cancelBookingAction } from '@/app/admin/bookings/actions';
 import { Modal } from '@/components/site/modal';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
 
@@ -18,9 +19,12 @@ export function BookingActions({
   note: string | null;
 }) {
   const router = useRouter();
+  const t = useAdminT();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const close = React.useCallback(() => setConfirming(false), []);
+  // The question keeps its placeholder so the reference can be set in bold in the middle of it.
+  const [questionBefore, questionAfter] = t('ops.cancelConfirmQuestion').split('{reference}');
 
   const cancel = async () => {
     setPending(true);
@@ -37,28 +41,29 @@ export function BookingActions({
       <div className="flex flex-wrap items-center gap-3">
         {canCancel ? (
           <button type="button" onClick={() => setConfirming(true)} className={pill('secondary')}>
-            Cancel booking
+            {t('ops.cancelBooking')}
           </button>
         ) : null}
         <a href={`/booking/${reference}`} target="_blank" rel="noreferrer" className={pill('ghost')}>
-          Guest&apos;s confirmation page
+          {t('ops.guestConfirmationPage')}
           <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
         </a>
       </div>
       {note ? <p className="text-sm text-muted-foreground">{note}</p> : null}
 
-      <Modal open={confirming} onClose={close} title="Cancel booking">
+      <Modal open={confirming} onClose={close} title={t('ops.cancelBooking')}>
         <p className="text-sm">
-          Cancel <span className="font-semibold">{reference}</span>? Its nights go back on sale straight
-          away. This demo moves no money, so there is no refund to issue.
+          {questionBefore}
+          <span className="font-semibold">{reference}</span>
+          {questionAfter} {t('ops.cancelConfirmBody')}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <button type="button" onClick={cancel} disabled={pending} className={pill('primary')}>
             {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-            Yes, cancel booking
+            {t('ops.cancelConfirmYes')}
           </button>
           <button type="button" onClick={close} className={pill('secondary')}>
-            Keep booking
+            {t('ops.keepBooking')}
           </button>
         </div>
       </Modal>

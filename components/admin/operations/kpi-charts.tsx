@@ -1,3 +1,6 @@
+'use client';
+
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { cn } from '@/lib/utils';
 
 /**
@@ -26,6 +29,7 @@ export function OccupancyGauge({
 }) {
   const percent = Math.round(clampShare(share) * 100);
   const delta = tomorrowShare === null ? null : Math.round(clampShare(tomorrowShare) * 100) - percent;
+  const t = useAdminT();
   return (
     <div className="mt-4">
       <div className="relative mx-auto w-full max-w-44">
@@ -50,16 +54,15 @@ export function OccupancyGauge({
         </svg>
         <div className="absolute inset-x-0 bottom-0 text-center">
           <span className="text-display block text-2xl leading-none tabular-nums">{percent}%</span>
-          <span className="mt-0.5 block text-[11px] text-muted-foreground">occupancy</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">{t('kpi.occupancy')}</span>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs">
-        <Chip tone="blue">↓ {arrivals} in</Chip>
-        <Chip tone="stone">↑ {departures} out</Chip>
+        <Chip tone="blue">{t('kpi.in', { count: arrivals })}</Chip>
+        <Chip tone="stone">{t('kpi.out', { count: departures })}</Chip>
         {delta !== null ? (
           <Chip tone={delta > 0 ? 'blue' : delta < 0 ? 'rose' : 'stone'}>
-            {delta > 0 ? '+' : ''}
-            {delta} pt tomorrow
+            {t('kpi.tomorrow', { delta: `${delta > 0 ? '+' : ''}${delta}` })}
           </Chip>
         ) : null}
       </div>
