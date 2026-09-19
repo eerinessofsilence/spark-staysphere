@@ -1,11 +1,19 @@
-import { format, parseISO } from 'date-fns';
+import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 // Type-only: `RoomFilters` is an application-layer shape, reused here rather
 // than restated so the assistant's summary sentence and the catalog page
 // describe the same filter object with one vocabulary.
 import type { RoomFilters } from './application/catalog-service';
+import type { AdminApplyResult, AdminAskResult } from './application/admin-assistant-service';
+import type { AdminDraft, AdminPage, AdminProposal, RoomTypeDraftField } from './domain/admin-assistant';
 import type { RoomCategory } from './domain/room-attributes';
 import type { Facade } from './domain/room-units';
 import type { AddOn, Booking, Currency, PaymentMethod, RoomStatus, RoomType, StayCriteria } from './domain/schemas';
+import type { AdminLocale } from './i18n/admin/locale';
+import { translateAdmin } from './i18n/admin/translate';
+import type { AdminTranslationKey } from './i18n/admin/dictionaries';
+import { lBed, lFloor, lMoney, lView, STATUS_LABEL } from './i18n/format';
+
+type AdminAskIncompleteAction = Extract<AdminAskResult, { outcome: 'incomplete' }>['action'];
 
 /** Fixed locale on purpose: server and client must format identically or React rehydrates wrong. */
 const MONEY_LOCALE = 'en-GB';
@@ -29,6 +37,16 @@ export function formatDateShort(iso: string): string {
 
 export function formatDateRange(checkIn: string, checkOut: string): string {
   return `${formatDateShort(checkIn)} → ${formatDateShort(checkOut)}`;
+}
+
+/**
+ * "2 hours ago" — client-only by convention (the caller renders it after
+ * mount, e.g. inside a popover that isn't in the server-rendered HTML at
+ * all): "now" moves between the server render and hydration, so text
+ * computed from it during SSR would just be stale by the network's own delay.
+ */
+export function formatRelativeTime(iso: string): string {
+  return `${formatDistanceToNowStrict(parseISO(iso))} ago`;
 }
 
 export function formatNights(nights: number): string {
@@ -175,6 +193,187 @@ export function formatAssistantSummary(input: {
   const detail =
     input.fromNightly !== null ? `${dates} · from ${formatMoney(input.fromNightly, input.currency)} a night` : dates;
   return { lead, detail };
+}
+
+/**
+ * The admin assistant's sentences are composed in the team member's language
+ * (`lib/i18n/admin`), unlike the guest-facing formatters above, which are
+ * fixed English: the panel is a client component that knows its locale
+ * (`useAdminLocale()`) and passes it in. Room status words come from the same
+ * `STATUS_LABEL` the rest of the back office uses.
+ */
+function overrideLabel(status: RoomStatus | null, locale: AdminLocale): string {
+  return status ? STATUS_LABEL[locale][status] : translateAdmin(locale, 'assistant.status.auto');
+}
+
+/** "Open …" names the screen as the sidebar does; the spinner's sub-screens keep the label the proposal carries. */
+const ADMIN_PAGE_NAV_KEY: Partial<Record<AdminPage, AdminTranslationKey>> = {
+  dashboard: 'nav.dashboard',
+  'front-desk': 'nav.frontDesk',
+  reservations: 'nav.reservations',
+  services: 'nav.services',
+  rates: 'nav.roomRates',
+  accounting: 'nav.accounting',
+  'channel-manager': 'nav.channelManager',
+  rooms: 'nav.rooms',
+  'hotel-settings': 'nav.hotelSettings',
+  orbit: 'nav.orbit',
+};
+
+function navigateLabel(proposal: Extract<AdminProposal, { kind: 'navigate' }>, locale: AdminLocale): string {
+  const key = ADMIN_PAGE_NAV_KEY[proposal.page];
+  return key ? translateAdmin(locale, key) : proposal.label;
+}
+
+/**
+ * What the admin assistant proposes, in the app's own words — same rule as
+ * `formatAssistantSummary`: the sentence the admin confirms is composed here
+ * from the proposal's numbers and names, never taken from the model.
+ */
+export function formatAdminProposal(proposal: AdminProposal, locale: AdminLocale): { lead: string; detail: string | null } {
+  const t = (key: AdminTranslationKey, vars?: Record<string, string | number>) => translateAdmin(locale, key, vars);
+  switch (proposal.kind) {
+    case 'set_rate_price':
+      return {
+        lead: t('assistant.proposal.setRate.lead', { rate: proposal.rateName, roomType: proposal.roomTypeName }),
+        detail: t('assistant.proposal.setRate.detail', {
+          from: lMoney(proposal.from, proposal.currency, locale),
+          to: lMoney(proposal.to, proposal.currency, locale),
+        }),
+      };
+    case 'set_room_hidden':
+      return proposal.hidden
+        ? { lead: t('assistant.proposal.hide.lead', { roomType: proposal.roomTypeName }), detail: t('assistant.proposal.hide.detail') }
+        : { lead: t('assistant.proposal.show.lead', { roomType: proposal.roomTypeName }), detail: t('assistant.proposal.show.detail') };
+    case 'set_room_status':
+      return {
+        lead: t('assistant.proposal.status.lead', { roomType: proposal.roomTypeName, status: overrideLabel(proposal.status, locale) }),
+        detail: t('assistant.proposal.status.detail', { status: overrideLabel(proposal.current, locale) }),
+      };
+    case 'set_add_on_enabled':
+      return {
+        lead: proposal.enabled
+          ? t('assistant.proposal.addOnOn.lead', { addOn: proposal.addOnName })
+          : t('assistant.proposal.addOnOff.lead', { addOn: proposal.addOnName }),
+        detail: null,
+      };
+    case 'create_room_type': {
+      const { input } = proposal;
+      return {
+        lead: t('assistant.proposal.createType.lead', { name: input.name }),
+        detail: t('assistant.proposal.createType.detail', {
+          floor: lFloor(input.floor, locale),
+          area: input.areaM2,
+          capacity: input.capacity,
+          bed: lBed(input.bedType, locale),
+          view: lView(input.view, locale),
+        }),
+      };
+    }
+    case 'create_physical_room':
+      return { lead: t('assistant.proposal.createRoom.lead', { number: proposal.number, roomType: proposal.roomTypeName }), detail: null };
+    case 'navigate':
+      return { lead: t('assistant.proposal.navigate.lead', { label: navigateLabel(proposal, locale) }), detail: null };
+  }
+}
+
+const ROOM_TYPE_QUESTION: Record<RoomTypeDraftField, AdminTranslationKey> = {
+  name: 'assistant.question.name',
+  description: 'assistant.question.description',
+  floor: 'assistant.question.floor',
+  areaM2: 'assistant.question.areaM2',
+  capacity: 'assistant.question.capacity',
+  bedType: 'assistant.question.bedType',
+  view: 'assistant.question.view',
+};
+
+/** The next thing the assistant needs to know, for the draft it is holding. */
+export function formatAdminQuestion(field: RoomTypeDraftField | 'number', draft: AdminDraft, locale: AdminLocale): string {
+  if (field === 'number') {
+    return draft.kind === 'create_physical_room' && draft.suggestedNumber
+      ? translateAdmin(locale, 'assistant.question.numberSuggested', { roomType: draft.roomTypeName, suggested: draft.suggestedNumber })
+      : translateAdmin(locale, 'assistant.question.number');
+  }
+  const question = translateAdmin(locale, ROOM_TYPE_QUESTION[field]);
+  const known = draft.kind === 'create_room_type' && field !== 'name' ? draft.fields.name : null;
+  return known ? translateAdmin(locale, 'assistant.question.known', { name: known, question }) : question;
+}
+
+const INCOMPLETE_REPLY: Record<AdminAskIncompleteAction, AdminTranslationKey> = {
+  set_rate_price: 'assistant.incomplete.setRate',
+  set_room_hidden: 'assistant.incomplete.setHidden',
+  set_room_status: 'assistant.incomplete.setStatus',
+  set_add_on_enabled: 'assistant.incomplete.setAddOn',
+  create_physical_room: 'assistant.incomplete.createRoom',
+};
+
+/** The reply for everything that is not a proposal. */
+export function formatAdminAssistantReply(result: AdminAskResult, locale: AdminLocale): string {
+  switch (result.outcome) {
+    case 'proposal':
+      return translateAdmin(locale, 'assistant.reply.proposal');
+    case 'question':
+      return formatAdminQuestion(result.field, result.draft, locale);
+    case 'cancelled':
+      return translateAdmin(locale, 'assistant.reply.cancelled');
+    case 'ambiguous':
+      return translateAdmin(locale, 'assistant.reply.ambiguous', {
+        target: result.target,
+        candidates: result.candidates.join(` ${translateAdmin(locale, 'assistant.reply.or')} `),
+      });
+    case 'not_found':
+      return translateAdmin(locale, 'assistant.reply.notFound', { target: result.target });
+    case 'incomplete':
+      return translateAdmin(locale, INCOMPLETE_REPLY[result.action]);
+    case 'no_rate':
+      return translateAdmin(locale, 'assistant.reply.noRate', {
+        roomType: result.roomTypeName,
+        screen: translateAdmin(locale, 'nav.roomRates'),
+      });
+    case 'unknown':
+      return translateAdmin(locale, 'assistant.reply.unknown');
+  }
+}
+
+export function formatAdminApplyOutcome(result: AdminApplyResult, proposal: AdminProposal, locale: AdminLocale): string {
+  const t = (key: AdminTranslationKey, vars?: Record<string, string | number>) => translateAdmin(locale, key, vars);
+  if (result.ok) {
+    switch (proposal.kind) {
+      case 'set_rate_price':
+        return t('assistant.applied.setRate', {
+          rate: proposal.rateName,
+          roomType: proposal.roomTypeName,
+          price: lMoney(proposal.to, proposal.currency, locale),
+        });
+      case 'set_room_hidden':
+        return proposal.hidden
+          ? t('assistant.applied.hidden', { roomType: proposal.roomTypeName })
+          : t('assistant.applied.shown', { roomType: proposal.roomTypeName });
+      case 'set_room_status':
+        return t('assistant.applied.status', { roomType: proposal.roomTypeName, status: overrideLabel(proposal.status, locale) });
+      case 'set_add_on_enabled':
+        return proposal.enabled
+          ? t('assistant.applied.addOnOn', { addOn: proposal.addOnName })
+          : t('assistant.applied.addOnOff', { addOn: proposal.addOnName });
+      case 'create_room_type':
+        return t('assistant.applied.createType', { name: proposal.input.name });
+      case 'create_physical_room':
+        return t('assistant.applied.createRoom', { number: proposal.number, roomType: proposal.roomTypeName });
+      case 'navigate':
+        return t('assistant.applied.navigate', { label: navigateLabel(proposal, locale) });
+    }
+  }
+  switch (result.reason) {
+    case 'conflict':
+      return t('assistant.failed.conflict');
+    case 'not_found':
+      return t('assistant.failed.notFound');
+    case 'validation':
+    case 'rule':
+    case 'forbidden':
+      // The CMS's own validation, rule, and permission messages, as the service returns them.
+      return result.message;
+  }
 }
 
 export function formatPricingUnit(unit: AddOn['pricingUnit']): string {

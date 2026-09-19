@@ -8,7 +8,9 @@
  */
 
 const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 8;
+/** A guest's search is one request; the admin chat is a request per answer, and a new room type is seven of them; sign-in is guessing a password. */
+const MAX_REQUESTS_PER_WINDOW = { search: 8, chat: 30, signIn: 10 } as const;
+export type RateLimitKind = keyof typeof MAX_REQUESTS_PER_WINDOW;
 
 const requestLog = new Map<string, number[]>();
 const inFlight = new Set<string>();
@@ -20,10 +22,10 @@ function pruneAndCount(clientKey: string, now: number): number[] {
 }
 
 /** True and records the attempt if the client is under its window limit. */
-export function checkRateLimit(clientKey: string): boolean {
+export function checkRateLimit(clientKey: string, kind: RateLimitKind = 'search'): boolean {
   const now = Date.now();
-  const timestamps = pruneAndCount(clientKey, now);
-  if (timestamps.length >= MAX_REQUESTS_PER_WINDOW) return false;
+  const timestamps = pruneAndCount(`${kind}:${clientKey}`, now);
+  if (timestamps.length >= MAX_REQUESTS_PER_WINDOW[kind]) return false;
   timestamps.push(now);
   return true;
 }
@@ -40,8 +42,10 @@ export function endRequest(clientKey: string): void {
 }
 
 /** IP when the platform hands one over, otherwise one shared bucket — better than none. */
+export function clientKeyFromHeaders(headers: Headers): string {
+  return headers.get('cf-connecting-ip') ?? headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+}
+
 export function clientKeyFor(request: Request): string {
-  return (
-    request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous'
-  );
+  return clientKeyFromHeaders(request.headers);
 }
