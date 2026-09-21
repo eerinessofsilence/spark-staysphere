@@ -251,7 +251,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                     href={`/admin/content/rooms/${group.roomTypeId}`}
                     aria-label={t('frontDesk.editRoomType', { roomType: group.roomName })}
                     onClick={(event) => event.stopPropagation()}
-                    className={cn(iconButton('light', 'size-8'), 'ml-auto')}
+                    className={cn(iconButton('dark', 'size-8'), 'ml-auto')}
                   >
                     <PencilSquareIcon className="size-4" aria-hidden="true" />
                   </Link>
