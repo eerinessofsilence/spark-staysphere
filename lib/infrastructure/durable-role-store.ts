@@ -17,6 +17,18 @@ export const durableRoleStore: RoleStore = {
     const db = getDemoDatabase();
     return db ? d1.createCustomRole(db, role) : mockRoleStore.createCustomRole(role);
   },
+  updateCustomRole(role) {
+    const db = getDemoDatabase();
+    return db ? d1.updateCustomRole(db, role) : mockRoleStore.updateCustomRole(role);
+  },
+  deleteCustomRole(id) {
+    const db = getDemoDatabase();
+    return db ? d1.deleteCustomRole(db, id) : mockRoleStore.deleteCustomRole(id);
+  },
+  countMemberRoleOverrides(roleId) {
+    const db = getDemoDatabase();
+    return db ? d1.countMemberRoleOverrides(db, roleId) : mockRoleStore.countMemberRoleOverrides(roleId);
+  },
   getMemberRoleOverride(memberId) {
     const db = getDemoDatabase();
     return db ? d1.getMemberRoleOverride(db, memberId) : mockRoleStore.getMemberRoleOverride(memberId);

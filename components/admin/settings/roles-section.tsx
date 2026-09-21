@@ -2,8 +2,15 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowPathIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { createRoleAction } from '@/app/admin/settings/team/actions';
+import { Menu } from '@base-ui/react/menu';
+import {
+  ArrowPathIcon,
+  EllipsisHorizontalIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
+import { createRoleAction, deleteRoleAction, updateRoleAction } from '@/app/admin/settings/team/actions';
 import type { TeamPermissionKey, TeamRoleDefinition } from '@/lib/domain/schemas';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { pluralForm } from '@/lib/i18n/plural';
@@ -12,18 +19,100 @@ import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
+import { toast } from '@/components/admin/shell/toast';
 import { permissions as allPermissions, roleLabel } from './team-data';
 import { TeamTabs } from './team-tabs';
 
+const menuItemClass =
+  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm outline-none select-none data-highlighted:bg-stone';
+
+function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () => void }) {
+  const router = useRouter();
+  const t = useAdminT();
+  const [confirming, setConfirming] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const close = React.useCallback(() => {
+    setConfirming(false);
+    setError('');
+  }, []);
+
+  const remove = async () => {
+    setPending(true);
+    setError('');
+    const result = await deleteRoleAction(role.id);
+    setPending(false);
+    if (!result.ok) {
+      setError(result.message);
+      toast.error(result.message);
+      return;
+    }
+    close();
+    toast.success(result.message);
+    router.refresh();
+  };
+
+  return (
+    <>
+      <Menu.Root modal={false}>
+        <Menu.Trigger
+          openOnHover
+          delay={80}
+          closeDelay={150}
+          aria-label={t('form.actionsFor', { label: role.name })}
+          className="inline-flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-stone hover:text-foreground data-popup-open:bg-stone data-popup-open:text-foreground"
+        >
+          <EllipsisHorizontalIcon className="size-5" aria-hidden="true" />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50 outline-none">
+            <Menu.Popup className="min-w-44 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+              <Menu.Item onClick={onEdit} className={menuItemClass}>
+                <PencilSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                {t('form.edit')}
+              </Menu.Item>
+              <Menu.Item
+                onClick={() => setConfirming(true)}
+                className={`${menuItemClass} text-danger data-highlighted:bg-danger/10`}
+              >
+                <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
+                {t('form.delete')}
+              </Menu.Item>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+
+      <Modal open={confirming} onClose={close} title={t('form.removeLabel', { label: role.name })}>
+        <p className="text-sm">{t('team.roleDeleteBody')}</p>
+        {error ? (
+          <p role="alert" className="mt-3 text-sm font-medium text-danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={remove} disabled={pending} className={pill('primary')}>
+            {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+            {t('form.remove')}
+          </button>
+          <button type="button" onClick={close} className={pill('secondary')}>
+            {t('form.keepIt')}
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
 /**
  * Roles, built-in and custom, in the same row-grid every other admin list
- * uses (`TableCard`) rather than a tile-per-role card — and the one real
- * write on this page: create a role with a name and a subset of the fixed
- * permission list. Everything else here (inviting a member, editing one's
- * name) stays local-browser demo state — this one round-trips to
- * `createRoleAction`, which is what `requirePermission` actually consults
- * from then on, so a role made here really does gate `/admin` once a
- * member is moved onto it.
+ * uses (`TableCard`) rather than a tile-per-role card. Custom roles can be
+ * created, edited, or removed here with a subset of the fixed permission
+ * list. Everything else here (inviting a member, editing one's name) stays
+ * local-browser demo state — role mutations round-trip to the role store,
+ * which is what `requirePermission` actually consults from then on, so a
+ * role made here really does gate `/admin` once a member is moved onto it.
  */
 export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinition[]; membersCount: number }) {
   const router = useRouter();
@@ -40,14 +129,32 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
   const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
   const { pageItems, page: currentPage, totalPages } = paginateClient(roles, page, pageSize);
   const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<TeamRoleDefinition | null>(null);
   const [name, setName] = React.useState('');
   const [selected, setSelected] = React.useState<Set<TeamPermissionKey>>(new Set());
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const close = React.useCallback(() => {
     setOpen(false);
+    setEditing(null);
     setError('');
   }, []);
+
+  function startCreate() {
+    setEditing(null);
+    setName('');
+    setSelected(new Set());
+    setError('');
+    setOpen(true);
+  }
+
+  function startEdit(role: TeamRoleDefinition) {
+    setEditing(role);
+    setName(role.name);
+    setSelected(new Set(role.permissions));
+    setError('');
+    setOpen(true);
+  }
 
   function toggle(key: TeamPermissionKey) {
     setSelected((current) => {
@@ -62,7 +169,9 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
     event.preventDefault();
     setSubmitting(true);
     setError('');
-    const result = await createRoleAction({ name, permissions: [...selected] });
+    const result = editing
+      ? await updateRoleAction({ id: editing.id, name, permissions: [...selected] })
+      : await createRoleAction({ name, permissions: [...selected] });
     setSubmitting(false);
     if (!result.ok) {
       setError(result.message);
@@ -71,6 +180,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
     setName('');
     setSelected(new Set());
     setOpen(false);
+    setEditing(null);
     router.refresh();
   }
 
@@ -79,7 +189,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
       <AdminPageHeader
         title={t('team.roles')}
         actions={
-          <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
+          <button type="button" onClick={startCreate} className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
             {t('team.createRole')}
           </button>
@@ -96,6 +206,9 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
             <tr className="border-b border-border">
               <Th>{t('team.roleName')}</Th>
               <Th>{t('team.rolePermissions')}</Th>
+              <Th className="w-14">
+                <span className="sr-only">{t('form.actionsFor', { label: t('team.roles') })}</span>
+              </Th>
             </tr>
           </thead>
           <tbody>
@@ -108,6 +221,9 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
                   </span>
                 </Td>
                 <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
+                <Td className="w-14 align-middle text-right">
+                  {role.builtin ? null : <RoleActions role={role} onEdit={() => startEdit(role)} />}
+                </Td>
               </tr>
             ))}
           </tbody>
@@ -126,9 +242,11 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
         />
       </div>
 
-      <Modal open={open} onClose={close} title={t('team.createRole')}>
+      <Modal open={open} onClose={close} title={editing ? t('team.editRole') : t('team.createRole')}>
         <form onSubmit={create} noValidate className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{t('team.createRoleBody')}</p>
+          <p className="text-sm text-muted-foreground">
+            {editing ? t('team.editRoleBody') : t('team.createRoleBody')}
+          </p>
           <div>
             <label htmlFor="role-name" className="mb-1.5 block text-sm text-muted-foreground">
               {t('team.roleName')}
@@ -168,7 +286,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
           <div className="flex flex-wrap gap-3">
             <button type="submit" disabled={submitting} className={pill('primary')}>
               {submitting ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-              {t('team.createRole')}
+              {editing ? t('team.saveRole') : t('team.createRole')}
             </button>
             <button type="button" onClick={close} className={pill('secondary')}>
               {t('team.cancel')}

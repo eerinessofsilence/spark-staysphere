@@ -17,6 +17,16 @@ export const mockRoleStore: RoleStore = {
     customRoles.set(role.id, role);
     return role;
   },
+  async updateCustomRole(role) {
+    customRoles.set(role.id, role);
+    return role;
+  },
+  async deleteCustomRole(id) {
+    customRoles.delete(id);
+  },
+  async countMemberRoleOverrides(roleId) {
+    return [...memberRoleOverrides.values()].filter((assignedRoleId) => assignedRoleId === roleId).length;
+  },
   async getMemberRoleOverride(memberId) {
     return memberRoleOverrides.get(memberId) ?? null;
   },

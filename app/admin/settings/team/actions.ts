@@ -16,6 +16,55 @@ export interface CreateRoleResult extends TeamActionResult {
   role?: TeamRoleDefinition;
 }
 
+export async function updateRoleAction(input: {
+  id: string;
+  name: string;
+  permissions: string[];
+}): Promise<TeamActionResult> {
+  const t = await getAdminT();
+  const denied = await requireRolePermission();
+  if (denied) return denied;
+
+  const permissions = input.permissions.filter((key): key is TeamPermissionKey => teamPermissionKeySchema.safeParse(key).success);
+  const result = await teamService.updateRole({ id: input.id, name: input.name, permissions });
+  if (!result.ok) {
+    const message =
+      result.error === 'roleNotFound'
+        ? t('team.roleNotFound')
+        : result.error === 'builtinRole'
+          ? t('team.builtinRoleLocked')
+          : result.error === 'nameRequired'
+            ? t('team.roleNameRequired')
+            : t('team.roleNeedsPermission');
+    return { ok: false, message };
+  }
+
+  revalidatePath('/admin/settings/team/roles');
+  revalidatePath('/admin/settings/team');
+  return { ok: true, message: t('team.roleUpdated') };
+}
+
+export async function deleteRoleAction(id: string): Promise<TeamActionResult> {
+  const t = await getAdminT();
+  const denied = await requireRolePermission();
+  if (denied) return denied;
+
+  const result = await teamService.deleteRole(id);
+  if (!result.ok) {
+    const message =
+      result.error === 'roleNotFound'
+        ? t('team.roleNotFound')
+        : result.error === 'builtinRole'
+          ? t('team.builtinRoleLocked')
+          : t('team.roleInUse');
+    return { ok: false, message };
+  }
+
+  revalidatePath('/admin/settings/team/roles');
+  revalidatePath('/admin/settings/team');
+  return { ok: true, message: t('team.roleDeleted') };
+}
+
 /** Roles are the same permission `/admin/settings/team` shows deciding them — creating one is at least as sensitive as changing who has it. */
 async function requireRolePermission() {
   const t = await getAdminT();

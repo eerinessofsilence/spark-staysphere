@@ -102,6 +102,9 @@ export interface DemoControlPort {
 export interface RoleStore {
   listCustomRoles(): Promise<TeamRoleDefinition[]>;
   createCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
+  updateCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
+  deleteCustomRole(id: string): Promise<void>;
+  countMemberRoleOverrides(roleId: string): Promise<number>;
   getMemberRoleOverride(memberId: string): Promise<string | null>;
   setMemberRoleOverride(memberId: string, roleId: string): Promise<void>;
 }

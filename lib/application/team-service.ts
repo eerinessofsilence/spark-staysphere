@@ -31,6 +31,8 @@ function builtinRoleDefinitions(): TeamRoleDefinition[] {
 }
 
 export type CreateRoleError = 'nameRequired' | 'noPermissions';
+export type UpdateRoleError = 'roleNotFound' | 'builtinRole' | 'nameRequired' | 'noPermissions';
+export type DeleteRoleError = 'roleNotFound' | 'builtinRole' | 'inUse';
 export type SetMemberRoleError = 'memberNotFound' | 'roleNotFound';
 
 /**
@@ -64,6 +66,33 @@ export class TeamService {
     const role: TeamRoleDefinition = { id, name, builtin: false, permissions: input.permissions };
     await this.roles.createCustomRole(role);
     return { ok: true, role };
+  }
+
+  async updateRole(input: {
+    id: string;
+    name: string;
+    permissions: TeamPermissionKey[];
+  }): Promise<{ ok: true; role: TeamRoleDefinition } | { ok: false; error: UpdateRoleError }> {
+    const current = (await this.listRoles()).find((role) => role.id === input.id);
+    if (!current) return { ok: false, error: 'roleNotFound' };
+    if (current.builtin) return { ok: false, error: 'builtinRole' };
+    const name = input.name.trim();
+    if (!name) return { ok: false, error: 'nameRequired' };
+    if (input.permissions.length === 0) return { ok: false, error: 'noPermissions' };
+
+    const role: TeamRoleDefinition = { ...current, name, permissions: input.permissions };
+    await this.roles.updateCustomRole(role);
+    return { ok: true, role };
+  }
+
+  async deleteRole(id: string): Promise<{ ok: true } | { ok: false; error: DeleteRoleError }> {
+    const current = (await this.listRoles()).find((role) => role.id === id);
+    if (!current) return { ok: false, error: 'roleNotFound' };
+    if (current.builtin) return { ok: false, error: 'builtinRole' };
+    if ((await this.roles.countMemberRoleOverrides(id)) > 0) return { ok: false, error: 'inUse' };
+
+    await this.roles.deleteCustomRole(id);
+    return { ok: true };
   }
 
   /** `demoMembers`'s own role, or whatever it's been overridden to from a member's own page. */
