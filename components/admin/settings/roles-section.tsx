@@ -218,20 +218,42 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
             </tr>
           </thead>
           <tbody>
-            {pageItems.map((role) => (
-              <tr key={role.id} className="border-b border-border last:border-b-0">
-                <Td className="align-middle">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{roleLabel(role.id, roles, t)}</span>
-                    {role.builtin ? <span className={tag()}>{t('team.builtin')}</span> : null}
-                  </span>
-                </Td>
-                <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
-                <Td className="w-14 align-middle text-right">
-                  <RoleActions role={role} onEdit={() => startEdit(role)} />
-                </Td>
-              </tr>
-            ))}
+            {pageItems.map((role) => {
+              const label = roleLabel(role.id, roles, t);
+              const identity = (
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{label}</span>
+                  {role.builtin ? <span className={tag()}>{t('team.builtin')}</span> : null}
+                </span>
+              );
+              return (
+                <tr
+                  key={role.id}
+                  className={`relative border-b border-border last:border-b-0 ${
+                    role.builtin ? '' : 'transition-colors hover:bg-stone/50'
+                  }`}
+                >
+                  <Td className="align-middle">
+                    {role.builtin ? (
+                      identity
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(role)}
+                        aria-label={`${t('team.editRole')}: ${label}`}
+                        className="text-left before:absolute before:inset-0"
+                      >
+                        {identity}
+                      </button>
+                    )}
+                  </Td>
+                  <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
+                  <Td className="relative z-10 w-14 align-middle text-right">
+                    <RoleActions role={role} onEdit={() => startEdit(role)} />
+                  </Td>
+                </tr>
+              );
+            })}
           </tbody>
         </TableCard>
         <ClientPagination
