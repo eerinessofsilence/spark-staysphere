@@ -24,7 +24,7 @@ import { permissions as allPermissions, roleLabel } from './team-data';
 import { TeamTabs } from './team-tabs';
 
 const menuItemClass =
-  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm outline-none select-none data-highlighted:bg-stone';
+  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm outline-none select-none data-highlighted:bg-stone data-disabled:cursor-not-allowed data-disabled:opacity-50';
 
 function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () => void }) {
   const router = useRouter();
@@ -68,17 +68,23 @@ function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () =>
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50 outline-none">
             <Menu.Popup className="min-w-44 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
-              <Menu.Item onClick={onEdit} className={menuItemClass}>
+              <Menu.Item disabled={role.builtin} onClick={onEdit} className={menuItemClass}>
                 <PencilSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 {t('form.edit')}
               </Menu.Item>
               <Menu.Item
+                disabled={role.builtin}
                 onClick={() => setConfirming(true)}
                 className={`${menuItemClass} text-danger data-highlighted:bg-danger/10`}
               >
                 <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
                 {t('form.delete')}
               </Menu.Item>
+              {role.builtin ? (
+                <p className="max-w-56 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  {t('team.builtinRoleLocked')}
+                </p>
+              ) : null}
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
@@ -222,7 +228,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
                 </Td>
                 <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
                 <Td className="w-14 align-middle text-right">
-                  {role.builtin ? null : <RoleActions role={role} onEdit={() => startEdit(role)} />}
+                  <RoleActions role={role} onEdit={() => startEdit(role)} />
                 </Td>
               </tr>
             ))}
