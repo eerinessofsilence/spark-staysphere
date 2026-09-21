@@ -130,6 +130,9 @@ export interface RoomTypeAllocation {
  * the rest go, in booking order, to the lowest-ranked room free for their whole
  * stay. Whatever `taken` still counts each night fills the lowest-ranked free
  * rooms as simulated demand, or as closed when an admin override is behind it.
+ * The filler order is re-hashed for every night: demo rows look naturally
+ * scattered instead of turning the same first rooms into uninterrupted bars,
+ * while remaining stable across renders and reloads.
  */
 export function allocateRoomType(input: {
   units: RoomUnit[];
@@ -181,7 +184,12 @@ export function allocateRoomType(input: {
       (unit) => occupancy.get(unit.number)!.get(night)?.kind === 'booking',
     ).length;
     let filler = Math.max(0, (input.taken[night] ?? 0) - booked);
-    for (const unit of byRank) {
+    const nightlyFillOrder = [...byRank].sort(
+      (a, b) =>
+        demoHash(`${a.number}|${night}|filler`) - demoHash(`${b.number}|${night}|filler`) ||
+        a.rank - b.rank,
+    );
+    for (const unit of nightlyFillOrder) {
       if (filler === 0) break;
       const row = occupancy.get(unit.number)!;
       if (row.has(night)) continue;

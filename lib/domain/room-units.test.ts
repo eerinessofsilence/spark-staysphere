@@ -240,6 +240,36 @@ describe('allocateRoomType', () => {
     expect(allocation.occupancy.get('101')!.get('2026-10-01')).toEqual({ kind: 'closed' });
   });
 
+  it('scatters closed rooms deterministically across nights', () => {
+    const units = [
+      unit('101', 'room_a', 0),
+      unit('102', 'room_a', 1),
+      unit('103', 'room_a', 2),
+      unit('104', 'room_a', 3),
+    ];
+    const nights = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'];
+    const input = {
+      units,
+      bookings: [],
+      nights,
+      taken: Object.fromEntries(nights.map((night) => [night, 2])),
+      closedByOverride: true,
+    };
+
+    const first = allocateRoomType(input);
+    const second = allocateRoomType(input);
+    const closedFor = (allocation: ReturnType<typeof allocateRoomType>, night: string) =>
+      units
+        .filter((room) => allocation.occupancy.get(room.number)!.get(night)?.kind === 'closed')
+        .map((room) => room.number);
+
+    for (const night of nights) {
+      expect(closedFor(first, night)).toHaveLength(2);
+      expect(closedFor(second, night)).toEqual(closedFor(first, night));
+    }
+    expect(new Set(nights.map((night) => closedFor(first, night).join(','))).size).toBeGreaterThan(1);
+  });
+
   it('never fills a night that a real booking already occupies', () => {
     const units = [unit('101', 'room_a', 0)];
     const allocation = allocateRoomType({

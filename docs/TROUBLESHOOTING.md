@@ -48,6 +48,13 @@ on the control's own value.
 **`<fieldset>`/`<legend>` renders the legend inside the border** and broke the filter panel. Use
 `role="group"` with a heading instead — see DESIGN_SYSTEM.md rule 9.
 
+## Demo data
+
+**Never use `Math.random()` for server-rendered demo status placement.** It makes the UI change on
+reload and can make the server and client disagree during hydration. Derive a stable score from
+the immutable item id and date instead; the front-desk allocator uses `demoHash` to scatter
+simulated demand and closed-to-sale rooms without changing their nightly totals.
+
 ## Access control
 
 **An editable administrator role must retain the permission that repairs role grants.** If the
