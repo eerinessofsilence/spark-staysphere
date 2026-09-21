@@ -20,6 +20,7 @@ import { BookingStatusBadge } from '@/components/admin/operations/booking-status
 import { Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
+import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -30,9 +31,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: adminPageTitle(t, t('dashboard.title')) };
 }
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const locale = await getAdminLocale();
   const t = adminT(locale);
+  const page = parsePage((await searchParams).page);
   const today = toIsoDate(new Date());
   const [board, allBookings] = await Promise.all([
     inventoryService.getFrontDesk(await getSelectedHotelSlug(), today, 14),
@@ -53,7 +59,7 @@ export default async function AdminOverviewPage() {
   const leaving = confirmed
     .filter((booking) => booking.checkOut >= today && booking.checkOut < weekEnd)
     .sort((a, b) => a.checkOut.localeCompare(b.checkOut));
-  const recent = sorted.slice(0, 5);
+  const { pageItems: recent, page: currentPage, totalPages } = paginate(sorted, page);
   const cancelled = sorted.filter((booking) => booking.status === 'cancelled');
   const tonight = board.days[0];
   const onSite = rooms.filter((room) => !room.hidden).length;
@@ -184,8 +190,8 @@ export default async function AdminOverviewPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-5">
-            <TableCard caption={t('dashboard.tableCaption')} className="min-w-[50rem]">
+          <div className="mt-5 overflow-hidden rounded-[18px] bg-card shadow-soft">
+            <TableCard caption={t('dashboard.tableCaption')} className="min-w-[50rem]" attached>
               <thead>
                 <tr className="border-b border-border">
                   <Th>{t('dashboard.thBookingNumber')}</Th>
@@ -232,6 +238,13 @@ export default async function AdminOverviewPage() {
                 ))}
               </tbody>
             </TableCard>
+            <Pagination
+              attached
+              page={currentPage}
+              totalPages={totalPages}
+              total={sorted.length}
+              hrefFor={simplePageHref('/admin')}
+            />
           </div>
         )}
       </section>

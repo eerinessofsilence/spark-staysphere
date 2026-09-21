@@ -148,7 +148,7 @@ export default async function MediaLibraryPage({
       ) : (
         <>
           <p className="mt-6 text-sm text-muted-foreground">{t('mediaLib.summary', { scope, tail })}</p>
-          <MediaGrid tiles={tiles} />
+          <MediaGrid key={folder ?? 'all'} tiles={tiles} />
         </>
       )}
     </AdminPage>

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -41,7 +41,9 @@ export default async function AccountingPage({
 }) {
   const locale = await getAdminLocale();
   const t = adminT(locale);
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const pageParam = parsePage(sp.page);
+  const methodPageParam = parsePage(sp.methodPage);
   const [hotel, allBookings] = await Promise.all([
     catalogService.getHotel(await getSelectedHotelSlug()),
     hotelRepository.listBookings(),
@@ -51,10 +53,18 @@ export default async function AccountingPage({
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );
   const ledger = buildLedger(entries);
-  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, page);
+  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam);
+  const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPageParam);
   const money = (value: number) => lMoney(value, hotel.currency, locale);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
-  const pageHref = simplePageHref('/admin/accounting');
+  const pageHref = (overrides: Partial<{ page: number; methodPage: number }>) => {
+    const next = { page: currentPage, methodPage, ...overrides };
+    const query = new URLSearchParams();
+    if (next.page > 1) query.set('page', String(next.page));
+    if (next.methodPage > 1) query.set('methodPage', String(next.methodPage));
+    const qs = query.toString();
+    return `/admin/accounting${qs ? `?${qs}` : ''}`;
+  };
   /** "N things" with the right noun form — Russian needs one/few/many, the other two use one/many. */
   const counted = (count: number, one: AdminTranslationKey, few: AdminTranslationKey, many: AdminTranslationKey) =>
     pluralForm(locale, count, {
@@ -130,7 +140,7 @@ export default async function AccountingPage({
                   </Td>
                 </tr>
               ) : null}
-              {ledger.byMethod.map((row) => (
+              {pageMethods.map((row) => (
                 <tr key={row.method ?? 'none'} className="border-b border-border last:border-b-0">
                   <Td className="font-medium whitespace-nowrap">
                     {row.method ? methodLabel(row.method, locale) : t('accounting.noPaymentRecorded')}
@@ -142,6 +152,13 @@ export default async function AccountingPage({
               ))}
             </tbody>
           </TableCard>
+          <Pagination
+            attached
+            page={methodPage}
+            totalPages={methodTotalPages}
+            total={ledger.byMethod.length}
+            hrefFor={(p) => pageHref({ methodPage: p })}
+          />
         </div>
       </section>
 
@@ -215,7 +232,13 @@ export default async function AccountingPage({
                 })}
               </tbody>
             </TableCard>
-            <Pagination attached page={currentPage} totalPages={totalPages} total={ledger.rows.length} hrefFor={pageHref} />
+            <Pagination
+              attached
+              page={currentPage}
+              totalPages={totalPages}
+              total={ledger.rows.length}
+              hrefFor={(p) => pageHref({ page: p })}
+            />
             </div>
           )}
         </div>

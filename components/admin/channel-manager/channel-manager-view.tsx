@@ -13,6 +13,7 @@ import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { toast } from '@/components/admin/shell/toast';
 import {
   channels as builtInChannels,
@@ -109,6 +110,8 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
   const [customOpen, setCustomOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [viewing, setViewing] = React.useState<Channel | null>(null);
+  const [connectedPage, setConnectedPage] = React.useState(1);
+  const [availablePage, setAvailablePage] = React.useState(1);
 
   const channels = [...builtInChannels, ...customChannels];
   const connectedChannels = channels.filter((channel) => connected.includes(channel.id));
@@ -116,10 +119,20 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
     (channel) =>
       !connected.includes(channel.id) && channel.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
+  const {
+    pageItems: pageConnectedChannels,
+    page: connectedCurrentPage,
+    totalPages: connectedTotalPages,
+  } = paginateClient(connectedChannels, connectedPage);
+  const { pageItems: pageAvailable, page: availableCurrentPage, totalPages: availableTotalPages } = paginateClient(
+    available,
+    availablePage,
+  );
 
   const closeAdding = () => {
     setAdding(false);
     setQuery('');
+    setAvailablePage(1);
   };
 
   const connect = (channel: Channel) => {
@@ -233,30 +246,38 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
             </button>
           </div>
         ) : (
-          <ul className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {connectedChannels.map((channel) => (
-              <li key={channel.id} className="flex flex-col overflow-hidden rounded-[18px] bg-card shadow-soft">
-                <div className="flex flex-1 flex-col items-center gap-3 px-4 py-6 text-center">
-                  <Monogram channel={channel} size="lg" />
-                  <div className="min-w-0">
-                    <p className="font-medium">{channel.name}</p>
-                    <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-success">
-                      <CheckCircle weight="fill" className="size-3.5" aria-hidden="true" />
-                      {t('channel.connectedStatus')}
-                    </p>
+          <>
+            <ul className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {pageConnectedChannels.map((channel) => (
+                <li key={channel.id} className="flex flex-col overflow-hidden rounded-[18px] bg-card shadow-soft">
+                  <div className="flex flex-1 flex-col items-center gap-3 px-4 py-6 text-center">
+                    <Monogram channel={channel} size="lg" />
+                    <div className="min-w-0">
+                      <p className="font-medium">{channel.name}</p>
+                      <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-success">
+                        <CheckCircle weight="fill" className="size-3.5" aria-hidden="true" />
+                        {t('channel.connectedStatus')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setViewing(channel)}
-                  aria-label={t('channel.viewInfoFor', { name: channel.name })}
-                  className="cursor-pointer border-t border-border py-3 text-sm font-medium transition-colors hover:bg-stone"
-                >
-                  {t('channel.viewInfo')}
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <button
+                    type="button"
+                    onClick={() => setViewing(channel)}
+                    aria-label={t('channel.viewInfoFor', { name: channel.name })}
+                    className="cursor-pointer border-t border-border py-3 text-sm font-medium transition-colors hover:bg-stone"
+                  >
+                    {t('channel.viewInfo')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <ClientPagination
+              page={connectedCurrentPage}
+              totalPages={connectedTotalPages}
+              total={connectedChannels.length}
+              onPageChange={setConnectedPage}
+            />
+          </>
         )}
       </section>
 
@@ -269,7 +290,10 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setAvailablePage(1);
+            }}
             placeholder={t('channel.searchChannels')}
             aria-label={t('channel.searchChannels')}
             className={cn(fieldClass, 'pl-10')}
@@ -281,7 +305,7 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
               {query ? t('channel.noMatch') : t('channel.allConnected')}
             </li>
           ) : (
-            available.map((channel) => (
+            pageAvailable.map((channel) => (
               <li key={channel.id} className="flex items-center gap-3 rounded-2xl px-2 py-2">
                 <Monogram channel={channel} size="sm" />
                 <span className="min-w-0 flex-1">
@@ -302,6 +326,12 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
             ))
           )}
         </ul>
+        <ClientPagination
+          page={availableCurrentPage}
+          totalPages={availableTotalPages}
+          total={available.length}
+          onPageChange={setAvailablePage}
+        />
       </Modal>
 
       <CustomChannelModal
