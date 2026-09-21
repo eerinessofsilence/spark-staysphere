@@ -30,7 +30,7 @@ import { BookingHeaderActions } from '@/components/admin/operations/booking-acti
 import { stayBucket, stayBucketKey } from '@/components/admin/operations/booking-buckets';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { attemptStatus, methodLabel } from '@/components/admin/operations/payment-state';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -61,6 +61,7 @@ export default async function BookingDetailPage({
   const { reference } = await params;
   const sp = await searchParams;
   const historyPageParam = parsePage(sp.page);
+  const historyPageSizeParam = parsePageSize(sp.pageSize);
   const paymentsPageParam = parsePage(sp.paymentsPage);
   const invoicesPageParam = parsePage(sp.invoicesPage);
   const locale = await getAdminLocale();
@@ -84,7 +85,11 @@ export default async function BookingDetailPage({
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const historyRooms = await Promise.all(history.map((candidate) => inventoryService.getBookingRoom(candidate)));
   const roomByBookingId = new Map(history.map((entry, index) => [entry.id, historyRooms[index]]));
-  const { pageItems: pageHistory, page: historyPage, totalPages: historyTotalPages } = paginate(history, historyPageParam);
+  const { pageItems: pageHistory, page: historyPage, totalPages: historyTotalPages } = paginate(
+    history,
+    historyPageParam,
+    historyPageSizeParam,
+  );
   const { pageItems: pagePayments, page: paymentsPage, totalPages: paymentsTotalPages } = paginate(payments, paymentsPageParam);
   const invoiceRows = payments.length > 0 ? [booking] : [];
   const { pageItems: pageInvoices, page: invoicesPage, totalPages: invoicesTotalPages } = paginate(invoiceRows, invoicesPageParam);
@@ -121,10 +126,13 @@ export default async function BookingDetailPage({
           other: t('booking.countMany', { count: history.length }),
         });
 
-  const pageHref = (overrides: Partial<{ page: number; paymentsPage: number; invoicesPage: number }>) => {
-    const next = { page: historyPage, paymentsPage, invoicesPage, ...overrides };
+  const pageHref = (
+    overrides: Partial<{ page: number; pageSize: number; paymentsPage: number; invoicesPage: number }>,
+  ) => {
+    const next = { page: historyPage, pageSize: historyPageSizeParam, paymentsPage, invoicesPage, ...overrides };
     const query = new URLSearchParams();
     if (next.page > 1) query.set('page', String(next.page));
+    if (next.pageSize !== PAGE_SIZE) query.set('pageSize', String(next.pageSize));
     if (next.paymentsPage > 1) query.set('paymentsPage', String(next.paymentsPage));
     if (next.invoicesPage > 1) query.set('invoicesPage', String(next.invoicesPage));
     const qs = query.toString();
@@ -497,7 +505,9 @@ export default async function BookingDetailPage({
             page={historyPage}
             totalPages={historyTotalPages}
             total={history.length}
+            pageSize={historyPageSizeParam}
             hrefFor={(p) => pageHref({ page: p })}
+            pageSizeHrefFor={(size) => pageHref({ pageSize: size, page: 1 })}
           />
         </div>
       </section>

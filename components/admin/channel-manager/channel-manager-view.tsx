@@ -13,7 +13,7 @@ import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
+import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { toast } from '@/components/admin/shell/toast';
 import {
   channels as builtInChannels,
@@ -111,7 +111,9 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
   const [query, setQuery] = React.useState('');
   const [viewing, setViewing] = React.useState<Channel | null>(null);
   const [connectedPage, setConnectedPage] = React.useState(1);
+  const [connectedPageSize, setConnectedPageSize] = React.useState(CLIENT_PAGE_SIZE);
   const [availablePage, setAvailablePage] = React.useState(1);
+  const [availablePageSize, setAvailablePageSize] = React.useState(CLIENT_PAGE_SIZE);
 
   const channels = [...builtInChannels, ...customChannels];
   const connectedChannels = channels.filter((channel) => connected.includes(channel.id));
@@ -123,10 +125,11 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
     pageItems: pageConnectedChannels,
     page: connectedCurrentPage,
     totalPages: connectedTotalPages,
-  } = paginateClient(connectedChannels, connectedPage);
+  } = paginateClient(connectedChannels, connectedPage, connectedPageSize);
   const { pageItems: pageAvailable, page: availableCurrentPage, totalPages: availableTotalPages } = paginateClient(
     available,
     availablePage,
+    availablePageSize,
   );
 
   const closeAdding = () => {
@@ -275,7 +278,12 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
               page={connectedCurrentPage}
               totalPages={connectedTotalPages}
               total={connectedChannels.length}
+              pageSize={connectedPageSize}
               onPageChange={setConnectedPage}
+              onPageSizeChange={(size) => {
+                setConnectedPageSize(size);
+                setConnectedPage(1);
+              }}
             />
           </>
         )}
@@ -330,7 +338,12 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
           page={availableCurrentPage}
           totalPages={availableTotalPages}
           total={available.length}
+          pageSize={availablePageSize}
           onPageChange={setAvailablePage}
+          onPageSizeChange={(size) => {
+            setAvailablePageSize(size);
+            setAvailablePage(1);
+          }}
         />
       </Modal>
 

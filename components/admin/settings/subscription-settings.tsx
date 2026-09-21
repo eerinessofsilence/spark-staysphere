@@ -10,7 +10,7 @@ import { lDate, lMoney } from '@/lib/i18n/format';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
-import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
+import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { Meter } from '@/components/admin/operations/metric-card';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -123,9 +123,11 @@ export function SubscriptionSettings() {
   const addonCostDraft = extraRoomsDraft * EXTRA_ROOM_PRICE + extraChannelsDraft * EXTRA_CHANNEL_PRICE;
 
   const [invoicePage, setInvoicePage] = React.useState(1);
+  const [invoicePageSize, setInvoicePageSize] = React.useState(CLIENT_PAGE_SIZE);
   const { pageItems: invoicePageItems, page: invoiceCurrentPage, totalPages: invoiceTotalPages } = paginateClient(
     invoices,
     invoicePage,
+    invoicePageSize,
   );
 
   const [cancelOpen, setCancelOpen] = React.useState(false);
@@ -374,7 +376,12 @@ export function SubscriptionSettings() {
             page={invoiceCurrentPage}
             totalPages={invoiceTotalPages}
             total={invoices.length}
+            pageSize={invoicePageSize}
             onPageChange={setInvoicePage}
+            onPageSizeChange={(size) => {
+              setInvoicePageSize(size);
+              setInvoicePage(1);
+            }}
           />
         </div>
       </section>

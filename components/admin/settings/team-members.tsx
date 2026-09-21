@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { TeamRoleDefinition } from '@/lib/domain/schemas';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
+import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { TeamTabs } from './team-tabs';
 import { initialsOf, roleLabel, type TeamMember, type TeamRole } from './team-data';
 
@@ -21,6 +21,7 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
   const locale = useAdminLocale();
   const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
   const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [role, setRole] = React.useState<TeamRole>('Front desk');
@@ -65,7 +66,7 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
     setOpen(false);
   };
 
-  const { pageItems, page: currentPage, totalPages } = paginateClient(members, page);
+  const { pageItems, page: currentPage, totalPages } = paginateClient(members, page, pageSize);
 
   return (
     <>
@@ -155,7 +156,18 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
           </tbody>
         </table>
         </div>
-        <ClientPagination page={currentPage} totalPages={totalPages} total={members.length} onPageChange={setPage} attached />
+        <ClientPagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={members.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          attached
+        />
       </div>
 
       <Modal open={open} onClose={close} title={t('team.invite')}>

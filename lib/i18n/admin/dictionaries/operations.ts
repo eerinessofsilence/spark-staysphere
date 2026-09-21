@@ -67,7 +67,10 @@ export const operations = defineArea({
 
     'ops.pagination': 'Pagination',
     'ops.pageOf': 'Page {page} of {total}',
-    'ops.totalRows': '· {count} total',
+    'ops.rangeOfTotal': '{from}–{to} of {total}',
+    'ops.show': 'Show',
+    'ops.perPage': 'per page',
+    'ops.showNPerPage': 'Show {count} per page',
     'ops.previousPage': 'Previous page',
     'ops.nextPage': 'Next page',
 
@@ -296,7 +299,10 @@ export const operations = defineArea({
 
     'ops.pagination': 'Seitennavigation',
     'ops.pageOf': 'Seite {page} von {total}',
-    'ops.totalRows': '· {count} gesamt',
+    'ops.rangeOfTotal': '{from}–{to} von {total}',
+    'ops.show': 'Anzeigen',
+    'ops.perPage': 'pro Seite',
+    'ops.showNPerPage': '{count} pro Seite anzeigen',
     'ops.previousPage': 'Vorherige Seite',
     'ops.nextPage': 'Nächste Seite',
 
@@ -525,7 +531,10 @@ export const operations = defineArea({
 
     'ops.pagination': 'Страницы',
     'ops.pageOf': 'Страница {page} из {total}',
-    'ops.totalRows': '· всего {count}',
+    'ops.rangeOfTotal': '{from}–{to} из {total}',
+    'ops.show': 'Показывать',
+    'ops.perPage': 'на странице',
+    'ops.showNPerPage': 'Показывать по {count} на странице',
     'ops.previousPage': 'Предыдущая страница',
     'ops.nextPage': 'Следующая страница',
 

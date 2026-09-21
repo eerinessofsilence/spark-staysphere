@@ -10,7 +10,7 @@ import { pluralForm } from '@/lib/i18n/plural';
 import { fieldClass, pill, tag } from '@/lib/ui';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
+import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { permissions as allPermissions, roleLabel } from './team-data';
 import { TeamTabs } from './team-tabs';
@@ -37,7 +37,8 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
       other: t('team.permissionCountOther', { count }),
     });
   const [page, setPage] = React.useState(1);
-  const { pageItems, page: currentPage, totalPages } = paginateClient(roles, page);
+  const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
+  const { pageItems, page: currentPage, totalPages } = paginateClient(roles, page, pageSize);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState('');
   const [selected, setSelected] = React.useState<Set<TeamPermissionKey>>(new Set());
@@ -111,7 +112,18 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
             ))}
           </tbody>
         </TableCard>
-        <ClientPagination page={currentPage} totalPages={totalPages} total={roles.length} onPageChange={setPage} attached />
+        <ClientPagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={roles.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          attached
+        />
       </div>
 
       <Modal open={open} onClose={close} title={t('team.createRole')}>

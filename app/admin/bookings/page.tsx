@@ -12,6 +12,7 @@ import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
 import {
   stayBucket,
   stayBucketKey,
@@ -25,7 +26,7 @@ import { BookingSearchFilter } from '@/components/admin/operations/booking-searc
 import { FilterPills } from '@/components/admin/operations/filter-pills';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -64,7 +65,7 @@ function parseRange(fromParam: string | string[] | undefined, toParam: string | 
   return from <= to ? { from, to } : { from: to, to: from };
 }
 
-function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: number): string {
+function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: number, pageSize?: number): string {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
   if (filter !== 'all') params.set('status', filter);
@@ -73,6 +74,7 @@ function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: n
     params.set('to', range.to);
   }
   if (page && page > 1) params.set('page', String(page));
+  if (pageSize && pageSize !== PAGE_SIZE) params.set('pageSize', String(pageSize));
   const search = params.toString();
   return search ? `/admin/bookings?${search}` : '/admin/bookings';
 }
@@ -89,6 +91,7 @@ export default async function BookingsPage({
   const filter = parseFilter(params.status);
   const range = parseRange(params.from, params.to);
   const page = parsePage(params.page);
+  const pageSize = parsePageSize(params.pageSize);
   const today = toIsoDate(new Date());
 
   const [hotel, allBookings] = await Promise.all([
@@ -98,6 +101,9 @@ export default async function BookingsPage({
   const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
   const rooms = await hotelRepository.listRooms(hotel.id);
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
+  const bookableRoomTypes = rooms
+    .filter((room) => !room.hidden)
+    .map((room) => ({ id: room.id, slug: room.slug, name: room.name }));
 
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   // Search and dates narrow the list first; the status pills then count within what is left.
@@ -107,7 +113,7 @@ export default async function BookingsPage({
   const counts: Record<Filter, number> = { all: searched.length, upcoming: 0, in_house: 0, past: 0, cancelled: 0 };
   for (const booking of searched) counts[stayBucket(booking, today)] += 1;
   const visible = filter === 'all' ? searched : searched.filter((booking) => stayBucket(booking, today) === filter);
-  const { pageItems, page: currentPage, totalPages } = paginate(visible, page);
+  const { pageItems, page: currentPage, totalPages } = paginate(visible, page, pageSize);
 
   const rows = await Promise.all(
     pageItems.map(async (booking) => ({ booking, room: await inventoryService.getBookingRoom(booking) })),
@@ -117,7 +123,10 @@ export default async function BookingsPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('nav.reservations')} />
+      <AdminPageHeader
+        title={t('nav.reservations')}
+        actions={<AddBookingButton roomTypes={bookableRoomTypes} today={today} />}
+      />
 
       {/* One row of compact controls on a phone — Filters, Any dates and
           Search each stay their own natural width and wrap only if they
@@ -298,7 +307,9 @@ export default async function BookingsPage({
             page={currentPage}
             totalPages={totalPages}
             total={visible.length}
-            hrefFor={(next) => hrefFor(filter, query, range, next)}
+            pageSize={pageSize}
+            hrefFor={(next) => hrefFor(filter, query, range, next, pageSize)}
+            pageSizeHrefFor={(size) => hrefFor(filter, query, range, 1, size)}
           />
           </div>
         )}

@@ -3,15 +3,23 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { DEFAULT_PAGE_SIZE, isPageSizeOption, PAGE_SIZE_OPTIONS, pageWindow } from './pagination-shared';
 
 /** Rows per admin grid — big enough that most demo lists never need a second page, small enough that a seeded one does. */
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 /** `?page=` as a whole number of 1 or more; anything else falls back to the first page. */
 export function parsePage(value: string | string[] | undefined): number {
   const raw = Array.isArray(value) ? value[0] : value;
   const page = Number(raw);
   return Number.isInteger(page) && page > 0 ? page : 1;
+}
+
+/** `?pageSize=` as one of `PAGE_SIZE_OPTIONS`; anything else falls back to the default. */
+export function parsePageSize(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const size = Number(raw);
+  return isPageSizeOption(size) ? size : DEFAULT_PAGE_SIZE;
 }
 
 /** Slices `items` to one page, clamping a page number past the end back to the last real page. */
@@ -22,17 +30,29 @@ export function paginate<T>(items: T[], page: number, pageSize: number = PAGE_SI
   return { pageItems: items.slice(start, start + pageSize), page: current, totalPages };
 }
 
-/** A `Pagination` `hrefFor` for a page with no other query params to preserve. */
-export function simplePageHref(basePath: string): (page: number) => string {
-  return (page) => (page > 1 ? `${basePath}?page=${page}` : basePath);
+/** A `Pagination` `hrefFor` for a page with no other query params to preserve, at a given page size. */
+export function simplePageHref(basePath: string, pageSize: number = DEFAULT_PAGE_SIZE): (page: number) => string {
+  return (page) => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set('page', String(page));
+    if (pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(pageSize));
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
+}
+
+/** A `Pagination` `pageSizeHrefFor` for a page with no other query params to preserve — always resets to page 1. */
+export function simplePageSizeHref(basePath: string): (pageSize: number) => string {
+  return (pageSize) => (pageSize === DEFAULT_PAGE_SIZE ? basePath : `${basePath}?pageSize=${pageSize}`);
 }
 
 /**
- * Prev/next and a page count, the one pattern every admin grid past a
- * handful of rows shares. Hidden entirely at one page, so an empty or
- * short demo list never shows a pager with nothing to do. A server
- * component that reads the team member's language itself, so every grid
- * (this area's and the CMS's) renders it without passing anything through.
+ * Prev/next, numbered pages, and a "Show N per page" size picker — the one
+ * pattern every admin grid past a handful of rows shares. Hidden entirely
+ * once a list can't even fill the smallest page size, so an empty or short
+ * demo list never shows a pager with nothing to do. A server component that
+ * reads the team member's language itself, so every grid renders it without
+ * passing anything through.
  *
  * `attached`: a footer bar sharing its grid's own card — no gap, no rounding
  * or shadow of its own, just a hairline above it — rather than a second
@@ -44,18 +64,27 @@ export async function Pagination({
   page,
   totalPages,
   total,
+  pageSize = DEFAULT_PAGE_SIZE,
   hrefFor,
+  pageSizeHrefFor,
   attached,
 }: {
   page: number;
   totalPages: number;
-  /** Rows in the full (unpaginated) list, for the "X of Y" count. */
+  /** Rows in the full (unpaginated) list, for the "1–10 of 52" count. */
   total: number;
+  /** Rows per page this list is currently showing — only meaningful with `pageSizeHrefFor`. */
+  pageSize?: number;
   hrefFor: (page: number) => string;
+  /** Omit on a list whose page size is fixed — no "Show N per page" picker shows without it. */
+  pageSizeHrefFor?: (pageSize: number) => string;
   attached?: boolean;
 }) {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1 && !pageSizeHrefFor) return null;
   const t = await getAdminT();
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
   return (
     <nav
       aria-label={t('ops.pagination')}
@@ -70,13 +99,40 @@ export async function Pagination({
         attached ? 'border-t border-border' : 'mt-4 rounded-[18px] bg-card shadow-soft',
       )}
     >
-      <p className="text-sm text-muted-foreground">
-        {t('ops.pageOf', { page, total: totalPages })}{' '}
-        <span className="hidden sm:inline">{t('ops.totalRows', { count: total })}</span>
-      </p>
-      <div className="flex items-center gap-2">
+      {pageSizeHrefFor ? (
+        <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+          <span>{t('ops.show')}</span>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <Link
+                key={size}
+                href={pageSizeHrefFor(size)}
+                aria-current={size === pageSize ? 'page' : undefined}
+                aria-label={t('ops.showNPerPage', { count: size })}
+                className={cn(
+                  'flex min-h-7 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap tabular-nums transition-colors',
+                  size === pageSize
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-stone hover:text-foreground',
+                )}
+              >
+                {size}
+              </Link>
+            ))}
+          </div>
+          <span>{t('ops.perPage')}</span>
+        </div>
+      ) : (
+        <span aria-hidden="true" />
+      )}
+
+      <div className="flex items-center gap-1">
+        <p className="mr-1 hidden text-sm text-muted-foreground sm:block">
+          {t('ops.rangeOfTotal', { from, to, total })}
+        </p>
+        <p className="text-sm text-muted-foreground sm:hidden">{t('ops.pageOf', { page, total: totalPages })}</p>
         {page > 1 ? (
-          <Link href={hrefFor(page - 1)} aria-label={t('ops.previousPage')} className={iconButton('light')}>
+          <Link href={hrefFor(page - 1)} aria-label={t('ops.previousPage')} className={iconButton('light', 'size-8')}>
             <ChevronLeftIcon className="size-4" aria-hidden="true" />
           </Link>
         ) : (
@@ -84,13 +140,37 @@ export async function Pagination({
             type="button"
             disabled
             aria-label={t('ops.previousPage')}
-            className={cn(iconButton('light'), 'disabled:pointer-events-none disabled:opacity-40')}
+            className={cn(iconButton('light', 'size-8'), 'disabled:pointer-events-none disabled:opacity-40')}
           >
             <ChevronLeftIcon className="size-4" aria-hidden="true" />
           </button>
         )}
+        <div className="hidden items-center gap-1 sm:flex">
+          {pageWindow(page, totalPages).map((item, index) =>
+            item === 'ellipsis' ? (
+              <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground" aria-hidden="true">
+                …
+              </span>
+            ) : (
+              <Link
+                key={item}
+                href={hrefFor(item)}
+                aria-current={item === page ? 'page' : undefined}
+                aria-label={t('ops.pageOf', { page: item, total: totalPages })}
+                className={cn(
+                  'flex size-8 items-center justify-center rounded-full text-sm font-medium tabular-nums transition-colors',
+                  item === page
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-stone hover:text-foreground',
+                )}
+              >
+                {item}
+              </Link>
+            ),
+          )}
+        </div>
         {page < totalPages ? (
-          <Link href={hrefFor(page + 1)} aria-label={t('ops.nextPage')} className={iconButton('light')}>
+          <Link href={hrefFor(page + 1)} aria-label={t('ops.nextPage')} className={iconButton('light', 'size-8')}>
             <ChevronRightIcon className="size-4" aria-hidden="true" />
           </Link>
         ) : (
@@ -98,7 +178,7 @@ export async function Pagination({
             type="button"
             disabled
             aria-label={t('ops.nextPage')}
-            className={cn(iconButton('light'), 'disabled:pointer-events-none disabled:opacity-40')}
+            className={cn(iconButton('light', 'size-8'), 'disabled:pointer-events-none disabled:opacity-40')}
           >
             <ChevronRightIcon className="size-4" aria-hidden="true" />
           </button>

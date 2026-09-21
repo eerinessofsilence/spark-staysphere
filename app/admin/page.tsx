@@ -20,7 +20,7 @@ import { BookingStatusBadge } from '@/components/admin/operations/booking-status
 import { Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
-import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -38,7 +38,9 @@ export default async function AdminOverviewPage({
 }) {
   const locale = await getAdminLocale();
   const t = adminT(locale);
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.pageSize);
   const today = toIsoDate(new Date());
   const [board, allBookings] = await Promise.all([
     inventoryService.getFrontDesk(await getSelectedHotelSlug(), today, 14),
@@ -59,7 +61,7 @@ export default async function AdminOverviewPage({
   const leaving = confirmed
     .filter((booking) => booking.checkOut >= today && booking.checkOut < weekEnd)
     .sort((a, b) => a.checkOut.localeCompare(b.checkOut));
-  const { pageItems: recent, page: currentPage, totalPages } = paginate(sorted, page);
+  const { pageItems: recent, page: currentPage, totalPages } = paginate(sorted, page, pageSize);
   const cancelled = sorted.filter((booking) => booking.status === 'cancelled');
   const tonight = board.days[0];
   const onSite = rooms.filter((room) => !room.hidden).length;
@@ -243,7 +245,9 @@ export default async function AdminOverviewPage({
               page={currentPage}
               totalPages={totalPages}
               total={sorted.length}
-              hrefFor={simplePageHref('/admin')}
+              pageSize={pageSize}
+              hrefFor={simplePageHref('/admin', pageSize)}
+              pageSizeHrefFor={simplePageSizeHref('/admin')}
             />
           </div>
         )}

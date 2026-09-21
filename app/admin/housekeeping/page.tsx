@@ -13,7 +13,7 @@ import { lDateShort, lFloor } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { HousekeepingStatusMenu } from '@/components/admin/housekeeping/housekeeping-status-menu';
 import { FilterPills } from '@/components/admin/operations/filter-pills';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -32,10 +32,11 @@ function parseFilter(value: string | string[] | undefined): Filter {
     : 'all';
 }
 
-function hrefFor(filter: Filter, page?: number): string {
+function hrefFor(filter: Filter, page?: number, pageSize?: number): string {
   const params = new URLSearchParams();
   if (filter !== 'all') params.set('status', filter);
   if (page && page > 1) params.set('page', String(page));
+  if (pageSize && pageSize !== PAGE_SIZE) params.set('pageSize', String(pageSize));
   const search = params.toString();
   return search ? `/admin/housekeeping?${search}` : '/admin/housekeeping';
 }
@@ -57,6 +58,7 @@ export default async function HousekeepingPage({
   const params = await searchParams;
   const filter = parseFilter(params.status);
   const page = parsePage(params.page);
+  const pageSize = parsePageSize(params.pageSize);
   const today = toIsoDate(new Date());
 
   const rooms = await housekeepingService.listRooms(await getSelectedHotelSlug(), today);
@@ -66,7 +68,7 @@ export default async function HousekeepingPage({
   >;
   for (const room of rooms) counts[room.status] += 1;
   const visible = filter === 'all' ? rooms : rooms.filter((room) => room.status === filter);
-  const { pageItems, page: currentPage, totalPages } = paginate(visible, page);
+  const { pageItems, page: currentPage, totalPages } = paginate(visible, page, pageSize);
 
   return (
     <AdminPage>
@@ -163,7 +165,9 @@ export default async function HousekeepingPage({
               page={currentPage}
               totalPages={totalPages}
               total={visible.length}
-              hrefFor={(next) => hrefFor(filter, next)}
+              pageSize={pageSize}
+              hrefFor={(next) => hrefFor(filter, next, pageSize)}
+              pageSizeHrefFor={(size) => hrefFor(filter, 1, size)}
             />
           </div>
         )}

@@ -8,7 +8,7 @@ import { INTL_TAGS } from '@/lib/i18n/locale';
 import { pluralForm } from '@/lib/i18n/plural';
 import { Modal } from '@/components/site/modal';
 import { tag } from '@/lib/ui';
-import { ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
+import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 
 export interface MediaUsage {
   label: string;
@@ -43,7 +43,8 @@ export function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
   const close = React.useCallback(() => setOpenUrl(null), []);
   const open = tiles.find((tile) => tile.url === openUrl) ?? null;
   const [page, setPage] = React.useState(1);
-  const { pageItems: pageTiles, page: currentPage, totalPages } = paginateClient(tiles, page);
+  const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
+  const { pageItems: pageTiles, page: currentPage, totalPages } = paginateClient(tiles, page, pageSize);
 
   const usedIn = (count: number) =>
     pluralForm(locale, count, {
@@ -92,7 +93,17 @@ export function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
         ))}
       </ul>
 
-      <ClientPagination page={currentPage} totalPages={totalPages} total={tiles.length} onPageChange={setPage} />
+      <ClientPagination
+        page={currentPage}
+        totalPages={totalPages}
+        total={tiles.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
 
       <Modal open={open !== null} onClose={close} title={open?.filename ?? t('mediaLib.media')} className="sm:max-w-2xl">
         {open ? (

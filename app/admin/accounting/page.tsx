@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -43,6 +43,7 @@ export default async function AccountingPage({
   const t = adminT(locale);
   const sp = await searchParams;
   const pageParam = parsePage(sp.page);
+  const pageSizeParam = parsePageSize(sp.pageSize);
   const methodPageParam = parsePage(sp.methodPage);
   const [hotel, allBookings] = await Promise.all([
     catalogService.getHotel(await getSelectedHotelSlug()),
@@ -53,14 +54,15 @@ export default async function AccountingPage({
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );
   const ledger = buildLedger(entries);
-  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam);
+  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam, pageSizeParam);
   const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPageParam);
   const money = (value: number) => lMoney(value, hotel.currency, locale);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
-  const pageHref = (overrides: Partial<{ page: number; methodPage: number }>) => {
-    const next = { page: currentPage, methodPage, ...overrides };
+  const pageHref = (overrides: Partial<{ page: number; pageSize: number; methodPage: number }>) => {
+    const next = { page: currentPage, pageSize: pageSizeParam, methodPage, ...overrides };
     const query = new URLSearchParams();
     if (next.page > 1) query.set('page', String(next.page));
+    if (next.pageSize !== PAGE_SIZE) query.set('pageSize', String(next.pageSize));
     if (next.methodPage > 1) query.set('methodPage', String(next.methodPage));
     const qs = query.toString();
     return `/admin/accounting${qs ? `?${qs}` : ''}`;
@@ -237,7 +239,9 @@ export default async function AccountingPage({
               page={currentPage}
               totalPages={totalPages}
               total={ledger.rows.length}
+              pageSize={pageSizeParam}
               hrefFor={(p) => pageHref({ page: p })}
+              pageSizeHrefFor={(size) => pageHref({ pageSize: size, page: 1 })}
             />
             </div>
           )}

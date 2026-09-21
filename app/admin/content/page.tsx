@@ -11,7 +11,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
-import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteRoomAction } from './rooms/[id]/actions';
@@ -34,16 +34,19 @@ export default async function RoomTypesPage({
 }) {
   const locale = await getAdminLocale();
   const t = adminT(locale);
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.pageSize);
   const [rooms, physicalRooms] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
   const onSite = rooms.filter((room) => !room.hidden).length;
-  const { pageItems: pageRooms, page: currentPage, totalPages } = paginate(rooms, page);
+  const { pageItems: pageRooms, page: currentPage, totalPages } = paginate(rooms, page, pageSize);
   const pageRates = await Promise.all(pageRooms.map((room) => contentService.listRatesContent(room.id)));
   const pageItems = pageRooms.map((room, index) => ({ room, rates: pageRates[index]! }));
-  const pageHref = simplePageHref('/admin/content');
+  const pageHref = simplePageHref('/admin/content', pageSize);
+  const pageSizeHref = simplePageSizeHref('/admin/content');
 
   return (
     <AdminPage>
@@ -192,7 +195,15 @@ export default async function RoomTypesPage({
                 })}
               </tbody>
             </TableCard>
-            <Pagination attached page={currentPage} totalPages={totalPages} total={rooms.length} hrefFor={pageHref} />
+            <Pagination
+              attached
+              page={currentPage}
+              totalPages={totalPages}
+              total={rooms.length}
+              pageSize={pageSize}
+              hrefFor={pageHref}
+              pageSizeHrefFor={pageSizeHref}
+            />
           </div>
         </>
       )}
