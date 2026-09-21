@@ -5,10 +5,8 @@ import {
   demoMembers,
   findMemberByEmail as findBuiltinMemberByEmail,
   findMemberById as findBuiltinMemberById,
-  hasBuiltinPermission,
   permissions as builtinGrants,
   teamRoles,
-  type BuiltinTeamRole,
   type TeamMember,
   type TeamRole,
 } from './team-directory';
@@ -31,26 +29,33 @@ function builtinRoleDefinitions(): TeamRoleDefinition[] {
 }
 
 export type CreateRoleError = 'nameRequired' | 'noPermissions';
-export type UpdateRoleError = 'roleNotFound' | 'builtinRole' | 'nameRequired' | 'noPermissions';
+export type UpdateRoleError = 'roleNotFound' | 'nameRequired' | 'noPermissions';
 export type DeleteRoleError = 'roleNotFound' | 'builtinRole' | 'inUse';
 export type SetMemberRoleError = 'memberNotFound' | 'roleNotFound';
 
 /**
- * The one place that knows a role can be either of the five built into the
- * code or one made from `/admin/settings/team` — `admin-session.ts`'s
+ * The one place that knows a role can be either one of the five seeded
+ * definitions or one made from `/admin/settings/team` — `admin-session.ts`'s
  * `requirePermission` is this class's only consumer that matters, since
  * that's the check a custom role actually has to survive to be real rather
  * than decorative. `demoMembers` itself stays exactly as fixed and
  * unpersisted as before (see its own doc comment); what's durable here is
- * only the *role* a member has been moved onto, and the custom roles
- * themselves — both in `RoleStore` (D1, or in-memory without a binding).
+ * the role a member has been moved onto, custom roles, and edits to seeded
+ * roles — all in `RoleStore` (D1, or in-memory without a binding).
  */
 export class TeamService {
   constructor(private readonly roles: RoleStore) {}
 
   async listRoles(): Promise<TeamRoleDefinition[]> {
-    const custom = await this.roles.listCustomRoles();
-    return [...builtinRoleDefinitions(), ...custom];
+    const stored = await this.roles.listRoleDefinitions();
+    const storedById = new Map(stored.map((role) => [role.id, role]));
+    const builtinIds = new Set<string>(teamRoles);
+    const builtin = builtinRoleDefinitions().map((role) => {
+      const override = storedById.get(role.id);
+      return override ? { ...override, builtin: true } : role;
+    });
+    const custom = stored.filter((role) => !builtinIds.has(role.id)).map((role) => ({ ...role, builtin: false }));
+    return [...builtin, ...custom];
   }
 
   async createRole(input: {
@@ -64,7 +69,7 @@ export class TeamService {
     const existing = await this.listRoles();
     const id = uniqueRoleId(kebabSuggestion(name) || 'role', new Set(existing.map((role) => role.id)));
     const role: TeamRoleDefinition = { id, name, builtin: false, permissions: input.permissions };
-    await this.roles.createCustomRole(role);
+    await this.roles.createRoleDefinition(role);
     return { ok: true, role };
   }
 
@@ -75,13 +80,12 @@ export class TeamService {
   }): Promise<{ ok: true; role: TeamRoleDefinition } | { ok: false; error: UpdateRoleError }> {
     const current = (await this.listRoles()).find((role) => role.id === input.id);
     if (!current) return { ok: false, error: 'roleNotFound' };
-    if (current.builtin) return { ok: false, error: 'builtinRole' };
     const name = input.name.trim();
     if (!name) return { ok: false, error: 'nameRequired' };
     if (input.permissions.length === 0) return { ok: false, error: 'noPermissions' };
 
     const role: TeamRoleDefinition = { ...current, name, permissions: input.permissions };
-    await this.roles.updateCustomRole(role);
+    await this.roles.upsertRoleDefinition(role);
     return { ok: true, role };
   }
 
@@ -91,7 +95,7 @@ export class TeamService {
     if (current.builtin) return { ok: false, error: 'builtinRole' };
     if ((await this.roles.countMemberRoleOverrides(id)) > 0) return { ok: false, error: 'inUse' };
 
-    await this.roles.deleteCustomRole(id);
+    await this.roles.deleteRoleDefinition(id);
     return { ok: true };
   }
 
@@ -126,14 +130,9 @@ export class TeamService {
     return { ok: true };
   }
 
-  /**
-   * The actual gate: a built-in role's grant is fixed in code
-   * (`hasBuiltinPermission`), a custom one's is whatever it was created
-   * with. Either way, a role not listed for `key` is refused it.
-   */
+  /** The actual gate: every role uses the current definition returned by `listRoles`, including stored edits to a built-in one. */
   async hasPermission(role: TeamRole, key: TeamPermissionKey): Promise<boolean> {
-    if (teamRoles.includes(role as BuiltinTeamRole)) return hasBuiltinPermission(role as BuiltinTeamRole, key);
-    const roles = await this.roles.listCustomRoles();
+    const roles = await this.listRoles();
     return roles.find((candidate) => candidate.id === role)?.permissions.includes(key) ?? false;
   }
 }

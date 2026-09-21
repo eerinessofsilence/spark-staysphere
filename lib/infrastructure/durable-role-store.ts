@@ -9,21 +9,21 @@ import { mockRoleStore } from './role-store-mock';
  * in-memory mock otherwise — same shape as `durable-spinner-markup.ts`.
  */
 export const durableRoleStore: RoleStore = {
-  listCustomRoles() {
+  listRoleDefinitions() {
     const db = getDemoDatabase();
-    return db ? d1.listCustomRoles(db) : mockRoleStore.listCustomRoles();
+    return db ? d1.listRoleDefinitions(db) : mockRoleStore.listRoleDefinitions();
   },
-  createCustomRole(role) {
+  createRoleDefinition(role) {
     const db = getDemoDatabase();
-    return db ? d1.createCustomRole(db, role) : mockRoleStore.createCustomRole(role);
+    return db ? d1.createRoleDefinition(db, role) : mockRoleStore.createRoleDefinition(role);
   },
-  updateCustomRole(role) {
+  upsertRoleDefinition(role) {
     const db = getDemoDatabase();
-    return db ? d1.updateCustomRole(db, role) : mockRoleStore.updateCustomRole(role);
+    return db ? d1.upsertRoleDefinition(db, role) : mockRoleStore.upsertRoleDefinition(role);
   },
-  deleteCustomRole(id) {
+  deleteRoleDefinition(id) {
     const db = getDemoDatabase();
-    return db ? d1.deleteCustomRole(db, id) : mockRoleStore.deleteCustomRole(id);
+    return db ? d1.deleteRoleDefinition(db, id) : mockRoleStore.deleteRoleDefinition(id);
   },
   countMemberRoleOverrides(roleId) {
     const db = getDemoDatabase();

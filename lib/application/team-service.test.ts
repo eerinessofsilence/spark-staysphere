@@ -3,23 +3,23 @@ import type { RoleStore } from '@/lib/domain/ports';
 import type { TeamPermissionKey, TeamRoleDefinition } from '@/lib/domain/schemas';
 import { TeamService } from './team-service';
 
-const customRoles = new Map<string, TeamRoleDefinition>();
+const roleDefinitions = new Map<string, TeamRoleDefinition>();
 const memberRoleOverrides = new Map<string, string>();
 
 const roleStore: RoleStore = {
-  async listCustomRoles() {
-    return [...customRoles.values()];
+  async listRoleDefinitions() {
+    return [...roleDefinitions.values()];
   },
-  async createCustomRole(role) {
-    customRoles.set(role.id, role);
+  async createRoleDefinition(role) {
+    roleDefinitions.set(role.id, role);
     return role;
   },
-  async updateCustomRole(role) {
-    customRoles.set(role.id, role);
+  async upsertRoleDefinition(role) {
+    roleDefinitions.set(role.id, role);
     return role;
   },
-  async deleteCustomRole(id) {
-    customRoles.delete(id);
+  async deleteRoleDefinition(id) {
+    roleDefinitions.delete(id);
   },
   async countMemberRoleOverrides(roleId) {
     return [...memberRoleOverrides.values()].filter((assignedRoleId) => assignedRoleId === roleId).length;
@@ -37,7 +37,7 @@ const editContent: TeamPermissionKey = 'team.permEditContent';
 
 describe('TeamService custom roles', () => {
   beforeEach(() => {
-    customRoles.clear();
+    roleDefinitions.clear();
     memberRoleOverrides.clear();
   });
 
@@ -65,13 +65,21 @@ describe('TeamService custom roles', () => {
     });
   });
 
-  it('does not allow built-in roles to be changed or removed', async () => {
+  it('updates a built-in role but does not allow it to be removed', async () => {
     const service = new TeamService(roleStore);
 
-    expect(await service.updateRole({ id: 'Owner', name: 'Other', permissions: [viewBookings] })).toEqual({
-      ok: false,
-      error: 'builtinRole',
+    expect(await service.updateRole({ id: 'Owner', name: 'Property owner', permissions: [viewBookings] })).toEqual({
+      ok: true,
+      role: { id: 'Owner', name: 'Property owner', builtin: true, permissions: [viewBookings] },
     });
+    expect((await service.listRoles()).find((role) => role.id === 'Owner')).toEqual({
+      id: 'Owner',
+      name: 'Property owner',
+      builtin: true,
+      permissions: [viewBookings],
+    });
+    expect(await service.hasPermission('Owner', viewBookings)).toBe(true);
+    expect(await service.hasPermission('Owner', editContent)).toBe(false);
     expect(await service.deleteRole('Owner')).toEqual({ ok: false, error: 'builtinRole' });
   });
 

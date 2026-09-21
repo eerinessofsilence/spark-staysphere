@@ -410,11 +410,9 @@ export const teamPermissionKeySchema = z.enum([
 ]);
 
 /**
- * A role a team member can be given: one of the five built-in ones
- * (`builtin: true`, fixed in code) or one created from
- * `/admin/settings/team` (`builtin: false`, its `id` a slug of its name,
- * stored alongside the built-ins so `TeamService.hasPermission` never has
- * to know which kind it's looking at).
+ * A role a team member can be given: one of the five seeded ones
+ * (`builtin: true`, editable but not removable) or one created from
+ * `/admin/settings/team` (`builtin: false`, its `id` a slug of its name).
  */
 export const teamRoleDefinitionSchema = z.object({
   id: z.string(),

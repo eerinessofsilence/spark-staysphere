@@ -31,15 +31,14 @@ export async function updateRoleAction(input: {
     const message =
       result.error === 'roleNotFound'
         ? t('team.roleNotFound')
-        : result.error === 'builtinRole'
-          ? t('team.builtinRoleLocked')
-          : result.error === 'nameRequired'
-            ? t('team.roleNameRequired')
-            : t('team.roleNeedsPermission');
+        : result.error === 'nameRequired'
+          ? t('team.roleNameRequired')
+          : t('team.roleNeedsPermission');
     return { ok: false, message };
   }
 
   revalidatePath('/admin/settings/team/roles');
+  revalidatePath('/admin/settings/team/roles/[id]', 'page');
   revalidatePath('/admin/settings/team');
   return { ok: true, message: t('team.roleUpdated') };
 }
@@ -55,7 +54,7 @@ export async function deleteRoleAction(id: string): Promise<TeamActionResult> {
       result.error === 'roleNotFound'
         ? t('team.roleNotFound')
         : result.error === 'builtinRole'
-          ? t('team.builtinRoleLocked')
+          ? t('team.builtinRoleDeleteLocked')
           : t('team.roleInUse');
     return { ok: false, message };
   }

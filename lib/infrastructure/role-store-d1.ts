@@ -2,8 +2,8 @@ import type { TeamPermissionKey, TeamRoleDefinition } from '../domain/schemas';
 import { ensureSchema } from './d1-schema';
 
 /**
- * D1-backed half of `RoleStore` — custom role definitions and member role
- * overrides. Own tables, not columns on an existing one: there is no
+ * D1-backed half of `RoleStore` — custom role definitions, built-in role
+ * edits, and member role overrides. Own tables, not columns on an existing one: there is no
  * migration runner to `ALTER` `bookings` or the (still hardcoded)
  * `demoMembers`, the same reasoning as `booking_stay_states`.
  */
@@ -23,13 +23,13 @@ function rowToRole(row: TeamRoleRow): TeamRoleDefinition {
   };
 }
 
-export async function listCustomRoles(db: D1Database): Promise<TeamRoleDefinition[]> {
+export async function listRoleDefinitions(db: D1Database): Promise<TeamRoleDefinition[]> {
   await ensureSchema(db);
   const { results } = await db.prepare('SELECT id, name, permissions FROM team_roles ORDER BY created_at').all<TeamRoleRow>();
   return results.map(rowToRole);
 }
 
-export async function createCustomRole(db: D1Database, role: TeamRoleDefinition): Promise<TeamRoleDefinition> {
+export async function createRoleDefinition(db: D1Database, role: TeamRoleDefinition): Promise<TeamRoleDefinition> {
   await ensureSchema(db);
   await db
     .prepare('INSERT INTO team_roles (id, name, permissions, created_at) VALUES (?, ?, ?, ?)')
@@ -38,16 +38,19 @@ export async function createCustomRole(db: D1Database, role: TeamRoleDefinition)
   return role;
 }
 
-export async function updateCustomRole(db: D1Database, role: TeamRoleDefinition): Promise<TeamRoleDefinition> {
+export async function upsertRoleDefinition(db: D1Database, role: TeamRoleDefinition): Promise<TeamRoleDefinition> {
   await ensureSchema(db);
   await db
-    .prepare('UPDATE team_roles SET name = ?, permissions = ? WHERE id = ?')
-    .bind(role.name, JSON.stringify(role.permissions), role.id)
+    .prepare(
+      `INSERT INTO team_roles (id, name, permissions, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET name = excluded.name, permissions = excluded.permissions`,
+    )
+    .bind(role.id, role.name, JSON.stringify(role.permissions), new Date().toISOString())
     .run();
   return role;
 }
 
-export async function deleteCustomRole(db: D1Database, id: string): Promise<void> {
+export async function deleteRoleDefinition(db: D1Database, id: string): Promise<void> {
   await ensureSchema(db);
   await db.prepare('DELETE FROM team_roles WHERE id = ?').bind(id).run();
 }

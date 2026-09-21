@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Menu } from '@base-ui/react/menu';
 import {
@@ -10,7 +11,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { createRoleAction, deleteRoleAction, updateRoleAction } from '@/app/admin/settings/team/actions';
+import { createRoleAction, deleteRoleAction } from '@/app/admin/settings/team/actions';
 import type { TeamPermissionKey, TeamRoleDefinition } from '@/lib/domain/schemas';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { pluralForm } from '@/lib/i18n/plural';
@@ -26,7 +27,7 @@ import { TeamTabs } from './team-tabs';
 const menuItemClass =
   'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm outline-none select-none data-highlighted:bg-stone data-disabled:cursor-not-allowed data-disabled:opacity-50';
 
-function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () => void }) {
+function RoleActions({ role }: { role: TeamRoleDefinition }) {
   const router = useRouter();
   const t = useAdminT();
   const [confirming, setConfirming] = React.useState(false);
@@ -68,10 +69,13 @@ function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () =>
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50 outline-none">
             <Menu.Popup className="min-w-44 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
-              <Menu.Item disabled={role.builtin} onClick={onEdit} className={menuItemClass}>
+              <Menu.LinkItem
+                render={<Link href={`/admin/settings/team/roles/${encodeURIComponent(role.id)}`} />}
+                className={menuItemClass}
+              >
                 <PencilSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 {t('form.edit')}
-              </Menu.Item>
+              </Menu.LinkItem>
               <Menu.Item
                 disabled={role.builtin}
                 onClick={() => setConfirming(true)}
@@ -82,7 +86,7 @@ function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () =>
               </Menu.Item>
               {role.builtin ? (
                 <p className="max-w-56 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                  {t('team.builtinRoleLocked')}
+                  {t('team.builtinRoleDeleteLocked')}
                 </p>
               ) : null}
             </Menu.Popup>
@@ -113,9 +117,9 @@ function RoleActions({ role, onEdit }: { role: TeamRoleDefinition; onEdit: () =>
 
 /**
  * Roles, built-in and custom, in the same row-grid every other admin list
- * uses (`TableCard`) rather than a tile-per-role card. Custom roles can be
- * created, edited, or removed here with a subset of the fixed permission
- * list. Everything else here (inviting a member, editing one's name) stays
+ * uses (`TableCard`) rather than a tile-per-role card. Every role opens its
+ * own editor; custom roles can also be created or removed here. Everything
+ * else here (inviting a member, editing one's name) stays
  * local-browser demo state — role mutations round-trip to the role store,
  * which is what `requirePermission` actually consults from then on, so a
  * role made here really does gate `/admin` once a member is moved onto it.
@@ -135,29 +139,18 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
   const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
   const { pageItems, page: currentPage, totalPages } = paginateClient(roles, page, pageSize);
   const [open, setOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<TeamRoleDefinition | null>(null);
   const [name, setName] = React.useState('');
   const [selected, setSelected] = React.useState<Set<TeamPermissionKey>>(new Set());
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const close = React.useCallback(() => {
     setOpen(false);
-    setEditing(null);
     setError('');
   }, []);
 
   function startCreate() {
-    setEditing(null);
     setName('');
     setSelected(new Set());
-    setError('');
-    setOpen(true);
-  }
-
-  function startEdit(role: TeamRoleDefinition) {
-    setEditing(role);
-    setName(role.name);
-    setSelected(new Set(role.permissions));
     setError('');
     setOpen(true);
   }
@@ -175,9 +168,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
     event.preventDefault();
     setSubmitting(true);
     setError('');
-    const result = editing
-      ? await updateRoleAction({ id: editing.id, name, permissions: [...selected] })
-      : await createRoleAction({ name, permissions: [...selected] });
+    const result = await createRoleAction({ name, permissions: [...selected] });
     setSubmitting(false);
     if (!result.ok) {
       setError(result.message);
@@ -186,7 +177,6 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
     setName('');
     setSelected(new Set());
     setOpen(false);
-    setEditing(null);
     router.refresh();
   }
 
@@ -229,27 +219,20 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
               return (
                 <tr
                   key={role.id}
-                  className={`relative border-b border-border last:border-b-0 ${
-                    role.builtin ? '' : 'transition-colors hover:bg-stone/50'
-                  }`}
+                  className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
                 >
                   <Td className="align-middle">
-                    {role.builtin ? (
-                      identity
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => startEdit(role)}
-                        aria-label={`${t('team.editRole')}: ${label}`}
-                        className="text-left before:absolute before:inset-0"
-                      >
-                        {identity}
-                      </button>
-                    )}
+                    <Link
+                      href={`/admin/settings/team/roles/${encodeURIComponent(role.id)}`}
+                      aria-label={`${t('team.editRole')}: ${label}`}
+                      className="text-left before:absolute before:inset-0"
+                    >
+                      {identity}
+                    </Link>
                   </Td>
                   <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
                   <Td className="relative z-10 w-14 align-middle text-right">
-                    <RoleActions role={role} onEdit={() => startEdit(role)} />
+                    <RoleActions role={role} />
                   </Td>
                 </tr>
               );
@@ -270,11 +253,9 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
         />
       </div>
 
-      <Modal open={open} onClose={close} title={editing ? t('team.editRole') : t('team.createRole')}>
+      <Modal open={open} onClose={close} title={t('team.createRole')}>
         <form onSubmit={create} noValidate className="grid gap-4">
-          <p className="text-sm text-muted-foreground">
-            {editing ? t('team.editRoleBody') : t('team.createRoleBody')}
-          </p>
+          <p className="text-sm text-muted-foreground">{t('team.createRoleBody')}</p>
           <div>
             <label htmlFor="role-name" className="mb-1.5 block text-sm text-muted-foreground">
               {t('team.roleName')}
@@ -314,7 +295,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
           <div className="flex flex-wrap gap-3">
             <button type="submit" disabled={submitting} className={pill('primary')}>
               {submitting ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-              {editing ? t('team.saveRole') : t('team.createRole')}
+              {t('team.createRole')}
             </button>
             <button type="button" onClick={close} className={pill('secondary')}>
               {t('team.cancel')}

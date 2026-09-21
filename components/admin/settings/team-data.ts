@@ -24,7 +24,9 @@ import type { AdminT } from '@/lib/i18n/admin/translate';
  * copy, so it is shown as typed in every language.
  */
 export function roleLabel(role: TeamRole, roles: TeamRoleDefinition[], t: AdminT): string {
+  const definition = roles.find((candidate) => candidate.id === role);
+  if (definition && definition.name !== definition.id) return definition.name;
   const key = builtinRoleKey(role);
   if (key) return t(key);
-  return roles.find((candidate) => candidate.id === role)?.name ?? role;
+  return definition?.name ?? role;
 }

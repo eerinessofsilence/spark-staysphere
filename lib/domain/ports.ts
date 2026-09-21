@@ -95,15 +95,14 @@ export interface DemoControlPort {
 
 /**
  * The durable half of `/admin/settings/team`'s roles: custom role
- * definitions, and which member has been moved off their built-in role onto
- * one (custom or built-in) by id. The five built-in roles themselves are
- * fixed in code (`team-directory.ts`) and never stored here.
+ * definitions, edits that override a built-in role's seeded definition, and
+ * which member has been moved onto another role by id.
  */
 export interface RoleStore {
-  listCustomRoles(): Promise<TeamRoleDefinition[]>;
-  createCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
-  updateCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
-  deleteCustomRole(id: string): Promise<void>;
+  listRoleDefinitions(): Promise<TeamRoleDefinition[]>;
+  createRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
+  upsertRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
+  deleteRoleDefinition(id: string): Promise<void>;
   countMemberRoleOverrides(roleId: string): Promise<number>;
   getMemberRoleOverride(memberId: string): Promise<string | null>;
   setMemberRoleOverride(memberId: string, roleId: string): Promise<void>;

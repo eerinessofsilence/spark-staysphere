@@ -12,7 +12,7 @@ export type { TeamPermissionKey };
  * `team-service.ts`).
  */
 
-/** The five roles fixed in code. A custom one made from `/admin/settings/team` is a `TeamRoleDefinition` with `builtin: false` instead — see `team-service.ts`. */
+/** The five seeded role ids. Their default names and permissions live here, while `TeamService` overlays edits saved from `/admin/settings/team`. */
 export const teamRoles = ['Owner', 'General manager', 'Revenue manager', 'Front desk', 'Content editor'] as const;
 
 export type BuiltinTeamRole = (typeof teamRoles)[number];
@@ -125,7 +125,7 @@ export function hasBuiltinPermission(role: BuiltinTeamRole, key: TeamPermissionK
   return permissions.find((permission) => permission.key === key)?.allowed.includes(role) ?? false;
 }
 
-/** The dictionary key for one of the five fixed roles — `null` for a custom role, which shows its own name instead. */
+/** The dictionary key for one of the five seeded roles — `null` for a custom role, which shows its own name instead. */
 export function builtinRoleKey(role: TeamRole): `role.${'owner' | 'generalManager' | 'revenueManager' | 'frontDesk' | 'contentEditor'}` | null {
   switch (role as BuiltinTeamRole) {
     case 'Owner':
