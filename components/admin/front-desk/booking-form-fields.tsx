@@ -205,9 +205,9 @@ export function PriceFooter({
 }) {
   return (
     <>
-      <div className="mt-5 flex items-baseline justify-between border-t border-border pt-4 text-sm">
-        <span className="text-muted-foreground">{t('frontDesk.total')}</span>
-        <span className="font-medium tabular-nums">
+      <div className="mt-5 flex items-baseline justify-between border-t border-border pt-4">
+        <span className="text-sm text-muted-foreground">{t('frontDesk.total')}</span>
+        <span className="text-display text-2xl tabular-nums">
           {quoting ? t('frontDesk.priceCalculating') : quote?.ok ? lMoney(quote.total, quote.currency, locale) : (quote?.message ?? '')}
         </span>
       </div>
