@@ -20,6 +20,7 @@ import type {
 import {
   addOnSchema,
   buildingSpinnerSchema,
+  currencySchema,
   facilityIconSchema,
   hotelSchema,
   physicalRoomSchema,
@@ -160,6 +161,7 @@ export const hotelContentInputSchema = z.object({
   tagline: z.string().min(1, 'Enter a tagline.'),
   location: z.string().min(1, 'Enter a location.'),
   starRating: z.number().int().min(1, 'Pick a star rating.').max(5, 'Pick a star rating.'),
+  currency: currencySchema,
   description: z.string().min(1, 'Enter a description.'),
   aboutPhoto: z.string().min(1, 'Pick a photo.'),
   facilities: z.array(
@@ -452,6 +454,7 @@ export class ContentService {
       tagline: input.tagline,
       location: input.location,
       starRating: input.starRating,
+      currency: input.currency,
       description: input.description,
       aboutPhoto: aboutPhoto.photo,
       facilities: input.facilities,

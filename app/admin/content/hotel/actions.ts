@@ -56,6 +56,7 @@ export async function updateHotelAction(
     tagline: String(formData.get('tagline') ?? ''),
     location: String(formData.get('location') ?? ''),
     starRating: Number(formData.get('starRating')),
+    currency: String(formData.get('currency') ?? ''),
     description: String(formData.get('description') ?? ''),
     aboutPhoto: String(formData.get('aboutPhoto') ?? ''),
     facilities: parseJsonList<HotelFacility>(formData, 'facilities'),

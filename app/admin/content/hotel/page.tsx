@@ -7,7 +7,7 @@ import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { FacilitiesEditor } from '@/components/admin/content/facilities-editor';
-import { Field, TextArea, TextInput } from '@/components/admin/content/fields';
+import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
 import { HotelSettingsTabs } from '@/components/admin/content/hotel-settings-tabs';
 import { PhotoField } from '@/components/admin/content/photo-field';
 import { StarRatingField } from '@/components/admin/content/star-rating-field';
@@ -78,6 +78,12 @@ export default async function HotelContentPage() {
                       <Field id="hotel-starRating" name="starRating" label={t('hotel.starRating')}>
                         <StarRatingField id="hotel-starRating" name="starRating" defaultValue={hotel.starRating} />
                       </Field>
+                      <Field id="hotel-currency" name="currency" label={t('hotel.currency')}>
+                        <Select id="hotel-currency" name="currency" defaultValue={hotel.currency}>
+                          <option value="EUR">{t('hotel.currencyEur')}</option>
+                          <option value="USD">{t('hotel.currencyUsd')}</option>
+                        </Select>
+                      </Field>
                     </div>
 
                     {/* The "About" section on the arrival page — the one paragraph and
@@ -110,7 +116,7 @@ export default async function HotelContentPage() {
                     </div>
 
                     <p className="mt-8 text-xs text-muted-foreground">
-                      {t('hotel.onboardingNote', { currency: hotel.currency, timezone: hotel.timezone })}
+                      {t('hotel.onboardingNote', { timezone: hotel.timezone })}
                     </p>
                   </div>
                 ),
