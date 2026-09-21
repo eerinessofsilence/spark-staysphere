@@ -22,14 +22,19 @@ const KIND_LABEL: Record<TargetKind, AdminTranslationKey> = {
   link: 'editor.kindLink',
 };
 
+/** The first visible room type, or the first of anything if every one happens to be hidden. */
+function firstVisibleRoomType(catalog: SpinnerMarkupCatalog) {
+  return catalog.roomTypes.find((room) => !room.hidden) ?? catalog.roomTypes[0];
+}
+
 function defaultTarget(kind: TargetKind, catalog: SpinnerMarkupCatalog): SpinnerZoneTarget {
   switch (kind) {
     case 'unit':
       return { kind, unitId: catalog.units[0]?.id ?? '' };
     case 'floor':
-      return { kind, floor: catalog.roomTypes[0]?.floor ?? 1, facade: null };
+      return { kind, floor: firstVisibleRoomType(catalog)?.floor ?? 1, facade: null };
     case 'roomType':
-      return { kind, roomTypeId: catalog.roomTypes[0]?.id ?? '' };
+      return { kind, roomTypeId: firstVisibleRoomType(catalog)?.id ?? '' };
     case 'link':
       // The guest sees this on the link's card: it is content the team edits,
       // seeded in the hotel's language, not admin chrome.
