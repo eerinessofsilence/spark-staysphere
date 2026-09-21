@@ -677,18 +677,22 @@ html:has([data-admin-shell]) {
   }
 }
 
-/* The invoice modal's "Print" button: everything else on the page — the
-   confirmation card behind it, the modal's own backdrop and close button —
-   is hidden, so only the invoice itself comes out of the printer. */
+/* A page's "Print" button, whichever one owns the printable content:
+   the invoice modal's own copy, or an accounting report's table — everything
+   else on the page is hidden, so only that one marked element comes out of
+   the printer. */
 @media print {
   body * {
     visibility: hidden;
   }
   #invoice-printable,
-  #invoice-printable * {
+  #invoice-printable *,
+  #report-printable,
+  #report-printable * {
     visibility: visible;
   }
-  #invoice-printable {
+  #invoice-printable,
+  #report-printable {
     position: absolute;
     inset: 0;
     padding: 1.5rem;

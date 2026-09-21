@@ -11,6 +11,7 @@ import { lDateShort, lMoney } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { AccountingTabs } from '@/components/admin/accounting/accounting-tabs';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
@@ -79,6 +80,7 @@ export default async function AccountingPage({
   return (
     <AdminPage>
       <AdminPageHeader title={t('nav.accounting')} />
+      <AccountingTabs current="overview" />
 
       <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Metric
