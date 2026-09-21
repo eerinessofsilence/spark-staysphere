@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PushPin } from '@phosphor-icons/react/dist/ssr';
-import { CheckIcon, EnvelopeIcon, PhoneIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, CheckIcon, EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import { BookingError } from '@/lib/application/booking-service';
 import { bookingService, hotelRepository, inventoryService } from '@/lib/application/container';
 import { toIsoDate } from '@/lib/application/search-params';
@@ -24,13 +24,13 @@ import {
   lView,
 } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
-import { pill, tag } from '@/lib/ui';
+import { tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { BookingActions } from '@/components/admin/operations/booking-actions';
+import { BookingHeaderActions } from '@/components/admin/operations/booking-actions';
 import { stayBucket, stayBucketKey } from '@/components/admin/operations/booking-buckets';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { attemptStatus, methodLabel } from '@/components/admin/operations/payment-state';
-import { paginate, parsePage, Pagination, simplePageHref } from '@/components/admin/operations/pagination';
+import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -59,7 +59,10 @@ export default async function BookingDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { reference } = await params;
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const historyPageParam = parsePage(sp.page);
+  const paymentsPageParam = parsePage(sp.paymentsPage);
+  const invoicesPageParam = parsePage(sp.invoicesPage);
   const locale = await getAdminLocale();
   const t = adminT(locale);
   const confirmation = await bookingService.getConfirmation(reference).catch((error: unknown) => {
@@ -81,7 +84,10 @@ export default async function BookingDetailPage({
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const historyRooms = await Promise.all(history.map((candidate) => inventoryService.getBookingRoom(candidate)));
   const roomByBookingId = new Map(history.map((entry, index) => [entry.id, historyRooms[index]]));
-  const { pageItems: pageHistory, page: historyPage, totalPages: historyTotalPages } = paginate(history, page);
+  const { pageItems: pageHistory, page: historyPage, totalPages: historyTotalPages } = paginate(history, historyPageParam);
+  const { pageItems: pagePayments, page: paymentsPage, totalPages: paymentsTotalPages } = paginate(payments, paymentsPageParam);
+  const invoiceRows = payments.length > 0 ? [booking] : [];
+  const { pageItems: pageInvoices, page: invoicesPage, totalPages: invoicesTotalPages } = paginate(invoiceRows, invoicesPageParam);
   const roomTypeById = new Map(roomTypes.map((type) => [type.id, type]));
   const stayed = history.filter((candidate) => candidate.status === 'confirmed');
   const nightsBooked = stayed.reduce((sum, candidate) => sum + nightsBetween(candidate.checkIn, candidate.checkOut), 0);
@@ -94,12 +100,12 @@ export default async function BookingDetailPage({
   const drifted = breakdown !== null && Math.abs(breakdown.total - booking.total) > 0.005;
   const bucket = stayBucket(booking, today);
   const canCancel = booking.status === 'confirmed' && booking.checkIn > today;
-  const note =
+  const cancelBlockedReason =
     booking.status === 'cancelled'
       ? t('booking.cancelledNote')
       : !canCancel
         ? t('booking.stayBegunNote')
-        : null;
+        : undefined;
   const guestName = `${booking.guest.firstName} ${booking.guest.lastName}`;
   const initials = `${booking.guest.firstName[0] ?? ''}${booking.guest.lastName[0] ?? ''}`.toUpperCase();
   const cover = coverOf(room);
@@ -115,12 +121,30 @@ export default async function BookingDetailPage({
           other: t('booking.countMany', { count: history.length }),
         });
 
+  const pageHref = (overrides: Partial<{ page: number; paymentsPage: number; invoicesPage: number }>) => {
+    const next = { page: historyPage, paymentsPage, invoicesPage, ...overrides };
+    const query = new URLSearchParams();
+    if (next.page > 1) query.set('page', String(next.page));
+    if (next.paymentsPage > 1) query.set('paymentsPage', String(next.paymentsPage));
+    if (next.invoicesPage > 1) query.set('invoicesPage', String(next.invoicesPage));
+    const qs = query.toString();
+    return `/admin/bookings/${booking.reference}${qs ? `?${qs}` : ''}`;
+  };
+
   return (
     <AdminPage>
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.operations') }, { label: t('nav.reservations'), href: '/admin/bookings' }]}
         title={t('booking.title')}
         description={booking.reference}
+        actions={
+          <BookingHeaderActions
+            reference={booking.reference}
+            checkIn={booking.checkIn}
+            canCancel={canCancel}
+            cancelBlockedReason={cancelBlockedReason}
+          />
+        }
       />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-12">
@@ -269,13 +293,6 @@ export default async function BookingDetailPage({
             )}
           </Section>
 
-          <div className="mt-6 flex flex-wrap items-start justify-between gap-4 border-t border-border pt-5">
-            <Link href={`/admin/front-desk?from=${booking.checkIn}`} className={pill('ghost')}>
-              <TableCellsIcon className="size-4" aria-hidden="true" />
-              {t('booking.showOnFrontDesk')}
-            </Link>
-            <BookingActions reference={booking.reference} canCancel={canCancel} note={note} />
-          </div>
         </Card>
 
         <Card
@@ -340,6 +357,109 @@ export default async function BookingDetailPage({
         </Card>
       </div>
 
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section aria-labelledby="payments-heading">
+          <h2 id="payments-heading" className="text-display text-2xl">
+            {t('booking.payments')}
+          </h2>
+          <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+            <TableCard caption={t('booking.payments')} className="min-w-full" attached>
+              <thead>
+                <tr className="border-b border-border">
+                  <Th>{t('accounting.thMethod')}</Th>
+                  <Th>{t('ops.thStatus')}</Th>
+                  <Th className="text-right">{t('accounting.thAmount')}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagePayments.map((attempt) => {
+                  const status = attemptStatus(attempt.status, t);
+                  return (
+                    <tr key={attempt.id} className="border-b border-border last:border-b-0">
+                      <Td className="whitespace-nowrap">{methodLabel(attempt.provider, locale)}</Td>
+                      <Td>
+                        <span className={cn('inline-flex items-center gap-1.5 font-medium whitespace-nowrap', status.tone)}>
+                          <status.icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
+                          {status.label}
+                        </span>
+                      </Td>
+                      <Td className="text-right tabular-nums whitespace-nowrap">
+                        {lMoney(attempt.amount, attempt.currency, locale)}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TableCard>
+            <Pagination
+              attached
+              page={paymentsPage}
+              totalPages={paymentsTotalPages}
+              total={payments.length}
+              hrefFor={(p) => pageHref({ paymentsPage: p })}
+            />
+          </div>
+        </section>
+
+        {payments.length > 0 ? (
+          <section aria-labelledby="invoices-heading">
+            <h2 id="invoices-heading" className="text-display text-2xl">
+              {t('booking.invoices')}
+            </h2>
+            <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+              <TableCard caption={t('booking.invoices')} className="min-w-full" attached>
+                <thead>
+                  <tr className="border-b border-border">
+                    <Th>{t('booking.thInvoice')}</Th>
+                    <Th>{t('ops.thStatus')}</Th>
+                    <Th className="text-right">{t('accounting.thAmount')}</Th>
+                    <Th className="sr-only">{t('booking.viewInvoice')}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageInvoices.map((invoiceBooking) => (
+                    <tr key={invoiceBooking.id} className="border-b border-border last:border-b-0">
+                      <Td className="whitespace-nowrap font-medium">INV-{invoiceBooking.reference}</Td>
+                      <Td>
+                        {payments.some((attempt) => attempt.status === 'authorized') ? (
+                          <span className="inline-flex items-center gap-1.5 font-medium whitespace-nowrap text-success">
+                            <CheckIcon className="size-4 shrink-0" aria-hidden="true" />
+                            {t('ops.paymentAuthorized')}
+                          </span>
+                        ) : (
+                          <span className="whitespace-nowrap text-muted-foreground">{t('ops.awaitingPayment')}</span>
+                        )}
+                      </Td>
+                      <Td className="text-right tabular-nums whitespace-nowrap">
+                        {lMoney(invoiceBooking.total, invoiceBooking.currency, locale)}
+                      </Td>
+                      <Td className="text-right whitespace-nowrap">
+                        <a
+                          href={`/booking/${invoiceBooking.reference}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-sm font-medium hover:text-accent-strong"
+                        >
+                          {t('booking.viewInvoice')}
+                          <ArrowTopRightOnSquareIcon className="size-3.5" aria-hidden="true" />
+                        </a>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </TableCard>
+              <Pagination
+                attached
+                page={invoicesPage}
+                totalPages={invoicesTotalPages}
+                total={invoiceRows.length}
+                hrefFor={(p) => pageHref({ invoicesPage: p })}
+              />
+            </div>
+          </section>
+        ) : null}
+      </div>
+
       <section aria-labelledby="history-heading" className="mt-10">
         <h2 id="history-heading" className="text-display text-2xl">
           {t('booking.guestBookings')}
@@ -377,7 +497,7 @@ export default async function BookingDetailPage({
             page={historyPage}
             totalPages={historyTotalPages}
             total={history.length}
-            hrefFor={simplePageHref(`/admin/bookings/${booking.reference}`)}
+            hrefFor={(p) => pageHref({ page: p })}
           />
         </div>
       </section>
