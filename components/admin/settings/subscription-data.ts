@@ -15,7 +15,7 @@ export interface Plan {
   /** Per room, per month — the metric a hotel actually budgets against. */
   priceUnit: string;
   roomLimit: number | null;
-  seatLimit: number | null;
+  channelLimit: number | null;
   tagline: string;
   features: string[];
 }
@@ -27,7 +27,7 @@ export const plans: Plan[] = [
     price: 39,
     priceUnit: 'per month',
     roomLimit: 25,
-    seatLimit: 3,
+    channelLimit: 2,
     tagline: 'One property, the essentials.',
     features: ['Up to 25 rooms', '3 team seats', 'Direct booking site', 'Email support'],
   },
@@ -37,7 +37,7 @@ export const plans: Plan[] = [
     price: 129,
     priceUnit: 'per month',
     roomLimit: 150,
-    seatLimit: 10,
+    channelLimit: 6,
     tagline: 'For a property running its own front desk.',
     features: [
       'Up to 150 rooms',
@@ -53,7 +53,7 @@ export const plans: Plan[] = [
     price: 349,
     priceUnit: 'per month',
     roomLimit: null,
-    seatLimit: null,
+    channelLimit: null,
     tagline: 'Multiple properties, channel manager included.',
     features: [
       'Unlimited rooms',
@@ -70,15 +70,34 @@ export const currentPlanId: PlanId = 'growth';
 export const usage = {
   /** Matches `mock-data.ts`'s 96-room seed, so the meter reads true against the rest of the demo. */
   roomsUsed: 96,
-  seatsUsed: 5,
-  bookingsThisMonth: 43,
+  /** Matches `channel-data.ts`'s `initiallyConnected` — the same connected channels the channel manager itself shows. */
+  channelsUsed: 4,
 };
 
-export const paymentMethod = {
+export interface CardPaymentMethod {
+  kind: 'card';
+  brand: string;
+  last4: string;
+  expiry: string;
+}
+
+export interface CryptoPaymentMethod {
+  kind: 'crypto';
+  currency: string;
+  address: string;
+}
+
+export type PaymentMethod = CardPaymentMethod | CryptoPaymentMethod;
+
+export const paymentMethod: PaymentMethod = {
+  kind: 'card',
   brand: 'Visa',
   last4: '4242',
   expiry: '09/28',
 };
+
+export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex'] as const;
+export const CRYPTO_CURRENCIES = ['USDC', 'USDT', 'BTC', 'ETH'] as const;
 
 export interface Invoice {
   id: string;
