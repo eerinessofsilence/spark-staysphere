@@ -43,7 +43,7 @@ npm run test         # vitest: pure domain and application logic
 npm run lint
 npm run build
 npm run check:docs   # fails if a doc names a file that no longer exists
-npm run test:e2e     # Playwright golden path, 1440px and 390px
+npm run test:e2e     # Playwright guest and admin flows at 1440px and 390px; spinner CMS specs are desktop-only
 ```
 
 `npm run test:e2e` starts its own dev server on port 3100. The first run needs
@@ -73,8 +73,13 @@ spec made; the CMS and golden-path specs reset demo state at the start of their 
 | `/admin/front-desk` | Rooms × nights, 7/14/30-night window, filter by room type |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search, stay-bucket filters, booking detail, desk cancel |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, availability override |
-| `/admin/content` and its editors | The CMS: room types, rates, add-ons, and the hotel's own copy — no deploy needed |
-| `/admin/settings`, `/admin/settings/team`, `/admin/integrations`, `/admin/media` | Labelled previews — brand settings, team roles, integration credentials, and media uploads are not yet wired to anything real |
+| `/admin/accounting`, `/admin/accounting/reports` | Demo-payment ledger and printable arrivals, departures, and in-house reports |
+| `/admin/housekeeping`, `/admin/housekeeping/[id]` | Cleaning status and notes for each physical room, alongside today's occupancy |
+| `/admin/channel-manager` | A clearly labelled, browser-local preview of OTA/channel connections |
+| `/admin/content` and its editors | The CMS: room types, physical units, rates, add-ons, hotel copy, and the building spinner's frames and markup — no deploy needed |
+| `/admin/settings/team` | Team directory, role editor, and enforced permission matrix |
+| `/admin/settings`, `/admin/integrations`, `/admin/media` | Labelled previews — brand settings, real-system connection credentials, and general media uploads are not yet wired to anything real |
+| `/admin/account`, `/admin/account/subscription` | Profile, admin language, and subscription controls; only session and language preferences persist in the demo |
 
 **API** (the guest UI reaches quotes/bookings through server actions instead; these exist for external callers)
 

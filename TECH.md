@@ -262,9 +262,9 @@ the catalog's per-night minimum.
 
 ## Back office
 
-`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around two groups of
-screens in the sidebar nav (`components/admin/shell/admin-nav.tsx`), Operations and Content. What
-reads and writes real demo data, and what is a labelled preview of a later feature:
+`/admin` is the hotel's own product: one shell (`app/admin/layout.tsx`) around its operations
+navigation and the featured 360 Orbit (`components/admin/shell/admin-nav.tsx`). What reads and
+writes real demo data, and what is a labelled preview of a later feature:
 
 | Route | What it does | Backed by |
 | --- | --- | --- |
@@ -274,10 +274,13 @@ reads and writes real demo data, and what is a labelled preview of a later featu
 | `/admin/housekeeping`, `/admin/housekeeping/[id]` | Every physical room with its cleaning status (dirty, in progress, clean, inspected, out of order) and what today holds for it — occupied, arriving, departed, vacant, with the guest — filtered by status; the status is a menu on the row and, on the room's page, tiles plus a note for the desk. A room nobody has marked yet shows a default derived from its occupancy (`lib/domain/housekeeping.ts`: a departure is dirty, a stayover clean, the rest hashed so the board reads like a morning). Behind `permHousekeeping` — Owner, General manager, Front desk | `HousekeepingService` over `HousekeepingStore` (`housekeeping_states`, D1 with the in-memory fallback) and `InventoryService.getFrontDesk` for occupancy — live |
 | `/admin/bookings`, `/admin/bookings/[reference]` | Search and stay-bucket filters; detail is three cards — guest (contact, party, totals across their stays), booking (status, room, rate, payment, dates, extras, cancel), room (photo, facts, price summary) — over the guest's booking history, matched by email | `BookingService.getConfirmation`/`cancelAsHotel`, `InventoryService.getBookingRoom`, `HotelRepository.listBookings` — live |
 | `/admin/rates` | Base nightly and OTA-comparison price per room type, rooms left for seven nights, availability override | `ContentService.updateRate` (the CMS overlay), `DemoControlPort` overrides — live |
-| `/admin/accounting` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts` — live; payments are simulated and the screen says so |
+| `/admin/accounting`, `/admin/accounting/reports` | Collected, awaiting payment, owed back (cancelled after paying — cancelling leaves payment attempts untouched and there is no refund model yet) and booked value; totals by payment method; every booking's payment state, newest first. Reports are printable arrivals, departures, and in-house lists for a chosen day. | `buildLedger` (`lib/application/accounting.ts`) over `HotelRepository.listBookings`/`listPaymentAttempts`, plus booking and inventory reads for reports — live; payments are simulated and the screen says so |
+| `/admin/channel-manager` | A Channex/OTA connection and mapping walkthrough, including custom channels | Browser-local state and fixed demo data only — explicitly labelled mock; connecting a channel does not write or synchronize anything |
 | `/admin/content` — Rooms | Two tabs: Room types (`/admin/content`: cover, price, room count) and Rooms (`/admin/content/units`: grouped by type; add a room under a type — the number starts at the first free one on its floor — renumber or remove one); room type, room and rate editors under each | `ContentService`, `HotelRepository.listPhysicalRooms` — live |
 | `/admin/content/add-ons` — Services | Its own nav item: every add-on by category, with the on-sale switch, and the add-on editors under it | `ContentService` — live |
+| `/admin/content/hotel` — Hotel settings | Hotel details, copy, facilities, and local-media references for the guest property pages | `ContentService.updateHotel` — live |
 | `/admin/content/spinner` — 360 Orbit | Overview (key-angle frames, zone coverage), `/markup` (draw and bind zones per frame), `/frames` (upload frames, pick key angles and the start frame) | `ContentService.getSpinnerMarkupContent`/`saveSpinnerZones`/`updateSpinnerScene`/`uploadSpinnerFrame` — live |
+| `/admin/settings/team`, `/admin/settings/team/[id]`, `/admin/settings/team/roles` | Team directory, member role assignment, custom roles, and the permission matrix | `TeamService` plus enforced `permTeamRoles` permission — live |
 
 The first time the back office opens in a browser, a short guided tour plays
 (`components/admin/onboarding/`): one card at a time against a dimmed screen, pointing at the
@@ -296,13 +299,16 @@ from `buildPriceBreakdown`. Each has a fixed idempotency key, so pressing it twi
 and none falls in the 45–48-day window the e2e suite books into. Past and in-house stays are why
 it skips `BookingService.confirm`, which rightly refuses them.
 
-Every screen in the sidebar nav reads or writes real demo data. Four more routes exist but are not
-linked from the nav — reachable only by typing the URL — and each says on screen that it is a
-preview: `/admin/settings` (brand preview, "changes aren't saved in this demo"),
-`/admin/settings/team` ("sign-in and roles arrive with admin auth"), `/admin/integrations` (mock
-adapter status, "nothing is connected to a real system"), and `/admin/media` (the committed
-manifest, read-only — there is no upload path, see "Content management (CMS)"). Brand settings,
-team roles, integration credentials and media uploads are left out until they can actually save.
+Most sidebar screens read or write real demo data. `/admin/channel-manager` is the deliberate
+exception: its connections are browser-local and explicitly labelled mock. Three more routes are
+not linked from the main sidebar list — reachable only through another control or by URL — and each
+says on screen that it is a preview: `/admin/settings` (brand preview, "changes aren't saved in
+this demo"), `/admin/integrations` (mock adapter status, "nothing is connected to a real system"),
+and `/admin/media` (the committed manifest, read-only — there is no upload path, see "Content
+management (CMS)"). Brand settings, real integration credentials, and general media uploads are
+left out until they can actually save. `/admin/account` is reached from the account menu: its
+language setting persists in the admin cookie, while profile and subscription changes remain
+browser-local previews.
 
 `BookingService.cancelAsHotel` is the desk's cancel: the same `not_found`/`already_cancelled`/
 `stay_started` rules as the guest's, without the email check, since the desk is trusted — a

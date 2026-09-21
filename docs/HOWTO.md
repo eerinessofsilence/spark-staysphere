@@ -122,11 +122,11 @@ or `crypto.randomUUID()` directly inside the rule if you want it unit-testable �
    that both reads and writes.
 2. Wrap it in `AdminPage`/`AdminPageHeader` (`components/admin/shell/admin-page.tsx`) — every
    admin screen uses these for consistent chrome.
-3. Register it in the sidebar: add a `{ href, label, icon }` entry to the right group (`Operations`
-   or `Content`) in `components/admin/shell/admin-nav.tsx`. A route that exists but isn't in this
-   file is only reachable by typing the URL — that's a real, current state for four routes
-   (`/admin/settings`, `/admin/settings/team`, `/admin/integrations`, `/admin/media`); don't add a
-   fifth by accident.
+3. Register it in the sidebar: add a `{ href, label, icon }` entry to the operations group in
+   `components/admin/shell/admin-nav.tsx`, or deliberately make it a featured item like 360 Orbit.
+   A route outside that navigation is only reachable through another control or by typing its URL:
+   `/admin/settings`, `/admin/integrations`, and `/admin/media` are the current examples. Don't
+   create an accidentally hidden screen.
 4. If the screen shows data with nothing real behind it yet, say so visibly in the page header's
    `actions` (a `tag()` reading "Preview" or similar) — DESIGN_SYSTEM.md's back-office section is
    explicit that this can't be a footnote.
