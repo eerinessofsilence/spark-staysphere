@@ -69,19 +69,32 @@ export function RoleEditor({ role }: { role: TeamRoleDefinition }) {
           {t('team.rolePermissions')}
         </p>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {allPermissions.map((permission) => (
-            <li key={permission.key}>
-              <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm hover:bg-stone">
-                <input
-                  type="checkbox"
-                  checked={selected.has(permission.key)}
-                  onChange={() => toggle(permission.key)}
-                  className="size-4 rounded border-border accent-primary"
-                />
-                {t(permission.key)}
-              </label>
-            </li>
-          ))}
+          {allPermissions.map((permission) => {
+            const requiredForOwner = role.id === 'Owner' && permission.key === 'team.permTeamRoles';
+            return (
+              <li key={permission.key}>
+                <label
+                  className={`flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm ${
+                    requiredForOwner ? 'cursor-default' : 'cursor-pointer hover:bg-stone'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(permission.key)}
+                    disabled={requiredForOwner}
+                    onChange={() => toggle(permission.key)}
+                    className="size-4 rounded border-border accent-primary disabled:opacity-70"
+                  />
+                  <span>
+                    {t(permission.key)}
+                    {requiredForOwner ? (
+                      <span className="block text-xs text-muted-foreground">{t('team.ownerPermissionRequired')}</span>
+                    ) : null}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
         </ul>
       </div>
 

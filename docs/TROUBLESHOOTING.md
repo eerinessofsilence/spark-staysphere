@@ -48,6 +48,14 @@ on the control's own value.
 **`<fieldset>`/`<legend>` renders the legend inside the border** and broke the filter panel. Use
 `role="group"` with a heading instead — see DESIGN_SYSTEM.md rule 9.
 
+## Access control
+
+**An editable administrator role must retain the permission that repairs role grants.** If the
+owner can remove `team.permTeamRoles` from itself, the save succeeds and every later role mutation
+is denied, including the one needed to undo the mistake. Enforce this as a service invariant when
+both reading old overrides and writing new ones; disabling the checkbox in the UI is only the
+explanation, not the security boundary.
+
 ## Mobile viewport
 
 **On Android Chrome the layout viewport widens to the document's overflow**, so a page that

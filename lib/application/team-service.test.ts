@@ -34,6 +34,7 @@ const roleStore: RoleStore = {
 
 const viewBookings: TeamPermissionKey = 'team.permViewBookings';
 const editContent: TeamPermissionKey = 'team.permEditContent';
+const manageTeam: TeamPermissionKey = 'team.permTeamRoles';
 
 describe('TeamService custom roles', () => {
   beforeEach(() => {
@@ -70,17 +71,34 @@ describe('TeamService custom roles', () => {
 
     expect(await service.updateRole({ id: 'Owner', name: 'Property owner', permissions: [viewBookings] })).toEqual({
       ok: true,
-      role: { id: 'Owner', name: 'Property owner', builtin: true, permissions: [viewBookings] },
+      role: { id: 'Owner', name: 'Property owner', builtin: true, permissions: [viewBookings, manageTeam] },
     });
     expect((await service.listRoles()).find((role) => role.id === 'Owner')).toEqual({
       id: 'Owner',
       name: 'Property owner',
       builtin: true,
-      permissions: [viewBookings],
+      permissions: [viewBookings, manageTeam],
     });
     expect(await service.hasPermission('Owner', viewBookings)).toBe(true);
     expect(await service.hasPermission('Owner', editContent)).toBe(false);
+    expect(await service.hasPermission('Owner', manageTeam)).toBe(true);
     expect(await service.deleteRole('Owner')).toEqual({ ok: false, error: 'builtinRole' });
+  });
+
+  it('repairs an owner override that already removed role management', async () => {
+    roleDefinitions.set('Owner', {
+      id: 'Owner',
+      name: 'Property owner',
+      builtin: true,
+      permissions: [viewBookings],
+    });
+    const service = new TeamService(roleStore);
+
+    expect(await service.hasPermission('Owner', manageTeam)).toBe(true);
+    expect((await service.listRoles()).find((role) => role.id === 'Owner')?.permissions).toEqual([
+      viewBookings,
+      manageTeam,
+    ]);
   });
 
   it('does not remove a custom role while a member is assigned to it', async () => {

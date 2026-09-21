@@ -9,5 +9,13 @@ test('a built-in role row opens its populated editor', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Owner' })).toBeVisible();
   await expect(page.getByLabel('Role name')).toHaveValue('Owner');
   await expect(page.getByRole('checkbox')).toHaveCount(9);
-  await expect(page.getByRole('button', { name: 'Save role' })).toBeVisible();
+  const requiredPermission = page.getByRole('checkbox', {
+    name: 'Team & roles Required so the owner can continue managing roles.',
+  });
+  await expect(requiredPermission).toBeChecked();
+  await expect(requiredPermission).toBeDisabled();
+  const save = page.getByRole('button', { name: 'Save role' });
+  await expect(save).toBeVisible();
+  await save.click();
+  await expect(page.getByRole('status')).toContainText('Role updated.');
 });

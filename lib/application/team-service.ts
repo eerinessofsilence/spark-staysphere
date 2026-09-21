@@ -28,6 +28,15 @@ function builtinRoleDefinitions(): TeamRoleDefinition[] {
   }));
 }
 
+const ownerRoleId = 'Owner';
+const ownerRequiredPermission: TeamPermissionKey = 'team.permTeamRoles';
+
+/** The owner must always retain the one permission that can repair every other role grant. */
+function preserveOwnerAccess(role: TeamRoleDefinition): TeamRoleDefinition {
+  if (role.id !== ownerRoleId || role.permissions.includes(ownerRequiredPermission)) return role;
+  return { ...role, permissions: [...role.permissions, ownerRequiredPermission] };
+}
+
 export type CreateRoleError = 'nameRequired' | 'noPermissions';
 export type UpdateRoleError = 'roleNotFound' | 'nameRequired' | 'noPermissions';
 export type DeleteRoleError = 'roleNotFound' | 'builtinRole' | 'inUse';
@@ -52,7 +61,7 @@ export class TeamService {
     const builtinIds = new Set<string>(teamRoles);
     const builtin = builtinRoleDefinitions().map((role) => {
       const override = storedById.get(role.id);
-      return override ? { ...override, builtin: true } : role;
+      return preserveOwnerAccess(override ? { ...override, builtin: true } : role);
     });
     const custom = stored.filter((role) => !builtinIds.has(role.id)).map((role) => ({ ...role, builtin: false }));
     return [...builtin, ...custom];
@@ -84,7 +93,7 @@ export class TeamService {
     if (!name) return { ok: false, error: 'nameRequired' };
     if (input.permissions.length === 0) return { ok: false, error: 'noPermissions' };
 
-    const role: TeamRoleDefinition = { ...current, name, permissions: input.permissions };
+    const role = preserveOwnerAccess({ ...current, name, permissions: input.permissions });
     await this.roles.upsertRoleDefinition(role);
     return { ok: true, role };
   }

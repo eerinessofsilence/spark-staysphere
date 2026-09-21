@@ -139,6 +139,7 @@ export const settings = defineArea({
     'team.roleDeleted': 'Role deleted.',
     'team.roleInUse': 'This role is assigned to a team member. Assign another role before deleting it.',
     'team.builtinRoleDeleteLocked': 'Built-in roles can be edited, but not deleted.',
+    'team.ownerPermissionRequired': 'Required so the owner can continue managing roles.',
     'team.memberNotFound': 'This member no longer exists.',
     'team.roleNotFound': 'That role no longer exists.',
 
@@ -435,6 +436,7 @@ export const settings = defineArea({
     'team.roleDeleted': 'Rolle gelöscht.',
     'team.roleInUse': 'Diese Rolle ist einem Teammitglied zugewiesen. Weisen Sie zuerst eine andere Rolle zu.',
     'team.builtinRoleDeleteLocked': 'Integrierte Rollen können bearbeitet, aber nicht gelöscht werden.',
+    'team.ownerPermissionRequired': 'Erforderlich, damit der Eigentümer Rollen weiterhin verwalten kann.',
     'team.memberNotFound': 'Dieses Mitglied existiert nicht mehr.',
     'team.roleNotFound': 'Diese Rolle existiert nicht mehr.',
 
@@ -731,6 +733,7 @@ export const settings = defineArea({
     'team.roleDeleted': 'Роль удалена.',
     'team.roleInUse': 'Эта роль назначена участнику команды. Сначала назначьте ему другую роль.',
     'team.builtinRoleDeleteLocked': 'Встроенные роли можно изменять, но нельзя удалять.',
+    'team.ownerPermissionRequired': 'Обязательно, чтобы владелец мог продолжать управлять ролями.',
     'team.memberNotFound': 'Этого участника больше нет.',
     'team.roleNotFound': 'Этой роли больше нет.',
 
