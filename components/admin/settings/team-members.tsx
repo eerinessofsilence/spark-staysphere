@@ -70,7 +70,7 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
   return (
     <>
       <AdminPageHeader
-        title={t('team.title')}
+        title={t('team.members')}
         actions={
           <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
@@ -80,13 +80,8 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
       />
       <TeamTabs current="members" counts={{ members: members.length, roles: roles.length }} />
 
-      <section aria-labelledby="members-heading" className="mt-8">
-        <div>
-          <h2 id="members-heading" className="text-display text-3xl">
-            {t('team.members')}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{canSignIn}</p>
-        </div>
+      <section aria-label={t('team.members')} className="mt-8">
+        <p className="text-sm text-muted-foreground">{canSignIn}</p>
 
       <p role="status" aria-live="polite" className="mt-3 min-h-5 text-sm font-medium text-success">
         {status}

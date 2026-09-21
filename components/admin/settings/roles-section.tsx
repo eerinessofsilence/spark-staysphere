@@ -76,7 +76,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
   return (
     <>
       <AdminPageHeader
-        title={t('team.title')}
+        title={t('team.roles')}
         actions={
           <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
@@ -86,13 +86,8 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
       />
       <TeamTabs current="roles" counts={{ members: membersCount, roles: roles.length }} />
 
-      <section aria-labelledby="team-roles-heading" className="mt-8">
-        <div>
-          <h2 id="team-roles-heading" className="text-display text-3xl">
-            {t('team.roles')}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t('team.rolesListBody')}</p>
-        </div>
+      <section aria-label={t('team.roles')} className="mt-8">
+        <p className="text-sm text-muted-foreground">{t('team.rolesListBody')}</p>
 
       <div className="mt-5 overflow-hidden rounded-[18px] bg-card shadow-soft">
         <TableCard caption={t('team.roles')} className="min-w-[28rem]" attached>
