@@ -24,6 +24,7 @@ export type AdminCommandAction = (typeof adminCommandActions)[number];
 export const adminPages = [
   'dashboard',
   'front-desk',
+  'housekeeping',
   'reservations',
   'services',
   'rates',

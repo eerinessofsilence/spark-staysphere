@@ -17,6 +17,7 @@ export const shell = defineArea({
     'nav.rooms': 'Rooms',
     'nav.hotelSettings': 'Hotel Settings',
     'nav.team': 'Users',
+    'nav.housekeeping': 'Housekeeping',
     'nav.orbit': '360 Orbit',
 
     'property.switch': 'Switch property',
@@ -70,6 +71,7 @@ export const shell = defineArea({
     'nav.rooms': 'Zimmer',
     'nav.hotelSettings': 'Hoteleinstellungen',
     'nav.team': 'Benutzer',
+    'nav.housekeeping': 'Housekeeping',
     'nav.orbit': '360 Orbit',
 
     'property.switch': 'Hotel wechseln',
@@ -123,6 +125,7 @@ export const shell = defineArea({
     'nav.rooms': 'Номера',
     'nav.hotelSettings': 'Настройки отеля',
     'nav.team': 'Пользователи',
+    'nav.housekeeping': 'Уборка',
     'nav.orbit': '360 Orbit',
 
     'property.switch': 'Сменить отель',

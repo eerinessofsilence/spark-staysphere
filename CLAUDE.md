@@ -15,8 +15,11 @@ server actions and as `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bo
 the back office is server actions only, no new API routes.
 
 The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
-live on demo data. Operations: an overview, a rooms × nights front desk, bookings with detail and
-cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
+live on demo data. Operations: an overview, a rooms × nights front desk, a housekeeping board
+(`/admin/housekeeping`: every physical room's cleaning status — dirty, in progress, clean,
+inspected, out of order — read next to who is in it today, set from the row or the room's own page
+with a note, persisted per room in D1 behind its own `permHousekeeping` permission), bookings with
+detail and cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
 rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, the
 hotel's own copy, and the building spinner (`/admin/content/spinner`: its frames, key angles and
 start frame, and the zones drawn on those key-angle frames, each bound to a room, a floor, a room

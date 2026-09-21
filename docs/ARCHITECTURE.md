@@ -91,7 +91,7 @@ the catalog just falls back to seed.
 
 Bookings, payment attempts, admin overrides, and inventory holds are durable state, not catalog —
 they live in their own D1 tables (`bookings`, `booking_units`, `payment_attempts`,
-`room_status_overrides`, `inventory_holds`), resolved *at call time*, never cached at module scope
+`room_status_overrides`, `inventory_holds`, `housekeeping_states`), resolved *at call time*, never cached at module scope
 (an `env` binding from `cloudflare:workers` is only reliable once a request is in flight).
 `npm run dev` runs against a real, locally emulated D1 database by default (see README's Quick
 start) — no separate setup needed. If no D1 binding resolves for some reason, the same read/write

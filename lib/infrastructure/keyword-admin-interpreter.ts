@@ -24,6 +24,7 @@ import type { RoomStatus } from '../domain/schemas';
 const PAGE_WORDS: Record<AdminPage, string[]> = {
   dashboard: ['dashboard', 'overview', 'home'],
   'front-desk': ['front desk', 'frontdesk', 'desk'],
+  housekeeping: ['housekeeping', 'cleaning', 'room status'],
   reservations: ['reservations', 'bookings', 'booking'],
   services: ['services', 'add-ons', 'add ons', 'addons', 'extras'],
   rates: ['room rates', 'rates', 'prices', 'pricing'],

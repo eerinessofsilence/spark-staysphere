@@ -39,6 +39,7 @@ import type { ContentError, ContentService } from './content-service';
 export const ADMIN_PAGE_ROUTES: Record<AdminPage, { href: string; label: string }> = {
   dashboard: { href: '/admin', label: 'Dashboard' },
   'front-desk': { href: '/admin/front-desk', label: 'Front Desk' },
+  housekeeping: { href: '/admin/housekeeping', label: 'Housekeeping' },
   reservations: { href: '/admin/bookings', label: 'Reservations' },
   services: { href: '/admin/content/add-ons', label: 'Services' },
   rates: { href: '/admin/rates', label: 'Room Rates' },

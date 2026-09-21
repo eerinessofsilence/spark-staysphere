@@ -354,6 +354,14 @@ export type PhysicalRoom = z.infer<typeof physicalRoomSchema>;
 /** The desk's side of a confirmed stay — see `lib/domain/stay-state.ts` for the moves between them. */
 export const stayStateSchema = z.enum(['booked', 'checked_in', 'checked_out', 'no_show']);
 
+/**
+ * Where one physical room stands with housekeeping — separate from its room
+ * type's sell status (`roomStatusSchema`) and from any stay in it. See
+ * `lib/domain/housekeeping.ts` for what each means and what a room defaults
+ * to before anyone has touched it.
+ */
+export const housekeepingStatusSchema = z.enum(['clean', 'dirty', 'in_progress', 'inspected', 'out_of_order']);
+
 export const bookingSchema = z.object({
   id: z.string(),
   reference: z.string(),
@@ -398,6 +406,7 @@ export const teamPermissionKeySchema = z.enum([
   'team.permBrandDomain',
   'team.permTeamRoles',
   'team.permIntegrations',
+  'team.permHousekeeping',
 ]);
 
 /**
@@ -563,6 +572,7 @@ export type Guest = z.infer<typeof guestSchema>;
 export type PaymentAttempt = z.infer<typeof paymentAttemptSchema>;
 export type Booking = z.infer<typeof bookingSchema>;
 export type StayState = z.infer<typeof stayStateSchema>;
+export type HousekeepingStatus = z.infer<typeof housekeepingStatusSchema>;
 export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
 export type TeamPermissionKey = z.infer<typeof teamPermissionKeySchema>;
 export type TeamRoleDefinition = z.infer<typeof teamRoleDefinitionSchema>;

@@ -10,6 +10,7 @@ import type { Hotel } from '../domain/schemas';
 import { getAdminAuthEnv, getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
+import { durableHousekeepingStore } from '../infrastructure/durable-housekeeping-store';
 import { durableRoleStore } from '../infrastructure/durable-role-store';
 import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
@@ -28,6 +29,7 @@ import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
 import { ContentService } from './content-service';
 import { systemClock } from '../domain/clock';
+import { HousekeepingService } from './housekeeping-service';
 import { InventoryService } from './inventory-service';
 import { SampleBookingService } from './sample-bookings';
 import { TeamService } from './team-service';
@@ -68,6 +70,15 @@ const bookingEngineAdapter = createBookingEngineAdapter(hotelRepository);
 export const catalogService = new CatalogService(hotelRepository, bookingEngineAdapter, durableSpinnerMarkupPort);
 
 export const inventoryService = new InventoryService(hotelRepository, demoControl, catalogService);
+
+/** Cleaning status per physical room — see `housekeeping-service.ts`; the store is D1 with an in-memory fallback like the others. */
+export const housekeepingService = new HousekeepingService(
+  durableHousekeepingStore,
+  hotelRepository,
+  catalogService,
+  inventoryService,
+  systemClock,
+);
 
 export const bookingService = new BookingService(
   hotelRepository,

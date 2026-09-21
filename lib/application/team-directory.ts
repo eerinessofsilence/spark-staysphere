@@ -117,6 +117,7 @@ export const permissions: { key: TeamPermissionKey; allowed: BuiltinTeamRole[] }
   { key: 'team.permBrandDomain', allowed: ['Owner', 'General manager'] },
   { key: 'team.permTeamRoles', allowed: ['Owner'] },
   { key: 'team.permIntegrations', allowed: ['Owner', 'General manager'] },
+  { key: 'team.permHousekeeping', allowed: ['Owner', 'General manager', 'Front desk'] },
 ];
 
 /** Built-in roles only — a custom role's own `permissions` array answers this directly, see `TeamService.hasPermission`. */

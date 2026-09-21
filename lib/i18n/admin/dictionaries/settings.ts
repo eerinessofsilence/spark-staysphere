@@ -113,6 +113,7 @@ export const settings = defineArea({
     'team.permBrandDomain': 'Brand & domain',
     'team.permTeamRoles': 'Team & roles',
     'team.permIntegrations': 'Integrations',
+    'team.permHousekeeping': 'Housekeeping',
     'team.permissionDenied': "Your role doesn't include this.",
 
     'team.roles': 'Roles',
@@ -402,6 +403,7 @@ export const settings = defineArea({
     'team.permBrandDomain': 'Marke & Domain',
     'team.permTeamRoles': 'Team & Rollen',
     'team.permIntegrations': 'Integrationen',
+    'team.permHousekeeping': 'Housekeeping',
     'team.permissionDenied': 'Ihre Rolle deckt das nicht ab.',
 
     'team.roles': 'Rollen',
@@ -691,6 +693,7 @@ export const settings = defineArea({
     'team.permBrandDomain': 'Бренд и домен',
     'team.permTeamRoles': 'Команда и роли',
     'team.permIntegrations': 'Интеграции',
+    'team.permHousekeeping': 'Уборка номеров',
     'team.permissionDenied': 'Ваша роль не включает это действие.',
 
     'team.roles': 'Роли',

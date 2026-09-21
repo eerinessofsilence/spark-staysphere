@@ -4,6 +4,7 @@ import type {
   Booking,
   Guest,
   Hotel,
+  HousekeepingStatus,
   IntegrationStatus,
   PaymentAttempt,
   PhysicalRoom,
@@ -103,6 +104,26 @@ export interface RoleStore {
   createCustomRole(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
   getMemberRoleOverride(memberId: string): Promise<string | null>;
   setMemberRoleOverride(memberId: string, roleId: string): Promise<void>;
+}
+
+/** One physical room's housekeeping status as someone last set it — a room with no record has never been touched. */
+export interface HousekeepingRecord {
+  unitId: string;
+  hotelId: string;
+  status: HousekeepingStatus;
+  /** What the attendant left for the desk — "lamp broken", "late check-out" — or nothing. */
+  note: string | null;
+  updatedAt: string;
+}
+
+/**
+ * The durable half of `/admin/housekeeping`: only rooms someone has marked
+ * are stored, keyed by the physical room's id, so the seed rooms and rooms
+ * added later in the CMS are treated alike (see `HousekeepingService`).
+ */
+export interface HousekeepingStore {
+  listRecords(hotelId: string): Promise<HousekeepingRecord[]>;
+  setRecord(record: HousekeepingRecord): Promise<void>;
 }
 
 export interface PmsAdapter {
