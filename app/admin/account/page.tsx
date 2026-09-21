@@ -25,6 +25,8 @@ export default async function AccountPage() {
   const member = session ? await teamService.findMemberById(session.memberId) : null;
   if (!session || !member) redirect('/admin/sign-in');
   const roles = await teamService.listRoles();
+  const canManageRoles =
+    roles.find((role) => role.id === member.role)?.permissions.includes('team.permTeamRoles') ?? false;
 
   return (
     <AdminPage width="narrow">
@@ -32,7 +34,7 @@ export default async function AccountPage() {
       <AccountTabs current="account" />
 
       <div className="mt-8 grid gap-6">
-        <AccountSettings member={member} roles={roles} />
+        <AccountSettings member={member} roles={roles} canManageRoles={canManageRoles} />
         <InterestsSettings interests={session.interests} />
         <LanguageSettings />
         <TourSettings />

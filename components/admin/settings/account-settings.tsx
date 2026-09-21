@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import type { TeamRoleDefinition } from '@/lib/domain/schemas';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
@@ -13,7 +14,15 @@ import { initialsOf, roleLabel, type TeamMember } from './team-data';
  * `member` is whoever signed in (`admin-session.ts`), the person the
  * sidebar's `AccountMenu` names — this page is what its "Account" opens.
  */
-export function AccountSettings({ member: me, roles }: { member: TeamMember; roles: TeamRoleDefinition[] }) {
+export function AccountSettings({
+  member: me,
+  roles,
+  canManageRoles,
+}: {
+  member: TeamMember;
+  roles: TeamRoleDefinition[];
+  canManageRoles: boolean;
+}) {
   const [meFirstName, meLastName] = me.name.split(' ');
   const [firstName, setFirstName] = React.useState(meFirstName ?? '');
   const [lastName, setLastName] = React.useState(meLastName ?? '');
@@ -136,6 +145,12 @@ export function AccountSettings({ member: me, roles }: { member: TeamMember; rol
       <Group id="role" title={t('account.role')} description={t('account.roleBody')}>
         <Row label={t('account.role')}>
           <span className="font-medium">{roleLabel(me.role, roles, t)}</span>
+          {canManageRoles ? (
+            <Link href={`/admin/settings/team/${encodeURIComponent(me.id)}`} className={pill('ghost', 'min-h-8 px-3')}>
+              <PencilSquareIcon className="size-4" aria-hidden="true" />
+              {t('account.changeRole')}
+            </Link>
+          ) : null}
         </Row>
         <Row label={t('account.team')}>
           <Link href="/admin/settings/team" className="font-medium hover:text-accent-strong">
