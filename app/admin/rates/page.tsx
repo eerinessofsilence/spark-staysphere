@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
   catalogService,
   contentService,
@@ -10,14 +9,13 @@ import {
 } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
-import { addIsoDays } from '@/lib/domain/dates';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
+import { DATE_FNS_LOCALES } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
-import { iconButton, pill } from '@/lib/ui';
-import { cn } from '@/lib/utils';
+import { pill } from '@/lib/ui';
 import { WINDOW_OPTIONS, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
+import { DateWindowToolbar } from '@/components/admin/operations/date-window-toolbar';
 import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
 import { RatesSearchBox } from '@/components/admin/rates/rates-search-box';
 import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
@@ -62,7 +60,6 @@ export default async function RatesPage({
   const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
   const q = first(params.q)?.trim() ?? '';
   const { dates, windowEnd, columns, minWidth } = buildDateWindow(from, days);
-  const lastNight = dates.at(-1) ?? from;
 
   const selectedSlug = await getSelectedHotelSlug();
   const hotel = await catalogService.getHotel(selectedSlug);
@@ -100,7 +97,6 @@ export default async function RatesPage({
       ).filter((row): row is (typeof allRows)[number] => row !== null)
     : allRows;
 
-  const nights = lNights(days, locale);
   const rateCountLabel = (count: number) =>
     pluralForm(locale, count, {
       one: t('rates.countOne', { count }),
@@ -124,53 +120,16 @@ export default async function RatesPage({
         }
       />
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <RatesSearchBox query={q} />
-
-        <div className="flex items-center gap-2">
-          <Link
-            href={ratesHref({ from: addIsoDays(from, -days), days, q })}
-            aria-label={t('frontDesk.previousNights', { nights })}
-            className={iconButton('light')}
-          >
-            <ChevronLeftIcon className="size-5" aria-hidden="true" />
-          </Link>
-          <Link
-            href={ratesHref({ from: today, days, q })}
-            aria-current={from === today ? 'true' : undefined}
-            className={pill('secondary')}
-          >
-            {t('frontDesk.today')}
-          </Link>
-          <Link
-            href={ratesHref({ from: addIsoDays(from, days), days, q })}
-            aria-label={t('frontDesk.nextNights', { nights })}
-            className={iconButton('light')}
-          >
-            <ChevronRightIcon className="size-5" aria-hidden="true" />
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-          {WINDOW_OPTIONS.map((option) => (
-            <Link
-              key={option}
-              href={ratesHref({ from, days: option, q })}
-              aria-current={option === days ? 'page' : undefined}
-              className={cn(
-                'flex min-h-8 items-center rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                option === days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone hover:text-foreground',
-              )}
-            >
-              {lNights(option, locale)}
-            </Link>
-          ))}
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          {t('rates.dates', { from: lDateShort(from, locale), to: lDateShort(lastNight, locale) })}
-        </p>
-      </div>
+      <DateWindowToolbar
+        from={from}
+        days={days}
+        today={today}
+        locale={locale}
+        t={t}
+        windowOptions={WINDOW_OPTIONS}
+        hrefFor={(params) => ratesHref({ ...params, q })}
+        before={<RatesSearchBox query={q} />}
+      />
 
       <div className="mt-5">
         {rows.length === 0 ? (

@@ -1,21 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { contentService, DEMO_HOTEL_SLUG, inventoryService } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
-import { addIsoDays } from '@/lib/domain/dates';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { lDateShort, lNights } from '@/lib/i18n/format';
-import { iconButton, pill } from '@/lib/ui';
+import { lDateShort } from '@/lib/i18n/format';
+import { pill } from '@/lib/ui';
 import { AddRoomTypeButton } from '@/components/admin/content/add-room-type-button';
 import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
+import { FrontDeskDateFilter } from '@/components/admin/front-desk/front-desk-date-filter';
 import { FrontDeskGrid } from '@/components/admin/front-desk/front-desk-grid';
 import { FrontDeskLegend } from '@/components/admin/front-desk/front-desk-legend';
 import { FrontDeskMobileFilters } from '@/components/admin/front-desk/front-desk-mobile-filters';
-import { frontDeskHref, DEFAULT_WINDOW, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
-import { FrontDeskWindowFilter } from '@/components/admin/front-desk/front-desk-window-filter';
+import { frontDeskHref, DEFAULT_WINDOW, MAX_CUSTOM_WINDOW, WINDOW_OPTIONS } from '@/components/admin/front-desk/front-desk-shared';
+import { DateNavArrows, WindowSizePills } from '@/components/admin/operations/date-window-toolbar';
 import { RoomTypeSelect } from '@/components/admin/front-desk/room-type-select';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -71,27 +70,14 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <Link
-            href={frontDeskHref({ from: addIsoDays(from, -days), days, type })}
-            aria-label={t('frontDesk.previousNights', { nights: lNights(days, locale) })}
-            className={iconButton('light')}
-          >
-            <ChevronLeftIcon className="size-5" aria-hidden="true" />
-          </Link>
-          <Link
-            href={frontDeskHref({ from: today, days, type })}
-            aria-current={from === today ? 'true' : undefined}
-            className={pill('secondary')}
-          >
-            {t('frontDesk.today')}
-          </Link>
-          <Link
-            href={frontDeskHref({ from: addIsoDays(from, days), days, type })}
-            aria-label={t('frontDesk.nextNights', { nights: lNights(days, locale) })}
-            className={iconButton('light')}
-          >
-            <ChevronRightIcon className="size-5" aria-hidden="true" />
-          </Link>
+          <DateNavArrows
+            from={from}
+            days={days}
+            today={today}
+            locale={locale}
+            t={t}
+            hrefFor={(params) => frontDeskHref({ ...params, type })}
+          />
           <div className="ml-auto sm:hidden">
             <FrontDeskMobileFilters
               from={from}
@@ -101,13 +87,25 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
             />
           </div>
         </div>
-        <p className="text-sm font-medium">
-          {lDateShort(from, locale)} – {lDateShort(lastNight, locale)}
-          <span className="font-normal text-muted-foreground"> · {lNights(board.dates.length, locale)}</span>
+
+        {/* Same pills as both rates screens (WindowSizePills) — a menu to
+            open first read as one more step than the others needed. */}
+        <div className="hidden items-center gap-3 sm:flex">
+          <WindowSizePills
+            from={from}
+            days={days}
+            locale={locale}
+            windowOptions={WINDOW_OPTIONS}
+            hrefFor={(params) => frontDeskHref({ ...params, type })}
+          />
+          <FrontDeskDateFilter from={from} days={days} type={type} />
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          {t('ops.dateRange', { from: lDateShort(from, locale), to: lDateShort(lastNight, locale) })}
         </p>
 
-        <div className="hidden flex-wrap items-center gap-2 sm:ml-auto sm:flex">
-          <FrontDeskWindowFilter from={from} days={days} type={type} />
+        <div className="hidden sm:ml-auto sm:flex">
           <RoomTypeSelect
             options={board.groups.map((group) => ({ id: group.roomTypeId, name: group.roomName }))}
             value={type}

@@ -1,17 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { catalogService, contentService, demoControl, hotelRepository } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
-import { addIsoDays } from '@/lib/domain/dates';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
-import { iconButton, pill } from '@/lib/ui';
-import { cn } from '@/lib/utils';
+import { DATE_FNS_LOCALES } from '@/lib/i18n/format';
 import { WINDOW_OPTIONS, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
+import { DateWindowToolbar } from '@/components/admin/operations/date-window-toolbar';
 import { RatePlanRow } from '@/components/admin/rates/rate-plan-row';
 import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
 import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
@@ -71,8 +68,6 @@ export default async function RoomRatesPage({
   const rawDays = Number(first(query.days));
   const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
   const { dates, windowEnd, columns, minWidth } = buildDateWindow(from, days);
-  const lastNight = dates.at(-1) ?? from;
-  const nights = lNights(days, locale);
 
   const [rates, override, availability] = await Promise.all([
     contentService.listRatesContent(room.id),
@@ -89,51 +84,15 @@ export default async function RoomRatesPage({
         description={hotel.currency}
       />
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Link
-            href={roomRatesHref(room.id, { from: addIsoDays(from, -days), days })}
-            aria-label={t('frontDesk.previousNights', { nights })}
-            className={iconButton('light')}
-          >
-            <ChevronLeftIcon className="size-5" aria-hidden="true" />
-          </Link>
-          <Link
-            href={roomRatesHref(room.id, { from: today, days })}
-            aria-current={from === today ? 'true' : undefined}
-            className={pill('secondary')}
-          >
-            {t('frontDesk.today')}
-          </Link>
-          <Link
-            href={roomRatesHref(room.id, { from: addIsoDays(from, days), days })}
-            aria-label={t('frontDesk.nextNights', { nights })}
-            className={iconButton('light')}
-          >
-            <ChevronRightIcon className="size-5" aria-hidden="true" />
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-          {WINDOW_OPTIONS.map((option) => (
-            <Link
-              key={option}
-              href={roomRatesHref(room.id, { from, days: option })}
-              aria-current={option === days ? 'page' : undefined}
-              className={cn(
-                'flex min-h-8 items-center rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                option === days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone hover:text-foreground',
-              )}
-            >
-              {lNights(option, locale)}
-            </Link>
-          ))}
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          {t('rates.dates', { from: lDateShort(from, locale), to: lDateShort(lastNight, locale) })}
-        </p>
-      </div>
+      <DateWindowToolbar
+        from={from}
+        days={days}
+        today={today}
+        locale={locale}
+        t={t}
+        windowOptions={WINDOW_OPTIONS}
+        hrefFor={(params) => roomRatesHref(room.id, params)}
+      />
 
       <div className="mt-5 overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
         <div style={{ minWidth }} className="text-sm">
