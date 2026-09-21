@@ -12,6 +12,7 @@ import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { AccountingTabs } from '@/components/admin/accounting/accounting-tabs';
+import { AddPaymentButton, type UnpaidBooking } from '@/components/admin/accounting/add-payment-button';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
@@ -51,10 +52,21 @@ export default async function AccountingPage({
     hotelRepository.listBookings(),
   ]);
   const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
+  const rooms = await hotelRepository.listRooms(hotel.id);
+  const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
   const entries = await Promise.all(
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );
   const ledger = buildLedger(entries);
+  const unpaidBookings: UnpaidBooking[] = ledger.rows
+    .filter((row) => row.state === 'awaiting' || row.state === 'declined')
+    .map((row) => ({
+      reference: row.booking.reference,
+      guestName: `${row.booking.guest.firstName} ${row.booking.guest.lastName}`,
+      roomName: roomNames.get(row.booking.roomTypeId) ?? row.booking.roomTypeId,
+      amount: row.amount,
+      currency: row.booking.currency,
+    }));
   const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam, pageSizeParam);
   const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPageParam);
   const money = (value: number) => lMoney(value, hotel.currency, locale);
@@ -79,7 +91,7 @@ export default async function AccountingPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('nav.accounting')} />
+      <AdminPageHeader title={t('nav.accounting')} actions={<AddPaymentButton bookings={unpaidBookings} />} />
       <AccountingTabs current="overview" />
 
       <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

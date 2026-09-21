@@ -6,9 +6,17 @@ import { adminT, type AdminT } from '@/lib/i18n/admin/translate';
 import { PAYMENT_METHOD_LABEL, lPaymentMethod } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 
+/** A manually-recorded provider outside the guest checkout's own `PaymentMethod` — see `AddPaymentButton`. */
+const MANUAL_METHOD_KEY: Partial<Record<string, AdminTranslationKey>> = {
+  pos: 'accounting.methodPos',
+  cash: 'accounting.methodCash',
+};
+
 /** A payment provider's name in the team member's language; an unknown provider is shown as recorded. */
 export function methodLabel(provider: string, locale: AdminLocale): string {
-  return provider in PAYMENT_METHOD_LABEL.en ? lPaymentMethod(provider as PaymentMethod, locale) : provider;
+  if (provider in PAYMENT_METHOD_LABEL.en) return lPaymentMethod(provider as PaymentMethod, locale);
+  const key = MANUAL_METHOD_KEY[provider];
+  return key ? adminT(locale)(key) : provider;
 }
 
 const ATTEMPT_STATUS: Record<PaymentAttempt['status'], { key: AdminTranslationKey; tone: string; icon: typeof CheckCircle }> = {

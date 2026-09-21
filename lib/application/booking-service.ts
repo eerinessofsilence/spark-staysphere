@@ -249,6 +249,34 @@ export class BookingService {
     return this.repository.findBookingByIdempotencyKey(key);
   }
 
+  /**
+   * The desk logging money that moved outside the guest's own checkout —
+   * a card run through a POS terminal, cash at the desk, a bank transfer
+   * that landed. Adds an authorized attempt rather than touching the
+   * booking's own total, the same ledger every other payment lands in
+   * (`buildLedger` picks it up from `listPaymentAttempts` next read).
+   */
+  async recordManualPayment(
+    reference: string,
+    provider: string,
+    amount: number,
+  ): Promise<{ outcome: 'recorded' | 'not_found' | 'cancelled' | 'invalid_amount'; booking?: Booking }> {
+    const booking = await this.repository.getBookingByReference(normalizeReference(reference));
+    if (!booking) return { outcome: 'not_found' };
+    if (booking.status === 'cancelled') return { outcome: 'cancelled', booking };
+    if (!Number.isFinite(amount) || amount <= 0) return { outcome: 'invalid_amount', booking };
+    const attempt: PaymentAttempt = {
+      id: `pay_${crypto.randomUUID()}`,
+      bookingId: booking.id,
+      provider,
+      status: 'authorized',
+      amount: Math.round(amount * 100) / 100,
+      currency: booking.currency,
+    };
+    await this.repository.savePaymentAttempt(attempt);
+    return { outcome: 'recorded', booking };
+  }
+
   /** The hotel cancelling: no email check, but a stay already under way is still the desk's call. */
   async cancelAsHotel(reference: string): Promise<{ outcome: CancelOutcome; booking?: Booking }> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
