@@ -7,7 +7,7 @@ import { adminPageTitle } from '@/lib/i18n/admin/translate';
 import { AccountSettings } from '@/components/admin/settings/account-settings';
 import { AccountTabs } from '@/components/admin/settings/account-tabs';
 import { LanguageSettings } from '@/components/admin/settings/language-settings';
-import { InterestsSettings, SignOutButton } from '@/components/admin/settings/session-settings';
+import { SignOutButton } from '@/components/admin/settings/session-settings';
 import { TourSettings } from '@/components/admin/settings/tour-settings';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -35,7 +35,6 @@ export default async function AccountPage() {
 
       <div className="mt-8 grid gap-6">
         <AccountSettings member={member} roles={roles} canManageRoles={canManageRoles} />
-        <InterestsSettings interests={session.interests} />
         <LanguageSettings />
         <TourSettings />
       </div>
