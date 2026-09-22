@@ -78,7 +78,7 @@ spec made; the CMS and golden-path specs reset demo state at the start of their 
 | `/admin/channel-manager` | A clearly labelled, browser-local preview of OTA/channel connections |
 | `/admin/content` and its editors | The CMS: room types, physical units, rates, add-ons, hotel copy, and the building spinner's frames and markup — no deploy needed |
 | `/admin/settings/team` | Team directory, role editor, and enforced permission matrix |
-| `/admin/settings`, `/admin/integrations`, `/admin/media` | Labelled previews — brand settings, real-system connection credentials, and general media uploads are not yet wired to anything real |
+| `/admin/settings`, `/admin/integrations`, `/admin/media` | Brand and connection previews; media library includes durable uploads made in the hotel, room and add-on editors |
 | `/admin/account`, `/admin/account/subscription` | Profile, admin language, and subscription controls; only session and language preferences persist in the demo |
 
 **API** (the guest UI reaches quotes/bookings through server actions instead; these exist for external callers)

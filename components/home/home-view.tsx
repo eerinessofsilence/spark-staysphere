@@ -10,6 +10,7 @@ import { useT } from '@/lib/i18n/context';
 import { pill } from '@/lib/ui';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { HotelScene } from '@/components/hotel/hotel-scene';
+import { AboutGallery } from '@/components/hotel/about-gallery';
 import { RoomCard } from '@/components/rooms/room-card';
 import { RoomStrip } from '@/components/rooms/room-strip';
 import { RoomStripControls, ScrollArrows } from '@/components/rooms/room-strip-controls';
@@ -132,15 +133,7 @@ export function HomeView({
               </p>
             </Reveal>
             <Reveal delay={120} className="relative aspect-square overflow-hidden rounded-[18px]">
-              <img
-                src={hotel.aboutPhoto.url}
-                alt={t('home.aboutHeading', { hotel: hotel.name })}
-                width={hotel.aboutPhoto.width}
-                height={hotel.aboutPhoto.height}
-                loading="lazy"
-                decoding="async"
-                className="size-full object-cover"
-              />
+              <AboutGallery photos={hotel.aboutPhotos ?? [hotel.aboutPhoto]} alt={t('home.aboutHeading', { hotel: hotel.name })} />
             </Reveal>
           </div>
         </section>

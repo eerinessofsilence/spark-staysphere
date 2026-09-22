@@ -6,7 +6,9 @@ import { folderLabel, labelFromFilename, mediaTypeOf } from '@/lib/domain/media'
 import { Modal } from '@/components/site/modal';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { pluralForm } from '@/lib/i18n/plural';
-import { fieldClass, tag } from '@/lib/ui';
+import { fieldClass, tag, pill } from '@/lib/ui';
+import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
+import { cn } from '@/lib/utils';
 import { Select } from './fields';
 
 interface MediaPickerProps {
@@ -14,6 +16,8 @@ interface MediaPickerProps {
   onClose: () => void;
   assets: MediaAsset[];
   onPick: (asset: MediaAsset) => void;
+  onPickMany?: (assets: MediaAsset[]) => void;
+  maxSelection?: number;
   /** Already in this gallery — shown as added and not offered twice. */
   usedUrls?: string[];
   /** The folder to open on, e.g. the room's own photographs. */
@@ -21,12 +25,11 @@ interface MediaPickerProps {
 }
 
 /**
- * The whole upload path in v1: pick from `public/images/**`, read at build
- * time into `media-manifest.generated.json` (see `scripts/generate-media-manifest.mjs`).
+ * Pick from committed photos and uploaded assets returned by the media library.
  * No external URL is ever offered. Opens on the room's own folder when it has
  * one, searches by name, and marks what the gallery already holds.
  */
-export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], suggestedFolder }: MediaPickerProps) {
+export function MediaPicker({ open, onClose, assets, onPick, onPickMany, maxSelection = 30, usedUrls = [], suggestedFolder }: MediaPickerProps) {
   const t = useAdminT();
   const locale = useAdminLocale();
   const folders = React.useMemo(
@@ -41,11 +44,13 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
   const startFolder = suggestionHasNew ? suggestedFolder : 'all';
   const [folder, setFolder] = React.useState(startFolder);
   const [query, setQuery] = React.useState('');
+  const [selected, setSelected] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!open) return;
     setFolder(startFolder);
     setQuery('');
+    setSelected([]);
     // Only when the picker opens: re-running as the gallery changes would yank the folder mid-browse.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -63,7 +68,7 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
   })}`;
 
   return (
-    <Modal open={open} onClose={onClose} title={t('media.pick')} className="sm:max-w-3xl">
+    <Modal open={open} onClose={onClose} title={t(onPickMany ? 'upload.library' : 'media.pick')} className="sm:max-w-3xl">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_15rem]">
         <label htmlFor="media-picker-search" className="sr-only">
           {t('media.search')}
@@ -111,6 +116,7 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {visible.map((asset) => {
             const added = used.has(asset.url);
+            const checked = selected.includes(asset.url);
             const panorama = mediaTypeOf(asset) === '360';
             const name = labelFromFilename(asset.filename);
             const description = [
@@ -125,15 +131,17 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
               <li key={asset.url} className="min-w-0">
                 <button
                   type="button"
-                  disabled={added}
+                  disabled={added || Boolean(onPickMany && !checked && selected.length >= maxSelection)}
+                  aria-pressed={onPickMany ? checked : undefined}
                   onClick={() => {
-                    onPick(asset);
-                    onClose();
+                    if (onPickMany) setSelected((current) => checked ? current.filter((url) => url !== asset.url) : [...current, asset.url]);
+                    else { onPick(asset); onClose(); }
                   }}
                   aria-label={description}
                   title={asset.filename}
-                  className="group relative block w-full cursor-pointer overflow-hidden rounded-[18px] border border-border text-left transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border"
+                  className={cn('group relative block w-full cursor-pointer overflow-hidden rounded-[18px] border text-left transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border', checked ? 'border-accent ring-2 ring-accent' : 'border-border')}
                 >
+                  {checked ? <CheckCircle weight="fill" className="absolute right-2 top-2 z-10 size-6 rounded-full bg-card text-accent-strong" aria-hidden="true" /> : null}
                   <span className="block aspect-[4/3] overflow-hidden bg-stone">
                     <img
                       src={asset.url}
@@ -160,6 +168,12 @@ export function MediaPicker({ open, onClose, assets, onPick, usedUrls = [], sugg
           })}
         </ul>
       )}
+      {onPickMany ? <div className="sticky bottom-0 mt-4 flex justify-end border-t border-border bg-card pt-3">
+        <button type="button" disabled={selected.length === 0} className={pill('primary')} onClick={() => {
+          onPickMany(selected.map((url) => assets.find((asset) => asset.url === url)!).filter(Boolean));
+          onClose();
+        }}>{t('upload.selected', { count: selected.length })}</button>
+      </div> : null}
     </Modal>
   );
 }

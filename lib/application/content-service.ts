@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { nightsInRange } from '../domain/availability';
 import { effectiveVersion } from '../domain/catalog-overlay';
 import { isEquirectangular, isPanorama } from '../domain/media';
+import { MAX_GALLERY_PHOTOS, MAX_PHOTO_BYTES, webpDimensions } from '../domain/photo-upload';
 import type { Polygon } from '../domain/polygon/geometry';
 import { checkPolygon, requireUuid } from '../domain/polygon/validate';
 import { floorOf, nextRoomNumber } from '../domain/room-units';
@@ -14,6 +15,7 @@ import type {
   CatalogReader,
   Clock,
   MediaLibraryPort,
+  MediaAsset,
   SpinnerFrameStoragePort,
   SpinnerMarkupPort,
 } from '../domain/ports';
@@ -164,6 +166,7 @@ export const hotelContentInputSchema = z.object({
   currency: currencySchema,
   description: z.string().min(1, 'Enter a description.'),
   aboutPhoto: z.string().min(1, 'Pick a photo.'),
+  aboutPhotos: z.array(z.string().min(1)).min(1, 'Add at least one photo.').max(MAX_GALLERY_PHOTOS).optional(),
   facilities: z.array(
     z.object({
       icon: facilityIconSchema,
@@ -348,13 +351,13 @@ export class ContentService {
    * problem found. Every item needs a label: the room page shows it as the
    * name of that view.
    */
-  private resolveMedia(
+  private async resolveMedia(
     items: z.infer<typeof mediaItemSchema>[],
     fieldPrefix: string,
-  ): { ok: true; media: RoomType['media'] } | { ok: false; fieldErrors: Record<string, string[]> } {
+  ): Promise<{ ok: true; media: RoomType['media'] } | { ok: false; fieldErrors: Record<string, string[]> }> {
     const media: RoomType['media'] = [];
     for (const [index, item] of items.entries()) {
-      const asset = this.media.find(item.url);
+      const asset = await this.media.find(item.url);
       const path = `${fieldPrefix}.${index}.url`;
       if (!asset) return { ok: false, fieldErrors: { [path]: ['Pick a photo from the media library.'] } };
       if (item.type === '360' && !(isPanorama(asset) && isEquirectangular(asset))) {
@@ -375,26 +378,27 @@ export class ContentService {
     return { ok: true, media };
   }
 
-  private resolvePhotos(
+  private async resolvePhotos(
     urls: string[] | undefined,
-  ): { ok: true; photos: AddOn['photos'] } | { ok: false; fieldErrors: Record<string, string[]> } {
+    field = 'photos',
+  ): Promise<{ ok: true; photos: AddOn['photos'] } | { ok: false; fieldErrors: Record<string, string[]> }> {
     if (!urls || urls.length === 0) return { ok: true, photos: undefined };
     const photos: NonNullable<AddOn['photos']> = [];
     for (const [index, url] of urls.entries()) {
-      const asset = this.media.find(url);
+      const asset = await this.media.find(url);
       if (!asset) {
-        return { ok: false, fieldErrors: { [`photos.${index}`]: ['Pick a photo from the media library.'] } };
+        return { ok: false, fieldErrors: { [`${field}.${index}`]: ['Pick a photo from the media library.'] } };
       }
       photos.push({ url, width: asset.width, height: asset.height });
     }
     return { ok: true, photos };
   }
 
-  private resolvePhoto(
+  private async resolvePhoto(
     url: string,
     field: string,
-  ): { ok: true; photo: Hotel['aboutPhoto'] } | { ok: false; fieldErrors: Record<string, string[]> } {
-    const asset = this.media.find(url);
+  ): Promise<{ ok: true; photo: Hotel['aboutPhoto'] } | { ok: false; fieldErrors: Record<string, string[]> }> {
+    const asset = await this.media.find(url);
     if (!asset) return { ok: false, fieldErrors: { [field]: ['Pick a photo from the media library.'] } };
     return { ok: true, photo: { url, width: asset.width, height: asset.height } };
   }
@@ -402,6 +406,24 @@ export class ContentService {
   /** Everything the media picker can offer — see `lib/infrastructure/media-library.ts`. */
   listMedia() {
     return this.media.list();
+  }
+
+  async uploadPhoto(filename: string, contentType: string, bytes: ArrayBuffer): Promise<ContentResult<MediaAsset>> {
+    const denied = await this.permit('team.permEditContent');
+    if (denied) return fail(denied);
+    if (bytes.byteLength > MAX_PHOTO_BYTES || contentType !== 'image/webp') {
+      return fail({ kind: 'rule', message: 'Choose a JPEG, PNG or WebP photo up to 10 MB.' });
+    }
+    const dimensions = webpDimensions(bytes);
+    if (!dimensions) return fail({ kind: 'rule', message: 'This photo could not be read. Choose another image.' });
+    if (!this.media.upload) return fail({ kind: 'rule', message: 'Photo storage is unavailable. Please try again later.' });
+    const hotel = await this.hotel();
+    const safeName = filename.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 120) || 'photo.webp';
+    try {
+      return ok(await this.media.upload({ hotelId: hotel.id, filename: safeName, ...dimensions, bytes }));
+    } catch {
+      return fail({ kind: 'rule', message: 'Photo could not be uploaded. Please try again.' });
+    }
   }
 
   /** Whether an entity came with the demo catalog — a page uses this to not offer a delete the service would refuse. */
@@ -445,8 +467,10 @@ export class ContentService {
       };
     });
 
-    const aboutPhoto = this.resolvePhoto(input.aboutPhoto, 'aboutPhoto');
+    const aboutPhoto = await this.resolvePhoto(input.aboutPhotos?.[0] ?? input.aboutPhoto, 'aboutPhoto');
     if (!aboutPhoto.ok) return fail({ kind: 'validation', fieldErrors: aboutPhoto.fieldErrors });
+    const gallery = await this.resolvePhotos(input.aboutPhotos ?? [input.aboutPhoto], 'aboutPhotos');
+    if (!gallery.ok) return fail({ kind: 'validation', fieldErrors: gallery.fieldErrors });
 
     const next = hotelSchema.parse({
       ...current,
@@ -457,6 +481,7 @@ export class ContentService {
       currency: input.currency,
       description: input.description,
       aboutPhoto: aboutPhoto.photo,
+      aboutPhotos: gallery.photos,
       facilities: input.facilities,
       areas: nextAreas,
     } satisfies Hotel);
@@ -526,7 +551,7 @@ export class ContentService {
       return fail({ kind: 'validation', fieldErrors: { slug: ['That page address is already in use.'] } });
     }
 
-    const media = this.resolveMedia(input.media, 'media');
+    const media = await this.resolveMedia(input.media, 'media');
     if (!media.ok) return fail({ kind: 'validation', fieldErrors: media.fieldErrors });
 
     const id = `room_${slug}`;
@@ -562,7 +587,7 @@ export class ContentService {
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
     const input = parsed.data;
 
-    const media = this.resolveMedia(input.media, 'media');
+    const media = await this.resolveMedia(input.media, 'media');
     if (!media.ok) return fail({ kind: 'validation', fieldErrors: media.fieldErrors });
 
     if (!current.hidden && !media.media.some((item) => item.type === 'image')) {
@@ -931,7 +956,7 @@ export class ContentService {
     const parentError = await this.validateParent(input.parentId, null, addOns);
     if (parentError) return fail({ kind: 'validation', fieldErrors: { parentId: [parentError] } });
 
-    const photos = this.resolvePhotos(input.photos);
+    const photos = await this.resolvePhotos(input.photos);
     if (!photos.ok) return fail({ kind: 'validation', fieldErrors: photos.fieldErrors });
 
     const id = uniqueId(`addon_${kebabSuggestion(input.name) || 'addon'}`, new Set(addOns.map((addOn) => addOn.id)));
@@ -971,7 +996,7 @@ export class ContentService {
       return ruleError('This add-on has extras of its own, so it cannot also be offered inside another. Extras only go one level deep.', 'parentId');
     }
 
-    const photos = this.resolvePhotos(input.photos);
+    const photos = await this.resolvePhotos(input.photos);
     if (!photos.ok) return fail({ kind: 'validation', fieldErrors: photos.fieldErrors });
 
     const { version: _version, ...rest } = current;

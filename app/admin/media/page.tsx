@@ -40,13 +40,16 @@ export default async function MediaLibraryPage({
     contentService.listRoomsContent(),
     contentService.listAddOnsContent(),
   ]);
-  const assets = contentService.listMedia();
+  const assets = await contentService.listMedia();
 
   const usage = new Map<string, MediaUsage[]>();
   const use = (url: string | undefined, entry: MediaUsage) => {
     if (!url) return;
     usage.set(url, [...(usage.get(url) ?? []), entry]);
   };
+  for (const photo of hotel.aboutPhotos ?? [hotel.aboutPhoto]) {
+    use(photo.url, { label: t('mediaLib.usageHotelPhoto', { area: t('hotel.about') }), href: '/admin/content/hotel' });
+  }
   for (const area of hotel.areas) {
     use(area.photo.url, { label: t('mediaLib.usageHotelPhoto', { area: area.name }), href: '/admin/content/hotel' });
     use(area.panorama, { label: t('mediaLib.usageHotelPanorama', { area: area.name }), href: '/admin/content/hotel' });

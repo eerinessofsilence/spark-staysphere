@@ -235,21 +235,19 @@ export interface MediaAsset {
 }
 
 /**
- * Not implemented in v1 — `.openai/hosting.json` has `r2: null`, and the CMS
- * only ever picks from `public/images/**` (see `lib/infrastructure/media-library.ts`).
- * Declared now so the day R2 is configured, an adapter implementing this is
- * the only new infrastructure content-service needs; the picker UI and the
- * "url must be in the media library" rule do not change shape.
+ * Reserved for general media deletion. Photo upload and lookup currently
+ * share MediaLibraryPort so newly stored photos immediately pass validation.
  */
 export interface MediaStoragePort {
   upload(input: { filename: string; contentType: string; bytes: ArrayBuffer }): Promise<MediaAsset>;
   delete(url: string): Promise<void>;
 }
 
-/** The read-only vocabulary the CMS media picker and its validation draw from. */
+/** Media vocabulary and durable photo uploads used by the CMS service. */
 export interface MediaLibraryPort {
-  list(): MediaAsset[];
-  find(url: string): MediaAsset | undefined;
+  list(): MediaAsset[] | Promise<MediaAsset[]>;
+  find(url: string): MediaAsset | undefined | Promise<MediaAsset | undefined>;
+  upload?(input: { hotelId: string; filename: string; width: number; height: number; bytes: ArrayBuffer }): Promise<MediaAsset>;
 }
 
 /** The kinds of catalog entity the CMS can overlay onto seed data. `room` is a room type; `unit` is one physical room. */

@@ -14,6 +14,10 @@ import { toast } from '@/components/admin/shell/toast';
 import { announceVersion, useSharedVersion } from './version-channel';
 
 const FieldErrorsContext = React.createContext<Record<string, string[]>>({});
+const UploadBusyContext = React.createContext<(id: string, busy: boolean) => void>(() => {});
+export function useUploadBusy() {
+  return React.useContext(UploadBusyContext);
+}
 
 /** Every error the last save returned, keyed by path: `name`, `media.1.url`, `areas.pool.name`. */
 export function useFieldErrors(): Record<string, string[]> {
@@ -133,6 +137,15 @@ export function ContentForm({
   // page with every field in the URL. `<form action>` used to block that; the button now waits instead,
   // and only turns on once the saved state below has been read, so an enabled Save means edits are tracked.
   const [ready, setReady] = React.useState(false);
+  const [uploads, setUploads] = React.useState<Set<string>>(() => new Set());
+  const setUploadBusy = React.useCallback((id: string, busy: boolean) => {
+    setUploads((current) => {
+      const next = new Set(current);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   const checkDirty = React.useCallback(() => {
     if (baseline.current === null) return;
@@ -181,10 +194,10 @@ export function ContentForm({
     };
   }, [checkDirty]);
 
-  useUnsavedChanges(formId, dirty);
+  useUnsavedChanges(formId, dirty || uploads.size > 0);
 
   React.useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && uploads.size === 0) return;
     const handler = (event: BeforeUnloadEvent) => {
       if (leaving.current) return;
       event.preventDefault();
@@ -192,7 +205,7 @@ export function ContentForm({
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, [dirty, uploads.size]);
 
   React.useEffect(() => {
     if (state === handledState.current) return;
@@ -226,11 +239,12 @@ export function ContentForm({
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (uploads.size > 0 || isPending) return;
     submit(new FormData(event.currentTarget), version);
   };
 
   const keepMine = () => {
-    if (!formRef.current || state.version === undefined) return;
+    if (!formRef.current || state.version === undefined || uploads.size > 0) return;
     setVersion(state.version);
     submit(new FormData(formRef.current), state.version);
   };
@@ -246,7 +260,9 @@ export function ContentForm({
   let statusTone: 'muted' | 'danger' | 'success' = 'muted';
   let offerJump = false;
   let unsavedDot = false;
-  if (isPending) {
+  if (uploads.size > 0) {
+    statusText = t('upload.wait');
+  } else if (isPending) {
     statusText = t('form.saving');
   } else if (state.status === 'error') {
     statusTone = 'danger';
@@ -270,6 +286,7 @@ export function ContentForm({
   }
 
   return (
+    <UploadBusyContext.Provider value={setUploadBusy}>
     <FieldErrorsContext.Provider value={state.fieldErrors ?? {}}>
       <form ref={formRef} onSubmit={onSubmit} noValidate>
         {state.status === 'error' ? (
@@ -337,7 +354,7 @@ export function ContentForm({
                     something to say — empty, it takes no room and cancels the
                     gap, but stays mounted so the live region still announces. */}
                 <div className="glass-bar pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-full p-1.5 [&>[role=status]]:pr-3 [&>[role=status]]:pl-1 [&>[role=status]:empty]:-ml-2 [&>[role=status]:empty]:p-0">
-                  <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
+                  <button type="submit" disabled={isPending || !ready || uploads.size > 0} className={pill('primary')}>
                     {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                     {buttonLabel}
                   </button>
@@ -353,7 +370,7 @@ export function ContentForm({
                 bare ? 'pr-4' : 'sticky bottom-3 z-20 rounded-3xl border border-border bg-card/90 p-2 pr-4 shadow-soft backdrop-blur-md',
               )}
             >
-              <button type="submit" disabled={isPending || !ready} className={pill('primary')}>
+              <button type="submit" disabled={isPending || !ready || uploads.size > 0} className={pill('primary')}>
                 {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                 {buttonLabel}
               </button>
@@ -364,5 +381,6 @@ export function ContentForm({
         })()}
       </form>
     </FieldErrorsContext.Provider>
+    </UploadBusyContext.Provider>
   );
 }

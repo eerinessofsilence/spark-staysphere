@@ -1,14 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { useAdminT } from '@/lib/i18n/admin/context';
-import { iconButton, pill, tag } from '@/lib/ui';
+import { iconButton, tag } from '@/lib/ui';
 import { useFieldErrors } from './content-form';
 import { MediaPicker } from './media-picker';
 import { useOrderedList } from './use-ordered-list';
+import { PhotoUpload } from './photo-upload';
 
 /**
  * An add-on's photos: unlabelled — just a picked set from the media library,
@@ -17,14 +18,21 @@ import { useOrderedList } from './use-ordered-list';
  */
 export function PhotoListEditor({ name, initial, assets }: { name: string; initial: string[]; assets: MediaAsset[] }) {
   const t = useAdminT();
-  const { rows, values: urls, move, remove, add } = useOrderedList(initial);
+  const { rows, values: urls, move, remove, add, addMany } = useOrderedList(initial);
+  const [uploaded, setUploaded] = React.useState<MediaAsset[]>([]);
+  const allAssets = React.useMemo(() => [...new Map([...assets, ...uploaded].map((asset) => [asset.url, asset])).values()], [uploaded, assets]);
   const [pickerOpen, setPickerOpen] = React.useState(false);
-  const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
+  const byUrl = React.useMemo(() => new Map(allAssets.map((asset) => [asset.url, asset])), [allAssets]);
   const errors = useFieldErrors();
 
   return (
     <div className="grid gap-3">
       <input type="hidden" name={name} value={JSON.stringify(urls)} />
+      <PhotoUpload count={urls.length} onLibrary={() => setPickerOpen(true)} onUploaded={(added) => {
+        setUploaded((current) => [...current, ...added]);
+        addMany(added.map((asset) => asset.url));
+      }} />
+      {urls.length > 0 ? <p className="text-xs text-muted-foreground">{t('upload.coverHint')}</p> : null}
 
       {urls.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('media.noPhotos')}</p>
@@ -39,7 +47,7 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
                 <span className="relative block aspect-square overflow-hidden rounded-[18px] bg-stone">
                   {asset ? (
                     // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
-                    <img src={asset.url} alt="" className="size-full object-cover" />
+                    <img src={asset.url} alt="" width={asset.width} height={asset.height} className="size-full object-cover" />
                   ) : (
                     <span className="grid size-full place-items-center text-muted-foreground">
                       <Image weight="fill" className="size-5" aria-hidden="true" />
@@ -86,18 +94,17 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
         </ul>
       )}
 
-      <button type="button" onClick={() => setPickerOpen(true)} className={pill('secondary', 'self-start')}>
-        <PlusIcon className="size-4" aria-hidden="true" />
-        {t('media.addPhoto')}
-      </button>
+      {errors[name]?.[0] ? <p role="alert" data-field-error="" className="text-sm text-danger">{errors[name]?.[0]}</p> : null}
 
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        assets={assets}
+        assets={allAssets}
         usedUrls={urls}
         suggestedFolder="dining"
         onPick={(asset) => add(asset.url)}
+        onPickMany={(picked) => addMany(picked.map((asset) => asset.url))}
+        maxSelection={30 - urls.length}
       />
     </div>
   );

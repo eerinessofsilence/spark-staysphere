@@ -1,17 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { labelFromFilename, mediaTypeOf } from '@/lib/domain/media';
 import { useAdminT } from '@/lib/i18n/admin/context';
-import { iconButton, pill, tag } from '@/lib/ui';
+import { iconButton, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { useFieldErrors } from './content-form';
 import { TextInput } from './fields';
 import { MediaPicker } from './media-picker';
 import { useOrderedList } from './use-ordered-list';
+import { PhotoUpload } from './photo-upload';
 
 export interface MediaItemDraft {
   type: 'image' | '360';
@@ -24,8 +25,8 @@ export interface MediaItemDraft {
  * library. Whether an item is a photo or a 360° view follows from the file
  * picked, so it is shown, not chosen; the label is prefilled from the file
  * name, because guests see it as the name of that view on the room page.
- * "Add a photo" opens `MediaPicker` instead of a free-text URL field, since v1
- * has no upload path and every url must resolve in the library.
+ * Photos can be uploaded together or selected from the library in batches.
+ * Every saved URL is still validated against the media library.
  */
 export function MediaListEditor({
   name,
@@ -39,19 +40,27 @@ export function MediaListEditor({
   suggestedFolder?: string;
 }) {
   const t = useAdminT();
-  const { rows, values: items, move, remove, add, update: updateRow } = useOrderedList(initial);
+  const { rows, values: items, move, remove, addMany, update: updateRow } = useOrderedList(initial);
+  const [uploaded, setUploaded] = React.useState<MediaAsset[]>([]);
+  const allAssets = React.useMemo(() => [...new Map([...assets, ...uploaded].map((asset) => [asset.url, asset])).values()], [uploaded, assets]);
   const [pickerOpen, setPickerOpen] = React.useState(false);
-  const byUrl = React.useMemo(() => new Map(assets.map((asset) => [asset.url, asset])), [assets]);
+  const byUrl = React.useMemo(() => new Map(allAssets.map((asset) => [asset.url, asset])), [allAssets]);
   const errors = useFieldErrors();
   const listError = errors[name]?.[0];
 
   function update(index: number, patch: Partial<MediaItemDraft>) {
     updateRow(index, { ...items[index]!, ...patch });
   }
+  function addAssets(picked: MediaAsset[]) {
+    addMany(picked.map((asset) => ({ type: mediaTypeOf(asset), url: asset.url, label: mediaTypeOf(asset) === '360' ? '360° view' : labelFromFilename(asset.filename) })));
+  }
 
   return (
     <div className="grid gap-3">
       <input type="hidden" name={name} value={JSON.stringify(items)} />
+      <PhotoUpload count={items.length} onLibrary={() => setPickerOpen(true)} onUploaded={(added) => {
+        setUploaded((current) => [...current, ...added]); addAssets(added);
+      }} />
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('media.noPhotosCover')}</p>
@@ -141,23 +150,15 @@ export function MediaListEditor({
         </p>
       ) : null}
 
-      <button type="button" onClick={() => setPickerOpen(true)} className={pill('secondary', 'self-start')}>
-        <PlusIcon className="size-4" aria-hidden="true" />
-        {t('media.addPhoto')}
-      </button>
-
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        assets={assets}
+        assets={allAssets}
         usedUrls={items.map((item) => item.url)}
         suggestedFolder={suggestedFolder}
-        onPick={(asset) => {
-          const type = mediaTypeOf(asset);
-          // The prefilled label is the hotel's own content once saved (guests read it as the
-          // view's name), so it is seeded in the catalog's language, not the team member's.
-          add({ type, url: asset.url, label: type === '360' ? '360° view' : labelFromFilename(asset.filename) });
-        }}
+        onPick={(asset) => addAssets([asset])}
+        onPickMany={addAssets}
+        maxSelection={30 - items.length}
       />
     </div>
   );

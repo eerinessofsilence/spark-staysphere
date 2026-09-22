@@ -208,6 +208,8 @@ export const hotelSchema = z.object({
   description: z.string(),
   /** The photograph beside that paragraph. */
   aboutPhoto: simplePhotoSchema,
+  /** Ordered About gallery; older catalogs keep their single aboutPhoto as the cover. */
+  aboutPhotos: z.array(simplePhotoSchema).min(1).max(30).optional(),
   /**
    * Shown on every room's page, in the order the hotel team set. Optional
    * for the same reason `spinner` and `model` are — an overlay row saved

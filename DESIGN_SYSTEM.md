@@ -276,8 +276,9 @@ free-hand a width or a column track.
   own pending state, and a `beforeunload` warning once something has changed. A reorderable list
   (`amenities`, a rate's included services, a room's photos) is rows with up/down/remove
   `iconButton`s and one hidden JSON input, never a drag-and-drop library. The media picker is the
-  shared `Modal`, listing the committed manifest with a folder filter — no free-text URL field
-  exists anywhere in the CMS. A field whose value is derived elsewhere in the product (a room's
+  shared `Modal`, listing seed and uploaded photos with a folder filter and multi-selection.
+  Photo editors offer a drop zone, multi-file upload progress, previews, and reorder/remove
+  controls. No free-text URL field exists anywhere in the CMS. A field whose value is derived elsewhere in the product (a room's
   catalog category from its name, an add-on's card mark from its name) shows that derived value or
   mark right beside the field, live as it's typed, rather than leaving it invisible until the page
   is saved and reloaded.

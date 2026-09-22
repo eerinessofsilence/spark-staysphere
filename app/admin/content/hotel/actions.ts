@@ -59,6 +59,7 @@ export async function updateHotelAction(
     currency: String(formData.get('currency') ?? ''),
     description: String(formData.get('description') ?? ''),
     aboutPhoto: String(formData.get('aboutPhoto') ?? ''),
+    aboutPhotos: formData.has('aboutPhotos') ? parseJsonList<string>(formData, 'aboutPhotos') : undefined,
     facilities: parseJsonList<HotelFacility>(formData, 'facilities'),
     areas: parseAreas(formData),
   };

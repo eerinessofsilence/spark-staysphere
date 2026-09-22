@@ -47,7 +47,12 @@ export function useOrderedList<T>(initial: T[]) {
   }
 
   function add(value: T) {
-    setRows([...rows, { id: nextId.current++, value }]);
+    addMany([value]);
+  }
+
+  function addMany(values: T[]) {
+    const added = toRows(values);
+    setRows((current) => [...current, ...added]);
   }
 
   function update(index: number, value: T) {
@@ -58,5 +63,5 @@ export function useOrderedList<T>(initial: T[]) {
 
   const values = React.useMemo(() => rows.map((row) => row.value), [rows]);
 
-  return { rows, values, move, remove, add, update } as const;
+  return { rows, values, move, remove, add, addMany, update } as const;
 }

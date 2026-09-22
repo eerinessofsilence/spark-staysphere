@@ -12,6 +12,7 @@ import { operations } from './operations';
 import { settings } from './settings';
 import { shell } from './shell';
 import { spinner } from './spinner';
+import { uploads } from './uploads';
 
 /**
  * The back office's own words, one area file per group of screens (see
@@ -51,6 +52,7 @@ function merge<L extends AdminLocale>(locale: L) {
     ...assistant[locale],
     ...onboarding[locale],
     ...settings[locale],
+    ...uploads[locale],
   };
 }
 

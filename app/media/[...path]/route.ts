@@ -8,7 +8,7 @@ import { readMediaObject } from '@/lib/application/container';
  * module that may import lib/infrastructure" rule). Every key currently in
  * the bucket is a `spinner/<hotelId>/<frameSetId>/<NNN>.<ext>` frame — see
  * `lib/infrastructure/spinner-frame-storage-r2.ts#frameKey` — hence the
- * prefix check; this route is not a general file server.
+ * prefix check; `photos/` additionally serves validated CMS photo uploads.
  *
  * `Cache-Control: immutable` is safe because a frame set's key includes its
  * own `frameSetId`: replacing the frames a hotel uploaded gets a new id, it
@@ -17,11 +17,11 @@ import { readMediaObject } from '@/lib/application/container';
 export async function GET(_request: Request, context: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await context.params;
   const key = path.join('/');
-  if (!key.startsWith('spinner/')) return new Response('Not found', { status: 404 });
+  if (!key.startsWith('spinner/') && !key.startsWith('photos/')) return new Response('Not found', { status: 404 });
 
   const object = await readMediaObject(key);
   if (!object) return new Response('Not found', { status: 404 });
   return new Response(object.body, {
-    headers: { 'Content-Type': object.contentType, 'Cache-Control': 'public, max-age=31536000, immutable' },
+    headers: { 'Content-Type': object.contentType, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=31536000, immutable' },
   });
 }

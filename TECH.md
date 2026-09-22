@@ -155,13 +155,18 @@ overlay path from both the on-sale switch in `/admin/content`'s add-on list and 
 table's `CREATE TABLE` was dropped from `d1-schema.ts` (an already-provisioned local D1 keeps an
 unused, harmless copy — there is no migration runner).
 
-There is no upload path in v1 (`.openai/hosting.json` has `r2: null`). The whole media library is
-`public/images/**`, minus the spinner's orbit frames, read into a committed JSON manifest by
-`scripts/generate-media-manifest.mjs` (`npm run generate:media-manifest`) — width/height are parsed
-straight out of each WebP's own header bytes (`VP8 `/`VP8L`/`VP8X`), no image library. `MediaAsset`/
-`MediaLibraryPort` (declared in `lib/domain/ports.ts`) are what `content-service.ts` validates media
-urls against; `MediaStoragePort` is declared alongside them for a future upload adapter, not
-implemented.
+The photo library combines the committed `public/images/**` manifest (excluding spinner frames)
+with uploads in the `MEDIA` R2 bucket. Hotel, room and add-on photo editors accept multiple JPEG,
+PNG or WebP files up to 10 MB each, or a batch selected from the library. The browser decodes and
+resizes uploads to 2400 pixels, strips metadata and encodes WebP. `ContentService.uploadPhoto`
+authorizes content editing and validates byte size and image headers before storing each file;
+dimensions come from the bytes. `MediaLibraryPort` resolves both seed and uploaded URLs
+asynchronously. Uploaded bytes and metadata persist in R2 under `photos/`, served through the
+same-origin media route. Without a storage binding uploads fail explicitly. Saving the form
+publishes the chosen ordered URLs; removing a photo from a gallery does not delete its library
+asset. The About gallery preserves `aboutPhoto` as its cover for older consumers.
+The committed manifest is still regenerated with `npm run generate:media-manifest` when local
+seed photography changes.
 
 `/admin/content`'s forms are server actions with Zod validation, driven by `useActionState`
 through one shared client wrapper, `components/admin/content/content-form.tsx`'s `ContentForm`.
@@ -304,9 +309,8 @@ exception: its connections are browser-local and explicitly labelled mock. Three
 not linked from the main sidebar list — reachable only through another control or by URL — and each
 says on screen that it is a preview: `/admin/settings` (brand preview, "changes aren't saved in
 this demo"), `/admin/integrations` (mock adapter status, "nothing is connected to a real system"),
-and `/admin/media` (the committed manifest, read-only — there is no upload path, see "Content
-management (CMS)"). Brand settings, real integration credentials, and general media uploads are
-left out until they can actually save. `/admin/account` is reached from the account menu: its
+and `/admin/media` (the seed and uploaded photo library, with uploads available in the content
+editors). Brand settings and real integration credentials remain previews. `/admin/account` is reached from the account menu: its
 language setting persists in the admin cookie, while profile and subscription changes remain
 browser-local previews.
 
@@ -607,9 +611,8 @@ check against `team-directory.ts`'s `permissions`) but not which actual person. 
 no-op until CLAUDE.md's roadmap step 9 — no real payment, and no PMS,
 channel manager, or OTA connection. Downstream CRM/PMS delivery is best-effort and swallowed on
 failure; production needs a queue with retries. The photographs are licensed stock standing in for
-the property's own and must be replaced before any real launch; the CMS still has no upload path
-for the general photo library (`MediaStoragePort` is declared, not implemented — see "Content
-management (CMS)"), though the building spinner's own frames now do (see "Photography and media").
+the property's own and must be replaced before any real launch using the CMS photo uploader
+(see "Content management (CMS)") or the spinner frame manager (see "Photography and media").
 The CMS itself has no drafts, version history, or scheduled publishing (every save is immediate and
 live), and supports one hotel at a time, though every overlay row already carries a `hotel_id`. The
 AI concierge's rate limiter is per-isolate, not shared; without `OPENAI_API_KEY` its search still

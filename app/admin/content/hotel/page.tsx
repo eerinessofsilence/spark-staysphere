@@ -9,7 +9,7 @@ import { ContentForm } from '@/components/admin/content/content-form';
 import { FacilitiesEditor } from '@/components/admin/content/facilities-editor';
 import { Field, Select, TextArea, TextInput } from '@/components/admin/content/fields';
 import { HotelSettingsTabs } from '@/components/admin/content/hotel-settings-tabs';
-import { PhotoField } from '@/components/admin/content/photo-field';
+import { PhotoListEditor } from '@/components/admin/content/photo-list-editor';
 import { StarRatingField } from '@/components/admin/content/star-rating-field';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { updateHotelAction } from './actions';
@@ -109,8 +109,9 @@ export default async function HotelContentPage() {
                           />
                         </Field>
                         <div>
-                          <label className="mb-1.5 block text-sm text-muted-foreground">{t('hotel.photo')}</label>
-                          <PhotoField name="aboutPhoto" initial={hotel.aboutPhoto.url} assets={assets} />
+                          <p className="mb-1.5 block text-sm text-muted-foreground">{t('hotel.tabPhotos')}</p>
+                          <input type="hidden" name="aboutPhoto" value={hotel.aboutPhoto.url} />
+                          <PhotoListEditor name="aboutPhotos" initial={(hotel.aboutPhotos ?? [hotel.aboutPhoto]).map((photo) => photo.url)} assets={assets} />
                         </div>
                       </div>
                     </div>
