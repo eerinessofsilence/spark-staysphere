@@ -187,7 +187,7 @@ export const settings = defineArea({
 
     'mediaLib.title': 'Media library',
     'mediaLib.upload': 'Upload',
-    'mediaLib.body': 'Uploads arrive with media storage. For now the library is the photography committed to the site.',
+    'mediaLib.body': 'Upload photos here, then choose them in any photo editor. Uploaded files are saved to the media library.',
     'mediaLib.folders': 'Folders',
     'mediaLib.all': 'All',
     'mediaLib.emptyTitle': 'Nothing in this folder',
@@ -484,7 +484,7 @@ export const settings = defineArea({
 
     'mediaLib.title': 'Medienbibliothek',
     'mediaLib.upload': 'Hochladen',
-    'mediaLib.body': 'Uploads kommen mit dem Medienspeicher. Bis dahin besteht die Bibliothek aus den Fotos, die mit der Website ausgeliefert werden.',
+    'mediaLib.body': 'Laden Sie Fotos hoch und wählen Sie sie anschließend in jedem Fotoeditor aus. Die Dateien werden in der Mediathek gespeichert.',
     'mediaLib.folders': 'Ordner',
     'mediaLib.all': 'Alle',
     'mediaLib.emptyTitle': 'Nichts in diesem Ordner',
@@ -781,7 +781,7 @@ export const settings = defineArea({
 
     'mediaLib.title': 'Медиатека',
     'mediaLib.upload': 'Загрузить',
-    'mediaLib.body': 'Загрузка появится вместе с хранилищем медиа. Пока медиатека — это фотографии, добавленные в сайт.',
+    'mediaLib.body': 'Загружайте фотографии и выбирайте их в любом фоторедакторе. Файлы сохраняются в медиатеке.',
     'mediaLib.folders': 'Папки',
     'mediaLib.all': 'Все',
     'mediaLib.emptyTitle': 'В этой папке пусто',

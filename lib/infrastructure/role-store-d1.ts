@@ -1,5 +1,19 @@
 import type { TeamPermissionKey, TeamRoleDefinition } from '../domain/schemas';
 import { ensureSchema } from './d1-schema';
+import type { StoredTeamMember } from '../domain/team-member';
+
+export async function listMembers(db: D1Database): Promise<StoredTeamMember[]> {
+  await ensureSchema(db);
+  const { results } = await db.prepare('SELECT id, name, email, role FROM team_members ORDER BY rowid').all<StoredTeamMember>();
+  return results;
+}
+
+export async function createMember(db: D1Database, member: StoredTeamMember): Promise<boolean> {
+  await ensureSchema(db);
+  const result = await db.prepare('INSERT INTO team_members (id, name, email, role) VALUES (?, ?, ?, ?) ON CONFLICT(email) DO NOTHING')
+    .bind(member.id, member.name, member.email, member.role).run();
+  return result.meta.changes === 1;
+}
 
 /**
  * D1-backed half of `RoleStore` — custom role definitions, built-in role

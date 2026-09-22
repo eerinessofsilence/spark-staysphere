@@ -14,9 +14,10 @@ import type { TeamRoleDefinition } from '@/lib/domain/schemas';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { TeamTabs } from './team-tabs';
+import { CreateUser } from './create-user';
 import { initialsOf, roleLabel, type TeamMember, type TeamRole } from './team-data';
 
-export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMember[]; roles: TeamRoleDefinition[] }) {
+export function TeamMembers({ initialMembers, roles, canManage }: { initialMembers: TeamMember[]; roles: TeamRoleDefinition[]; canManage: boolean }) {
   const t = useAdminT();
   const locale = useAdminLocale();
   const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
@@ -73,10 +74,17 @@ export function TeamMembers({ initialMembers, roles }: { initialMembers: TeamMem
       <AdminPageHeader
         title={t('team.members')}
         actions={
-          <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
+          canManage ? <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => setOpen(true)} className={pill('secondary')}>
             <PlusIcon className="size-4" aria-hidden="true" />
             {t('team.invite')}
           </button>
+          <CreateUser roles={roles} onCreated={(member, message) => {
+            setMembers((current) => [member, ...current.filter((existing) => existing.email !== member.email)]);
+            setPage(1);
+            setStatus(message);
+          }} />
+          </div> : null
         }
       />
       <TeamTabs current="members" counts={{ members: members.length, roles: roles.length }} />

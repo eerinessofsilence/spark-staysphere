@@ -41,6 +41,7 @@ export default async function BrandSettingsPage() {
     <AdminPage>
       <AdminPageHeader title={t('settings.title')} />
       <BrandSettings
+        assets={await contentService.listMedia()}
         hotel={{ name: hotel.name, tagline: hotel.tagline, location: hotel.location, currency: hotel.currency }}
         preview={preview}
       />

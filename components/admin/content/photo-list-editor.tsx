@@ -26,7 +26,7 @@ export function PhotoListEditor({ name, initial, assets }: { name: string; initi
   const errors = useFieldErrors();
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3" data-photo-editor={name}>
       <input type="hidden" name={name} value={JSON.stringify(urls)} />
       <PhotoUpload count={urls.length} onLibrary={() => setPickerOpen(true)} onUploaded={(added) => {
         setUploaded((current) => [...current, ...added]);

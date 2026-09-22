@@ -27,6 +27,7 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS booking_stay_states (booking_id TEXT PRIMARY KEY, state TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS team_roles (id TEXT PRIMARY KEY, name TEXT NOT NULL, permissions TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS member_role_overrides (member_id TEXT PRIMARY KEY, role_id TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS team_members (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE COLLATE NOCASE, role TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS housekeeping_states (unit_id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT, updated_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_housekeeping_states_hotel ON housekeeping_states (hotel_id)`,
   `CREATE TABLE IF NOT EXISTS spinner_zones (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, frame_index INTEGER NOT NULL, polygon TEXT NOT NULL, target TEXT, updated_at TEXT NOT NULL)`,

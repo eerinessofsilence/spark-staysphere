@@ -2,6 +2,11 @@ import { defineArea } from "./area";
 
 export const uploads = defineArea({
   en: {
+    'upload.singleHint': 'JPEG, PNG or WebP · up to 10 MB · one image',
+    'upload.singleLimit': 'Choose one image for this field.',
+    'upload.stored': '{count} images saved to the media library.',
+    'upload.framesHint': 'JPEG, PNG or WebP · up to 10 MB each · matching dimensions · sorted by filename number',
+    'upload.logoPreview': 'The file is saved to the library. Logo selection here is a preview only, not a change to the live site.',
     "upload.title": "Add photos",
     "upload.drop": "Drop photos here or choose files",
     "upload.hint": "JPEG, PNG or WebP · up to 10 MB each · up to 30 photos",
@@ -17,6 +22,11 @@ export const uploads = defineArea({
     "upload.wait": "Wait for photo uploads to finish.",
   },
   de: {
+    'upload.singleHint': 'JPEG, PNG oder WebP · bis 10 MB · ein Bild',
+    'upload.singleLimit': 'Wählen Sie ein Bild für dieses Feld.',
+    'upload.stored': '{count} Bilder in der Mediathek gespeichert.',
+    'upload.framesHint': 'JPEG, PNG oder WebP · je bis 10 MB · gleiche Abmessungen · nach Dateinummer sortiert',
+    'upload.logoPreview': 'Die Datei wird in der Mediathek gespeichert. Die Logoauswahl ist nur eine Vorschau und ändert die Website nicht.',
     "upload.title": "Fotos hinzufügen",
     "upload.drop": "Fotos hier ablegen oder Dateien auswählen",
     "upload.hint": "JPEG, PNG oder WebP · je bis 10 MB · bis zu 30 Fotos",
@@ -33,6 +43,11 @@ export const uploads = defineArea({
     "upload.wait": "Warten Sie, bis die Fotos hochgeladen sind.",
   },
   ru: {
+    'upload.singleHint': 'JPEG, PNG или WebP · до 10 МБ · одно изображение',
+    'upload.singleLimit': 'Для этого поля выберите одно изображение.',
+    'upload.stored': 'Сохранено изображений в библиотеке: {count}.',
+    'upload.framesHint': 'JPEG, PNG или WebP · до 10 МБ каждый · одинаковые размеры · сортировка по номеру файла',
+    'upload.logoPreview': 'Файл сохраняется в библиотеке. Выбор логотипа здесь — только предпросмотр, он не меняет сайт.',
     "upload.title": "Добавить фотографии",
     "upload.drop": "Перетащите фотографии сюда или выберите файлы",
     "upload.hint": "JPEG, PNG или WebP · до 10 МБ каждый · до 30 фотографий",

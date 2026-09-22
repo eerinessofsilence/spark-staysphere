@@ -1,5 +1,6 @@
 import type { RoleStore } from '../domain/ports';
 import type { TeamRoleDefinition } from '../domain/schemas';
+import type { StoredTeamMember } from '../domain/team-member';
 
 /**
  * Process-local fallback for `RoleStore` — the same semantics as
@@ -8,8 +9,15 @@ import type { TeamRoleDefinition } from '../domain/schemas';
  */
 const roleDefinitions = new Map<string, TeamRoleDefinition>();
 const memberRoleOverrides = new Map<string, string>();
+const members = new Map<string, StoredTeamMember>();
 
 export const mockRoleStore: RoleStore = {
+  async listMembers() { return [...members.values()]; },
+  async createMember(member) {
+    if ([...members.values()].some((existing) => existing.email.toLowerCase() === member.email.toLowerCase())) return false;
+    members.set(member.id, member);
+    return true;
+  },
   async listRoleDefinitions() {
     return [...roleDefinitions.values()];
   },

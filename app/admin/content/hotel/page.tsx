@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { PhotoField } from '@/components/admin/content/photo-field';
 import { ArrowTopRightOnSquareIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
@@ -132,17 +133,10 @@ export default async function HotelContentPage() {
                         key={area.id}
                         role="group"
                         aria-labelledby={`area-${area.id}-heading`}
-                        className={`${card} grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]`}
+                        className={`${card} grid gap-5`}
                       >
                         <div>
-                          <img
-                            src={area.photo.url}
-                            alt={area.photo.alt}
-                            width={area.photo.width}
-                            height={area.photo.height}
-                            loading="lazy"
-                            className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
-                          />
+                          <PhotoField name={`areas.${area.id}.photoUrl`} initial={area.photo.url} assets={assets} />
                           <p className="mt-2 text-xs text-muted-foreground">
                             {t('hotel.pointsHint', { points: points(area.hotspots.length) })}
                           </p>

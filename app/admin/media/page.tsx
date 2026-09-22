@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowUpTrayIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon } from '@heroicons/react/24/outline';
+import { MediaLibraryUpload } from '@/components/admin/settings/media-library-upload';
 import { contentService } from '@/lib/application/container';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
@@ -102,14 +103,9 @@ export default async function MediaLibraryPage({
     <AdminPage>
       <AdminPageHeader
         title={t('mediaLib.title')}
-        actions={
-          <button type="button" disabled className={pill('secondary')}>
-            <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
-            {t('mediaLib.upload')}
-          </button>
-        }
       />
       <p className="text-sm text-muted-foreground">{t('mediaLib.body')}</p>
+      <MediaLibraryUpload />
 
       <nav
         aria-label={t('mediaLib.folders')}

@@ -176,7 +176,8 @@ export async function clearAdminSession(): Promise<void> {
  * identically, so the form cannot be used to find out which addresses are
  * on the team. The password is the one shared back-office password
  * (`ADMIN_PASSWORD`, or the demo one) — there are no per-member passwords
- * because there are no per-member accounts yet, only the demo team.
+ * in this demo. The roster includes seeded members and accounts created by
+ * the administrator; production still needs a per-user identity provider.
  */
 export async function signIn(email: string, password: string): Promise<AdminSession | null> {
   const member = await teamService.findMemberByEmail(email);

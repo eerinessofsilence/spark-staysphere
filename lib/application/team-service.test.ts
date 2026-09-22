@@ -2,11 +2,19 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RoleStore } from '@/lib/domain/ports';
 import type { TeamPermissionKey, TeamRoleDefinition } from '@/lib/domain/schemas';
 import { TeamService } from './team-service';
+import type { StoredTeamMember } from '../domain/team-member';
 
 const roleDefinitions = new Map<string, TeamRoleDefinition>();
 const memberRoleOverrides = new Map<string, string>();
+const members = new Map<string, StoredTeamMember>();
 
 const roleStore: RoleStore = {
+  async listMembers() { return [...members.values()]; },
+  async createMember(member) {
+    if ([...members.values()].some((existing) => existing.email === member.email)) return false;
+    members.set(member.id, member);
+    return true;
+  },
   async listRoleDefinitions() {
     return [...roleDefinitions.values()];
   },
@@ -38,8 +46,41 @@ const manageTeam: TeamPermissionKey = 'team.permTeamRoles';
 
 describe('TeamService custom roles', () => {
   beforeEach(() => {
+    members.clear();
     roleDefinitions.clear();
     memberRoleOverrides.clear();
+  });
+
+  it('creates a durable active member and resolves sign-in email and role overrides', async () => {
+    const service = new TeamService(roleStore);
+    const result = await service.createMember({ name: ' New User ', email: ' NEW@example.com ', role: 'Front desk' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const reloaded = new TeamService(roleStore);
+    expect(await reloaded.findMemberByEmail('NEW@example.com')).toMatchObject({ name: 'New User', status: 'active' });
+    expect(await reloaded.listMembers()).toHaveLength(6);
+    await reloaded.setMemberRole(result.member.id, 'Content editor');
+    expect(await reloaded.findMemberById(result.member.id)).toMatchObject({ role: 'Content editor' });
+  });
+
+  it('validates user input and refuses seed, stored and concurrent duplicate emails', async () => {
+    const service = new TeamService(roleStore);
+    const input = { name: 'New user', email: 'new@example.com', role: 'Front desk' };
+    expect(await service.createMember({ ...input, name: ' ' })).toMatchObject({ error: 'nameRequired' });
+    expect(await service.createMember({ ...input, email: 'invalid' })).toMatchObject({ error: 'emailInvalid' });
+    expect(await service.createMember({ ...input, role: 'unknown' })).toMatchObject({ error: 'roleNotFound' });
+    expect(await service.createMember({ ...input, email: 'ELENA.MARKOU@asteriacove.example' })).toMatchObject({ error: 'duplicate' });
+    const results = await Promise.all([service.createMember(input), service.createMember(input)]);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(await service.createMember({ ...input, email: 'NEW@example.com' })).toMatchObject({ error: 'duplicate' });
+  });
+
+  it('does not delete a role assigned to a created user', async () => {
+    const service = new TeamService(roleStore);
+    const role = await service.createRole({ name: 'New role', permissions: ['team.permViewBookings'] });
+    if (!role.ok) throw new Error('Role setup failed');
+    await service.createMember({ name: 'User', email: 'new@example.com', role: role.role.id });
+    expect(await service.deleteRole(role.role.id)).toEqual({ ok: false, error: 'inUse' });
   });
 
   it('updates a custom role without changing its id', async () => {

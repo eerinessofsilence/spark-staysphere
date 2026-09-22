@@ -118,4 +118,17 @@ describe("photo uploads and hotel gallery", () => {
     expect((await makeService().updateHotel({ ...input, aboutPhotos: [] }, 0)).ok).toBe(false);
     expect(await mockCatalogContentPort.getEntry("hotel", demoHotel.id)).toBeNull();
   });
+
+  it('resolves a single area photo while preserving its hotspots and validates its URL', async () => {
+    const area = demoHotel.areas[0]!;
+    const input = { ...demoHotel, aboutPhoto: asset.url, facilities: [], areas: [{ ...area, photoUrl: asset.url, photoAlt: 'New description' }] };
+    const service = makeService();
+    expect((await service.updateHotel(input, 0)).ok).toBe(true);
+    const entry = await mockCatalogContentPort.getEntry('hotel', demoHotel.id);
+    const hotel = entry!.data as typeof demoHotel;
+    expect(hotel.areas[0]?.photo).toEqual({ url: asset.url, width: 2000, height: 3000, alt: 'New description' });
+    expect(hotel.areas[0]?.hotspots).toEqual(area.hotspots);
+    const bad = await service.updateHotel({ ...input, areas: [{ ...input.areas[0], photoUrl: 'https://example.com/unknown.jpg' }] }, 1);
+    expect(bad).toMatchObject({ ok: false, error: { kind: 'validation', fieldErrors: { [`areas.${area.id}.photoUrl`]: expect.any(Array) } } });
+  });
 });

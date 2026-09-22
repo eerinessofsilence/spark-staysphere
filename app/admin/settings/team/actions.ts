@@ -16,6 +16,19 @@ export interface CreateRoleResult extends TeamActionResult {
   role?: TeamRoleDefinition;
 }
 
+export async function createMemberAction(input: { name: string; email: string; role: string }) {
+  const t = await getAdminT();
+  const denied = await requireRolePermission();
+  if (denied) return { ...denied, member: undefined };
+  const result = await teamService.createMember(input);
+  if (!result.ok) {
+    const keys = { nameRequired: 'team.userNameRequired', emailInvalid: 'team.emailInvalid', duplicate: 'team.alreadyOnTeam', roleNotFound: 'team.roleNotFound' } as const;
+    return { ok: false, message: t(keys[result.error]), member: undefined };
+  }
+  revalidatePath('/admin/settings/team');
+  return { ok: true, message: t('team.userCreated', { name: result.member.name }), member: result.member };
+}
+
 export async function updateRoleAction(input: {
   id: string;
   name: string;

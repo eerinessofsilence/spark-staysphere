@@ -148,6 +148,7 @@ const hotelAreaInputSchema = z.object({
   name: z.string().min(1, 'Enter a name.'),
   description: z.string().min(1, 'Enter a description.'),
   photoAlt: z.string().min(1, 'Describe the photo for screen readers.'),
+  photoUrl: z.string().optional(),
   hotspots: z.array(
     z.object({
       id: z.string(),
@@ -451,6 +452,13 @@ export class ContentService {
     // only its editable fields are copied across — an id the client sends
     // that `current` doesn't have is silently ignored, since the CMS never
     // creates a new area or hotspot, only edits the copy a photo already has.
+    const areaPhotos = new Map<string, Hotel['aboutPhoto']>();
+    for (const patch of input.areas) {
+      if (!patch.photoUrl || !current.areas.some((area) => area.id === patch.id)) continue;
+      const photo = await this.resolvePhoto(patch.photoUrl, `areas.${patch.id}.photoUrl`);
+      if (!photo.ok) return fail({ kind: 'validation', fieldErrors: photo.fieldErrors });
+      areaPhotos.set(patch.id, photo.photo);
+    }
     const nextAreas = current.areas.map((area) => {
       const patch = input.areas.find((candidate) => candidate.id === area.id);
       if (!patch) return area;
@@ -458,7 +466,7 @@ export class ContentService {
         ...area,
         name: patch.name,
         description: patch.description,
-        photo: { ...area.photo, alt: patch.photoAlt },
+        photo: { ...(areaPhotos.get(area.id) ?? area.photo), alt: patch.photoAlt },
         hotspots: area.hotspots.map((hotspot) => {
           const hotspotPatch = patch.hotspots.find((candidate) => candidate.id === hotspot.id);
           if (!hotspotPatch) return hotspot;

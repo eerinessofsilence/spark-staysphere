@@ -17,7 +17,7 @@ test("uploads multiple hotel photos, saves their order, and shows the gallery to
   let saved = false;
   try {
     await page
-      .locator('input[type="file"]')
+      .locator('[data-photo-editor="aboutPhotos"] input[type="file"]')
       .setInputFiles(["public/images/hotel/cove.webp", "public/images/hotel/cove.webp"]);
     await expect.poll(async () => (await urls()).length).toBe(original.length + 2);
     await expect(page.getByText("2 photos uploaded. Save changes to publish them.")).toBeVisible();
@@ -86,11 +86,11 @@ test("selects several library photos and keeps valid files when another upload f
   await dialog.getByRole("button", { name: "Add selected (2)", exact: true }).click();
   await expect.poll(async () => JSON.parse(await input.inputValue()).length).toBe(before + 2);
   await page
-    .locator('input[type="file"]')
+    .locator('[data-photo-editor="aboutPhotos"] input[type="file"]')
     .setInputFiles({ name: "bad.txt", mimeType: "text/plain", buffer: Buffer.from("not a photo") });
   await expect(page.getByRole("alert")).toContainText("bad.txt");
   expect(JSON.parse(await input.inputValue())).toHaveLength(before + 2);
-  await page.locator('input[type="file"]').setInputFiles("public/images/hotel/cove.webp");
+  await page.locator('[data-photo-editor="aboutPhotos"] input[type="file"]').setInputFiles("public/images/hotel/cove.webp");
   await expect.poll(async () => JSON.parse(await input.inputValue()).length).toBe(before + 3);
   await page.reload(); // Discard this test's unsaved changes.
   await expect.poll(async () => JSON.parse(await input.inputValue()).length).toBe(before);

@@ -9,6 +9,14 @@ import { mockRoleStore } from './role-store-mock';
  * in-memory mock otherwise — same shape as `durable-spinner-markup.ts`.
  */
 export const durableRoleStore: RoleStore = {
+  listMembers() {
+    const db = getDemoDatabase();
+    return db ? d1.listMembers(db) : mockRoleStore.listMembers();
+  },
+  createMember(member) {
+    const db = getDemoDatabase();
+    return db ? d1.createMember(db, member) : mockRoleStore.createMember(member);
+  },
   listRoleDefinitions() {
     const db = getDemoDatabase();
     return db ? d1.listRoleDefinitions(db) : mockRoleStore.listRoleDefinitions();

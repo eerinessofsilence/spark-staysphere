@@ -27,6 +27,11 @@ works with the password `staysphere` (the sign-in page says so); set `ADMIN_PASS
 `ADMIN_SESSION_SECRET` in `.dev.vars` — or as Worker secrets — for anything reachable from
 outside. See TECH.md's "Sign-in".
 
+In **Team & roles → Members**, **Create user** saves a name, email and role as an active
+account. It survives reloads and restarts with D1. Created accounts use the same shared demo-admin
+password; there are no per-user passwords or invitation emails yet. **Invite teammate** remains
+a browser-only preview. Account creation requires the Team & roles permission.
+
 **Optional — the AI room finder.** Without a key, search still answers through a deterministic
 keyword interpreter and voice input is unavailable. To enable OpenAI interpretation and
 transcription, put `OPENAI_API_KEY=sk-...` in a gitignored `.dev.vars` file at the repo root (not
@@ -118,9 +123,12 @@ computes a price: every total on screen comes from a server quote.
   The room gallery's 360° tab is a real draggable panorama (Pannellum, vendored at
   `public/vendor/pannellum`), but over a stand-in equirectangular photo, not the property's own
   tiles.
-- Every adapter (PMS, channel manager, booking engine, payment, CRM) is a mock. `/admin/integrations`
-  says so, and `/admin/settings`, `/admin/settings/team`, and `/admin/media` are labelled previews
-  with nothing behind them yet.
+- Every partner adapter (PMS, channel manager, booking engine, payment, CRM) is a mock.
+  `/admin/integrations` says so. Brand settings remain a preview, including logo selection.
+  Team users and role assignments are persisted; media uploads are stored in R2 and can be selected
+  in hotel, room and add-on editors. Gallery, single-photo, media-library, logo-preview and spinner
+  uploads share one dropzone. Single-photo fields accept one image; galleries support multiple
+  images; spinner frames retain their ordering and dimension checks.
 - The AI room finder (the round control, bottom-right) interprets an utterance into a filter
   object — it never invents a room, a price, or availability, and every enum it may use is one the
   catalog already owns. With `OPENAI_API_KEY` set (see Quick start) it uses OpenAI for

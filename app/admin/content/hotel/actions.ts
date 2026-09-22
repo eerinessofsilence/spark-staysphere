@@ -7,7 +7,7 @@ import type { FacilityIcon, HotelFacility } from '@/lib/domain/schemas';
 import { formStateFromError, formStateFromResult, parseJsonList, type ContentFormState } from '../_lib/form-state';
 import { revalidateContent } from '../_lib/revalidate';
 
-const AREA_FIELD = /^areas\.([^.]+)\.(name|description|photoAlt)$/;
+const AREA_FIELD = /^areas\.([^.]+)\.(name|description|photoAlt|photoUrl)$/;
 const HOTSPOT_FIELD = /^areas\.([^.]+)\.hotspots\.([^.]+)\.(label|description|cta)$/;
 
 /**
@@ -31,7 +31,7 @@ function parseAreas(formData: FormData): HotelContentInput['areas'] {
     if (typeof value !== 'string') continue;
     const field = AREA_FIELD.exec(key);
     if (field) {
-      area(field[1]!)[field[2] as 'name' | 'description' | 'photoAlt'] = value;
+      area(field[1]!)[field[2] as 'name' | 'description' | 'photoAlt' | 'photoUrl'] = value;
       continue;
     }
     const hotspotField = HOTSPOT_FIELD.exec(key);

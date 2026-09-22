@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { PhotoField } from '@/components/admin/content/photo-field';
+import type { MediaAsset } from '@/lib/domain/ports';
 import { CheckCircle, Clock, WarningCircle } from '@phosphor-icons/react/dist/ssr';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
@@ -50,11 +51,12 @@ export interface BrandPreviewRoom {
 }
 
 interface BrandSettingsProps {
+  assets: MediaAsset[];
   hotel: { name: string; tagline: string; location: string; currency: string };
   preview: BrandPreviewRoom | null;
 }
 
-export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
+export function BrandSettings({ hotel, preview, assets }: BrandSettingsProps) {
   const t = useAdminT();
   const [accentId, setAccentId] = React.useState('clay');
   const [accentButtons, setAccentButtons] = React.useState(false);
@@ -96,12 +98,9 @@ export function BrandSettings({ hotel, preview }: BrandSettingsProps) {
               className="hidden h-9 w-auto dark:block"
             />
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button type="button" disabled className={pill('secondary')}>
-              <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
-              {t('settings.uploadLogo')}
-            </button>
-            <p className="text-sm text-muted-foreground">{t('settings.uploadsArrive')}</p>
+          <div className="mt-4 grid gap-3">
+            <PhotoField name="brand-logo-preview" initial="" assets={assets} contain publishOnSave={false} />
+            <p className="text-sm text-muted-foreground">{t('upload.logoPreview')}</p>
           </div>
         </Group>
 

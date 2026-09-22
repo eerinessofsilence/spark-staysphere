@@ -1,7 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowUpTrayIcon, StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
+import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
+import { UploadDropzone } from '@/components/admin/content/upload-dropzone';
+import { MAX_PHOTO_BYTES } from '@/lib/domain/photo-upload';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
@@ -51,7 +53,9 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  const settled = await Promise.allSettled(Array.from({ length: Math.min(limit, items.length) }, worker));
+  const failed = settled.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
   return results;
 }
 
@@ -116,19 +120,19 @@ export function FrameManager({
   const pendingFrameSetIdRef = React.useRef<string | null>(null);
   const framesReplaced = pendingFrameSetIdRef.current !== null;
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const uploadLock = React.useRef(false);
 
-  async function onFilesChosen(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []).sort(naturalCompare);
-    event.target.value = ''; // lets the same folder be picked again after fixing a mistake
-    if (files.length === 0) return;
+  async function onFilesChosen(selected: File[]) {
+    const files = [...selected].sort(naturalCompare);
+    if (files.length === 0 || uploadLock.current || saving) return;
+    if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > MAX_PHOTO_BYTES || file.size === 0)) {
+      setError(t('upload.invalid'));
+      return;
+    }
+    uploadLock.current = true;
 
     setError('');
     setUploading({ done: 0, total: files.length });
-
-    // Replacing a set that was uploaded but never applied — sweep it rather
-    // than leave it orphaned in R2.
-    if (pendingFrameSetIdRef.current) void discardSpinnerFrameSetAction(pendingFrameSetIdRef.current);
 
     const frameSetId = crypto.randomUUID();
 
@@ -139,9 +143,10 @@ export function FrameManager({
       // first").
       const encoded = await mapWithConcurrency(files, UPLOAD_CONCURRENCY, async (file, index) => {
         const bitmap = await createImageBitmap(file);
-        const { blob, width, height } = await encodeFrame(bitmap, t('frames.errBrowser'));
-        bitmap.close();
-        return { index, file, blob, width, height };
+        try {
+          const { blob, width, height } = await encodeFrame(bitmap, t('frames.errBrowser'));
+          return { index, file, blob, width, height };
+        } finally { bitmap.close(); }
       });
 
       const { width: commonWidth, height: commonHeight } = encoded[0]!;
@@ -171,7 +176,10 @@ export function FrameManager({
       });
 
       uploaded.sort((a, b) => a.index - b.index);
+      // Keep the previous preview usable if the replacement fails.
+      const previousSet = pendingFrameSetIdRef.current;
       pendingFrameSetIdRef.current = frameSetId;
+      if (previousSet) void discardSpinnerFrameSetAction(previousSet);
       setFrames(uploaded);
       setFrameWidth(commonWidth);
       setFrameHeight(commonHeight);
@@ -180,8 +188,10 @@ export function FrameManager({
       setStartFrame(defaults[0] ?? 0);
       toast.success(t('frames.uploaded', { frames: pluralCount(locale, uploaded.length, frameForms) }));
     } catch (thrown) {
+      void discardSpinnerFrameSetAction(frameSetId);
       setError(thrown instanceof Error ? thrown.message : t('frames.errUpload'));
     } finally {
+      uploadLock.current = false;
       setUploading(null);
     }
   }
@@ -255,33 +265,11 @@ export function FrameManager({
           {t('frames.summary', { frames: pluralCount(locale, frames.length, frameForms), width: frameWidth, height: frameHeight })}
         </p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            onChange={onFilesChosen}
-            disabled={Boolean(uploading)}
-          />
-          <button
-            type="button"
-            className={pill('secondary')}
-            disabled={Boolean(uploading)}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <ArrowUpTrayIcon className="size-4" aria-hidden="true" />
-            {t('frames.choose')}
-          </button>
-          {uploading ? (
-            <span className="text-sm text-muted-foreground">
-              {t('frames.uploading', { done: uploading.done, total: uploading.total })}
-            </span>
-          ) : null}
+        <div className="mt-4">
+          <UploadDropzone onFiles={(files) => { void onFilesChosen(files); }} disabled={saving}
+            hint={t("upload.framesHint")} chooseLabel={t("frames.choose")} progress={uploading}
+            errors={error ? [error] : []} message={framesReplaced ? t("frames.newSetReady") : ""} />
         </div>
-        {error ? <p className="mt-3 text-sm text-[#dc2626]">{error}</p> : null}
-        {framesReplaced ? <p className="mt-3 text-sm text-muted-foreground">{t('frames.newSetReady')}</p> : null}
       </div>
 
       <div className="rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

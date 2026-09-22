@@ -17,6 +17,7 @@ import type {
   StayCriteria,
 } from './schemas';
 import type { SpinnerZone, SpinnerZoneUpsert } from './spinner-markup';
+import type { StoredTeamMember } from './team-member';
 // Type-only: `RoomFilters`/`CatalogFacets` are application-layer shapes, but
 // the assistant's contract is stated in terms of them rather than a second,
 // domain-owned copy. A type import has no runtime edge, so this does not
@@ -99,6 +100,9 @@ export interface DemoControlPort {
  * which member has been moved onto another role by id.
  */
 export interface RoleStore {
+  listMembers(): Promise<StoredTeamMember[]>;
+  /** Atomically reject an existing email, including concurrent submissions. */
+  createMember(member: StoredTeamMember): Promise<boolean>;
   listRoleDefinitions(): Promise<TeamRoleDefinition[]>;
   createRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
   upsertRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;

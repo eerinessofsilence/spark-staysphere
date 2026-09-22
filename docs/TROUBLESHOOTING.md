@@ -41,6 +41,10 @@ inside the function that needs them — never cache the result at module scope, 
 
 ## Forms and controls
 
+**A server-rendered action can look clickable before its client handler hydrates.** For critical
+dialog launchers, keep the button disabled until the mount effect runs. Otherwise an immediate
+click after navigation can be lost, even though the page and label are already visible.
+
 **A controlled checkbox or select whose state only settles after a server round trip will thrash
 under Playwright's `check()`/`selectOption()` retries.** Assert on the server-rendered effect, not
 on the control's own value.
