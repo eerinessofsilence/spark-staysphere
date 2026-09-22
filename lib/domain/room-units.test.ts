@@ -156,7 +156,7 @@ describe('allocateRoomType', () => {
       ],
       nights: ['2026-10-01', '2026-10-02'],
       taken: {},
-      closedByOverride: false,
+      override: null,
     });
 
     expect(allocation.assignments.get('AC-AAA111')).toBe('102');
@@ -184,7 +184,7 @@ describe('allocateRoomType', () => {
       bookings: [first, second],
       nights: ['2026-10-01', '2026-10-02', '2026-10-03'],
       taken: {},
-      closedByOverride: false,
+      override: null,
     });
 
     expect(allocation.assignments.get('AC-AAA111')).toBe('101');
@@ -206,7 +206,7 @@ describe('allocateRoomType', () => {
       ],
       nights: ['2026-10-01', '2026-10-02'],
       taken: {},
-      closedByOverride: false,
+      override: null,
     });
 
     const assigned = allocation.assignments.get('AC-CCC333');
@@ -220,24 +220,49 @@ describe('allocateRoomType', () => {
       bookings: [],
       nights: ['2026-10-01'],
       taken: { '2026-10-01': 2 },
-      closedByOverride: false,
+      override: null,
     });
 
     const filled = units.filter((u) => allocation.occupancy.get(u.number)!.get('2026-10-01')?.kind === 'demand');
     expect(filled).toHaveLength(2);
   });
 
-  it('marks filler nights as closed instead of demand when an admin override is behind them', () => {
-    const units = [unit('101', 'room_a', 0)];
+  it('mixes closed rooms with simulated stays behind a scarcity override', () => {
+    const units = [
+      unit('101', 'room_a', 0),
+      unit('102', 'room_a', 1),
+      unit('103', 'room_a', 2),
+      unit('104', 'room_a', 3),
+      unit('105', 'room_a', 4),
+      unit('106', 'room_a', 5),
+    ];
     const allocation = allocateRoomType({
       units,
       bookings: [],
       nights: ['2026-10-01'],
-      taken: { '2026-10-01': 1 },
-      closedByOverride: true,
+      taken: { '2026-10-01': 5 },
+      override: 'last_room',
     });
 
-    expect(allocation.occupancy.get('101')!.get('2026-10-01')).toEqual({ kind: 'closed' });
+    const occupants = units.map((room) => allocation.occupancy.get(room.number)!.get('2026-10-01')?.kind);
+    expect(occupants.filter((kind) => kind === 'closed')).toHaveLength(2);
+    expect(occupants.filter((kind) => kind === 'demand')).toHaveLength(3);
+    expect(occupants.filter((kind) => kind === undefined)).toHaveLength(1);
+  });
+
+  it('keeps a sold-out override entirely closed', () => {
+    const units = [unit('101', 'room_a', 0), unit('102', 'room_a', 1)];
+    const allocation = allocateRoomType({
+      units,
+      bookings: [],
+      nights: ['2026-10-01'],
+      taken: { '2026-10-01': 2 },
+      override: 'sold_out',
+    });
+
+    expect(
+      units.map((room) => allocation.occupancy.get(room.number)!.get('2026-10-01')?.kind),
+    ).toEqual(['closed', 'closed']);
   });
 
   it('scatters closed rooms deterministically across nights', () => {
@@ -253,7 +278,7 @@ describe('allocateRoomType', () => {
       bookings: [],
       nights,
       taken: Object.fromEntries(nights.map((night) => [night, 2])),
-      closedByOverride: true,
+      override: 'last_room' as const,
     };
 
     const first = allocateRoomType(input);
@@ -264,7 +289,7 @@ describe('allocateRoomType', () => {
         .map((room) => room.number);
 
     for (const night of nights) {
-      expect(closedFor(first, night)).toHaveLength(2);
+      expect(closedFor(first, night)).toHaveLength(1);
       expect(closedFor(second, night)).toEqual(closedFor(first, night));
     }
     expect(new Set(nights.map((night) => closedFor(first, night).join(','))).size).toBeGreaterThan(1);
@@ -285,7 +310,7 @@ describe('allocateRoomType', () => {
       ],
       nights: ['2026-10-01'],
       taken: { '2026-10-01': 1 }, // already accounted for by the real booking
-      closedByOverride: false,
+      override: null,
     });
 
     expect(allocation.occupancy.get('101')!.get('2026-10-01')).toEqual({

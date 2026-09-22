@@ -1,5 +1,5 @@
 import { demoHash, nightsInRange } from './availability';
-import type { PhysicalRoom, RoomType } from './schemas';
+import type { PhysicalRoom, RoomStatus, RoomType } from './schemas';
 
 export type Facade = 'sea' | 'town';
 
@@ -129,7 +129,8 @@ export interface RoomTypeAllocation {
  * Who is in each room of one room type. Bookings that named a room get it;
  * the rest go, in booking order, to the lowest-ranked room free for their whole
  * stay. Whatever `taken` still counts each night fills the lowest-ranked free
- * rooms as simulated demand, or as closed when an admin override is behind it.
+ * rooms as simulated demand. Scarcity overrides turn a smaller share of that
+ * filler into closed-to-sale rooms, while a sold-out override closes all of it.
  * The filler order is re-hashed for every night: demo rows look naturally
  * scattered instead of turning the same first rooms into uninterrupted bars,
  * while remaining stable across renders and reloads.
@@ -139,7 +140,7 @@ export function allocateRoomType(input: {
   bookings: AllocatableBooking[];
   nights: string[];
   taken: Record<string, number>;
-  closedByOverride: boolean;
+  override: RoomStatus | null;
 }): RoomTypeAllocation {
   const byRank = [...input.units].sort((a, b) => a.rank - b.rank);
   const occupancy = new Map(byRank.map((unit) => [unit.number, new Map<string, NightOccupant>()]));
@@ -189,11 +190,18 @@ export function allocateRoomType(input: {
         demoHash(`${a.number}|${night}|filler`) - demoHash(`${b.number}|${night}|filler`) ||
         a.rank - b.rank,
     );
+    let closed =
+      input.override === 'sold_out'
+        ? filler
+        : input.override === 'last_room' || input.override === 'limited'
+          ? Math.min(filler, Math.max(1, Math.round(filler / 3)))
+          : 0;
     for (const unit of nightlyFillOrder) {
       if (filler === 0) break;
       const row = occupancy.get(unit.number)!;
       if (row.has(night)) continue;
-      row.set(night, input.closedByOverride ? { kind: 'closed' } : { kind: 'demand' });
+      row.set(night, closed > 0 ? { kind: 'closed' } : { kind: 'demand' });
+      closed = Math.max(0, closed - 1);
       filler -= 1;
     }
   }

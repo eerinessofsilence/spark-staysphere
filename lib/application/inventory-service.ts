@@ -171,7 +171,7 @@ export class InventoryService {
       units,
       nights,
       taken,
-      closedByOverride: override !== null,
+      override,
       bookings: bookings.map((booking) => ({
         reference: booking.reference,
         checkIn: booking.checkIn,
