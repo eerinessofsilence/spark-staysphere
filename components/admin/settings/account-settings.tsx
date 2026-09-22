@@ -205,13 +205,18 @@ export function AccountSettings({
         ) : null}
       </Group>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
-        <button type="button" onClick={save} className={pill('primary')}>
-          {t('account.save')}
-        </button>
-        <p role="status" aria-live="polite" className="text-sm font-medium text-muted-foreground">
-          {saved ? t('account.demoNothingSaved') : ''}
-        </p>
+      {/* Keep the account action in the same fixed dock as CMS forms. The spacer protects the last
+          password field from being covered on short screens. */}
+      <div aria-hidden="true" className="h-24" />
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
+        <div className="glass-bar pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-full p-1.5">
+          <button type="button" onClick={save} className={pill('primary')}>
+            {t('account.save')}
+          </button>
+          <p role="status" aria-live="polite" className="px-2 text-sm font-medium text-muted-foreground">
+            {saved ? t('account.demoNothingSaved') : ''}
+          </p>
+        </div>
       </div>
     </div>
   );
