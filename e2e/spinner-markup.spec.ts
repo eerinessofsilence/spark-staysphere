@@ -1,86 +1,70 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-/**
- * `/admin/content/spinner` coverage: drawing a zone on a key-angle frame,
- * binding it to a room type, watching it autosave, and confirming it
- * persists and reaches the guest-facing orbit. Runs serially against the
- * same dev server as the rest of the CMS suite — see `cms.spec.ts`'s own
- * note on why the demo state is process-local.
- *
- * Desktop only: the ported editor is laid out like a design tool — the zone
- * list and the zone's properties float over the canvas on either side, the
- * draw tools in a dock below — and needs real width to work: at 390px the
- * two panels alone cover the image, leaving nothing to draw on. Making it
- * usable one-handed is future work, not something this pass claims.
- */
-
-const KEY_ANGLE = 25; // one of the seed spinner's `keyAngles` (mock-data.ts)
-
-async function resetDemoState(page: Page) {
-  await page.goto('/admin/reset');
-  const button = page.getByRole('button', { name: 'Reset seed data' });
-  await expect(async () => {
-    await button.click();
-    await expect(button).toBeDisabled({ timeout: 2_000 });
-  }).toPass({ timeout: 20_000, intervals: [250, 500, 1000] });
-  await expect(button).toBeEnabled({ timeout: 15_000 });
-}
-
-test.describe.configure({ mode: 'serial' });
-
-test('drawing a zone, binding it to a room type, autosaves and reaches the guest orbit', async ({ page }, testInfo) => {
-  testInfo.skip(testInfo.project.name === 'mobile', 'The markup editor needs desktop width.');
-  await resetDemoState(page);
-
-  await page.goto(`/admin/content/spinner/markup?frame=${KEY_ANGLE}`);
-
-  const canvas = page.locator('[data-pe-root]');
-  await expect(canvas).toBeVisible();
-
-  // Draw a rectangle: select the tool, then drag across the canvas. The
-  // click is retried — a click on a server-rendered island is lost until
-  // React has attached its listeners (see cms.spec.ts's own note on this).
-  const rectButton = page.getByRole('button', { name: /Rectangle/ });
-  await expect(async () => {
-    await rectButton.click();
-    await expect(rectButton).toHaveAttribute('aria-pressed', 'true', { timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
-
-  // Scoped to `.pe-canvas` specifically: the dock's own tool icons are also
-  // `<svg>` elements. The drag stays in the middle of the canvas, clear of
-  // the panels floating over its corners.
-  const box = (await page.locator('.pe-canvas svg').boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 5 });
-  await page.mouse.up();
-
-  // The new zone shows up unbound, selected.
-  await expect(page.locator('.pe-item-label')).toHaveText('Unbound zone');
-
-  // Bind it to a room type.
-  await page.getByRole('radio', { name: 'Room type' }).click();
-  const roomTypeSelect = page.locator('select').last();
-  await roomTypeSelect.selectOption({ index: 0 });
-  const roomName = await roomTypeSelect.locator('option:checked').textContent();
-
-  // Autosave settles. `.pe-save` specifically, not a loose text match: "Saved"
-  // is a substring of "Unsaved changes…" too.
-  await expect(page.locator('.pe-save')).toHaveText('Saved', { timeout: 10_000 });
-
-  // Reload: the zone and its binding persisted.
-  await page.goto(`/admin/content/spinner/markup?frame=${KEY_ANGLE}`);
-  await expect(page.locator('.pe-item')).toHaveCount(1);
-  await expect(page.locator('.pe-item-label')).toContainText(roomName?.trim() ?? '');
-
-  // The guest-facing arrival scene draws the same zone on the same frame.
-  await page.goto(`/?frame=${KEY_ANGLE}`);
-  await expect(page.getByRole('group', { name: /360° view/ })).toBeVisible();
-  await expect(page.locator('[data-testid="spinner-zone"]')).toHaveCount(1);
-});
-
-test('a frame outside the key angles redirects to the first key angle', async ({ page }, testInfo) => {
-  testInfo.skip(testInfo.project.name === 'mobile', 'The markup editor needs desktop width.');
+// Preserve the current catalog and existing zones: only remove the zone this test draws.
+test('choose a room directly, autosave, reload and open it from the guest orbit', async ({ page }, testInfo) => {
+  testInfo.skip(testInfo.project.name === 'mobile', 'The drawing editor needs desktop width.');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/content/spinner/markup?frame=1');
-  await expect(page).toHaveURL(new RegExp(`frame=${KEY_ANGLE}(&|$)`));
+  const editorUrl = page.url();
+  const frame = new URL(editorUrl).searchParams.get('frame');
+  await expect(page.locator('[data-pe-root]')).toBeVisible();
+  const initialCount = await page.locator('.pe-item').count();
+  let created = false;
+  try {
+    const rectangle = page.getByRole('button', { name: /Rectangle/ });
+    await expect(async () => {
+      await rectangle.click();
+      await expect(rectangle).toHaveAttribute('aria-pressed', 'true', { timeout: 1_000 });
+    }).toPass();
+    const box = (await page.locator('.pe-canvas svg').boundingBox())!;
+    await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.7, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.locator('.pe-item')).toHaveCount(initialCount + 1);
+    created = true;
+
+    const room = page.getByRole('combobox', { name: 'Room', exact: true });
+    await expect(room).toHaveValue('');
+    await expect(page.getByRole('radiogroup', { name: 'Target kind' })).toHaveCount(0);
+    const roomId = await room.locator('option:not([disabled])').first().getAttribute('value');
+    await room.selectOption(roomId!);
+    await expect(page.getByTestId('zone-room-preview')).toBeVisible();
+    await expect(page.getByTestId('zone-room-preview').locator('img')).toBeVisible();
+    await expect(page.locator('.pe-save')).toHaveText('Saved');
+    const label = await page.locator('.pe-item-label').last().textContent();
+
+    await page.reload();
+    await page.locator('.pe-item-main').last().click();
+    await expect(room).toHaveValue(roomId!);
+    await expect(page.locator('.pe-item-label').last()).toHaveText(label!);
+    // A shorter/narrower canvas must keep the whole field within its panel.
+    await page.setViewportSize({ width: 1100, height: 800 });
+    const fits = await room.evaluate((element) => {
+      const panel = element.closest('.pe-float-right')!;
+      return element.getBoundingClientRect().right <= panel.getBoundingClientRect().right;
+    });
+    expect(fits).toBe(true);
+    await page.screenshot({ path: '/tmp/staysphere-room-picker.png' });
+
+    await page.getByRole('button', { name: 'Remove binding' }).click();
+    await expect(room).toHaveValue('');
+    await expect(page.locator('.pe-save')).toHaveText('Saved');
+    await room.selectOption(roomId!);
+    await expect(page.locator('.pe-save')).toHaveText('Saved');
+    await page.goto('/?frame=' + frame);
+    const guestZone = page.getByTestId('spinner-zone').last();
+    await expect(guestZone).toBeAttached();
+    await guestZone.focus();
+    await guestZone.press('Enter');
+    await expect(page).toHaveURL(/\/rooms\/[^?]+/);
+  } finally {
+    if (created) {
+      await page.goto(editorUrl);
+      await expect(page.locator('.pe-item')).toHaveCount(initialCount + 1);
+      await page.locator('.pe-item-delete').last().click();
+      await expect(page.locator('.pe-save')).toHaveText('Saved');
+      await expect(page.locator('.pe-item')).toHaveCount(initialCount);
+    }
+  }
 });

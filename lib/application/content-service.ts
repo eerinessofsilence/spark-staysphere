@@ -1092,7 +1092,7 @@ export class ContentService {
     /** How many marker hotspots (`sea-view`, floor pins, …) would be cleared by replacing the frames — see `updateSpinnerScene`. */
     hotspotCount: number;
     zones: SpinnerZone[];
-    units: Array<{ id: string; number: string; floor: number; roomTypeId: string; roomTypeName: string }>;
+    units: Array<{ id: string; number: string; floor: number; roomTypeId: string; roomTypeName: string; photo?: string }>;
     roomTypes: Array<{ id: string; name: string; floor: number; hidden: boolean }>;
   } | null> {
     const hotel = await this.hotel();
@@ -1123,6 +1123,7 @@ export class ContentService {
           floor: unit.floor,
           roomTypeId: unit.roomTypeId,
           roomTypeName: roomById.get(unit.roomTypeId)?.name ?? unit.roomTypeId,
+          photo: roomById.get(unit.roomTypeId)?.media.find((item) => item.type === 'image')?.url,
         }))
         .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })),
       roomTypes: rooms

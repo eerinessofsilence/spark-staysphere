@@ -61,6 +61,16 @@ describe('ContentService spinner markup', () => {
     expect(after!.zones[0]).toMatchObject({ id: ID, frameIndex: keyAngle, target: { kind: 'unit', unitId: unit.id } });
   });
 
+  it('supplies the matching room photograph for every physical room in the picker', async () => {
+    const content = await service.getSpinnerMarkupContent();
+    const rooms = await mockHotelRepository.listRooms(demoHotel.id);
+    for (const unit of content!.units) {
+      const room = rooms.find((item) => item.id === unit.roomTypeId)!;
+      expect(unit.photo).toBe(room.media.find((item) => item.type === 'image')?.url);
+      expect(unit.roomTypeName).toBe(room.name);
+    }
+  });
+
   it('rejects a frame that is not one of the spinner\'s key angles', async () => {
     const result = await service.saveSpinnerZones(otherFrame, {
       upserts: [{ id: ID, polygon: SQUARE, target: null }],
