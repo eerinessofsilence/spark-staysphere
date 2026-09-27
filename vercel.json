@@ -3,5 +3,5 @@
   "framework": null,
   "buildCommand": "npm run build:vercel",
   "installCommand": "npm ci",
-  "crons": [{ "path": "/api/internal/document-deletions", "schedule": "*/10 * * * *" }]
+  "crons": [{ "path": "/api/internal/document-deletions", "schedule": "0 3 * * *" }]
 }
