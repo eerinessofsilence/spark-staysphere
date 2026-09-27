@@ -67,7 +67,23 @@ export default defineConfig(async () => {
           { find: /^shadcn\/tailwind\.css$/, replacement: here('./node_modules/shadcn/dist/tailwind.css') },
         ],
       },
-      plugins: [vinext(), nitro()],
+      plugins: [
+        vinext(),
+        // `resolve.alias` above only reaches the Vite-built RSC/page graph —
+        // Nitro bundles `app/api/**/route.ts` handlers through its own,
+        // separate resolution pass and needs the same swap passed to it
+        // directly. Without this, those route handlers silently got the
+        // Cloudflare stub even on Vercel with every env var set correctly,
+        // so `hostDatabase()`/`hostBucket()` were always `null` there and
+        // Turso/Vercel Blob were never actually used — confirmed by bundling
+        // and inspecting the built output with and without this alias.
+        nitro({
+          alias: {
+            '#host-adapters': here('./lib/infrastructure/host-adapters.node.ts'),
+            'cloudflare:workers': here('./lib/infrastructure/node-workers-shim.ts'),
+          },
+        }),
+      ],
     };
   }
 
