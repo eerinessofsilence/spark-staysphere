@@ -13,7 +13,7 @@ export type { TeamPermissionKey };
  */
 
 /** The five seeded role ids. Their default names and permissions live here, while `TeamService` overlays edits saved from `/admin/settings/team`. */
-export const teamRoles = ['Owner', 'General manager', 'Revenue manager', 'Front desk', 'Content editor'] as const;
+export const teamRoles = ['Owner', 'General manager', 'Revenue manager', 'Front desk', 'Content editor', 'Housekeeper'] as const;
 
 export type BuiltinTeamRole = (typeof teamRoles)[number];
 
@@ -80,6 +80,14 @@ export const demoMembers: TeamMember[] = [
     status: 'invited',
     lastActive: 'team.notSignedIn',
   },
+  {
+    id: 'housekeeper-demo',
+    name: 'Nina Petrou',
+    email: 'housekeeper@asteriacove.example',
+    role: 'Housekeeper',
+    status: 'active',
+    lastActive: 'team.notSignedIn',
+  },
 ];
 
 /** Case and surrounding whitespace never decide whether an address is on the team. */
@@ -117,7 +125,7 @@ export const permissions: { key: TeamPermissionKey; allowed: BuiltinTeamRole[] }
   { key: 'team.permBrandDomain', allowed: ['Owner', 'General manager'] },
   { key: 'team.permTeamRoles', allowed: ['Owner'] },
   { key: 'team.permIntegrations', allowed: ['Owner', 'General manager'] },
-  { key: 'team.permHousekeeping', allowed: ['Owner', 'General manager', 'Front desk'] },
+  { key: 'team.permHousekeeping', allowed: ['Owner', 'General manager', 'Front desk', 'Housekeeper'] },
 ];
 
 /** Built-in roles only — a custom role's own `permissions` array answers this directly, see `TeamService.hasPermission`. */

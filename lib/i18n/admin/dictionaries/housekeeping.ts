@@ -4,7 +4,6 @@ import { defineArea } from './area';
 export const housekeeping = defineArea({
   en: {
     'housekeeping.title': 'Housekeeping',
-    'housekeeping.summary': '{dirty} to clean · {inProgress} in progress · {ready} ready',
     'housekeeping.filterLabel': 'Filter rooms by status',
     'housekeeping.filterTitle': 'Filter rooms',
     'housekeeping.all': 'All rooms',
@@ -56,7 +55,6 @@ export const housekeeping = defineArea({
   },
   de: {
     'housekeeping.title': 'Housekeeping',
-    'housekeeping.summary': '{dirty} zu reinigen · {inProgress} in Arbeit · {ready} bereit',
     'housekeeping.filterLabel': 'Zimmer nach Status filtern',
     'housekeeping.filterTitle': 'Zimmer filtern',
     'housekeeping.all': 'Alle Zimmer',
@@ -108,7 +106,6 @@ export const housekeeping = defineArea({
   },
   ru: {
     'housekeeping.title': 'Уборка номеров',
-    'housekeeping.summary': '{dirty} убрать · {inProgress} в работе · {ready} готово',
     'housekeeping.filterLabel': 'Фильтр номеров по статусу',
     'housekeeping.filterTitle': 'Фильтр номеров',
     'housekeeping.all': 'Все номера',

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { identitySchema } from './guest-document';
 
 export const currencySchema = z.enum(['EUR', 'USD', 'GBP']);
 export const roomStatusSchema = z.enum(['available', 'last_room', 'limited', 'sold_out']);
@@ -383,6 +384,43 @@ export const bookingSchema = z.object({
   status: z.enum(['draft', 'held', 'confirmed', 'cancelled']),
   stayState: stayStateSchema.default('booked'),
   createdAt: z.string().datetime(),
+  /** Set by the desk on `/admin/groups`, never by the guest flow — a shared reservation (a wedding block, a conference room list) this booking belongs to alongside others. */
+  groupId: z.string().optional(),
+});
+
+/**
+ * A shared reservation the desk creates on `/admin/groups` and attaches
+ * existing bookings to — a wedding block, a conference's room list, a tour
+ * operator's allotment. There is no group-level rate or inventory: it is a
+ * label and a balance rolled up from the bookings attached to it
+ * (`bookingSchema.groupId`), the same "derive from bookings" rule
+ * `lib/application/guest-directory.ts` already applies to a guest.
+ */
+export const bookingGroupSchema = z.object({
+  id: z.string(),
+  hotelId: z.string(),
+  name: z.string().min(1),
+  notes: z.string().optional(),
+  createdAt: z.string().datetime(),
+});
+
+/**
+ * A guest record the desk creates on `/admin/guests` before there is any
+ * booking to derive them from — someone who called ahead, a VIP the hotel
+ * wants on file, a corporate contact. `lib/application/guest-directory.ts`
+ * merges these with the guests derived from bookings, by email; a booking
+ * made later under the same email is simply more history for the same row,
+ * not a second guest.
+ */
+export const guestProfileSchema = z.object({
+  id: z.string(),
+  hotelId: z.string(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().min(7),
+  createdAt: z.string().datetime(),
+  identity: z.lazy(() => identitySchema).optional(),
 });
 
 export const integrationStatusSchema = z.object({
@@ -571,6 +609,8 @@ export type AddOn = z.infer<typeof addOnSchema>;
 export type Guest = z.infer<typeof guestSchema>;
 export type PaymentAttempt = z.infer<typeof paymentAttemptSchema>;
 export type Booking = z.infer<typeof bookingSchema>;
+export type BookingGroup = z.infer<typeof bookingGroupSchema>;
+export type GuestProfile = z.infer<typeof guestProfileSchema>;
 export type StayState = z.infer<typeof stayStateSchema>;
 export type HousekeepingStatus = z.infer<typeof housekeepingStatusSchema>;
 export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;

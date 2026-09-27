@@ -2,6 +2,8 @@ import type { DemoControlPort, HotelRepository } from '../domain/ports';
 import type {
   Availability,
   Booking,
+  BookingGroup,
+  GuestProfile,
   IntegrationStatus,
   PaymentAttempt,
   RoomStatus,
@@ -24,6 +26,15 @@ const paymentAttempts = new Map<string, PaymentAttempt[]>();
 const roomStatusOverrides = new Map<string, RoomStatus>();
 /** `${roomTypeId}|${yyyy-MM-dd}` → units taken by demo bookings made this session. */
 const demoHolds = new Map<string, number>();
+const bookingGroups = new Map<string, BookingGroup>();
+const guestProfiles = new Map<string, GuestProfile>();
+/** bookingId -> groupId */
+const bookingGroupMembers = new Map<string, string>();
+
+function withGroup(booking: Booking): Booking {
+  const groupId = bookingGroupMembers.get(booking.id);
+  return groupId ? { ...booking, groupId } : booking;
+}
 
 const integrationStatuses: IntegrationStatus[] = [
   { adapter: 'pms', mode: 'mock', connected: false, lastSyncAt: null },
@@ -83,7 +94,8 @@ export const mockHotelRepository: HotelRepository = {
     return booking;
   },
   async getBookingByReference(reference) {
-    return bookingsByReference.get(reference) ?? null;
+    const booking = bookingsByReference.get(reference);
+    return booking ? withGroup(booking) : null;
   },
   async cancelBooking(reference) {
     const booking = bookingsByReference.get(reference);
@@ -111,7 +123,50 @@ export const mockHotelRepository: HotelRepository = {
     return updated;
   },
   async listBookings() {
-    return [...bookingsByReference.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return [...bookingsByReference.values()].map(withGroup).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async createBookingGroup(group) {
+    bookingGroups.set(group.id, group);
+    return group;
+  },
+  async listBookingGroups(hotelId) {
+    return [...bookingGroups.values()]
+      .filter((group) => group.hotelId === hotelId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getBookingGroup(id) {
+    return bookingGroups.get(id) ?? null;
+  },
+  async assignBookingToGroup(bookingId, groupId) {
+    const booking = [...bookingsByReference.values()].find((candidate) => candidate.id === bookingId);
+    if (!booking) return null;
+    bookingGroupMembers.set(bookingId, groupId);
+    return withGroup(booking);
+  },
+  async removeBookingFromGroup(bookingId) {
+    const booking = [...bookingsByReference.values()].find((candidate) => candidate.id === bookingId);
+    if (!booking) return null;
+    bookingGroupMembers.delete(bookingId);
+    return { ...booking, groupId: undefined };
+  },
+  async deleteBookingGroup(id) {
+    bookingGroups.delete(id);
+    for (const [bookingId, groupId] of bookingGroupMembers) {
+      if (groupId === id) bookingGroupMembers.delete(bookingId);
+    }
+  },
+  async createGuestProfile(profile) {
+    guestProfiles.set(profile.id, profile);
+    return profile;
+  },
+  async saveGuestIdentity(profileId, hotelId, identity) {
+    const profile = guestProfiles.get(profileId);
+    if (profile?.hotelId === hotelId) guestProfiles.set(profileId, { ...profile, firstName: identity.firstName, lastName: identity.lastName, identity });
+  },
+  async listGuestProfiles(hotelId) {
+    return [...guestProfiles.values()]
+      .filter((profile) => profile.hotelId === hotelId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async savePaymentAttempt(attempt) {
     const existing = paymentAttempts.get(attempt.bookingId) ?? [];
@@ -140,5 +195,8 @@ export const mockDemoControlPort: DemoControlPort = {
     paymentAttempts.clear();
     roomStatusOverrides.clear();
     demoHolds.clear();
+    bookingGroups.clear();
+    bookingGroupMembers.clear();
+    guestProfiles.clear();
   },
 };

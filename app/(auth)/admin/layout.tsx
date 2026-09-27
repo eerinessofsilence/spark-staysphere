@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { AdminLocaleProvider } from '@/lib/i18n/admin/context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
-import { adminT } from '@/lib/i18n/admin/translate';
 import { AuthShowcase } from './auth-showcase';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +25,6 @@ export const dynamic = 'force-dynamic';
  */
 export default async function AdminAuthLayout({ children }: { children: React.ReactNode }) {
   const locale = await getAdminLocale();
-  const t = adminT(locale);
 
   return (
     <AdminLocaleProvider locale={locale}>
@@ -34,7 +32,7 @@ export default async function AdminAuthLayout({ children }: { children: React.Re
         <AuthShowcase />
 
         <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-8 sm:py-12">
-          <div className="flex w-full max-w-sm flex-1 flex-col justify-center lg:flex-none">
+          <div className="flex w-full max-w-3xl flex-1 flex-col justify-center lg:flex-none">
             {/* Below `lg` there is no photo panel, so its own brand mark is
                 the only one — from `lg` up, `AuthShowcase` carries it instead
                 of repeating it beside the form. */}
@@ -48,12 +46,6 @@ export default async function AdminAuthLayout({ children }: { children: React.Re
             <main id="main" className="mt-6 lg:mt-0">
               {children}
             </main>
-
-            <p className="mt-6 self-center text-xs text-muted-foreground lg:self-start">
-              <Link href="/" className="hover:text-foreground">
-                {t('signIn.guestSite')}
-              </Link>
-            </p>
           </div>
         </div>
       </div>

@@ -110,6 +110,19 @@ trip, a `role="status"` message change), not on content the action happens not t
 
 ## Something not here?
 
+**Passport OCR assets missing after adding the dependency.** Run
+`node scripts/prepare-document-ocr.mjs` (also run automatically by install/dev/build).
+The scanner serves its worker, WASM and trained data locally from `public/vendor/document-ocr`;
+it does not fall back to a CDN. Recognition failure still opens editable review fields.
+
+**Passport upload unavailable while CMS uploads work.** Identity documents use the separate
+`PRIVATE_DOCUMENTS` R2 binding (or a private Blob store on Vercel). The public MEDIA adapter is
+intentionally not a fallback. See `docs/GUEST_DOCUMENTS.md` for host configuration and retries.
+
+**Nested modals must give keyboard handling to the topmost dialog.** The passport review uses
+the shared Modal inside Add Booking. Only the last open dialog handles Escape and focus trapping,
+so closing the scanner does not also discard the booking underneath it.
+
 Check TESTING.md for e2e-specific issues, or AGENTS.md for working rules that might explain an
 unexpected refusal (never touching `.env`, never scraping a partner site, etc). If you hit and fix
 something that isn't listed above, add it here — that's the whole point of this page.

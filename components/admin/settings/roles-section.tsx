@@ -194,9 +194,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
       <TeamTabs current="roles" counts={{ members: membersCount, roles: roles.length }} />
 
       <section aria-label={t('team.roles')} className="mt-8">
-        <p className="text-sm text-muted-foreground">{t('team.rolesListBody')}</p>
-
-      <div className="mt-5 overflow-hidden rounded-[18px] bg-card shadow-soft">
+      <div className="overflow-hidden rounded-[18px] bg-card shadow-soft">
         <TableCard caption={t('team.roles')} className="min-w-[28rem]" attached>
           <thead>
             <tr className="border-b border-border">
@@ -221,7 +219,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
                   key={role.id}
                   className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
                 >
-                  <Td className="align-middle">
+                  <Td>
                     <Link
                       href={`/admin/settings/team/roles/${encodeURIComponent(role.id)}`}
                       aria-label={`${t('team.editRole')}: ${label}`}
@@ -230,8 +228,8 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
                       {identity}
                     </Link>
                   </Td>
-                  <Td className="align-middle text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
-                  <Td className="relative z-10 w-14 align-middle text-right">
+                  <Td className="text-muted-foreground">{permissionCount(role.permissions.length)}</Td>
+                  <Td className="relative z-10 w-14 text-right">
                     <RoleActions role={role} />
                   </Td>
                 </tr>

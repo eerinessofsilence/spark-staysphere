@@ -131,6 +131,42 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.listPaymentAttempts(db, bookingId) : mockHotelRepository.listPaymentAttempts(bookingId);
   },
+  createBookingGroup(group) {
+    const db = getDemoDatabase();
+    return db ? d1.createBookingGroup(db, group) : mockHotelRepository.createBookingGroup(group);
+  },
+  listBookingGroups(hotelId) {
+    const db = getDemoDatabase();
+    return db ? d1.listBookingGroups(db, hotelId) : mockHotelRepository.listBookingGroups(hotelId);
+  },
+  getBookingGroup(id) {
+    const db = getDemoDatabase();
+    return db ? d1.getBookingGroup(db, id) : mockHotelRepository.getBookingGroup(id);
+  },
+  assignBookingToGroup(bookingId, groupId) {
+    const db = getDemoDatabase();
+    return db ? d1.assignBookingToGroup(db, bookingId, groupId) : mockHotelRepository.assignBookingToGroup(bookingId, groupId);
+  },
+  removeBookingFromGroup(bookingId) {
+    const db = getDemoDatabase();
+    return db ? d1.removeBookingFromGroup(db, bookingId) : mockHotelRepository.removeBookingFromGroup(bookingId);
+  },
+  deleteBookingGroup(id) {
+    const db = getDemoDatabase();
+    return db ? d1.deleteBookingGroup(db, id) : mockHotelRepository.deleteBookingGroup(id);
+  },
+  createGuestProfile(profile) {
+    const db = getDemoDatabase();
+    return db ? d1.createGuestProfile(db, profile) : mockHotelRepository.createGuestProfile(profile);
+  },
+  saveGuestIdentity(profileId, hotelId, identity) {
+    const db = getDemoDatabase();
+    return db ? d1.saveGuestIdentity(db, profileId, hotelId, identity) : mockHotelRepository.saveGuestIdentity(profileId, hotelId, identity);
+  },
+  listGuestProfiles(hotelId) {
+    const db = getDemoDatabase();
+    return db ? d1.listGuestProfiles(db, hotelId) : mockHotelRepository.listGuestProfiles(hotelId);
+  },
 };
 
 export const durableDemoControlPort: DemoControlPort = {

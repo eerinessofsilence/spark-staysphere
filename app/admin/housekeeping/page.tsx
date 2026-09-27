@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Broom } from '@phosphor-icons/react/dist/ssr';
-import { housekeepingService } from '@/lib/application/container';
+import { housekeepingService, teamService } from '@/lib/application/container';
+import { getAdminMember } from '@/lib/application/admin-session';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { HOUSEKEEPING_STATUSES } from '@/lib/domain/housekeeping';
@@ -12,6 +13,7 @@ import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateShort, lFloor } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { HousekeepingStatusMenu } from '@/components/admin/housekeeping/housekeeping-status-menu';
+import { HousekeepingAssigneeSelect } from '@/components/admin/housekeeping/housekeeping-assignee-select';
 import { FilterPills } from '@/components/admin/operations/filter-pills';
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -61,7 +63,16 @@ export default async function HousekeepingPage({
   const pageSize = parsePageSize(params.pageSize);
   const today = toIsoDate(new Date());
 
-  const rooms = await housekeepingService.listRooms(await getSelectedHotelSlug(), today);
+  const hotelSlug = await getSelectedHotelSlug();
+  const [rooms, assignments, staff, currentMember] = await Promise.all([
+    housekeepingService.listRooms(hotelSlug, today),
+    housekeepingService.listAssignments(hotelSlug),
+    teamService.listMembers(),
+    getAdminMember(),
+  ]);
+  const canAssign = currentMember ? await teamService.hasPermission(currentMember.role, 'team.permTeamRoles') : false;
+  const assignedByUnit = new Map(assignments.map((assignment) => [assignment.unitId, assignment.memberId]));
+  const housekeepers = staff.filter((member) => member.role === 'Housekeeper').map(({ id, name }) => ({ id, name }));
   const counts = Object.fromEntries(HOUSEKEEPING_STATUSES.map((status) => [status, 0])) as Record<
     HousekeepingStatus,
     number
@@ -72,14 +83,7 @@ export default async function HousekeepingPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader
-        title={t('housekeeping.title')}
-        description={t('housekeeping.summary', {
-          dirty: counts.dirty,
-          inProgress: counts.in_progress,
-          ready: counts.clean + counts.inspected,
-        })}
-      />
+      <AdminPageHeader title={t('housekeeping.title')} />
 
       <div className="mt-2">
         <FilterPills
@@ -117,6 +121,7 @@ export default async function HousekeepingPage({
                   <Th>{t('housekeeping.thType')}</Th>
                   <Th>{t('housekeeping.thOccupancy')}</Th>
                   <Th>{t('housekeeping.thStatus')}</Th>
+                  <Th>Хаускипер</Th>
                   <Th>{t('housekeeping.thUpdated')}</Th>
                 </tr>
               </thead>
@@ -152,6 +157,10 @@ export default async function HousekeepingPage({
                     <Td className="relative z-10">
                       <HousekeepingStatusMenu unitId={room.unit.id} status={room.status} note={room.note} />
                       {room.note ? <span className="mt-1 block max-w-64 truncate text-xs text-muted-foreground">{room.note}</span> : null}
+                    </Td>
+                    <Td>
+                      {canAssign ? <HousekeepingAssigneeSelect unitId={room.unit.id} memberId={assignedByUnit.get(room.unit.id) ?? null} staff={housekeepers} />
+                        : staff.find((member) => member.id === assignedByUnit.get(room.unit.id))?.name ?? '—'}
                     </Td>
                     <Td className="whitespace-nowrap text-muted-foreground">
                       {room.updatedAt ? lDateShort(room.updatedAt, locale) : t('housekeeping.notTouched')}

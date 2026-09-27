@@ -3,14 +3,21 @@ import type {
   CatalogEntryKind,
   DemoControlPort,
   HotelRepository,
+  ProductRecognizer,
+  RoomRecognizer,
   RoomSearchInterpreter,
   SpeechTranscriber,
 } from '../domain/ports';
 import type { Hotel } from '../domain/schemas';
-import { getAdminAuthEnv, getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
+import type { ProductGuess } from '../domain/product-recognition';
+import type { RoomGuess } from '../domain/room-recognition';
+import { getAdminAuthEnv, getInboundEmailSecret, getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
+import { durableGeneratedReportStore } from '../infrastructure/durable-generated-report-store';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { durableHousekeepingStore } from '../infrastructure/durable-housekeeping-store';
+import { durableMessagingStore } from '../infrastructure/durable-messaging-store';
+import { loggingOutboundMessenger } from '../infrastructure/logging-outbound-messenger';
 import { durableRoleStore } from '../infrastructure/durable-role-store';
 import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
@@ -22,17 +29,25 @@ import { demoAddOns, demoHotel, demoHotels, demoPhysicalRooms, demoRates, demoRo
 import { createBookingEngineAdapter, mockCrmAdapter, mockPaymentProvider, mockPmsAdapter } from '../infrastructure/mock-adapters';
 import { createOpenAiAdminInterpreter } from '../infrastructure/openai-admin-interpreter';
 import { createOpenAiSearchInterpreter } from '../infrastructure/openai-search-interpreter';
+import { createOpenAiProductRecognizer } from '../infrastructure/openai-product-recognizer';
+import { createOpenAiRoomRecognizer } from '../infrastructure/openai-room-recognizer';
 import { createOpenAiTranscriber } from '../infrastructure/openai-transcriber';
 import { AdminAssistantService } from './admin-assistant-service';
 import { AssistantError, AssistantService } from './assistant-service';
 import { BookingService } from './booking-service';
 import { CatalogService } from './catalog-service';
+import { CommunicationsService } from './communications-service';
 import { ContentService } from './content-service';
 import { systemClock } from '../domain/clock';
 import { HousekeepingService } from './housekeeping-service';
 import { InventoryService } from './inventory-service';
+import { ReportsService } from './reports-service';
 import { SampleBookingService } from './sample-bookings';
 import { TeamService } from './team-service';
+import { GuestDocumentService } from './guest-document-service';
+import { guestDocumentStore } from '../infrastructure/guest-document-store';
+import { privateDocumentStorage } from '../infrastructure/private-document-storage';
+import { getDocumentCronSecret } from '../infrastructure/cloudflare-env';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -80,12 +95,34 @@ export const housekeepingService = new HousekeepingService(
   systemClock,
 );
 
+/** Arrivals/departures/in-house reports, and the frozen ones the "Generated" tab lists — see `reports-service.ts`. */
+export const reportsService = new ReportsService(
+  durableGeneratedReportStore,
+  hotelRepository,
+  catalogService,
+  inventoryService,
+  housekeepingService,
+  systemClock,
+);
+
+/** The guest inbox — see `communications-service.ts`; D1 with an in-memory fallback like the others. */
+export const communicationsService = new CommunicationsService(durableMessagingStore, hotelRepository, systemClock, loggingOutboundMessenger);
+
+export const guestDocumentService = new GuestDocumentService(hotelRepository, guestDocumentStore, privateDocumentStorage);
+
+export function documentCronAuthorized(token: string | null): boolean {
+  const secret = getDocumentCronSecret();
+  return Boolean(secret && token === `Bearer ${secret}`);
+}
+
 export const bookingService = new BookingService(
   hotelRepository,
   bookingEngineAdapter,
   mockPaymentProvider,
   mockCrmAdapter,
   mockPmsAdapter,
+  systemClock,
+  (booking) => guestDocumentService.afterCheckout(booking),
 );
 
 /** Fills an empty demo with sample stays; only ever run from the back office. */
@@ -100,23 +137,34 @@ const seedIds: Record<CatalogEntryKind, ReadonlySet<string>> = {
   addon: new Set(demoAddOns.map((addOn) => addOn.id)),
 };
 
-export const contentService = new ContentService(
-  hotelRepository,
-  durableCatalogContentPort,
-  mediaLibraryPort,
-  durableSpinnerMarkupPort,
-  durableSpinnerFrameStoragePort,
-  DEMO_HOTEL_SLUG,
-  seedIds,
-  systemClock,
-  // Imported lazily: admin-session.ts reads `adminAuthConfig` from this
-  // module, so a static import here would be a cycle. Nothing runs until a
-  // mutator is actually called, by which time both modules are long loaded.
-  async (permission) => {
-    const { requirePermission } = await import('./admin-session');
-    await requirePermission(permission);
-  },
-);
+// Imported lazily: admin-session.ts reads `adminAuthConfig` from this module,
+// so a static import here would be a cycle. Nothing runs until a mutator is
+// actually called, by which time both modules are long loaded.
+const authorizeContent = async (permission: Parameters<NonNullable<ConstructorParameters<typeof ContentService>[8]>>[0]) => {
+  const { requirePermission } = await import('./admin-session');
+  await requirePermission(permission);
+};
+
+function createContentService(hotelSlug: string): ContentService {
+  return new ContentService(
+    hotelRepository,
+    durableCatalogContentPort,
+    mediaLibraryPort,
+    durableSpinnerMarkupPort,
+    durableSpinnerFrameStoragePort,
+    hotelSlug,
+    seedIds,
+    systemClock,
+    authorizeContent,
+  );
+}
+
+export const contentService = createContentService(DEMO_HOTEL_SLUG);
+
+/** A catalog editor scoped to the property selected in the back office. */
+export function contentServiceFor(hotelSlug: string): ContentService {
+  return hotelSlug === DEMO_HOTEL_SLUG ? contentService : createContentService(hotelSlug);
+}
 
 /**
  * Picks the OpenAI interpreter when a key resolves at call time — never
@@ -140,6 +188,43 @@ const roomSearchInterpreter: RoomSearchInterpreter = {
 };
 
 export const assistantService = new AssistantService(catalogService, roomSearchInterpreter);
+
+/**
+ * "Scan a product" on `/admin/content/add-ons`: key-at-call-time like the
+ * interpreters, but with no keyword stand-in — a photo has no words to fall
+ * back on, so without a key (or on a failure) the desk gets `null` and an
+ * empty form to fill in by hand.
+ */
+export const productRecognizer: {
+  recognize(input: Parameters<ProductRecognizer['recognize']>[0]): Promise<ProductGuess | null>;
+} = {
+  async recognize(input) {
+    const apiKey = getOpenAiKey();
+    if (!apiKey) return null;
+    try {
+      return await createOpenAiProductRecognizer(apiKey).recognize(input);
+    } catch (error) {
+      console.error('Scan a product: OpenAI recognizer failed.', error);
+      return null;
+    }
+  },
+};
+
+/** "Scan a room" on `/admin/content`: the same keyless-means-`null` rule as `productRecognizer`. */
+export const roomRecognizer: {
+  recognize(input: Parameters<RoomRecognizer['recognize']>[0]): Promise<RoomGuess | null>;
+} = {
+  async recognize(input) {
+    const apiKey = getOpenAiKey();
+    if (!apiKey) return null;
+    try {
+      return await createOpenAiRoomRecognizer(apiKey).recognize(input);
+    } catch (error) {
+      console.error('Scan a room: OpenAI recognizer failed.', error);
+      return null;
+    }
+  },
+};
 
 /** The admin assistant's interpreter: the same key-at-call-time, keyword-fallback rule as the guest's. */
 const adminCommandInterpreter: AdminCommandInterpreter = {
@@ -170,6 +255,12 @@ export const adminAssistantService = new AdminAssistantService(contentService, d
  */
 export function assistantInterpreterSource(): 'openai' | 'keyword' {
   return getOpenAiKey() ? 'openai' : 'keyword';
+}
+
+/** Whether `POST /api/inbound/email` accepts this caller — `container.ts` keeps the env read here, like every other binding. */
+export function inboundEmailAuthorized(presented: string | null): boolean {
+  const secret = getInboundEmailSecret();
+  return secret !== null && presented !== null && presented === secret;
 }
 
 /** What the demo signs in with when nothing is configured — and what the sign-in page prints in that case. */

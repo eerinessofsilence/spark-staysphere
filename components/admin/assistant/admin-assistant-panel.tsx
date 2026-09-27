@@ -16,6 +16,7 @@ import { fieldClass, iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { toast } from '@/components/admin/shell/toast';
+import styles from './admin-assistant-panel.module.css';
 
 // Every example resolves through the keyword fallback too, so a keyless
 // demo answers each of them — same rule as the guest panel's chips. They stay
@@ -192,7 +193,8 @@ export function AdminAssistantPanel({ open, onClose }: AdminAssistantPanelProps)
       role="dialog"
       aria-label={t('assistant.title')}
       className={cn(
-        'glass fixed z-40 flex flex-col overflow-hidden rounded-[18px] shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
+        styles.panel,
+        'fixed z-40 flex flex-col overflow-hidden rounded-[18px] outline-none transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]',
         // Docked above the launcher, which stays as the toggle; the page beside it stays usable.
         'right-3 bottom-[calc(10rem+env(safe-area-inset-bottom))] left-3 max-h-[min(34rem,calc(100dvh-12rem))] sm:right-6 sm:left-auto sm:w-[26rem] lg:bottom-[6.5rem]',
         visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.98] opacity-0',

@@ -30,7 +30,6 @@ export default async function NewRoomPage() {
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('rooms.title'), href: '/admin/content' }]}
         title={t('room.newTitle')}
-        description={t('room.newDescription')}
       />
 
       <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

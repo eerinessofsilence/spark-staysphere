@@ -13,18 +13,21 @@ import {
   ChevronUpDownIcon,
   CheckBadgeIcon,
   CheckIcon,
+  ChartBarIcon,
   DocumentTextIcon,
   HomeIcon,
-  MagnifyingGlassIcon,
   UserCircleIcon,
+  RectangleGroupIcon,
   UserGroupIcon,
   PuzzlePieceIcon,
   ShoppingBagIcon,
   TableCellsIcon,
   TagIcon,
   XMarkIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { Menu } from '@base-ui/react/menu';
+import { useAdminBadges } from './admin-badges';
 import { signOutAction } from '@/app/(auth)/admin/actions';
 import { setSelectedHotelAction } from '@/app/admin/actions';
 import { initialsOf } from '@/components/admin/settings/team-data';
@@ -32,8 +35,9 @@ import { useAdminT } from '@/lib/i18n/admin/context';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { Modal } from '@/components/site/modal';
 import { toast } from './toast';
-import { fieldClass, iconButton } from '@/lib/ui';
+import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { SearchInput } from '@/components/ui/search-input';
 
 export interface HotelOption {
   slug: string;
@@ -59,10 +63,14 @@ const groups: NavGroup[] = [
       { href: '/admin', label: 'nav.dashboard', icon: HomeIcon },
       { href: '/admin/front-desk', label: 'nav.frontDesk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'nav.reservations', icon: CalendarDaysIcon },
+      { href: '/admin/guests', label: 'nav.guests', icon: UserCircleIcon },
+      { href: '/admin/groups', label: 'nav.groups', icon: RectangleGroupIcon },
+      { href: '/admin/communications', label: 'nav.communications', icon: ChatBubbleLeftRightIcon },
       { href: '/admin/content', label: 'nav.rooms', icon: DocumentTextIcon },
       { href: '/admin/content/add-ons', label: 'nav.services', icon: ShoppingBagIcon },
       { href: '/admin/rates', label: 'nav.roomRates', icon: TagIcon },
       { href: '/admin/accounting', label: 'nav.accounting', icon: BanknotesIcon },
+      { href: '/admin/accounting/reports', label: 'nav.reports', icon: ChartBarIcon },
       { href: '/admin/channel-manager', label: 'nav.channelManager', icon: PuzzlePieceIcon },
       { href: '/admin/housekeeping', label: 'nav.housekeeping', icon: CheckBadgeIcon },
       { href: '/admin/settings/team', label: 'nav.team', icon: UserGroupIcon },
@@ -95,6 +103,7 @@ function activeHref(pathname: string): string | null {
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const active = activeHref(usePathname() ?? '');
   const t = useAdminT();
+  const badges = useAdminBadges();
 
   return (
     <nav data-tour="nav" aria-label={t('nav.admin')} className="grid gap-0.5">
@@ -120,7 +129,18 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                     )}
                   >
                     <item.icon className="size-5 shrink-0" aria-hidden="true" />
-                    {t(item.label)}
+                    <span className="min-w-0 flex-1 truncate">{t(item.label)}</span>
+                    {badges[item.href] ? (
+                      <span
+                        className={cn(
+                          'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
+                          current ? 'bg-primary-foreground text-primary' : 'bg-accent text-accent-foreground',
+                        )}
+                      >
+                        <span className="sr-only">{t('nav.unread', { count: String(badges[item.href]) })}</span>
+                        <span aria-hidden="true">{badges[item.href]! > 99 ? '99+' : badges[item.href]}</span>
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               );
@@ -221,20 +241,12 @@ export function PropertyCard({
       </button>
 
       <Modal open={open} onClose={close} title={t('property.switch')}>
-        <div className="relative">
-          <MagnifyingGlassIcon
-            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('property.search')}
-            aria-label={t('property.search')}
-            className={cn(fieldClass, 'pl-10')}
-          />
-        </div>
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('property.search')}
+          aria-label={t('property.search')}
+        />
 
         <ul className="mt-4 grid gap-0.5">
           {matches.length === 0 ? (

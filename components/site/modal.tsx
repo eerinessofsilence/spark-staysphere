@@ -34,13 +34,18 @@ interface ModalProps {
    * bar and padding that a picture-led panel has to fight.
    */
   chrome?: boolean;
+  /**
+   * Keep the panel as a bottom sheet beyond the phone breakpoint. Interactive
+   * stages use this on tablets, where a card over the stage is too cramped.
+   */
+  sheet?: boolean;
 }
 
 /** Tab-reachable elements a focus trap should cycle between. */
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, children, className, chrome = true }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, chrome = true, sheet = false }: ModalProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   // A client component still renders once on the server, where there is no
   // `document.body` to portal into. Only portal after the browser has it.
@@ -75,6 +80,9 @@ export function Modal({ open, onClose, title, children, className, chrome = true
   React.useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      // Nested scanners/previews own keyboard handling while they are the topmost dialog.
+      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (dialogs.item(dialogs.length - 1) !== panelRef.current) return;
       if (event.key === 'Escape') {
         onClose();
         return;
@@ -106,7 +114,12 @@ export function Modal({ open, onClose, title, children, className, chrome = true
   // `.dark` sits on `<html>`, an ancestor of the body either way, so the
   // portal needs nothing of its own to pick up the scheme.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground sm:items-center sm:p-6">
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground',
+        sheet ? 'sm:p-6' : 'sm:items-center sm:p-6',
+      )}
+    >
       <button
         type="button"
         tabIndex={-1}
@@ -133,13 +146,14 @@ export function Modal({ open, onClose, title, children, className, chrome = true
           // `scale` are named individually because Tailwind writes them to
           // those standalone properties — listing `transform` moves nothing.
           'relative flex w-full flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
-          'max-h-[85dvh] sm:max-h-[88vh] sm:max-w-lg',
+          'max-h-[85dvh] sm:max-h-[88vh]',
+          sheet ? 'sm:max-w-none' : 'sm:max-w-lg',
           // A phone gets the sheet's own move, sliding up off the bottom edge
           // it is pinned to; a desk's centred card has no edge to come from,
           // so it settles in from a touch smaller and a touch faded instead.
           visible
-            ? 'translate-y-0 opacity-100 sm:scale-100'
-            : 'translate-y-8 opacity-0 sm:translate-y-0 sm:scale-95',
+            ? cn('translate-y-0 opacity-100', !sheet && 'sm:scale-100')
+            : cn('translate-y-8 opacity-0', !sheet && 'sm:translate-y-0 sm:scale-95'),
           className,
         )}
       >

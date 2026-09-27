@@ -2,6 +2,9 @@ import type {
   AddOn,
   Availability,
   Booking,
+  BookingGroup,
+  Currency,
+  GuestProfile,
   Guest,
   Hotel,
   HousekeepingStatus,
@@ -71,11 +74,42 @@ export interface PaymentAttemptStore {
   listPaymentAttempts(bookingId: string): Promise<PaymentAttempt[]>;
 }
 
+/**
+ * `/admin/groups` — a shared reservation the desk names, then attaches
+ * existing bookings to (`assignBookingToGroup`). There is no group-level
+ * rate or inventory; everything else about a group (its balance, its own
+ * bookings list) is derived by filtering `listBookings()` on `groupId`, the
+ * same rule `lib/application/guest-directory.ts` already applies to a guest.
+ */
+export interface BookingGroupStore {
+  createBookingGroup(group: BookingGroup): Promise<BookingGroup>;
+  listBookingGroups(hotelId: string): Promise<BookingGroup[]>;
+  getBookingGroup(id: string): Promise<BookingGroup | null>;
+  /** No-ops when the booking or group doesn't exist; returns the updated booking either way it could apply. */
+  assignBookingToGroup(bookingId: string, groupId: string): Promise<Booking | null>;
+  removeBookingFromGroup(bookingId: string): Promise<Booking | null>;
+  /** Un-assigns every member booking first — a group is a label, deleting it never deletes a booking. */
+  deleteBookingGroup(id: string): Promise<void>;
+}
+
+/**
+ * A guest created directly on `/admin/guests`, before or without any
+ * booking. `lib/application/guest-directory.ts` merges these with the
+ * guests derived from `listBookings()`, by email.
+ */
+export interface GuestProfileStore {
+  createGuestProfile(profile: GuestProfile): Promise<GuestProfile>;
+  saveGuestIdentity(profileId: string, hotelId: string, identity: NonNullable<GuestProfile['identity']>): Promise<void>;
+  listGuestProfiles(hotelId: string): Promise<GuestProfile[]>;
+}
+
 export interface HotelRepository
   extends CatalogReader,
     AvailabilityReader,
     BookingStore,
-    PaymentAttemptStore {}
+    PaymentAttemptStore,
+    BookingGroupStore,
+    GuestProfileStore {}
 
 /**
  * Demo-only inventory controls backing `/admin`. Production replaces this with
@@ -122,6 +156,24 @@ export interface HousekeepingRecord {
   updatedAt: string;
 }
 
+export interface HousekeepingAssignment {
+  hotelId: string;
+  unitId: string;
+  memberId: string;
+}
+
+export interface HousekeepingEvent {
+  id: string;
+  hotelId: string;
+  unitId: string;
+  roomNumber: string;
+  memberId: string;
+  status: HousekeepingStatus;
+  note: string | null;
+  occurredAt: string;
+  photoData: string | null;
+}
+
 /**
  * The durable half of `/admin/housekeeping`: only rooms someone has marked
  * are stored, keyed by the physical room's id, so the seed rooms and rooms
@@ -130,6 +182,154 @@ export interface HousekeepingRecord {
 export interface HousekeepingStore {
   listRecords(hotelId: string): Promise<HousekeepingRecord[]>;
   setRecord(record: HousekeepingRecord): Promise<void>;
+  listAssignments(hotelId: string): Promise<HousekeepingAssignment[]>;
+  setAssignment(assignment: HousekeepingAssignment | { hotelId: string; unitId: string; memberId: null }): Promise<void>;
+  saveChange(record: HousekeepingRecord, event: HousekeepingEvent): Promise<void>;
+  listEvents(hotelId: string, unitId: string): Promise<HousekeepingEvent[]>;
+  getEvent(hotelId: string, id: string): Promise<HousekeepingEvent | null>;
+}
+
+/** Where a guest's conversation happens: the site's own chat, or a channel the hotel bridges into it. */
+export type ConversationChannel = 'chat' | 'email' | 'whatsapp' | 'sms';
+
+/** One guest's thread with the hotel — `/admin/communications`. Keyed to a booking when there is one. */
+export interface Conversation {
+  id: string;
+  hotelId: string;
+  channel: ConversationChannel;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string | null;
+  bookingReference: string | null;
+  /** The newest message's text and time, denormalised so the list needs no second query. */
+  lastMessage: string;
+  lastMessageAt: string;
+  /** Guest messages the desk has not opened yet. */
+  unread: number;
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  /** `guest` wrote in; `hotel` is a team member's reply, named in `author`. */
+  from: 'guest' | 'hotel';
+  author: string;
+  body: string;
+  sentAt: string;
+}
+
+/**
+ * The durable half of `/admin/communications`: threads and their messages,
+ * D1 with an in-memory fallback like the others. `markRead` zeroes a
+ * thread's unread count; `saveMessage` appends and refreshes the thread's
+ * last-message fields in one go.
+ */
+/**
+ * How a desk reply leaves the building on a channel other than the site's
+ * own chat: email, WhatsApp, SMS. The demo adapter only logs; a production
+ * one is a mail or messaging provider behind this same shape.
+ */
+export interface OutboundMessenger {
+  send(input: {
+    channel: Exclude<ConversationChannel, 'chat'>;
+    to: { email: string; phone: string | null };
+    guestName: string;
+    hotelName: string;
+    body: string;
+    conversationId: string;
+  }): Promise<void>;
+}
+
+export interface MessagingStore {
+  listConversations(hotelId: string): Promise<Conversation[]>;
+  getConversation(hotelId: string, id: string): Promise<Conversation | null>;
+  saveConversation(conversation: Conversation): Promise<void>;
+  listMessages(conversationId: string): Promise<ChatMessage[]>;
+  saveMessage(message: ChatMessage): Promise<void>;
+  markRead(conversationId: string): Promise<void>;
+}
+
+/** `/admin/accounting/reports`' "Daily list" report types: who arrives, who leaves, who is already in house on a given date. */
+export type ReportType = 'arrivals' | 'departures' | 'in_house';
+
+/** The "Online" tab's other views — a date range rather than a single day, each with its own row shape below. */
+export type ReportPeriodView = 'manager' | 'financial' | 'ledger' | 'statistics';
+
+/** Anything the "Generated" tab can hold a frozen copy of. */
+export type GeneratedReportKind = ReportType | ReportPeriodView;
+
+/** One booking's line in a generated report — a flat, already-formatted snapshot, not a `Booking` reference. */
+export interface GeneratedReportRow {
+  bookingId: string;
+  reference: string;
+  guestFirstName: string;
+  guestLastName: string;
+  guestEmail: string;
+  roomTypeName: string;
+  roomNumber: string | null;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  total: number;
+  currency: Currency;
+  /** Set on a "Financial"/"Guest ledger"/"Statistics" snapshot; absent from a daily "Arrivals"/"Departures"/"In house" one. */
+  breakfastGuests?: number;
+  diningItems?: string[];
+}
+
+/** "Manager analytics"' one line per room type — occupancy and booked value over the period, not a booking. */
+export interface GeneratedRoomTypeRow {
+  id: string;
+  name: string;
+  rooms: number;
+  occupiedNights: number;
+  availableNights: number;
+  bookingValues: Partial<Record<Currency, number>>;
+}
+
+/** "Statistics"' one line per physical room: its housekeeping state next to whoever is in it, frozen together. */
+export interface GeneratedStatisticsRow {
+  id: string;
+  roomNumber: string | null;
+  booking: GeneratedReportRow | null;
+  housekeepingStatus: HousekeepingStatus | null;
+  note: string | null;
+}
+
+/**
+ * A report someone asked the back office to generate: the filter it was run
+ * with, frozen row data as of that moment, and who ran it — the "Generated"
+ * tab's grid, as opposed to the "Online" tab's live, unsaved query. Frozen
+ * rather than re-queried on open so a report stays what it said when it was
+ * handed to someone, even if a booking is cancelled afterwards.
+ *
+ * `date` is the single day for a "Daily list" report, or a period's first
+ * day for the other four kinds — `to` is that period's last day, absent
+ * (same as `date`) on a daily one. Exactly one of `rows`/`roomTypeRows`/
+ * `statisticsRows` is populated, chosen by `type`: `rows` for a daily kind
+ * or "Financial"/"Guest ledger", `roomTypeRows` for "Manager analytics",
+ * `statisticsRows` for "Statistics".
+ */
+export interface GeneratedReport {
+  id: string;
+  hotelId: string;
+  type: GeneratedReportKind;
+  date: string;
+  to?: string;
+  generatedAt: string;
+  generatedBy: string;
+  rows: GeneratedReportRow[];
+  roomTypeRows?: GeneratedRoomTypeRow[];
+  statisticsRows?: GeneratedStatisticsRow[];
+}
+
+/** The durable half of the "Generated" reports tab. */
+export interface GeneratedReportStore {
+  list(hotelId: string): Promise<GeneratedReport[]>;
+  get(hotelId: string, id: string): Promise<GeneratedReport | null>;
+  save(report: GeneratedReport): Promise<void>;
 }
 
 export interface PmsAdapter {
@@ -220,6 +420,33 @@ export interface AdminCommandInterpreter {
   }): Promise<AdminCommand>;
 }
 
+/**
+ * A photographed product turned into an add-on draft — see
+ * `product-recognition.ts`. `null` from the application-level adapter means
+ * no model is configured, and the desk fills the form in by hand.
+ */
+export interface ProductRecognizer {
+  recognize(input: {
+    imageBase64: string;
+    mimeType: string;
+    hotelName: string;
+    currency: string;
+    /** The extras already on sale, so a known product keeps its name. */
+    existingNames: string[];
+  }): Promise<import('./product-recognition').ProductGuess>;
+}
+
+/** A photographed guest room turned into a room-type draft — see `room-recognition.ts`; the same `null`-when-keyless rule as `ProductRecognizer`. */
+export interface RoomRecognizer {
+  recognize(input: {
+    imageBase64: string;
+    mimeType: string;
+    hotelName: string;
+    /** The room types already in the catalog, so a known room keeps its name. */
+    existingNames: string[];
+  }): Promise<import('./room-recognition').RoomGuess>;
+}
+
 export interface SpeechTranscriber {
   transcribe(input: {
     audio: Blob | ArrayBuffer;
@@ -251,7 +478,8 @@ export interface MediaStoragePort {
 export interface MediaLibraryPort {
   list(): MediaAsset[] | Promise<MediaAsset[]>;
   find(url: string): MediaAsset | undefined | Promise<MediaAsset | undefined>;
-  upload?(input: { hotelId: string; filename: string; width: number; height: number; bytes: ArrayBuffer }): Promise<MediaAsset>;
+  /** `kind` files the object where `mediaTypeOf` will read it back as a 360° view (`panoramas/…`) or a photo (`photos/…`). */
+  upload?(input: { hotelId: string; filename: string; width: number; height: number; bytes: ArrayBuffer; kind?: 'photo' | 'panorama' }): Promise<MediaAsset>;
 }
 
 /** The kinds of catalog entity the CMS can overlay onto seed data. `room` is a room type; `unit` is one physical room. */

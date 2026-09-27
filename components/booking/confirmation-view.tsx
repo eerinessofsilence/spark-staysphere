@@ -7,8 +7,10 @@ import { coverPhoto } from '@/lib/domain/room-attributes';
 import { pill } from '@/lib/ui';
 import { useLocale, useT } from '@/lib/i18n/context';
 import { lDate, lDateRange, lGuests, lMoney, lNights, lPaymentMethod, lPricingUnit, lRoomNumber, lView } from '@/lib/i18n/format';
+import type { ChatMessage } from '@/lib/domain/ports';
 import type { Booking, PaymentMethod, PriceBreakdown, RoomType } from '@/lib/domain/schemas';
 import type { AddOn, Hotel } from '@/lib/domain/schemas';
+import { GuestChat } from '@/components/booking/guest-chat';
 import { InvoiceButton, type InvoiceData } from '@/components/booking/invoice-modal';
 import { RememberTrip } from '@/components/trips/remember-trip';
 import { SiteFooter } from '@/components/site/site-footer';
@@ -23,6 +25,8 @@ interface ConfirmationViewProps {
   nights: number;
   paymentMethod: PaymentMethod | null;
   authorized: boolean;
+  /** This stay's thread with the desk, as far as it has got — `null` until the guest writes first. */
+  chat: { conversationId: string; messages: ChatMessage[] } | null;
 }
 
 export function ConfirmationView({
@@ -34,6 +38,7 @@ export function ConfirmationView({
   nights,
   paymentMethod,
   authorized,
+  chat,
 }: ConfirmationViewProps) {
   const t = useT();
   const { locale } = useLocale();
@@ -209,6 +214,13 @@ export function ConfirmationView({
               </p>
             ) : null}
           </section>
+
+          <GuestChat
+            reference={booking.reference}
+            email={booking.guest.email}
+            guestName={`${booking.guest.firstName} ${booking.guest.lastName}`}
+            initial={chat}
+          />
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/rooms" className={pill('primary')}>

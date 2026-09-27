@@ -17,4 +17,24 @@ export const durableHousekeepingStore: HousekeepingStore = {
     const db = getDemoDatabase();
     return db ? d1.setRecord(db, record) : mockHousekeepingStore.setRecord(record);
   },
+  listAssignments(hotelId) {
+    const db = getDemoDatabase();
+    return db ? d1.listAssignments(db, hotelId) : mockHousekeepingStore.listAssignments(hotelId);
+  },
+  setAssignment(assignment) {
+    const db = getDemoDatabase();
+    return db ? d1.setAssignment(db, assignment) : mockHousekeepingStore.setAssignment(assignment);
+  },
+  saveChange(record, event) {
+    const db = getDemoDatabase();
+    return db ? d1.saveChange(db, record, event) : mockHousekeepingStore.saveChange(record, event);
+  },
+  listEvents(hotelId, unitId) {
+    const db = getDemoDatabase();
+    return db ? d1.listEvents(db, hotelId, unitId) : mockHousekeepingStore.listEvents(hotelId, unitId);
+  },
+  getEvent(hotelId, id) {
+    const db = getDemoDatabase();
+    return db ? d1.getEvent(db, hotelId, id) : mockHousekeepingStore.getEvent(hotelId, id);
+  },
 };

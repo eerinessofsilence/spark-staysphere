@@ -28,7 +28,6 @@ export default async function AccountSubscriptionPage() {
 
       <div className="mt-8">
         <h2 className="text-display text-2xl">{t('account.subscription')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('account.subscriptionBody')}</p>
         <div className="mt-6">
           <SubscriptionSettings />
         </div>

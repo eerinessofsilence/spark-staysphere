@@ -35,6 +35,7 @@ import {
   IconRedo,
   IconSpin,
   IconSquare,
+  IconTrash,
   IconTurnLeft,
   IconTurnRight,
   IconUndo,
@@ -534,6 +535,7 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
         return;
       }
       dispatch({ type: 'add', zone: { id: crypto.randomUUID(), polygon: { points }, target: null } });
+      setTool('select');
     },
     [notify],
   );
@@ -728,6 +730,14 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
 
       const [firstX, firstY] = current.points[0]!;
       if (current.points.length >= 3 && Math.hypot(point[0] - firstX, point[1] - firstY) < closeThreshold()) {
+        closeDraft();
+        return;
+      }
+
+      // Pointer events do not carry a reliable click count. Clicking the
+      // last vertex again (including a double-click) finishes the contour.
+      const [lastX, lastY] = current.points[current.points.length - 1]!;
+      if (current.points.length >= 3 && Math.hypot(point[0] - lastX, point[1] - lastY) < closeThreshold()) {
         closeDraft();
         return;
       }
@@ -958,6 +968,16 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
       </button>
       <button
         type="button"
+        className="pe-btn pe-btn-danger"
+        aria-label={selected ? t('zones.delete', { name: nameOf(selected, zones.indexOf(selected)) }) : t('zones.deleteTitle')}
+        title={t('zones.deleteTitle')}
+        disabled={!selected}
+        onClick={() => selected && dispatch({ type: 'remove', id: selected.id })}
+      >
+        <IconTrash className="pe-icon" />
+      </button>
+      <button
+        type="button"
         className="pe-btn"
         aria-label={t('editor.undo')}
         title={t('editor.undoTitle')}
@@ -1046,6 +1066,12 @@ export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditor
             width={vertexSize}
             height={vertexSize}
             className="hs-vertex"
+            style={{ cursor: draft.points.length >= 3 ? 'pointer' : undefined }}
+            onPointerDown={(event) => {
+              if (event.button !== 0 || draft.points.length < 3) return;
+              event.stopPropagation();
+              closeDraft();
+            }}
           />
         </g>
       ) : null}

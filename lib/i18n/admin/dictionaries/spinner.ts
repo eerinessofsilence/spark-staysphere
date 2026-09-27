@@ -11,7 +11,6 @@ import { defineArea } from './area';
 export const spinner = defineArea({
   en: {
     'orbit.noSpinner': 'No building spinner is configured for this hotel yet — there is nothing to mark up.',
-    'orbit.description': 'The building spinner on the arrival screen: its key-angle frames, and the zones drawn on them.',
     'orbit.framesLink': 'Frames & key angles',
     'orbit.openMarkup': 'Open markup',
     'orbit.keyAngleFrames': 'Key-angle frames',
@@ -24,7 +23,6 @@ export const spinner = defineArea({
     'orbit.notCovered': 'Not covered: {names}',
 
     'frames.title': 'Frames & key angles',
-    'frames.description': "Upload the orbit's frames, then pick which ones a guest can stop on and where the spinner opens.",
     'frames.noSpinner': 'No building spinner is configured for this hotel yet — there is nothing to upload frames for.',
     'frames.heading': 'Frames',
     'frames.summary': '{frames}, {width}×{height}. Choosing a new set re-encodes every image to WebP in your browser before uploading — nothing leaves the tab unresized.',
@@ -67,7 +65,6 @@ export const spinner = defineArea({
     'frames.markerOther': 'markers',
 
     'markup.title': 'Markup',
-    'markup.description': 'Draw the zones on each key-angle frame, then bind every zone to a room, a floor, a room type, or a link.',
     'markup.unbound': '{count} unbound',
     'markup.roomMissing': 'Room (missing)',
     'markup.roomTypeMissing': 'Room type (missing)',
@@ -198,7 +195,6 @@ export const spinner = defineArea({
   },
   de: {
     'orbit.noSpinner': 'Für dieses Hotel ist noch kein Gebäude-Spinner eingerichtet – es gibt nichts zu markieren.',
-    'orbit.description': 'Der Gebäude-Spinner auf dem Startbildschirm: seine Schlüsselwinkel-Frames und die darauf gezeichneten Zonen.',
     'orbit.framesLink': 'Frames & Schlüsselwinkel',
     'orbit.openMarkup': 'Markierung öffnen',
     'orbit.keyAngleFrames': 'Schlüsselwinkel-Frames',
@@ -211,7 +207,6 @@ export const spinner = defineArea({
     'orbit.notCovered': 'Nicht abgedeckt: {names}',
 
     'frames.title': 'Frames & Schlüsselwinkel',
-    'frames.description': 'Laden Sie die Frames des Orbits hoch und wählen Sie dann, auf welchen ein Gast anhalten kann und wo der Spinner öffnet.',
     'frames.noSpinner': 'Für dieses Hotel ist noch kein Gebäude-Spinner eingerichtet – es gibt nichts, wofür Frames hochgeladen werden könnten.',
     'frames.heading': 'Frames',
     'frames.summary': '{frames}, {width}×{height}. Bei der Wahl eines neuen Satzes wird jedes Bild vor dem Hochladen im Browser zu WebP umkodiert – nichts verlässt den Tab unverkleinert.',
@@ -254,7 +249,6 @@ export const spinner = defineArea({
     'frames.markerOther': 'Marker',
 
     'markup.title': 'Markierung',
-    'markup.description': 'Zeichnen Sie die Zonen auf jedem Schlüsselwinkel-Frame und verknüpfen Sie dann jede Zone mit einem Zimmer, einer Etage, einem Zimmertyp oder einem Link.',
     'markup.unbound': '{count} nicht verknüpft',
     'markup.roomMissing': 'Zimmer (fehlt)',
     'markup.roomTypeMissing': 'Zimmertyp (fehlt)',
@@ -385,7 +379,6 @@ export const spinner = defineArea({
   },
   ru: {
     'orbit.noSpinner': 'Для этого отеля спиннер здания ещё не настроен — размечать нечего.',
-    'orbit.description': 'Спиннер здания на экране прибытия: его ключевые кадры и зоны, нарисованные на них.',
     'orbit.framesLink': 'Кадры и ключевые ракурсы',
     'orbit.openMarkup': 'Открыть разметку',
     'orbit.keyAngleFrames': 'Ключевые кадры',
@@ -398,7 +391,6 @@ export const spinner = defineArea({
     'orbit.notCovered': 'Не покрыто: {names}',
 
     'frames.title': 'Кадры и ключевые ракурсы',
-    'frames.description': 'Загрузите кадры орбиты, затем выберите, на каких гость может остановиться и с какого спиннер открывается.',
     'frames.noSpinner': 'Для этого отеля спиннер здания ещё не настроен — загружать кадры не для чего.',
     'frames.heading': 'Кадры',
     'frames.summary': '{frames}, {width}×{height}. При выборе нового набора каждое изображение перекодируется в WebP в вашем браузере до загрузки — ничто не покидает вкладку без уменьшения.',
@@ -441,7 +433,6 @@ export const spinner = defineArea({
     'frames.markerOther': 'маркеров',
 
     'markup.title': 'Разметка',
-    'markup.description': 'Нарисуйте зоны на каждом ключевом кадре, затем привяжите каждую зону к номеру, этажу, типу номера или ссылке.',
     'markup.unbound': '{count} без привязки',
     'markup.roomMissing': 'Номер (не найден)',
     'markup.roomTypeMissing': 'Тип номера (не найден)',

@@ -2,7 +2,8 @@
 
 import { AdminPermissionError, requirePermission } from '@/lib/application/admin-session';
 import { revalidatePath } from 'next/cache';
-import { bookingService } from '@/lib/application/container';
+import { bookingService, catalogService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { stayStateSchema, type StayState } from '@/lib/domain/schemas';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { stayStateKey } from '@/lib/i18n/admin/stay-state';
@@ -18,6 +19,7 @@ function revalidateBookingViews() {
   revalidatePath('/admin/bookings');
   revalidatePath('/admin/bookings/[reference]', 'page');
   revalidatePath('/admin/front-desk');
+  revalidatePath('/admin/guests/[id]', 'page');
 }
 
 /**
@@ -35,6 +37,10 @@ export async function setStayStateAction(reference: string, state: StayState): P
   }
   const parsed = stayStateSchema.safeParse(state);
   if (!parsed.success) return { ok: false, message: t('stay.notAllowed') };
+
+  const hotel = await catalogService.getHotel(await getSelectedHotelSlug());
+  const target = await bookingService.getByReference(reference).catch(() => null);
+  if (!target || target.hotelId !== hotel.id) return { ok: false, message: t('ops.cancelMissing') };
 
   const { outcome, booking } = await bookingService.setStayStateAsHotel(reference, parsed.data);
   switch (outcome) {

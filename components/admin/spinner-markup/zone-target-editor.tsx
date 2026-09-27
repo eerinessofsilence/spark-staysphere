@@ -5,6 +5,7 @@ import { lFloor, lRoomNumber } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import type { EditorAction, EditorZone } from './editor-state';
+import { IconTrash } from './icons';
 
 export interface SpinnerMarkupCatalog {
   units: Array<{ id: string; number: string; floor: number; roomTypeId: string; roomTypeName: string; photo?: string }>;
@@ -72,9 +73,10 @@ export function ZoneTargetEditor({ zone, dispatch, catalog }: {
       {target ? (
         <button
           type="button"
-          className={pill('ghost', 'mt-2 px-3 text-xs')}
+          className={pill('ghost', 'mt-2 px-3 text-xs text-danger hover:bg-danger/10')}
           onClick={() => dispatch({ type: 'patch', id: zone.id, patch: { target: null } })}
         >
+          <IconTrash weight="fill" className="size-4 shrink-0" aria-hidden="true" />
           {t('editor.unlinkRoom')}
         </button>
       ) : null}

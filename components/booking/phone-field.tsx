@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { CheckIcon, ChevronDownIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useT } from '@/lib/i18n/context';
 import { iconButton } from '@/lib/ui';
 import { useOverlayTransition } from '@/components/site/use-overlay-transition';
 import { useScrollLock } from '@/components/site/use-scroll-lock';
 import { cn } from '@/lib/utils';
+import { SearchInput } from '@/components/ui/search-input';
 
 export interface Country {
   iso: string;
@@ -227,21 +228,15 @@ export function PhoneField({
           >
             <XMarkIcon className="size-4" aria-hidden="true" />
           </button>
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon
-              className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onSearchKeyDown}
-              placeholder={t('book.searchCountryPlaceholder')}
-              aria-label={t('book.searchCountriesAria')}
-              className="min-h-10 w-full rounded-full border border-border bg-transparent py-2 pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-accent"
-            />
-          </div>
+          <SearchInput
+            ref={searchRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder={t('book.searchCountryPlaceholder')}
+            aria-label={t('book.searchCountriesAria')}
+            wrapperClassName="flex-1"
+          />
         </div>
 
         <ul className="min-h-0 flex-1 overflow-y-auto p-2" role="listbox" aria-label={t('book.countriesAria')}>

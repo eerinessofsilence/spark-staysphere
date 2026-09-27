@@ -11,6 +11,7 @@ import { housekeepingStatusKey } from '@/lib/i18n/admin/housekeeping';
 import { lRelativeTime } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { prepareHousekeepingPhoto } from '@/lib/application/housekeeping-photo';
 import { toast } from '@/components/admin/shell/toast';
 import { HousekeepingStatusBadge, housekeepingStatusIcons, housekeepingStatusStyles } from './housekeeping-status-badge';
 
@@ -36,6 +37,7 @@ export function HousekeepingStatusForm({
   const [selected, setSelected] = React.useState<HousekeepingStatus>(status);
   const [draftNote, setDraftNote] = React.useState(note ?? '');
   const [pending, setPending] = React.useState(false);
+  const [photo, setPhoto] = React.useState<File | null>(null);
   // "Ago" moves between the server render and hydration, so it only appears once mounted.
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -43,15 +45,19 @@ export function HousekeepingStatusForm({
   const dirty = selected !== status || draftNote.trim() !== (note ?? '');
 
   const save = async () => {
-    setPending(true);
-    const result = await setHousekeepingStatusAction(unitId, selected, draftNote);
-    setPending(false);
-    if (result.ok) {
-      toast.success(result.message);
-      router.refresh();
-    } else {
-      toast.error(result.message);
+    if (selected === 'clean' && !photo) {
+      toast.error('Для статуса «Чисто» добавьте фото.');
+      return;
     }
+    setPending(true);
+    try {
+      const photoData = photo ? await prepareHousekeepingPhoto(photo) : null;
+      const result = await setHousekeepingStatusAction(unitId, selected, draftNote, photoData);
+      if (result.ok) { toast.success(result.message); router.refresh(); }
+      else toast.error(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось прочитать фото.');
+    } finally { setPending(false); }
   };
 
   return (
@@ -97,6 +103,13 @@ export function HousekeepingStatusForm({
       </fieldset>
 
       <div className="mt-5">
+        {selected === 'clean' ? (
+          <label className="mb-4 block text-sm font-medium">
+            Фото после уборки · обязательно
+            <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required
+              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} className="mt-2 block w-full" />
+          </label>
+        ) : null}
         <label htmlFor="housekeeping-note" className="mb-1.5 block text-sm text-muted-foreground">
           {t('housekeeping.note')}
         </label>

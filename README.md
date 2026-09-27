@@ -37,6 +37,16 @@ keyword interpreter and voice input is unavailable. To enable OpenAI interpretat
 transcription, put `OPENAI_API_KEY=sk-...` in a gitignored `.dev.vars` file at the repo root (not
 `.env` — see `lib/infrastructure/cloudflare-env.ts`).
 
+## Deploying
+
+- **Cloudflare Workers** (native): `npm run deploy` — builds, finds or creates the D1 database and
+  R2 bucket under the logged-in `wrangler` account, and deploys.
+- **Vercel**: connect the repo (or `npx vercel`); `vercel.json` sets the build command to
+  `npm run build:vercel`. Give the project a Turso database (`TURSO_DATABASE_URL`,
+  `TURSO_AUTH_TOKEN` — the Turso integration on the Vercel Marketplace sets both) and a Blob store
+  (`BLOB_READ_WRITE_TOKEN` — Storage → Blob), plus `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`.
+  See TECH.md's "Hosting" for what those stand in for.
+
 ## Checks
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request — locally, run whichever

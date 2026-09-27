@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PushPin } from '@phosphor-icons/react/dist/ssr';
 import { ArrowTopRightOnSquareIcon, CheckIcon, EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import { BookingError } from '@/lib/application/booking-service';
-import { bookingService, hotelRepository, inventoryService } from '@/lib/application/container';
+import { bookingService, catalogService, hotelRepository, inventoryService } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { buildPriceBreakdown, nightsBetween } from '@/lib/domain/pricing';
 import type { Booking, RoomType } from '@/lib/domain/schemas';
@@ -13,7 +13,6 @@ import type { AdminLocale } from '@/lib/i18n/admin/locale';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT, type AdminT } from '@/lib/i18n/admin/translate';
 import {
-  lBed,
   lDate,
   lDateShort,
   lGuests,
@@ -21,16 +20,18 @@ import {
   lNights,
   lPricingUnit,
   lRoomNumber,
-  lView,
 } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
-import { tag } from '@/lib/ui';
+import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { BookingHeaderActions } from '@/components/admin/operations/booking-actions';
+import type { InvoiceData } from '@/components/booking/invoice-modal';
+import { MessageGuestButton } from '@/components/admin/operations/message-guest-button';
+import { StayStateMenu } from '@/components/admin/operations/stay-state-menu';
 import { stayBucket, stayBucketKey } from '@/components/admin/operations/booking-buckets';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { attemptStatus, methodLabel } from '@/components/admin/operations/payment-state';
-import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination, tablePager } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -62,8 +63,6 @@ export default async function BookingDetailPage({
   const sp = await searchParams;
   const historyPageParam = parsePage(sp.page);
   const historyPageSizeParam = parsePageSize(sp.pageSize);
-  const paymentsPageParam = parsePage(sp.paymentsPage);
-  const invoicesPageParam = parsePage(sp.invoicesPage);
   const locale = await getAdminLocale();
   const t = adminT(locale);
   const confirmation = await bookingService.getConfirmation(reference).catch((error: unknown) => {
@@ -72,12 +71,14 @@ export default async function BookingDetailPage({
   });
 
   const { booking, room, ratePlan, addOns, payments } = confirmation;
+  const group = booking.groupId ? await hotelRepository.getBookingGroup(booking.groupId) : null;
   const today = toIsoDate(new Date());
   const email = booking.guest.email.trim().toLowerCase();
-  const [assigned, allBookings, roomTypes] = await Promise.all([
+  const [assigned, allBookings, roomTypes, hotel] = await Promise.all([
     inventoryService.getBookingRoom(booking),
     hotelRepository.listBookings(),
     hotelRepository.listRooms(booking.hotelId),
+    catalogService.getHotel(await getSelectedHotelSlug()),
   ]);
 
   const history = allBookings
@@ -90,9 +91,11 @@ export default async function BookingDetailPage({
     historyPageParam,
     historyPageSizeParam,
   );
-  const { pageItems: pagePayments, page: paymentsPage, totalPages: paymentsTotalPages } = paginate(payments, paymentsPageParam);
+  const paymentsPager = tablePager(sp, `/admin/bookings/${reference}`, 'payments');
+  const invoicesPager = tablePager(sp, `/admin/bookings/${reference}`, 'invoices');
+  const { pageItems: pagePayments, page: paymentsPage, totalPages: paymentsTotalPages } = paginate(payments, paymentsPager.page, paymentsPager.pageSize);
   const invoiceRows = payments.length > 0 ? [booking] : [];
-  const { pageItems: pageInvoices, page: invoicesPage, totalPages: invoicesTotalPages } = paginate(invoiceRows, invoicesPageParam);
+  const { pageItems: pageInvoices, page: invoicesPage, totalPages: invoicesTotalPages } = paginate(invoiceRows, invoicesPager.page, invoicesPager.pageSize);
   const roomTypeById = new Map(roomTypes.map((type) => [type.id, type]));
   const stayed = history.filter((candidate) => candidate.status === 'confirmed');
   const nightsBooked = stayed.reduce((sum, candidate) => sum + nightsBetween(candidate.checkIn, candidate.checkOut), 0);
@@ -113,9 +116,40 @@ export default async function BookingDetailPage({
         : undefined;
   const guestName = `${booking.guest.firstName} ${booking.guest.lastName}`;
   const initials = `${booking.guest.firstName[0] ?? ''}${booking.guest.lastName[0] ?? ''}`.toUpperCase();
-  const cover = coverOf(room);
   const lastPayment = payments.at(-1);
   const payment = lastPayment ? attemptStatus(lastPayment.status, t) : null;
+  const authorized = payments.some((attempt) => attempt.status === 'authorized');
+  // The same shape the guest's own confirmation page builds — see `InvoiceModal`. Issued from
+  // the desk's Actions menu, so a team member never has to open the guest's own page to print one.
+  const invoice: InvoiceData = {
+    reference: booking.reference,
+    issuedOn: booking.createdAt.slice(0, 10),
+    hotelName: hotel.name,
+    hotelLocation: hotel.location,
+    guestName,
+    guestEmail: booking.guest.email,
+    roomName: room?.name ?? booking.roomTypeId,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    nights,
+    currency: booking.currency,
+    lines: breakdown
+      ? [
+          {
+            label: `${room?.name ?? booking.roomTypeId} — ${lMoney(breakdown.nightlyPrice, breakdown.currency, locale)} × ${lNights(nights, locale)}`,
+            amount: breakdown.roomTotal,
+          },
+          ...breakdown.addOnLines.map((line) => ({
+            label: line.quantity > 1 ? `${line.name} × ${line.quantity}` : line.name,
+            amount: line.total,
+          })),
+        ]
+      : [{ label: room?.name ?? booking.roomTypeId, amount: booking.total }],
+    taxesAndFees: breakdown?.taxesAndFees ?? 0,
+    total: booking.total,
+    methodLabel: lastPayment ? methodLabel(lastPayment.provider, locale) : null,
+    paid: authorized,
+  };
   const bookingCount =
     history.length === 1
       ? t('booking.firstBooking')
@@ -139,6 +173,10 @@ export default async function BookingDetailPage({
     return `/admin/bookings/${booking.reference}${qs ? `?${qs}` : ''}`;
   };
 
+  const paid = payments.filter((attempt) => attempt.status === 'authorized').reduce((sum, attempt) => sum + attempt.amount, 0);
+  const balance = Math.max(0, booking.total - paid);
+  const extrasTotal = breakdown ? breakdown.addOnLines.reduce((sum, line) => sum + line.total, 0) : 0;
+
   return (
     <AdminPage>
       <AdminPageHeader
@@ -146,53 +184,124 @@ export default async function BookingDetailPage({
         title={t('booking.title')}
         description={booking.reference}
         actions={
-          <BookingHeaderActions
-            reference={booking.reference}
-            checkIn={booking.checkIn}
-            canCancel={canCancel}
-            cancelBlockedReason={cancelBlockedReason}
-          />
+          <>
+            <StayStateMenu
+              reference={booking.reference}
+              status={booking.status}
+              stayState={booking.stayState}
+              canCancel={canCancel}
+              cancelBlockedReason={cancelBlockedReason}
+              size="large"
+            />
+            <MessageGuestButton reference={booking.reference} />
+            <BookingHeaderActions
+              reference={booking.reference}
+              checkIn={booking.checkIn}
+              canCancel={canCancel}
+              cancelBlockedReason={cancelBlockedReason}
+              invoice={invoice}
+            />
+          </>
         }
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-12">
-        <Card id="guest-heading" title={t('booking.guest')} className="xl:col-span-3">
-          <div className="flex items-center gap-4">
-            <span
-              aria-hidden="true"
-              className="grid size-16 shrink-0 place-items-center rounded-full bg-stone text-lg font-semibold"
-            >
-              {initials}
-            </span>
+      {/* The reservation card: who, which door, and when — the three things a
+          desk reads first — in one band, the way a PMS folio opens. */}
+      <section aria-labelledby="reservation-heading" className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="reservation-heading" className="text-display text-2xl">
+              <span className="text-muted-foreground">{t('booking.reservation')} </span>
+              {booking.reference}
+            </h2>
+            <BookingStatusBadge status={booking.status} stayState={booking.stayState} />
+            {booking.status !== 'cancelled' ? <span className={tag()}>{t(stayBucketKey[bucket])}</span> : null}
+          </div>
+          <p className="text-sm text-muted-foreground">{t('booking.bookedOn', { when: timestamp(booking.createdAt, locale, t) })}</p>
+        </div>
+
+        <div className="mt-5 grid gap-6 lg:grid-cols-main-aside lg:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-8 gap-y-5">
+            <div className="flex min-w-0 items-center gap-4">
+              <span aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-full bg-stone text-base font-semibold">
+                {initials}
+              </span>
+              <div className="min-w-0">
+                <p className="text-display text-xl">{guestName}</p>
+                <p className="mt-0.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <a href={`tel:${booking.guest.phone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+                    <PhoneIcon className="size-4" aria-hidden="true" />
+                    {booking.guest.phone}
+                  </a>
+                  <a href={`mailto:${booking.guest.email}`} className="inline-flex min-w-0 items-center gap-1.5 hover:text-foreground">
+                    <EnvelopeIcon className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{booking.guest.email}</span>
+                  </a>
+                </p>
+              </div>
+            </div>
             <div className="min-w-0">
-              <p className="text-display truncate text-2xl">{guestName}</p>
-              <p className="text-sm text-muted-foreground">{bookingCount}</p>
+              {assigned ? (
+                <span className={pill('primary', 'min-h-10 px-4 text-sm')}>{lRoomNumber(assigned.number, locale)}</span>
+              ) : (
+                <span className={pill('secondary', 'min-h-10 px-4 text-sm text-muted-foreground')}>
+                  {booking.status === 'cancelled' ? t('booking.released') : t('booking.notAssigned')}
+                </span>
+              )}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {room ? (
+                  <Link href={`/admin/content/rooms/${room.id}`} className="hover:text-foreground">{room.name}</Link>
+                ) : (
+                  booking.roomTypeId
+                )}
+                {assigned ? (
+                  <>
+                    {' · '}
+                    {booking.status === 'cancelled' ? t('booking.released') : assigned.chosenByGuest ? t('booking.chosenByGuest') : t('booking.assignedAuto')}
+                  </>
+                ) : null}
+              </p>
             </div>
           </div>
 
-          <ul className="mt-5 grid gap-3 border-t border-border pt-5 text-sm">
-            <li className="flex min-w-0 items-center gap-3">
-              <PhoneIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <a href={`tel:${booking.guest.phone.replace(/\s+/g, '')}`} className="truncate hover:text-accent-strong">
-                {booking.guest.phone}
-              </a>
-            </li>
-            <li className="flex min-w-0 items-center gap-3">
-              <EnvelopeIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <a href={`mailto:${booking.guest.email}`} className="truncate hover:text-accent-strong">
-                {booking.guest.email}
-              </a>
-            </li>
-          </ul>
+          <div className="rounded-2xl border border-border p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">{t('ops.thCheckIn')}</p>
+                <p className="text-display mt-0.5 text-xl">{lDate(booking.checkIn, locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('ops.thCheckOut')}</p>
+                <p className="text-display mt-0.5 text-xl">{lDate(booking.checkOut, locale)}</p>
+              </div>
+            </div>
+            <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-border pt-3 text-sm">
+              <div className="flex gap-1.5"><dt className="text-muted-foreground">{t('booking.nightsLabel')}</dt><dd className="font-medium">{nights}</dd></div>
+              <div className="flex gap-1.5"><dt className="text-muted-foreground">{t('booking.adults')}</dt><dd className="font-medium">{booking.adults}</dd></div>
+              <div className="flex gap-1.5"><dt className="text-muted-foreground">{t('booking.children')}</dt><dd className="font-medium">{booking.children}</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
 
-          <Section title={t('booking.thisStay')}>
-            <Fields>
-              <Field label={t('booking.adults')}>{booking.adults}</Field>
-              <Field label={t('booking.children')}>{booking.children}</Field>
-            </Fields>
-          </Section>
-
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <Card id="guests-heading" title={t('booking.guests')}>
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-stone text-sm font-semibold">
+              {initials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{guestName}</p>
+              <p className="truncate text-xs text-muted-foreground">{booking.guest.email}</p>
+            </div>
+            <span className={tag('shrink-0')}>{t('booking.primaryGuest')}</span>
+          </div>
+          <Fields className="mt-5 border-t border-border pt-5">
+            <Field label={t('booking.adults')}>{booking.adults}</Field>
+            <Field label={t('booking.children')}>{booking.children}</Field>
+          </Fields>
           <Section title={t('booking.withThisHotel')}>
+            <p className="-mt-2 mb-3 text-xs text-muted-foreground">{bookingCount}</p>
             <Fields>
               <Field label={t('booking.staysBooked')}>{stayed.length}</Field>
               <Field label={t('booking.nightsBooked')}>{nightsBooked}</Field>
@@ -201,69 +310,28 @@ export default async function BookingDetailPage({
           </Section>
         </Card>
 
-        <Card
-          id="booking-heading"
-          title={t('booking.booking')}
-          className="lg:order-first lg:col-span-2 xl:order-none xl:col-span-6"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <BookingStatusBadge status={booking.status} stayState={booking.stayState} />
-            {booking.status !== 'cancelled' ? <span className={tag()}>{t(stayBucketKey[bucket])}</span> : null}
-          </div>
-          <p className="text-display mt-4 text-3xl">
-            <span className="text-muted-foreground">{t('booking.booking')} </span>
-            {booking.reference}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('booking.bookedOn', { when: timestamp(booking.createdAt, locale, t) })}
-          </p>
-
-          <Fields className="mt-6 sm:grid-cols-3">
-            <Field label={t('booking.roomType')}>
-              {room ? (
-                <Link href={`/admin/content/rooms/${room.id}`} className="hover:text-accent-strong">
-                  {room.name}
-                </Link>
-              ) : (
-                booking.roomTypeId
-              )}
-            </Field>
-            <Field label={t('ops.thRoom')}>
-              {assigned ? (
-                <>
-                  {lRoomNumber(assigned.number, locale)}
-                  <Sub>
-                    {booking.status === 'cancelled' ? (
-                      t('booking.released')
-                    ) : assigned.chosenByGuest ? (
-                      <span className="inline-flex items-center gap-1">
-                        <PushPin weight="fill" className="size-3.5 text-foreground" aria-hidden="true" />
-                        {t('booking.chosenByGuest')}
-                      </span>
-                    ) : (
-                      t('booking.assignedAuto')
-                    )}
-                  </Sub>
-                </>
-              ) : (
-                <span className="text-muted-foreground">
-                  {booking.status === 'cancelled' ? t('booking.released') : t('booking.notAssigned')}
-                </span>
-              )}
-            </Field>
-            <Field label={t('booking.rate')}>
+        <Card id="info-heading" title={t('booking.bookingInfo')}>
+          <dl className="divide-y divide-border text-sm">
+            <Row label={t('booking.source')}>{t('booking.sourceDirect')}</Row>
+            <Row label={t('booking.roomType')}>
+              {room ? <Link href={`/admin/content/rooms/${room.id}`} className="hover:text-accent-strong">{room.name}</Link> : booking.roomTypeId}
+            </Row>
+            <Row label={t('booking.ratePlan')}>
+              {ratePlan ? ratePlan.name : '—'}
               {breakdown ? (
-                <>
-                  {lMoney(breakdown.nightlyPrice, breakdown.currency, locale)}
-                  <span className="font-normal text-muted-foreground"> {t('booking.perNight')}</span>
-                </>
-              ) : (
-                '—'
-              )}
-              {ratePlan ? <Sub>{ratePlan.name}</Sub> : null}
-            </Field>
-            <Field label={t('ops.thGuests')}>{lGuests(booking.adults, booking.children, locale)}</Field>
-            <Field label={t('booking.payment')}>
+                <Sub>
+                  {lMoney(breakdown.nightlyPrice, breakdown.currency, locale)} {t('booking.perNight')}
+                </Sub>
+              ) : null}
+            </Row>
+            {group ? (
+              <Row label={t('groups.thName')}>
+                <Link href={`/admin/groups/${group.id}`} className="hover:text-accent-strong">
+                  {group.name}
+                </Link>
+              </Row>
+            ) : null}
+            <Row label={t('booking.payment')}>
               {lastPayment && payment ? (
                 <>
                   <span className={cn('inline-flex items-center gap-1.5', payment.tone)}>
@@ -275,68 +343,50 @@ export default async function BookingDetailPage({
               ) : (
                 <span className="text-muted-foreground">{t('ops.noAttempt')}</span>
               )}
-            </Field>
-            <Field label={t('booking.duration')}>{lNights(nights, locale)}</Field>
-            <Field label={t('ops.thCheckIn')}>{lDate(booking.checkIn, locale)}</Field>
-            <Field label={t('ops.thCheckOut')}>{lDate(booking.checkOut, locale)}</Field>
-          </Fields>
-
-          <Section title={t('booking.extras')}>
-            {addOns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('booking.noExtras')}</p>
-            ) : (
-              <ul className="grid gap-2 text-sm sm:grid-cols-2">
-                {addOns.map((addOn) => (
-                  <li key={addOn.id} className="flex min-w-0 gap-2">
-                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-                    <span className="min-w-0">
-                      <span className="font-medium">{addOn.name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {lMoney(addOn.price, addOn.currency, locale)} {lPricingUnit(addOn.pricingUnit, locale)}
+            </Row>
+            <Row label={t('booking.extras')}>
+              {addOns.length === 0 ? (
+                <span className="text-muted-foreground">{t('booking.noExtras')}</span>
+              ) : (
+                <ul className="grid gap-1.5">
+                  {addOns.map((addOn) => (
+                    <li key={addOn.id} className="flex min-w-0 gap-2">
+                      <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+                      <span className="min-w-0">
+                        {addOn.name}
+                        <Sub>
+                          {lMoney(addOn.price, addOn.currency, locale)} {lPricingUnit(addOn.pricingUnit, locale)}
+                        </Sub>
                       </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Row>
+          </dl>
         </Card>
 
-        <Card
-          id="room-heading"
-          title={t('ops.thRoom')}
-          className="xl:col-span-3"
-          action={
-            room ? (
-              <Link href={`/admin/content/rooms/${room.id}`} className="text-sm text-muted-foreground hover:text-foreground">
-                {t('booking.editRoom')}
-              </Link>
-            ) : null
-          }
-        >
-          {cover ? (
-            <img
-              src={cover.url}
-              alt=""
-              width={cover.width}
-              height={cover.height}
-              className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
-            />
-          ) : (
-            <div className="grid aspect-[4/3] place-items-center rounded-[14px] bg-stone text-sm text-muted-foreground">
-              {t('booking.noPhoto')}
-            </div>
-          )}
-          {room ? (
-            <ul className="mt-4 flex flex-wrap gap-2">
-              <li className={tag()}>{t('booking.area', { area: room.areaM2 })}</li>
-              <li className={tag()}>{lBed(room.bedType, locale)}</li>
-              <li className={tag()}>{t('booking.sleeps', { count: room.capacity })}</li>
-              <li className={tag()}>{lView(room.view, locale)}</li>
-            </ul>
+        <Card id="balance-heading" title={t('booking.balance')} className="lg:col-span-2 xl:col-span-1">
+          {/* Stacked, never side by side: a currency with a prefix and cents
+              ("US$1,266.00") does not fit three abreast, and a folio's money is
+              never worth an ellipsis. Debit above, credit below, the balance
+              last and boxed. */}
+          <dl className="grid gap-1.5">
+            <Stat label={t('booking.amount')}>{lMoney(booking.total, booking.currency, locale)}</Stat>
+            <Stat label={t('booking.paid')} sign="minus">{lMoney(paid, booking.currency, locale)}</Stat>
+            <Stat label={t('booking.balanceDue')} tone={balance === 0 ? 'success' : 'warning'}>
+              {lMoney(balance, booking.currency, locale)}
+            </Stat>
+          </dl>
+          {breakdown ? (
+            <>
+              <p className="mt-5 text-xs text-muted-foreground">{t('booking.balanceIncluded')}</p>
+              <dl className="mt-2 grid gap-1.5">
+                <Stat label={t('booking.taxesAndFees')}>{lMoney(breakdown.taxesAndFees, breakdown.currency, locale)}</Stat>
+                <Stat label={t('booking.extrasTotal')}>{lMoney(extrasTotal, breakdown.currency, locale)}</Stat>
+              </dl>
+            </>
           ) : null}
-
           <Section title={t('booking.priceSummary')}>
             {breakdown ? (
               <dl className="grid gap-2 text-sm">
@@ -365,12 +415,9 @@ export default async function BookingDetailPage({
         </Card>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section aria-labelledby="payments-heading">
-          <h2 id="payments-heading" className="text-display text-2xl">
-            {t('booking.payments')}
-          </h2>
-          <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card id="payments-heading" title={t('booking.payments')} flush>
+          <div className="overflow-hidden rounded-b-[18px]">
             <TableCard caption={t('booking.payments')} className="min-w-full" attached>
               <thead>
                 <tr className="border-b border-border">
@@ -404,17 +451,16 @@ export default async function BookingDetailPage({
               page={paymentsPage}
               totalPages={paymentsTotalPages}
               total={payments.length}
-              hrefFor={(p) => pageHref({ paymentsPage: p })}
+              pageSize={paymentsPager.pageSize}
+              hrefFor={paymentsPager.hrefFor}
+              pageSizeHrefFor={paymentsPager.pageSizeHrefFor}
             />
           </div>
-        </section>
+        </Card>
 
         {payments.length > 0 ? (
-          <section aria-labelledby="invoices-heading">
-            <h2 id="invoices-heading" className="text-display text-2xl">
-              {t('booking.invoices')}
-            </h2>
-            <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+          <Card id="invoices-heading" title={t('booking.invoices')} flush>
+            <div className="overflow-hidden rounded-b-[18px]">
               <TableCard caption={t('booking.invoices')} className="min-w-full" attached>
                 <thead>
                   <tr className="border-b border-border">
@@ -426,7 +472,7 @@ export default async function BookingDetailPage({
                 </thead>
                 <tbody>
                   {pageInvoices.map((invoiceBooking) => (
-                    <tr key={invoiceBooking.id} className="border-b border-border last:border-b-0">
+                    <tr key={invoiceBooking.id} className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50">
                       <Td className="whitespace-nowrap font-medium">INV-{invoiceBooking.reference}</Td>
                       <Td>
                         {payments.some((attempt) => attempt.status === 'authorized') ? (
@@ -442,11 +488,13 @@ export default async function BookingDetailPage({
                         {lMoney(invoiceBooking.total, invoiceBooking.currency, locale)}
                       </Td>
                       <Td className="text-right whitespace-nowrap">
+                        {/* Stretched: the row opens the invoice from anywhere
+                            in it, not only this link's own text. */}
                         <a
                           href={`/booking/${invoiceBooking.reference}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-sm font-medium hover:text-accent-strong"
+                          className="relative z-10 inline-flex items-center gap-1 text-sm font-medium hover:text-accent-strong before:absolute before:inset-0"
                         >
                           {t('booking.viewInvoice')}
                           <ArrowTopRightOnSquareIcon className="size-3.5" aria-hidden="true" />
@@ -461,18 +509,17 @@ export default async function BookingDetailPage({
                 page={invoicesPage}
                 totalPages={invoicesTotalPages}
                 total={invoiceRows.length}
-                hrefFor={(p) => pageHref({ invoicesPage: p })}
+                pageSize={invoicesPager.pageSize}
+                hrefFor={invoicesPager.hrefFor}
+                pageSizeHrefFor={invoicesPager.pageSizeHrefFor}
               />
             </div>
-          </section>
+          </Card>
         ) : null}
       </div>
 
-      <section aria-labelledby="history-heading" className="mt-10">
-        <h2 id="history-heading" className="text-display text-2xl">
-          {t('booking.guestBookings')}
-        </h2>
-        <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+      <Card id="history-heading" title={t('booking.guestBookings')} className="mt-6" flush>
+        <div className="overflow-hidden rounded-b-[18px]">
           <TableCard caption={t('booking.historyCaption', { email: booking.guest.email })} className="min-w-[56rem]" attached>
             <thead>
               <tr className="border-b border-border">
@@ -510,7 +557,7 @@ export default async function BookingDetailPage({
             pageSizeHrefFor={(size) => pageHref({ pageSize: size, page: 1 })}
           />
         </div>
-      </section>
+      </Card>
     </AdminPage>
   );
 }
@@ -579,23 +626,26 @@ function Card({
   title,
   action,
   className,
+  flush = false,
   children,
 }: {
   id: string;
   title: string;
   action?: ReactNode;
   className?: string;
+  /** A table inside: the title keeps the card's padding, the body runs edge to edge under a rule. */
+  flush?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className={cn('min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6', className)}>
-      <div className="flex items-center justify-between gap-4">
+    <section aria-labelledby={id} className={cn('min-w-0 overflow-hidden rounded-[18px] bg-card shadow-soft', !flush && 'p-5 sm:p-6', className)}>
+      <div className={cn('flex items-center justify-between gap-4', flush && 'border-b border-border px-5 py-4 sm:px-6')}>
         <h2 id={id} className="text-base font-medium">
           {title}
         </h2>
         {action}
       </div>
-      <div className="mt-4">{children}</div>
+      <div className={cn(!flush && 'mt-4')}>{children}</div>
     </section>
   );
 }
@@ -631,6 +681,34 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
     <div className="flex items-baseline justify-between gap-4">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium tabular-nums">{children}</dd>
+    </div>
+  );
+}
+
+/** One labelled row of the booking-info list: the label in the gutter, the value beside it. */
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 py-3 first:pt-0 last:pb-0">
+      <dt className="w-28 shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 flex-1 font-medium">{children}</dd>
+    </div>
+  );
+}
+
+/** One line of a folio's money — the label left, the full figure right, never clipped; `sign` marks a credit. */
+function Stat({ label, tone, sign, children }: { label: string; tone?: 'success' | 'warning'; sign?: 'minus'; children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'flex items-baseline justify-between gap-3 rounded-2xl border px-3.5 py-2.5',
+        tone === 'success' ? 'border-success/40 bg-success/5' : tone === 'warning' ? 'border-warning/40 bg-warning/5' : 'border-border bg-stone/40',
+      )}
+    >
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className={cn('shrink-0 font-semibold tabular-nums whitespace-nowrap', tone === 'success' && 'text-success', tone === 'warning' && 'text-warning')}>
+        {sign === 'minus' ? '− ' : ''}
+        {children}
+      </dd>
     </div>
   );
 }

@@ -5,7 +5,6 @@ export const account = defineArea({
   en: {
     'account.title': 'Account',
     'account.subscription': 'Subscription',
-    'account.subscriptionBody': "The hotel's own plan on StaySphere.",
 
     'account.profile': 'Profile',
     'account.profileBody': 'How your name appears across this admin.',
@@ -38,7 +37,6 @@ export const account = defineArea({
   de: {
     'account.title': 'Konto',
     'account.subscription': 'Abonnement',
-    'account.subscriptionBody': 'Der Tarif des Hotels auf StaySphere.',
 
     'account.profile': 'Profil',
     'account.profileBody': 'So erscheint Ihr Name in dieser Verwaltung.',
@@ -71,7 +69,6 @@ export const account = defineArea({
   ru: {
     'account.title': 'Аккаунт',
     'account.subscription': 'Подписка',
-    'account.subscriptionBody': 'Тариф отеля на StaySphere.',
 
     'account.profile': 'Профиль',
     'account.profileBody': 'Как ваше имя отображается в админке.',

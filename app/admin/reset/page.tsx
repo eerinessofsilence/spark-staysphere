@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { adminPageTitle } from '@/lib/i18n/admin/translate';
+import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { ResetDemoButton } from '@/components/admin/room-controls';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -22,9 +23,12 @@ export default async function ResetDemoPage() {
   const t = await getAdminT();
   return (
     <AdminPage width="narrow">
-      <AdminPageHeader title={t('reset.title')} description={t('reset.body')} />
-      <div className="mt-8">
+      <AdminPageHeader title={t('reset.title')} />
+      {/* The two demo controls together: wipe, and refill with the sample stays
+          — the refill is otherwise only offered on an empty reservations list. */}
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <ResetDemoButton />
+        <SampleBookingsButton />
       </div>
     </AdminPage>
   );

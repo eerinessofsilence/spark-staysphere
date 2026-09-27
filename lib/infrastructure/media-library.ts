@@ -16,12 +16,17 @@ export function findMediaAsset(url: string): MediaAsset | undefined {
   return mediaManifest.find((asset) => asset.url === url);
 }
 
+/** Where an upload was filed decides what it is: `panoramas/…` reads back as a 360° view, everything else as a photo. */
+function folderOf(key: string): MediaAsset["folder"] {
+  return key.startsWith("panoramas/") ? "panoramas" : "uploads";
+}
+
 function assetOf(object: R2Object): MediaAsset | undefined {
   const meta = object.customMetadata;
   if (!meta?.filename || !meta.width || !meta.height) return undefined;
   return {
     url: `/media/${object.key}`,
-    folder: "uploads",
+    folder: folderOf(object.key),
     filename: meta.filename,
     width: Number(meta.width),
     height: Number(meta.height),
@@ -35,33 +40,31 @@ export const mediaLibraryPort: MediaLibraryPort = {
     const bucket = getMediaBucket();
     if (!bucket) return mediaManifest;
     const uploaded: MediaAsset[] = [];
-    let cursor: string | undefined;
-    do {
-      const options: R2ListOptions & { include: string[] } = {
-        prefix: "photos/",
-        cursor,
-        include: ["customMetadata"],
-      };
-      const page = await bucket.list(options);
-      for (const object of page.objects) {
-        const asset = assetOf(object);
-        if (asset) uploaded.push(asset);
-      }
-      cursor = page.truncated ? page.cursor : undefined;
-    } while (cursor);
+    for (const prefix of ["photos/", "panoramas/"]) {
+      let cursor: string | undefined;
+      do {
+        const options: R2ListOptions & { include: string[] } = { prefix, cursor, include: ["customMetadata"] };
+        const page = await bucket.list(options);
+        for (const object of page.objects) {
+          const asset = assetOf(object);
+          if (asset) uploaded.push(asset);
+        }
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+    }
     return [...uploaded, ...mediaManifest];
   },
   async find(url) {
     const seed = findMediaAsset(url);
     if (seed) return seed;
-    if (!url.startsWith("/media/photos/")) return undefined;
+    if (!url.startsWith("/media/photos/") && !url.startsWith("/media/panoramas/")) return undefined;
     const object = await getMediaBucket()?.head(url.slice("/media/".length));
     return object ? assetOf(object) : undefined;
   },
-  async upload({ hotelId, filename, width, height, bytes }) {
+  async upload({ hotelId, filename, width, height, bytes, kind = "photo" }) {
     const bucket = getMediaBucket();
     if (!bucket) throw new Error("Photo storage is unavailable.");
-    const key = `photos/${hotelId}/${crypto.randomUUID()}.webp`;
+    const key = `${kind === "panorama" ? "panoramas" : "photos"}/${hotelId}/${crypto.randomUUID()}.webp`;
     await bucket.put(key, bytes, {
       httpMetadata: {
         contentType: "image/webp",
@@ -71,7 +74,7 @@ export const mediaLibraryPort: MediaLibraryPort = {
     });
     return {
       url: `/media/${key}`,
-      folder: "uploads",
+      folder: folderOf(key),
       filename,
       width,
       height,

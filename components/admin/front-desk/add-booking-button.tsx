@@ -68,10 +68,12 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
   const [roomTypeId, setRoomTypeId] = React.useState(roomTypes[0]!.id);
   const [range, setRange] = React.useState<DateRange | undefined>(undefined);
   const [party, setParty] = React.useState<GuestParty>(emptyGuestParty);
+  const [requestId] = React.useState(() => crypto.randomUUID());
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('pay_at_hotel');
   const [quote, setQuote] = React.useState<FrontDeskQuoteResult | null>(null);
   const [quoting, setQuoting] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [createdReference, setCreatedReference] = React.useState<string>();
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string[]>>({});
   const [error, setError] = React.useState('');
 
@@ -116,7 +118,11 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
     setError('');
     setFieldErrors({});
     const { firstName, lastName, email, phone, adults, children } = party;
+    const documentUpload = new FormData();
+    if (party.document) documentUpload.set('photo', party.document.photo);
     const result = await createFrontDeskBookingAction({
+      requestId,
+      identity: party.document?.identity,
       roomSlug: roomType.slug,
       checkIn,
       checkOut,
@@ -124,7 +130,7 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
       children,
       guest: { firstName, lastName, email, phone },
       paymentMethod,
-    });
+    }, documentUpload).catch(() => ({ ok: false as const, message: 'Booking request failed. Please retry.', fieldErrors: {} }));
     setSubmitting(false);
     if (result.ok) {
       onCancel();
@@ -133,11 +139,13 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
       return;
     }
     setError(result.message);
+    if ('createdReference' in result) setCreatedReference(result.createdReference);
     setFieldErrors(result.fieldErrors ?? {});
   }
 
   return (
     <form onSubmit={submit}>
+      <div inert={submitting || Boolean(createdReference)}>
       <label htmlFor="fd-new-room-type" className="mb-1.5 block text-sm text-muted-foreground">
         {t('frontDesk.roomType')}
       </label>
@@ -192,6 +200,7 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
         <p className="mt-5 border-t border-border pt-4 text-sm text-muted-foreground">{t('frontDesk.pickRoomTypeAndDates')}</p>
       )}
 
+      </div>
       {error ? (
         <p role="alert" className="mt-3 text-sm font-medium text-danger">
           {error}
@@ -199,8 +208,8 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button type="submit" disabled={submitting || quoting || !ready || quote?.ok !== true} className={pill('primary')}>
-          {submitting ? t('frontDesk.creatingBooking') : t('frontDesk.createBooking')}
+        <button type="submit" disabled={submitting || (!createdReference && (quoting || !ready || quote?.ok !== true))} className={pill('primary')}>
+          {submitting ? t('frontDesk.creatingBooking') : createdReference ? 'Retry document upload' : t('frontDesk.createBooking')}
         </button>
         <button type="button" onClick={onCancel} className={pill('secondary')}>
           {t('frontDesk.cancel')}

@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   catalogService,
-  contentService,
+  contentServiceFor,
   demoControl,
-  DEMO_HOTEL_SLUG,
   hotelRepository,
 } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
@@ -22,7 +21,7 @@ import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
 import { buildDateWindow, ratesHref, roomRatesHref } from '@/components/admin/rates/rates-shared';
 import { AddRoomRateButton } from '@/components/admin/content/add-room-rate-button';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { createRateAction } from '@/app/admin/content/rooms/[id]/actions';
+import { createRoomRateAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,9 +61,9 @@ export default async function RatesPage({
   const { dates, windowEnd, columns, minWidth } = buildDateWindow(from, days);
 
   const selectedSlug = await getSelectedHotelSlug();
+  const contentService = contentServiceFor(selectedSlug);
   const hotel = await catalogService.getHotel(selectedSlug);
   const rooms = await hotelRepository.listRooms(hotel.id);
-  const canAddRate = selectedSlug === DEMO_HOTEL_SLUG;
   const allRows = await Promise.all(
     rooms.map(async (room) => {
       const [rateCount, override, availability] = await Promise.all([
@@ -110,13 +109,11 @@ export default async function RatesPage({
       <AdminPageHeader
         title={t('nav.roomRates')}
         actions={
-          canAddRate ? (
-            <AddRoomRateButton
-              rooms={rows.map(({ room }) => ({ id: room.id, name: room.name }))}
-              currency={hotel.currency}
-              createRateAction={createRateAction}
-            />
-          ) : null
+          <AddRoomRateButton
+            rooms={rooms.map((room) => ({ id: room.id, name: room.name }))}
+            currency={hotel.currency}
+            createRateAction={createRoomRateAction}
+          />
         }
       />
 

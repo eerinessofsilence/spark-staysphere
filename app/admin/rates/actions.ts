@@ -1,9 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { contentService } from '@/lib/application/container';
+import { contentServiceFor } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
+import { getAdminT } from '@/lib/i18n/admin/server';
 import {
   formStateFromResult,
+  parseJsonList,
+  parseNumber,
   parseOptionalNumber,
   type ContentFormState,
 } from '@/app/admin/content/_lib/form-state';
@@ -15,6 +19,7 @@ export async function updateBaseRateAction(
   _prevState: ContentFormState,
   formData: FormData,
 ): Promise<ContentFormState> {
+  const contentService = contentServiceFor(await getSelectedHotelSlug());
   const rate = (await contentService.listRatesContent(roomTypeId)).find((candidate) => candidate.id === rateId);
   if (!rate) return { status: 'error', message: 'This rate no longer exists. Reload the page.' };
 
@@ -47,4 +52,24 @@ export async function updateBaseRateAction(
     revalidatePath('/admin/front-desk');
   }
   return formStateFromResult(result, 'Saved — live on the site.');
+}
+
+export async function createRoomRateAction(
+  roomTypeId: string,
+  _prevState: ContentFormState,
+  formData: FormData,
+): Promise<ContentFormState> {
+  const t = await getAdminT();
+  const contentService = contentServiceFor(await getSelectedHotelSlug());
+  const result = await contentService.createRate(roomTypeId, {
+    name: String(formData.get('name') ?? ''),
+    nightlyPrice: parseNumber(formData.get('nightlyPrice')),
+    otaComparisonPrice: parseOptionalNumber(formData.get('otaComparisonPrice')),
+    breakfastIncluded: formData.get('breakfastIncluded') === 'on',
+    includedServices: parseJsonList<string>(formData, 'includedServices'),
+    cancellationPolicy: String(formData.get('cancellationPolicy') ?? ''),
+  });
+
+  if (result.ok) revalidateContent();
+  return formStateFromResult(result, t('room.rateAdded'), t);
 }

@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const WRANGLER_CONFIG = 'dist/server/wrangler.json';
 const D1_NAME = 'spark-staysphere-db';
 const R2_NAME = 'spark-staysphere-media';
+const PRIVATE_DOCUMENTS_R2_NAME = 'spark-staysphere-private-documents';
 
 function wrangler(args) {
   return execFileSync('npx', ['wrangler', ...args], { encoding: 'utf8' });
@@ -35,12 +36,23 @@ if (!db) {
 config.d1_databases = [{ binding: 'DB', database_name: D1_NAME, database_id: db.uuid ?? db.database_id }];
 
 try {
-  const buckets = JSON.parse(wrangler(['r2', 'bucket', 'list', '--json']));
-  if (!buckets.some((entry) => entry.name === R2_NAME)) {
+  // `r2 bucket list` has no --json; its plain output is one `name:` line per bucket.
+  const buckets = wrangler(['r2', 'bucket', 'list'])
+    .split('\n')
+    .map((line) => line.match(/^name:\s+(\S+)/)?.[1])
+    .filter(Boolean);
+  if (!buckets.includes(R2_NAME)) {
     console.log(`Creating R2 bucket "${R2_NAME}"...`);
     wrangler(['r2', 'bucket', 'create', R2_NAME]);
   }
-  config.r2_buckets = [{ binding: 'MEDIA', bucket_name: R2_NAME }];
+  if (!buckets.includes(PRIVATE_DOCUMENTS_R2_NAME)) {
+    console.log('Creating private document bucket...');
+    wrangler(['r2', 'bucket', 'create', PRIVATE_DOCUMENTS_R2_NAME]);
+  }
+  config.r2_buckets = [
+    { binding: 'MEDIA', bucket_name: R2_NAME },
+    { binding: 'PRIVATE_DOCUMENTS', bucket_name: PRIVATE_DOCUMENTS_R2_NAME },
+  ];
 } catch {
   console.warn(
     `R2 isn't enabled on this Cloudflare account yet (Dashboard → R2 → Enable) — deploying ` +

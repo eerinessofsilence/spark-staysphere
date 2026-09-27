@@ -41,6 +41,39 @@ export function simplePageHref(basePath: string, pageSize: number = DEFAULT_PAGE
   };
 }
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
+/**
+ * Everything one grid's footer needs, read from and written back to the
+ * page's own query string: `key` namespaces the params (`${key}Page`,
+ * `${key}PageSize`) so a page with several grids pages each on its own, and
+ * every other param already in the URL — filters, tabs, another grid's page
+ * — is carried through untouched. The one way a grid gets the same footer
+ * as every other: page numbers, arrows, and "Show 10 / 20 / 50".
+ */
+export function tablePager(params: SearchParams, basePath: string, key = '') {
+  const pageKey = key ? `${key}Page` : 'page';
+  const sizeKey = key ? `${key}PageSize` : 'pageSize';
+  const page = parsePage(params[pageKey]);
+  const pageSize = parsePageSize(params[sizeKey]);
+  const build = (overrides: Record<string, string | null>) => {
+    const query = new URLSearchParams();
+    for (const [name, value] of Object.entries(params)) {
+      if (value === undefined || name in overrides) continue;
+      for (const item of Array.isArray(value) ? value : [value]) query.append(name, item);
+    }
+    for (const [name, value] of Object.entries(overrides)) if (value !== null) query.set(name, value);
+    const qs = query.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
+  return {
+    page,
+    pageSize,
+    hrefFor: (next: number) => build({ [pageKey]: next > 1 ? String(next) : null }),
+    pageSizeHrefFor: (size: number) => build({ [sizeKey]: size !== DEFAULT_PAGE_SIZE ? String(size) : null, [pageKey]: null }),
+  };
+}
+
 /** A `Pagination` `pageSizeHrefFor` for a page with no other query params to preserve — always resets to page 1. */
 export function simplePageSizeHref(basePath: string): (pageSize: number) => string {
   return (pageSize) => (pageSize === DEFAULT_PAGE_SIZE ? basePath : `${basePath}?pageSize=${pageSize}`);
@@ -68,6 +101,7 @@ export async function Pagination({
   hrefFor,
   pageSizeHrefFor,
   attached,
+  always = false,
 }: {
   page: number;
   totalPages: number;
@@ -79,8 +113,10 @@ export async function Pagination({
   /** Omit on a list whose page size is fixed — no "Show N per page" picker shows without it. */
   pageSizeHrefFor?: (pageSize: number) => string;
   attached?: boolean;
+  /** Keep the footer on a one-page list too — a grid that always shows its count and arrows reads as the same grid whether it holds one row or fifty. */
+  always?: boolean;
 }) {
-  if (totalPages <= 1 && !pageSizeHrefFor) return null;
+  if (totalPages <= 1 && !pageSizeHrefFor && !always) return null;
   const t = await getAdminT();
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -89,13 +125,11 @@ export async function Pagination({
     <nav
       aria-label={t('ops.pagination')}
       className={cn(
-        // `pr-24`, not `px-4` symmetric: the admin assistant's launcher is a
-        // fixed circle pinned to the viewport's own bottom-right, not the
-        // page's — at `sm` and up it sits 24px in and 64px across, a 88px
-        // no-go strip along the right edge at any scroll position. A
-        // right-aligned "next page" arrow sitting exactly there is
-        // untappable, not just visually crowded.
-        'flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-24',
+        // Symmetric with the table's own cell padding, so the arrows sit on
+        // the card's edge like the last column does. The admin assistant's
+        // fixed launcher lives in the viewport's bottom-right corner;
+        // `AdminPage`'s bottom padding is what lets a footer scroll clear of it.
+        'flex flex-wrap items-center justify-between gap-3 px-4 py-3',
         attached ? 'border-t border-border' : 'mt-4 rounded-[18px] bg-card shadow-soft',
       )}
     >

@@ -3,18 +3,18 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
-import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { Field, Select, TextInput } from '@/components/admin/content/fields';
-import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import type { AdminT } from '@/lib/i18n/admin/translate';
-import { pluralForm } from '@/lib/i18n/plural';
-import { fieldClass, pill, tag } from '@/lib/ui';
+import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { toast } from '@/components/admin/shell/toast';
+import { SearchInput } from '@/components/ui/search-input';
 import {
   channels as builtInChannels,
   channexPropertyId,
@@ -103,7 +103,6 @@ function marketsLabel(markets: string, t: AdminT): string {
  */
 export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount: number; rateCount: number }) {
   const t = useAdminT();
-  const locale = useAdminLocale();
   const [customChannels, setCustomChannels] = React.useState<Channel[]>([]);
   const [connected, setConnected] = React.useState<string[]>(initiallyConnected);
   const [adding, setAdding] = React.useState(false);
@@ -161,16 +160,6 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
     <>
       <AdminPageHeader
         title={t('nav.channelManager')}
-        description={t('channel.connectedCount', {
-          connected: connectedChannels.length,
-          total: channels.length,
-          channels: pluralForm(locale, channels.length, {
-            one: t('channel.channelOne'),
-            few: t('channel.channelFew'),
-            many: t('channel.channelMany'),
-            other: t('channel.channelMany'),
-          }),
-        })}
         actions={
           <>
             <button type="button" onClick={() => setCustomOpen(true)} className={pill('secondary')}>
@@ -290,23 +279,15 @@ export function ChannelManagerView({ roomTypeCount, rateCount }: { roomTypeCount
       </section>
 
       <Modal open={adding} onClose={closeAdding} title={t('channel.add')}>
-        <div className="relative">
-          <MagnifyingGlassIcon
-            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setAvailablePage(1);
-            }}
-            placeholder={t('channel.searchChannels')}
-            aria-label={t('channel.searchChannels')}
-            className={cn(fieldClass, 'pl-10')}
-          />
-        </div>
+        <SearchInput
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setAvailablePage(1);
+          }}
+          placeholder={t('channel.searchChannels')}
+          aria-label={t('channel.searchChannels')}
+        />
         <ul className="mt-4 grid gap-1">
           {available.length === 0 ? (
             <li className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">

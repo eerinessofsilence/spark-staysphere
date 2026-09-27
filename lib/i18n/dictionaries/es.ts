@@ -150,8 +150,8 @@ export const es: Record<TranslationKey, string> = {
   'room.atTheHotel': 'En el hotel',
   'room.includedAtNoExtraCost': 'Incluido sin coste adicional.',
   'room.checkInCheckOut': 'Llegada y salida',
-  'room.checkInFrom': 'Desde las 15:00',
-  'room.checkOutBy': 'Hasta las 11:00',
+  'room.checkInFrom': 'Desde las 12:00',
+  'room.checkOutBy': 'Hasta las 12:00',
   'room.lateCheckOutHint':
     '¿Sales más tarde? Añade abajo una salida tardía para mantener la habitación hasta las 18:00.',
   'room.cancellationExtra':
@@ -399,4 +399,13 @@ export const es: Record<TranslationKey, string> = {
   'error.somethingWrongBody': 'No pudimos cargar esta parte del proceso de reserva. No se cobró ni se reservó nada.',
   'error.tryAgain': 'Reintentar',
   'error.backToRooms': 'Volver a las habitaciones',
+  'chat.title': 'Escribir al hotel',
+  'chat.intro': '¿Dudas sobre tu estancia? Escribe aquí y recepción responde en esta conversación.',
+  'chat.placeholder': 'Escribe al hotel…',
+  'chat.send': 'Enviar',
+  'chat.sending': 'Enviando…',
+  'chat.empty': 'Aún no hay mensajes.',
+  'chat.hotel': 'Recepción',
+  'chat.you': 'Tú',
+  'chat.error': 'No se pudo enviar el mensaje. Inténtalo de nuevo.',
 };

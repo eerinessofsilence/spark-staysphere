@@ -36,7 +36,6 @@ export default async function RoleEditPage({ params }: { params: Promise<{ id: s
           { label: t('team.roles'), href: '/admin/settings/team/roles' },
         ]}
         title={title}
-        description={t('team.editRole')}
       />
       <div className="mt-8">
         <RoleEditor role={found.role} />

@@ -5,7 +5,7 @@ import { PencilSquareIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { housekeepingService } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
-import { occupancyKey } from '@/lib/i18n/admin/housekeeping';
+import { housekeepingStatusKey, occupancyKey } from '@/lib/i18n/admin/housekeeping';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateRange, lFacade, lFloor, lRoomNumber } from '@/lib/i18n/format';
@@ -30,6 +30,7 @@ export default async function HousekeepingRoomPage({ params }: { params: Promise
   const t = adminT(locale);
   const room = await loadRoom(id);
   if (!room) notFound();
+  const events = await housekeepingService.listEvents(await getSelectedHotelSlug(), room.unit.id);
 
   return (
     <AdminPage width="narrow">
@@ -71,6 +72,20 @@ export default async function HousekeepingRoomPage({ params }: { params: Promise
           </dl>
         </div>
       </div>
+
+      <section className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6" aria-labelledby="cleaning-log-heading">
+        <h2 id="cleaning-log-heading" className="text-lg font-medium">Журнал уборки</h2>
+        {events.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Изменений пока нет.</p> : (
+          <ol className="mt-4 divide-y divide-border">
+            {events.map((event) => <li key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+              <span>{t(housekeepingStatusKey(event.status))} · {event.memberId} · номер {event.roomNumber}
+                {event.note ? <span className="block text-muted-foreground">{event.note}</span> : null}</span>
+              <span className="text-muted-foreground">{new Date(event.occurredAt).toLocaleString(locale)}</span>
+              {event.photoData ? <a href={`/housekeeper/photo/${event.id}`} target="_blank" rel="noreferrer" className="underline">Фото</a> : null}
+            </li>)}
+          </ol>
+        )}
+      </section>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link href={`/admin/front-desk?type=${room.unit.roomTypeId}`} className={pill('ghost')}>

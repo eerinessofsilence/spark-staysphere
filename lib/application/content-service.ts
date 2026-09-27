@@ -409,7 +409,13 @@ export class ContentService {
     return this.media.list();
   }
 
-  async uploadPhoto(filename: string, contentType: string, bytes: ArrayBuffer): Promise<ContentResult<MediaAsset>> {
+  /**
+   * `kind: 'panorama'` files the upload as a 360° view: it must be
+   * equirectangular (2:1) or it is refused here, before it can reach a
+   * gallery where `resolveMedia` would refuse it anyway with a less useful
+   * message.
+   */
+  async uploadPhoto(filename: string, contentType: string, bytes: ArrayBuffer, kind: 'photo' | 'panorama' = 'photo'): Promise<ContentResult<MediaAsset>> {
     const denied = await this.permit('team.permEditContent');
     if (denied) return fail(denied);
     if (bytes.byteLength > MAX_PHOTO_BYTES || contentType !== 'image/webp') {
@@ -417,11 +423,14 @@ export class ContentService {
     }
     const dimensions = webpDimensions(bytes);
     if (!dimensions) return fail({ kind: 'rule', message: 'This photo could not be read. Choose another image.' });
+    if (kind === 'panorama' && Math.abs(dimensions.width / dimensions.height - 2) >= 0.01) {
+      return fail({ kind: 'rule', message: 'A 360° view must be an equirectangular (2:1) panorama.' });
+    }
     if (!this.media.upload) return fail({ kind: 'rule', message: 'Photo storage is unavailable. Please try again later.' });
     const hotel = await this.hotel();
     const safeName = filename.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 120) || 'photo.webp';
     try {
-      return ok(await this.media.upload({ hotelId: hotel.id, filename: safeName, ...dimensions, bytes }));
+      return ok(await this.media.upload({ hotelId: hotel.id, filename: safeName, ...dimensions, bytes, kind }));
     } catch {
       return fail({ kind: 'rule', message: 'Photo could not be uploaded. Please try again.' });
     }

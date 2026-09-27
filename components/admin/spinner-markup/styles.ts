@@ -181,6 +181,7 @@ export const EDITOR_STYLES = `
     cursor: pointer;
   }
   .pe-btn:hover:not(:disabled) { background: var(--pe-hover); }
+  .pe-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--pe-danger) 12%, transparent); color: var(--pe-danger); }
   .pe-btn[data-active] { background: var(--pe-active); color: var(--pe-accent); }
   .pe-btn:disabled { opacity: .4; cursor: default; }
   .pe-btn:focus-visible { outline: 2px solid var(--pe-accent); outline-offset: 1px; }

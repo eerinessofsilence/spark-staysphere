@@ -44,7 +44,6 @@ export default async function SpinnerContentPage() {
     <AdminPage width="wide">
       <AdminPageHeader
         title={t('nav.orbit')}
-        description={t('orbit.description')}
         actions={
           <>
             <Link href="/admin/content/spinner/frames" className={pill('secondary')}>

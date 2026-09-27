@@ -5,7 +5,6 @@ import { MediaLibraryUpload } from '@/components/admin/settings/media-library-up
 import { contentService } from '@/lib/application/container';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { MediaGrid, type MediaTile, type MediaUsage } from '@/components/admin/settings/media-grid';
@@ -87,17 +86,6 @@ export default async function MediaLibraryPage({
     bytes: asset.bytes,
     usage: usage.get(asset.url) ?? [],
   }));
-  const unused = tiles.filter((tile) => tile.usage.length === 0).length;
-
-  const count = tiles.length;
-  const files = pluralForm(locale, count, {
-    one: t('mediaLib.filesOne', { count }),
-    few: t('mediaLib.filesFew', { count }),
-    many: t('mediaLib.filesMany', { count }),
-    other: t('mediaLib.filesOther', { count }),
-  });
-  const scope = folder ? t('mediaLib.filesInFolder', { files, folder: folderLabel(folder) }) : files;
-  const tail = unused > 0 ? t('mediaLib.notUsedYet', { count: unused }) : t('mediaLib.allInUse');
 
   return (
     <AdminPage>
@@ -146,7 +134,6 @@ export default async function MediaLibraryPage({
         </div>
       ) : (
         <>
-          <p className="mt-6 text-sm text-muted-foreground">{t('mediaLib.summary', { scope, tail })}</p>
           <MediaGrid key={folder ?? 'all'} tiles={tiles} />
         </>
       )}

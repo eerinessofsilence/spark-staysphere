@@ -18,6 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('.', import.meta.url)),
+      '#host-adapters': fileURLToPath(new URL('./lib/infrastructure/host-adapters.cloudflare.ts', import.meta.url)),
     },
   },
 });

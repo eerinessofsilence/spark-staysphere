@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Menu } from '@base-ui/react/menu';
-import { BellIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { BellIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { lDateRange, lRelativeTime } from '@/lib/i18n/format';
 import { iconButton } from '@/lib/ui';
@@ -16,6 +16,15 @@ export interface RecentBooking {
   checkIn: string;
   checkOut: string;
   createdAt: string;
+}
+
+/** A guest thread nobody has opened yet — counted server side, so it needs no "last seen" of its own. */
+export interface UnreadConversation {
+  id: string;
+  guestName: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unread: number;
 }
 
 const STORAGE_PREFIX = 'admin-notifications.last-seen.';
@@ -47,8 +56,20 @@ function writeLastSeen(hotelSlug: string, iso: string): void {
  * so "seen" is remembered in this browser, per hotel, rather than server
  * side: opening the panel marks every booking in it as seen.
  */
-export function NotificationBell({ hotelSlug, bookings }: { hotelSlug: string; bookings: RecentBooking[] }) {
-  const [unseenCount, setUnseenCount] = React.useState(0);
+export function NotificationBell({
+  hotelSlug,
+  bookings,
+  conversations = [],
+}: {
+  hotelSlug: string;
+  bookings: RecentBooking[];
+  conversations?: UnreadConversation[];
+}) {
+  const [unseenBookings, setUnseenBookings] = React.useState(0);
+  // Unread messages are a server-side count, so they show from the first
+  // paint; the bookings half waits for localStorage below.
+  const unreadMessages = conversations.reduce((sum, c) => sum + c.unread, 0);
+  const unseenCount = unseenBookings + unreadMessages;
   const locale = useAdminLocale();
   const t = useAdminT();
 
@@ -57,20 +78,20 @@ export function NotificationBell({ hotelSlug, bookings }: { hotelSlug: string; b
   // is nothing to reconcile — the badge just fades in a moment later.
   React.useEffect(() => {
     const lastSeen = readLastSeen(hotelSlug);
-    setUnseenCount(bookings.filter((booking) => booking.createdAt > lastSeen).length);
+    setUnseenBookings(bookings.filter((booking) => booking.createdAt > lastSeen).length);
   }, [hotelSlug, bookings]);
 
   function onOpenChange(open: boolean) {
     if (!open || bookings.length === 0) return;
     writeLastSeen(hotelSlug, bookings[0]!.createdAt);
-    setUnseenCount(0);
+    setUnseenBookings(0);
   }
 
   return (
     <Menu.Root modal={false} onOpenChange={onOpenChange}>
       <Menu.Trigger
         data-tour="bell"
-        aria-label={unseenCount > 0 ? t('bell.reservationsNew', { count: unseenCount }) : t('bell.reservations')}
+        aria-label={unseenCount > 0 ? t('bell.newTotal', { count: unseenCount }) : t('bell.reservations')}
         className={cn(iconButton('light'), 'relative')}
       >
         <BellIcon className="size-5" aria-hidden="true" />
@@ -86,6 +107,41 @@ export function NotificationBell({ hotelSlug, bookings }: { hotelSlug: string; b
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="start" sideOffset={8} className="z-50 outline-none">
           <Menu.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+            {conversations.length > 0 ? (
+              <>
+                <p className="flex items-center justify-between px-3 py-2 text-sm font-medium">
+                  {t('bell.messages')}
+                  <span className="text-xs font-normal text-muted-foreground">{t('bell.messagesNew', { count: unreadMessages })}</span>
+                </p>
+                {conversations.slice(0, 5).map((conversation) => (
+                  <Menu.LinkItem
+                    key={conversation.id}
+                    render={<Link href={`/admin/communications/${conversation.id}`} />}
+                    closeOnClick
+                    className="flex min-h-11 w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left outline-none select-none data-highlighted:bg-stone"
+                  >
+                    <span className="flex items-baseline justify-between gap-2 text-sm font-medium">
+                      <span className="truncate">{conversation.guestName}</span>
+                      <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                        {lRelativeTime(conversation.lastMessageAt, locale)}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <ChatBubbleLeftRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{conversation.lastMessage}</span>
+                    </span>
+                  </Menu.LinkItem>
+                ))}
+                <Menu.LinkItem
+                  render={<Link href="/admin/communications" />}
+                  closeOnClick
+                  className="mt-1 flex min-h-10 w-full items-center justify-center rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none select-none data-highlighted:bg-stone data-highlighted:text-foreground"
+                >
+                  {t('bell.seeAllMessages')}
+                </Menu.LinkItem>
+                <div className="my-1.5 border-t border-border" role="separator" />
+              </>
+            ) : null}
             <p className="px-3 py-2 text-sm font-medium">{t('bell.title')}</p>
             {bookings.length === 0 ? (
               <p className="px-3 pb-3 text-sm text-muted-foreground">{t('bell.empty')}</p>

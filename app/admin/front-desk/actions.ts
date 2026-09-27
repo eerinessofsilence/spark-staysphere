@@ -9,6 +9,8 @@ import type { BookingErrorCode } from '@/lib/application/booking-service';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { guestSchema, paymentMethodSchema, ROOM_NUMBER, stayCriteriaFieldsSchema, type Currency } from '@/lib/domain/schemas';
 import { mapBookingError } from '@/app/api/_lib/http';
+import { bookingService, catalogService, guestDocumentService, hotelRepository } from '@/lib/application/container';
+import { identitySchema, identityKey, documentImageType, MAX_DOCUMENT_BYTES } from '@/lib/domain/guest-document';
 
 /**
  * Turns either a drag across a room's empty nights on the front desk
@@ -44,6 +46,8 @@ const quoteSchema = z.object({
 });
 
 const createSchema = quoteSchema.extend({
+  requestId: z.string().uuid().optional(),
+  identity: identitySchema.optional(),
   /** Set by a drag onto a specific room's row; omitted by the toolbar's own form. */
   unitNumber: z.string().regex(ROOM_NUMBER).optional(),
   guest: guestSchema,
@@ -57,7 +61,7 @@ export type FrontDeskQuoteResult =
 
 export type FrontDeskBookingResult =
   | { ok: true; reference: string; message: string }
-  | { ok: false; code: BookingErrorCode | 'invalid_request'; message: string; fieldErrors?: Record<string, string[]> };
+  | { ok: false; code: BookingErrorCode | 'invalid_request'; message: string; fieldErrors?: Record<string, string[]>; createdReference?: string };
 
 /** The price line the create-booking form shows before anything is written — informational, not trusted at submit time. */
 export async function quoteFrontDeskBookingAction(input: unknown): Promise<FrontDeskQuoteResult> {
@@ -82,7 +86,7 @@ export async function quoteFrontDeskBookingAction(input: unknown): Promise<Front
   }
 }
 
-export async function createFrontDeskBookingAction(input: unknown): Promise<FrontDeskBookingResult> {
+export async function createFrontDeskBookingAction(input: unknown, documentUpload?: FormData): Promise<FrontDeskBookingResult> {
   const t = await getAdminT();
   try {
     await requirePermission('team.permViewBookings');
@@ -104,14 +108,29 @@ export async function createFrontDeskBookingAction(input: unknown): Promise<Fron
 
   try {
     const hotelSlug = await getSelectedHotelSlug();
+    const hotel = await catalogService.getHotel(hotelSlug);
+    const key = `frontdesk_${hotel.id}_${parsed.data.requestId ?? crypto.randomUUID()}`;
+    const existing = await bookingService.findByIdempotencyKey(key);
+    if (existing && (existing.hotelId !== hotel.id || existing.guest.email.trim().toLowerCase() !== parsed.data.guest.email.trim().toLowerCase())) {
+      return { ok: false, code: 'invalid_request', message: 'This booking request belongs to another guest.' };
+    }
+    let documentBytes: ArrayBuffer | undefined;
+    if (parsed.data.identity) {
+      const profile = (await hotelRepository.listGuestProfiles(hotel.id)).find((guest) => guest.email.trim().toLowerCase() === parsed.data.guest.email.trim().toLowerCase());
+      if (!profile?.identity || identityKey(profile.identity) !== identityKey(parsed.data.identity)) return { ok: false, code: 'invalid_request', message: 'Review and confirm this document for the selected guest first.' };
+      const file = documentUpload?.get('photo');
+      if (!(file instanceof File) || file.size > MAX_DOCUMENT_BYTES || file.size === 0) return { ok: false, code: 'invalid_request', message: 'Attach a JPEG or PNG document up to 8 MB.' };
+      documentBytes = await file.arrayBuffer();
+      if (!documentImageType(new Uint8Array(documentBytes))) return { ok: false, code: 'invalid_request', message: 'Use a JPEG or PNG document.' };
+    }
     // Quoted and confirmed in the same request: the total shown a moment ago
     // in the form is never trusted back — see `booking-intake.ts`.
-    const quote = await quoteForSlug({ ...parsed.data, addOnIds: [] }, hotelSlug);
-    if (!quote.available) {
+    const quote = existing ? null : await quoteForSlug({ ...parsed.data, addOnIds: [] }, hotelSlug);
+    if (quote && !quote.available) {
       return { ok: false, code: 'unavailable', message: t('frontDesk.bookingUnavailable') };
     }
 
-    const booking = await confirmForSlug(
+    const booking = existing ?? await confirmForSlug(
       {
         roomSlug: parsed.data.roomSlug,
         checkIn: parsed.data.checkIn,
@@ -121,16 +140,23 @@ export async function createFrontDeskBookingAction(input: unknown): Promise<Fron
         addOnIds: [],
         guest: parsed.data.guest,
         unitNumber: parsed.data.unitNumber,
-        expectedTotal: quote.price.total,
+        expectedTotal: quote!.price.total,
         paymentMethod: parsed.data.paymentMethod,
       },
-      `frontdesk_${crypto.randomUUID()}`,
+      key,
       hotelSlug,
     );
+
+    if (parsed.data.identity && documentBytes) {
+      try { await guestDocumentService.attach(booking, parsed.data.identity, documentBytes); }
+      catch { return { ok: false, code: 'invalid_request', createdReference: booking.reference, message: `Booking ${booking.reference} is created, but the document could not be saved. Retry with this form to attach it without creating another booking.` }; }
+    }
 
     revalidatePath('/admin');
     revalidatePath('/admin/front-desk');
     revalidatePath('/admin/bookings');
+    revalidatePath('/admin/guests');
+    revalidatePath('/admin/guests/[id]', 'page');
     revalidatePath('/admin/bookings/[reference]', 'page');
     revalidatePath('/admin/rates');
     revalidatePath('/admin/accounting');
@@ -143,7 +169,7 @@ export async function createFrontDeskBookingAction(input: unknown): Promise<Fron
       return { ok: false, code: mapped.code, message: mapped.message, fieldErrors: mapped.fieldErrors };
     }
     if (mapped.kind === 'not_found') return { ok: false, code: 'not_found', message: mapped.message };
-    console.error('Front-desk booking failed', error);
+    // This request may contain identity data: never log input or provider errors.
     return { ok: false, code: 'invalid_request', message: t('frontDesk.bookingFailed') };
   }
 }

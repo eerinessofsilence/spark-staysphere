@@ -13,7 +13,7 @@ import { coverPhoto } from '@/lib/domain/room-attributes';
 import { byRoomNumber } from '@/lib/domain/room-units';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT, type AdminT } from '@/lib/i18n/admin/translate';
-import { BED_LABEL, lFloor, lMoney, lRoomCount, lView, VIEW_LABEL } from '@/lib/i18n/format';
+import { BED_LABEL, lMoney, lRoomCount, lView, VIEW_LABEL } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
 import { pill, tag } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
@@ -97,7 +97,6 @@ export default async function RoomContentPage({
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('rooms.title'), href: '/admin/content' }]}
         title={room.name}
-        description={t('room.description', { rooms: roomsText, floor: lFloor(room.floor, locale), view })}
         actions={
           <>
             <RoomVisibilityToggle

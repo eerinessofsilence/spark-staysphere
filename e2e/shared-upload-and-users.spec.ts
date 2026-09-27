@@ -49,18 +49,17 @@ test("uses the same uploader on all photo editing surfaces", async ({ page }) =>
       buffer: Buffer.from("not an image"),
     });
   await expect(page.getByRole("alert")).toContainText("JPEG");
-  await page.goto("/admin/content/hotel");
-  await page.getByRole("tab", { name: "Photos", exact: true }).click();
-  const editor = page.locator('[data-photo-editor^="areas."]').first();
+  await page.goto("/admin/settings");
+  const editor = page.locator('[data-photo-editor="brand-logo-preview"]');
   await expect(editor.getByTestId("upload-dropzone")).toBeVisible();
   await expect(editor.locator('input[type="file"]')).not.toHaveAttribute("multiple");
   await editor.locator('input[type="file"]').setInputFiles("public/images/hotel/cove.webp");
-  await expect(editor.getByRole("status")).toContainText("1 photos uploaded");
+  await expect(editor.getByRole("status")).toContainText("1 images saved to the media library.");
   await expect(editor.locator('input[type="hidden"]')).toHaveValue(/^\/media\/photos\//);
   await page.screenshot({
     path: `/tmp/shared-uploader-${test.info().project.name}.png`,
     fullPage: true,
   });
   page.on("dialog", (dialog) => dialog.accept());
-  await page.reload(); // Discard the selected test photo, preserving the user's hotel.
+  await page.reload(); // Discard the selected test photo without saving.
 });

@@ -11,12 +11,11 @@ import { lDateShort, lMoney } from '@/lib/i18n/format';
 import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { AccountingTabs } from '@/components/admin/accounting/accounting-tabs';
 import { AddPaymentButton, type UnpaidBooking } from '@/components/admin/accounting/add-payment-button';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
+import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination, tablePager } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -46,7 +45,7 @@ export default async function AccountingPage({
   const sp = await searchParams;
   const pageParam = parsePage(sp.page);
   const pageSizeParam = parsePageSize(sp.pageSize);
-  const methodPageParam = parsePage(sp.methodPage);
+  const methodPager = tablePager(sp, '/admin/accounting', 'method');
   const [hotel, allBookings] = await Promise.all([
     catalogService.getHotel(await getSelectedHotelSlug()),
     hotelRepository.listBookings(),
@@ -68,7 +67,7 @@ export default async function AccountingPage({
       currency: row.booking.currency,
     }));
   const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam, pageSizeParam);
-  const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPageParam);
+  const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPager.page, methodPager.pageSize);
   const money = (value: number) => lMoney(value, hotel.currency, locale);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
   const pageHref = (overrides: Partial<{ page: number; pageSize: number; methodPage: number }>) => {
@@ -92,7 +91,6 @@ export default async function AccountingPage({
   return (
     <AdminPage>
       <AdminPageHeader title={t('nav.accounting')} actions={<AddPaymentButton bookings={unpaidBookings} />} />
-      <AccountingTabs current="overview" />
 
       <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Metric
@@ -173,7 +171,9 @@ export default async function AccountingPage({
             page={methodPage}
             totalPages={methodTotalPages}
             total={ledger.byMethod.length}
-            hrefFor={(p) => pageHref({ methodPage: p })}
+            pageSize={methodPager.pageSize}
+            hrefFor={methodPager.hrefFor}
+            pageSizeHrefFor={methodPager.pageSizeHrefFor}
           />
         </div>
       </section>

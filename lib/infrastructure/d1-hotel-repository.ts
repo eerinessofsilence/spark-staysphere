@@ -1,9 +1,13 @@
 import {
+  bookingGroupSchema,
   bookingSchema,
+  guestProfileSchema,
   paymentAttemptSchema,
   roomStatusSchema,
   type Availability,
   type Booking,
+  type BookingGroup,
+  type GuestProfile,
   type PaymentAttempt,
   type RoomStatus,
   type StayState,
@@ -44,11 +48,12 @@ interface BookingRow {
   created_at: string;
   unit_number: string | null;
   stay_state: string | null;
+  group_id: string | null;
 }
 
 // Separate tables rather than new columns: there is no migration runner to ALTER an existing one.
 const BOOKING_SELECT =
-  'SELECT b.*, u.unit_number, s.state AS stay_state FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id LEFT JOIN booking_stay_states s ON s.booking_id = b.id';
+  'SELECT b.*, u.unit_number, s.state AS stay_state, m.group_id FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id LEFT JOIN booking_stay_states s ON s.booking_id = b.id LEFT JOIN booking_group_members m ON m.booking_id = b.id';
 
 function rowToBooking(row: BookingRow): Booking {
   return bookingSchema.parse({
@@ -75,6 +80,7 @@ function rowToBooking(row: BookingRow): Booking {
     stayState: row.stay_state ?? undefined,
     createdAt: row.created_at,
     unitNumber: row.unit_number ?? undefined,
+    groupId: row.group_id ?? undefined,
   });
 }
 
@@ -86,13 +92,19 @@ export async function setBookingStayState(
   await ensureSchema(db);
   const existing = await getBookingByReference(db, reference);
   if (!existing) return null;
-  await db
-    .prepare(
+  const change = db.prepare(
       `INSERT INTO booking_stay_states (booking_id, state) VALUES (?, ?)
        ON CONFLICT (booking_id) DO UPDATE SET state = excluded.state`,
     )
-    .bind(existing.id, state)
-    .run();
+    .bind(existing.id, state);
+  // Persist deletion intent in the same transaction as actual checkout. Undoing
+  // checkout later must never resurrect a document or cancel pending erasure.
+  if (state === 'checked_out') {
+    await db.batch([
+      change,
+      db.prepare(`UPDATE guest_documents SET data = json_set(data, '$.status', 'pending_deletion', '$.deletionReason', 'reservation_checkout') WHERE hotel_id = ? AND json_extract(data, '$.reservationId') = ? AND json_extract(data, '$.status') != 'deleted'`).bind(existing.hotelId, existing.id),
+    ]);
+  } else await change.run();
   return { ...existing, stayState: state };
 }
 
@@ -380,6 +392,130 @@ export async function reset(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM room_status_overrides'),
     db.prepare('DELETE FROM inventory_holds'),
     db.prepare('DELETE FROM booking_units'),
+    db.prepare('DELETE FROM booking_groups'),
+    db.prepare('DELETE FROM booking_group_members'),
+    db.prepare('DELETE FROM guest_profiles'),
   ]);
 }
 
+interface BookingGroupRow {
+  id: string;
+  hotel_id: string;
+  name: string;
+  notes: string | null;
+  created_at: string;
+}
+
+function rowToBookingGroup(row: BookingGroupRow): BookingGroup {
+  return bookingGroupSchema.parse({
+    id: row.id,
+    hotelId: row.hotel_id,
+    name: row.name,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+  });
+}
+
+export async function createBookingGroup(db: D1Database, group: BookingGroup): Promise<BookingGroup> {
+  await ensureSchema(db);
+  await db
+    .prepare('INSERT INTO booking_groups (id, hotel_id, name, notes, created_at) VALUES (?,?,?,?,?)')
+    .bind(group.id, group.hotelId, group.name, group.notes ?? null, group.createdAt)
+    .run();
+  return group;
+}
+
+export async function listBookingGroups(db: D1Database, hotelId: string): Promise<BookingGroup[]> {
+  await ensureSchema(db);
+  const { results } = await db
+    .prepare('SELECT * FROM booking_groups WHERE hotel_id = ? ORDER BY created_at DESC')
+    .bind(hotelId)
+    .all<BookingGroupRow>();
+  return results.map(rowToBookingGroup);
+}
+
+export async function getBookingGroup(db: D1Database, id: string): Promise<BookingGroup | null> {
+  await ensureSchema(db);
+  const row = await db.prepare('SELECT * FROM booking_groups WHERE id = ?').bind(id).first<BookingGroupRow>();
+  return row ? rowToBookingGroup(row) : null;
+}
+
+export async function assignBookingToGroup(db: D1Database, bookingId: string, groupId: string): Promise<Booking | null> {
+  await ensureSchema(db);
+  await db
+    .prepare(
+      `INSERT INTO booking_group_members (booking_id, group_id) VALUES (?, ?)
+       ON CONFLICT (booking_id) DO UPDATE SET group_id = excluded.group_id`,
+    )
+    .bind(bookingId, groupId)
+    .run();
+  const row = await db.prepare(`${BOOKING_SELECT} WHERE b.id = ?`).bind(bookingId).first<BookingRow>();
+  return row ? rowToBooking(row) : null;
+}
+
+export async function removeBookingFromGroup(db: D1Database, bookingId: string): Promise<Booking | null> {
+  await ensureSchema(db);
+  await db.prepare('DELETE FROM booking_group_members WHERE booking_id = ?').bind(bookingId).run();
+  const row = await db.prepare(`${BOOKING_SELECT} WHERE b.id = ?`).bind(bookingId).first<BookingRow>();
+  return row ? rowToBooking(row) : null;
+}
+
+export async function deleteBookingGroup(db: D1Database, id: string): Promise<void> {
+  await ensureSchema(db);
+  await db.batch([
+    db.prepare('DELETE FROM booking_group_members WHERE group_id = ?').bind(id),
+    db.prepare('DELETE FROM booking_groups WHERE id = ?').bind(id),
+  ]);
+}
+
+interface GuestProfileRow {
+  identity_json?: string;
+  id: string;
+  hotel_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  created_at: string;
+}
+
+function rowToGuestProfile(row: GuestProfileRow): GuestProfile {
+  return guestProfileSchema.parse({
+    identity: row.identity_json ? JSON.parse(row.identity_json) : undefined,
+    id: row.id,
+    hotelId: row.hotel_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    createdAt: row.created_at,
+  });
+}
+
+export async function createGuestProfile(db: D1Database, profile: GuestProfile): Promise<GuestProfile> {
+  await ensureSchema(db);
+  await db
+    .prepare(
+      'INSERT INTO guest_profiles (id, hotel_id, first_name, last_name, email, phone, created_at) VALUES (?,?,?,?,?,?,?)',
+    )
+    .bind(profile.id, profile.hotelId, profile.firstName, profile.lastName, profile.email, profile.phone, profile.createdAt)
+    .run();
+  return profile;
+}
+
+export async function listGuestProfiles(db: D1Database, hotelId: string): Promise<GuestProfile[]> {
+  await ensureSchema(db);
+  const { results } = await db
+    .prepare('SELECT g.*, i.identity_json FROM guest_profiles g LEFT JOIN guest_profile_identities i ON i.profile_id = g.id AND i.hotel_id = g.hotel_id WHERE g.hotel_id = ? ORDER BY g.created_at DESC')
+    .bind(hotelId)
+    .all<GuestProfileRow>();
+  return results.map(rowToGuestProfile);
+}
+
+export async function saveGuestIdentity(db: D1Database, profileId: string, hotelId: string, identity: NonNullable<GuestProfile['identity']>): Promise<void> {
+  await ensureSchema(db);
+  await db.batch([
+    db.prepare('INSERT INTO guest_profile_identities (profile_id, hotel_id, identity_json) SELECT id, hotel_id, ? FROM guest_profiles WHERE id = ? AND hotel_id = ? ON CONFLICT (hotel_id, profile_id) DO UPDATE SET identity_json = excluded.identity_json').bind(JSON.stringify(identity), profileId, hotelId),
+    db.prepare('UPDATE guest_profiles SET first_name = ?, last_name = ? WHERE id = ? AND hotel_id = ?').bind(identity.firstName, identity.lastName, profileId, hotelId),
+  ]);
+}

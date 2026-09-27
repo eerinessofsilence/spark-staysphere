@@ -106,9 +106,9 @@ export function SpinnerRoomCard({
 }
 
 /**
- * The phone's version of the card, inside the product's own sheet. There is no
- * room for a card floating beside a storey when the stage is the whole screen,
- * and a sheet has room for the prose the card had to drop.
+ * The compact-stage version of the card, inside the product's own sheet. There
+ * is no room for a card floating beside a storey on a phone or tablet, and a
+ * sheet has room for the prose the card had to drop.
  */
 export function SpinnerRoomSheetBody({ hotspot, facts, href }: HotspotContentProps) {
   const t = useT();

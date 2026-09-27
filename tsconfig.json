@@ -15,7 +15,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "#host-adapters": ["./lib/infrastructure/host-adapters.cloudflare.ts"]
     }
   },
   "include": [

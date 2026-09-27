@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { BookingError } from '@/lib/application/booking-service';
-import { bookingService, catalogService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
+import { bookingService, catalogService, communicationsService, DEMO_HOTEL_SLUG } from '@/lib/application/container';
 import { buildPriceBreakdown, nightsBetween } from '@/lib/domain/pricing';
 import type { PaymentMethod } from '@/lib/domain/schemas';
 import { ConfirmationView } from '@/components/booking/confirmation-view';
@@ -22,6 +22,8 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
 
   const { booking, room, ratePlan, addOns, payments } = confirmation;
   const hotel = await catalogService.getHotel(DEMO_HOTEL_SLUG);
+  // The guest's chat with the desk, if this stay already has one — see `GuestChat`.
+  const chat = await communicationsService.guestChatFor(DEMO_HOTEL_SLUG, booking.reference, booking.guest.email);
   const nights = nightsBetween(booking.checkIn, booking.checkOut);
   const breakdown = ratePlan
     ? buildPriceBreakdown({
@@ -48,6 +50,7 @@ export default async function ConfirmationPage({ params }: PageProps<'/booking/[
       nights={nights}
       paymentMethod={paymentMethod}
       authorized={authorized}
+      chat={chat ? { conversationId: chat.conversation.id, messages: chat.messages } : null}
     />
   );
 }

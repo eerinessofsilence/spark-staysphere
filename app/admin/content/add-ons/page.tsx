@@ -11,11 +11,14 @@ import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { RowActions } from '@/components/admin/content/row-actions';
 import { AddOnToggle } from '@/components/admin/room-controls';
+import { addOnIcon } from '@/components/rooms/add-on-icon';
 import { FilterPills } from '@/components/admin/operations/filter-pills';
-import { paginate, parsePage, Pagination } from '@/components/admin/operations/pagination';
+import { paginate, Pagination, tablePager } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deleteAddOnAction, setAddOnOnSaleAction } from './[id]/actions';
+import { MenuPdfButton, type MenuPdfItem } from '@/components/admin/content/menu-pdf-button';
+import { ScanProductButton } from '@/components/admin/content/scan-product-button';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = adminT(await getAdminLocale());
@@ -36,7 +39,6 @@ type CategoryFilter = 'all' | AddOn['category'];
  * the seed catalog), so ten services fill roughly the same screen twenty
  * flat rows do on every other grid.
  */
-const SERVICES_PER_PAGE = 10;
 
 function parseCategory(value: string | string[] | undefined): CategoryFilter {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -72,14 +74,16 @@ export default async function ServicesPage({
   const t = adminT(locale);
   const removed = typeof params.removed === 'string' ? params.removed : null;
   const category = parseCategory(params.category);
-  const page = parsePage(params.page);
+  const pager = tablePager(params, '/admin/content/add-ons');
 
-  const addOns = await contentService.listAddOnsContent();
+  const [addOns, { hotel }] = await Promise.all([
+    contentService.listAddOnsContent(),
+    contentService.getHotelContent(),
+  ]);
   const topLevel = addOns.filter((addOn) => !addOn.parentId);
   // By service, not by row: an extra is offered inside its parent rather than
   // sold on its own, so it isn't a second thing "on sale" — matching what the
   // filter pills and the pager below already count.
-  const onSale = topLevel.filter((addOn) => addOn.enabled).length;
   const counts: Record<CategoryFilter, number> = {
     all: topLevel.length,
     service: topLevel.filter((addOn) => addOn.category === 'service').length,
@@ -92,8 +96,31 @@ export default async function ServicesPage({
   const visible = (category === 'all' ? topLevel : topLevel.filter((addOn) => addOn.category === category))
     .slice()
     .sort((a, b) => categories.indexOf(a.category) - categories.indexOf(b.category));
-  const { pageItems, page: currentPage, totalPages } = paginate(visible, page, SERVICES_PER_PAGE);
-  const rows = pageItems.flatMap((parent) => [parent, ...addOns.filter((child) => child.parentId === parent.id)]);
+  const { pageItems, page: currentPage, totalPages } = paginate(visible, pager.page, pager.pageSize);
+  // Extras belong to their parent service and are managed from that service's
+  // detail page. Keep the overview grid focused on the services themselves.
+  const rows = pageItems;
+  const onSaleItems = addOns.filter((addOn) => addOn.enabled && addOn.category === 'dining');
+  const menuItems: MenuPdfItem[] = onSaleItems
+    .filter((addOn) => !addOn.parentId)
+    .map((item) => ({
+      id: item.id,
+      category: item.category,
+      categoryLabel: lAddOnCategory(item.category, locale),
+      name: item.name,
+      description: item.description,
+      photo: item.photos?.[0]?.url ?? null,
+      price: lMoney(item.price, item.currency, locale),
+      unit: lPricingUnit(item.pricingUnit, locale),
+      extras: onSaleItems
+        .filter((extra) => extra.parentId === item.id)
+        .map((extra) => ({
+          name: extra.name,
+          description: extra.description,
+          price: lMoney(extra.price, extra.currency, locale),
+          unit: lPricingUnit(extra.pricingUnit, locale),
+        })),
+    }));
   // The removed name is set in bold inside the sentence, so the template is split around it.
   const [removedBefore, removedAfter] = t('addOns.removed').split('{name}');
 
@@ -102,10 +129,24 @@ export default async function ServicesPage({
       <AdminPageHeader
         title={t('nav.services')}
         actions={
-          <Link href="/admin/content/add-ons/new" className={pill('primary')}>
-            <PlusIcon className="size-4" aria-hidden="true" />
-            {t('addOns.add')}
-          </Link>
+          <>
+            <MenuPdfButton
+              hotelName={hotel.name}
+              items={menuItems}
+              copy={{
+                title: t('addOns.pdfTitle'),
+                subtitle: t('addOns.pdfSubtitle'),
+                extras: t('addOns.pdfExtras'),
+                page: t('addOns.pdfPage'),
+                qrPrompt: t('addOns.pdfQrPrompt'),
+              }}
+            />
+            <ScanProductButton />
+            <Link href="/admin/content/add-ons/new" className={pill('primary')}>
+              <PlusIcon className="size-4" aria-hidden="true" />
+              {t('addOns.add')}
+            </Link>
+          </>
         }
       />
 
@@ -124,8 +165,6 @@ export default async function ServicesPage({
         <p className="mt-6 text-sm text-muted-foreground">{t('addOns.empty')}</p>
       ) : (
         <>
-          <p className="mt-4 text-sm text-muted-foreground">{t('addOns.summary', { onSale, total: topLevel.length })}</p>
-
           <div className="mt-4">
             <FilterPills
               label={t('addOns.filterByCategory')}
@@ -156,22 +195,35 @@ export default async function ServicesPage({
               <tbody>
                 {rows.map((addOn) => {
                   const href = `/admin/content/add-ons/${addOn.id}`;
+                  const photo = addOn.photos?.[0]?.url ?? null;
+                  const ServiceIcon = !photo && !addOn.parentId && addOn.category === 'service' ? addOnIcon(addOn.name) : null;
+                  const hasVisual = Boolean(photo || ServiceIcon);
                   return (
                     <tr
                       key={addOn.id}
                       className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
                     >
-                      <Td className="align-middle">
+                      <Td className={cn(addOn.parentId && 'border-l-2 border-l-border/70')}>
                         {/* Stretched: the row opens the add-on's own page from anywhere
                             in it — the switch and row menu sit at a higher stacking level
                             so their own clicks still reach them. */}
                         <Link
                           href={href}
                           className={cn(
-                            'block hover:text-accent-strong before:absolute before:inset-0',
+                            'hover:text-accent-strong before:absolute before:inset-0',
+                            hasVisual ? 'flex items-center gap-2.5' : 'block',
                             addOn.parentId ? 'pl-4 sm:pl-6' : 'font-medium',
                           )}
                         >
+                          {photo ? (
+                            <img
+                              src={photo}
+                              alt=""
+                              className="size-11 shrink-0 rounded-xl object-cover"
+                            />
+                          ) : ServiceIcon ? (
+                            <ServiceIcon className="size-5 shrink-0 text-muted-foreground" weight="fill" aria-hidden="true" />
+                          ) : null}
                           {addOn.parentId ? (
                             <span className="text-muted-foreground" aria-hidden="true">
                               +{' '}
@@ -183,27 +235,27 @@ export default async function ServicesPage({
                             row carries its category under the name instead. An extra
                             never repeats it: it is already under its parent. */}
                         {addOn.parentId ? null : (
-                          <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">
+                          <span className={cn('mt-0.5 block text-xs text-muted-foreground sm:hidden', photo ? 'pl-[3.375rem]' : ServiceIcon ? 'pl-7' : null)}>
                             {lAddOnCategory(addOn.category, locale)}
                           </span>
                         )}
                       </Td>
-                      <Td className={cn(deskOnly, 'align-middle text-muted-foreground')}>
+                      <Td className={cn(deskOnly, 'text-muted-foreground')}>
                         {addOn.parentId ? null : lAddOnCategory(addOn.category, locale)}
                       </Td>
-                      <Td className="align-middle tabular-nums">
+                      <Td className="tabular-nums">
                         <span className="whitespace-nowrap">{lMoney(addOn.price, addOn.currency, locale)}</span>{' '}
                         <span className="block text-xs text-muted-foreground sm:inline sm:text-sm">
                           {lPricingUnit(addOn.pricingUnit, locale)}
                         </span>
                       </Td>
-                      <Td className="relative z-10 align-middle">
+                      <Td className="relative z-10">
                         {/* The 44px switch target sits on the row's text line, not below it. */}
                         <div className="-my-2.5">
                           <AddOnToggle addOnId={addOn.id} addOnName={addOn.name} enabled={addOn.enabled} action={setAddOnOnSaleAction} />
                         </div>
                       </Td>
-                      <Td className="relative z-10 align-middle text-right">
+                      <Td className="relative z-10 text-right">
                         <RowActions
                           id={addOn.id}
                           version={addOn.version}
@@ -230,7 +282,9 @@ export default async function ServicesPage({
               page={currentPage}
               totalPages={totalPages}
               total={visible.length}
-              hrefFor={(next) => hrefFor(category, next)}
+              pageSize={pager.pageSize}
+              hrefFor={pager.hrefFor}
+              pageSizeHrefFor={pager.pageSizeHrefFor}
             />
           </div>
         </>

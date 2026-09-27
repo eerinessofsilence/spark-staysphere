@@ -29,6 +29,7 @@ const SECTIONS: Array<{ title: AdminTranslationKey; rows: Array<[Cap[], AdminTra
     rows: [
       [[{ key: 'editor.kClick' }], 'editor.scPlace'],
       [['Enter'], 'editor.scClose'],
+      [[{ key: 'editor.kDoubleClick' }], 'editor.scClose'],
       [[{ key: 'editor.kClick' }], 'editor.scCloseFirst'],
       [['Esc'], 'editor.scCancel'],
     ],

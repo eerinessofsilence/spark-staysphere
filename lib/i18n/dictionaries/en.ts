@@ -165,8 +165,8 @@ export const en = {
   'room.atTheHotel': 'At the hotel',
   'room.includedAtNoExtraCost': 'Included at no extra cost.',
   'room.checkInCheckOut': 'Check-in & check-out',
-  'room.checkInFrom': 'From 3:00 PM',
-  'room.checkOutBy': 'By 11:00 AM',
+  'room.checkInFrom': 'From 12:00 PM',
+  'room.checkOutBy': 'By 12:00 PM',
   'room.lateCheckOutHint': 'Leaving later? Add a late check-out below to hold the room until 6:00 PM.',
   'room.cancellationExtra':
     'Cancel or change your dates any time before then and nothing is charged — no fee, no form to fill in beyond this page.',
@@ -417,6 +417,15 @@ export const en = {
   'error.somethingWrongBody': 'We could not load this part of the booking flow. Nothing was charged or reserved.',
   'error.tryAgain': 'Try again',
   'error.backToRooms': 'Back to rooms',
+  'chat.title': 'Message the hotel',
+  'chat.intro': 'Questions about your stay? Write here and reception replies in this thread.',
+  'chat.placeholder': 'Write to the hotel…',
+  'chat.send': 'Send',
+  'chat.sending': 'Sending…',
+  'chat.empty': 'No messages yet.',
+  'chat.hotel': 'Reception',
+  'chat.you': 'You',
+  'chat.error': 'The message could not be sent. Try again.',
 } as const;
 
 export type TranslationKey = keyof typeof en;

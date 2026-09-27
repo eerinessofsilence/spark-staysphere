@@ -52,7 +52,7 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
     <>
       <form action={saveInterestsAction}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
-        <div role="group" aria-label={t('welcome.title')} className="grid gap-2 sm:grid-cols-2">
+        <div role="group" aria-label={t('welcome.title')} className="grid gap-3 sm:grid-cols-2">
           {ADMIN_INTERESTS.map((interest) => {
             const Icon = ICONS[interest];
             const active = picked.has(interest);
@@ -60,7 +60,7 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
               <label
                 key={interest}
                 className={cn(
-                  'flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 transition-colors',
+                  'flex cursor-pointer items-start gap-3 rounded-[18px] border bg-card p-4 shadow-soft transition-colors focus-within:ring-2 focus-within:ring-primary',
                   active ? 'border-primary bg-stone' : 'border-border hover:bg-stone/60',
                 )}
               >
@@ -72,12 +72,12 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
                   onChange={() => toggle(interest)}
                   className="sr-only"
                 />
-                <span className={cn('grid size-9 shrink-0 place-items-center rounded-full', active ? 'bg-primary text-primary-foreground' : 'bg-stone text-foreground')}>
-                  {active ? <CheckIcon className="size-4" aria-hidden="true" /> : <Icon className="size-4" aria-hidden="true" />}
+                <span className={cn('mt-0.5 grid size-6 shrink-0 place-items-center', active ? 'text-primary' : 'text-foreground')}>
+                  {active ? <CheckIcon className="size-5" aria-hidden="true" /> : <Icon className="size-5" aria-hidden="true" />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium">{t(`interest.${interest}.title`)}</span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{t(`interest.${interest}.body`)}</span>
+                  <span className="block text-base font-semibold sm:text-lg">{t(`interest.${interest}.title`)}</span>
+                  <span className="mt-1 block text-xs leading-snug text-muted-foreground sm:text-sm">{t(`interest.${interest}.body`)}</span>
                 </span>
               </label>
             );

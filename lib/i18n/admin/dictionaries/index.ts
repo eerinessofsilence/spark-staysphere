@@ -3,6 +3,7 @@ import { account } from './account';
 import { assistant } from './assistant';
 import { auth } from './auth';
 import { catalog } from './catalog';
+import { communications } from './communications';
 import { content } from './content';
 import { dashboard } from './dashboard';
 import { frontDesk } from './frontDesk';
@@ -26,6 +27,7 @@ import { users } from './users';
  * - `operations` — reservations (list and detail), rates, accounting, and `components/admin/operations`
  * - `frontDesk` — the front desk and the channel manager, with `components/admin/front-desk`
  *   and `components/admin/channel-manager`
+ * - `communications` — the guest inbox (`/admin/communications`) and `components/admin/communications`
  * - `housekeeping` — the cleaning board and each room's own page, with `components/admin/housekeeping`
  * - `content` — the CMS's rooms and physical rooms, and the form components every CMS editor
  *   shares (`content-form`, `fields`, `delete-entity-button`, `row-actions`, media and photo editors)
@@ -47,6 +49,7 @@ function merge<L extends AdminLocale>(locale: L) {
     ...operations[locale],
     ...frontDesk[locale],
     ...housekeeping[locale],
+    ...communications[locale],
     ...content[locale],
     ...catalog[locale],
     ...spinner[locale],

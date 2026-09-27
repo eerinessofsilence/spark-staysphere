@@ -9,7 +9,7 @@ import { UploadDropzone } from "./upload-dropzone";
 import { useUploadBusy } from "./content-form";
 
 /** Decode locally, strip metadata and resize before sending one bounded file at a time. */
-async function preparePhoto(file: File): Promise<File> {
+export async function preparePhoto(file: File): Promise<File> {
   const bitmap = await createImageBitmap(file);
   try {
     const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));

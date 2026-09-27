@@ -50,6 +50,14 @@ result to the same `CatalogService`/`buildPriceBreakdown` path everything else u
 ("set the Deluxe Sea View rate to 320", "create a room type and a room for it", "open room rates")
 becomes a question when something is still needed, or a proposal the team member confirms before
 anything is written, through the same CMS mutators the forms use — TECH.md's "Admin assistant".
+The back office also has a guest inbox, `/admin/communications` (`lib/application/communications-service.ts`,
+D1 with the usual in-memory fallback): one thread per guest, channel and stay, with unread counts on
+the bell and the sidebar item. Guests write in from the chat on their confirmation page
+(`POST /api/conversations`, read back with `GET /api/conversations/:id?email=`) and, when a relay
+is wired up, by email through `POST /api/inbound/email` behind `INBOUND_EMAIL_SECRET`; desk replies
+on email, WhatsApp and SMS leave through the `OutboundMessenger` port, whose demo adapter only logs —
+see TECH.md's "Communications".
+
 The back office speaks English, German and Russian (`lib/i18n/admin`, picked on `/admin/account`,
 a cookie the server reads), separately from the guest site's own eight-language picker — TECH.md's
 "Languages".
@@ -127,7 +135,9 @@ Always write [Conventional Commits](https://www.conventionalcommits.org/) in the
     production PMS/channel-manager also becomes the owner of prices,
     rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
     enforce.
-12. Deployment: Cloudflare Workers via `npm run build` and `wrangler`.
+12. Deployment: Cloudflare Workers via `npm run build` and `npm run deploy`, or Vercel via
+    `npm run build:vercel` with Turso standing in for D1 and Vercel Blob for R2 — TECH.md's
+    "Hosting".
 13. CMS v2, if ever needed: file uploads to R2 for the general media library
     (`MediaStoragePort` is declared, not implemented — the spinner's own frames already upload to
     R2 through a separate, narrower port, step 9), saved brand settings, draft/versioned content,

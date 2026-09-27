@@ -62,6 +62,33 @@ persisted), an in-memory repository with deterministic date-aware availability, 
 implementations of every adapter port, and the `DemoControlPort` backing `/admin` (status
 overrides, add-on enablement, integration status rows).
 
+## Hosting
+
+Two hosts, one codebase. **Cloudflare Workers** is the native target: `npm run build` (vinext +
+`@cloudflare/vite-plugin`) and `npm run deploy` (`scripts/deploy.mjs`, which finds or creates the
+D1 database and R2 bucket and runs `wrangler deploy`). **Vercel** is the second: `npm run
+build:vercel` (`NITRO_PRESET=vercel vinext build`) swaps the Cloudflare plugin for Nitro's Vercel
+preset in `vite.config.ts` and writes Vercel's Build Output API into `.vercel/output` — one Node
+22 function (`__server`) plus the static assets. Vercel itself sets `VERCEL=1`, so a build it
+runs takes that branch without being told; `vercel.json` only names the build command.
+
+What differs between the two is exactly one module, `lib/infrastructure/cloudflare-env.ts`. It is
+the only importer of `cloudflare:workers`; on the Vercel build that import is aliased to
+`node-workers-shim.ts` (`env` = `process.env`), and the same accessors then hand back:
+
+- `getDemoDatabase()` — a **Turso** (libSQL) database behind D1's own `prepare/bind/all/first/
+  run/batch` shape (`libsql-d1.ts`), from `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. libSQL is
+  SQLite, so every `*-d1.ts` store runs unchanged, `changes()` guards and all; `libsql-d1.test.ts`
+  runs the real stores against an in-memory libSQL to prove it.
+- `getMediaBucket()` — **Vercel Blob** behind R2's `put/get/head/list/delete` (`blob-r2.ts`),
+  from `BLOB_READ_WRITE_TOKEN`. Keys are kept verbatim so `/media/<key>` keeps working; R2's
+  custom metadata (a photo's filename and pixel size) rides in a `<key>.meta.json` sidecar.
+
+Without those variables the Vercel build still runs, on the in-memory fallbacks — which on a
+serverless host means nothing survives between invocations, so they are not optional there.
+Secrets (`ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `OPENAI_API_KEY`, `INBOUND_EMAIL_SECRET`) are
+plain environment variables on both hosts.
+
 ## Persistence
 
 Bookings (and the room a guest chose, in `booking_units`), payment attempts, room-status overrides,
@@ -371,6 +398,39 @@ comes back as an ordinary `ContentError`/form failure (`{ kind: 'forbidden', mes
 shape as a validation or a rule error, not a thrown exception a page has to recover from. Still
 ahead: real per-member *accounts* — the gate checks which role is signed in, but every role still
 signs in with the one shared password, so who is actually behind it is on trust.
+
+### Communications
+
+`/admin/communications` is the desk's inbox: every guest thread of the selected hotel in one list
+(search, and filters for unread and each channel), the open thread beside it, and a reply box.
+`CommunicationsService` (`lib/application/communications-service.ts`) owns the rules — a thread is
+one guest on one channel about one stay, a reply is trimmed and bounded, opening a thread is what
+clears its unread count — over a `MessagingStore` port (`lib/domain/ports.ts`) that is D1
+(`conversations`, `conversation_messages`) with the same in-memory fallback as everything else.
+Unread threads reach the desk two ways without a socket: the bell's "Messages" section and a count on
+the Communications sidebar item, both read server side on every admin render (`app/admin/layout.tsx`).
+A hotel whose inbox is empty gets five demo threads written from its own bookings the first time the
+list is opened, so the screen is never blank; they are ordinary rows afterwards.
+
+How messages get in and out:
+
+- **Site chat.** The confirmation page (`/booking/[reference]`) carries `GuestChat`
+  (`components/booking/guest-chat.tsx`). Sending posts to `POST /api/conversations`
+  (`{ reference, name, email, body }`); the reference is honoured only when it belongs to that
+  email, the same rule as the booking lookup. The guest sees replies by polling
+  `GET /api/conversations/:id?email=…` every eight seconds while the page is open; reading never
+  marks anything seen — only the desk opening the thread does.
+- **Email in.** `POST /api/inbound/email` takes what an inbound-mail relay hands over
+  (`{ from: { email, name }, subject, text, reference? }`) and files it as an email-channel thread.
+  It is closed unless the caller presents `INBOUND_EMAIL_SECRET` in `x-inbound-secret`, and closed
+  entirely while that secret is unset. Wiring it up means pointing Cloudflare Email Routing (an
+  `email()` Worker that parses the message and calls this route) or a provider's inbound-parse
+  webhook at it; neither is part of the demo.
+- **Replies out.** A desk reply on email, WhatsApp or SMS goes through the `OutboundMessenger` port.
+  The demo adapter (`lib/infrastructure/logging-outbound-messenger.ts`) logs the message and delivers
+  nothing — the reply is still in the thread — and a production one is a provider adapter (Resend or
+  MailChannels for mail, Twilio or the WhatsApp Cloud API for the rest) behind the same shape. Site-chat
+  replies need no carrier: the guest's page reads them.
 
 ### Languages
 

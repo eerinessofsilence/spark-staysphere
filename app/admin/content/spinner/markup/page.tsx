@@ -59,7 +59,6 @@ export default async function SpinnerMarkupPage({
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.orbit'), href: '/admin/content/spinner' }]}
         title={t('markup.title')}
-        description={t('markup.description')}
         actions={
           <Link href="/admin/content/spinner/frames" className={pill('secondary')}>
             {t('orbit.framesLink')}

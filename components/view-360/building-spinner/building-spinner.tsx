@@ -6,7 +6,7 @@ import { coverRect, type Point } from '@/components/site/cover-fit';
 import { Modal } from '@/components/site/modal';
 import { useAnchoredCard, useMarkerAnchor } from '@/components/site/use-anchored-card';
 import { useElementSize } from '@/components/site/use-element-size';
-import { PHONE_QUERY, useMediaQuery } from '@/components/site/use-media-query';
+import { useMediaQuery } from '@/components/site/use-media-query';
 import type { GuestSpinnerZone } from '@/lib/application/catalog-service';
 import { withStayQuery } from '@/lib/application/search-params';
 import type { BuildingSpinnerData, SpinnerHotspot } from '@/lib/domain/schemas';
@@ -75,9 +75,10 @@ export function BuildingSpinner({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const markerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
   const stage = useElementSize(stageRef);
-  // Below `sm` a storey opens the product's own sheet instead of a card
-  // floating on the stage — the same swap `HotelScene` makes for its markers.
-  const isPhone = useMediaQuery(PHONE_QUERY);
+  // A floating card over the spinner is only readable once a viewport has a
+  // genuine desktop's spare width. Phones and tablets use the same bottom
+  // sheet, rather than obscuring the rooms a guest is choosing between.
+  const isCompactStage = useMediaQuery('(max-width: 1023px)');
   const [activeHotspot, setActiveHotspot] = React.useState<string | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = React.useState<string | null>(null);
 
@@ -166,7 +167,7 @@ export function BuildingSpinner({
   );
 
   const card =
-    shown && !isPhone ? (
+    shown && !isCompactStage ? (
       <SpinnerRoomCard
         hotspot={shown}
         facts={factsFor(shown)}
@@ -179,9 +180,10 @@ export function BuildingSpinner({
 
   const sheet = (
     <Modal
-      open={Boolean(activeHotspot) && isPhone}
+      open={Boolean(activeHotspot) && isCompactStage}
       onClose={() => setActiveHotspot(null)}
       title={(shown && factsFor(shown)?.name) ?? shown?.label ?? ''}
+      sheet
     >
       {shown ? (
         <SpinnerRoomSheetBody hotspot={shown} facts={factsFor(shown)} href={withStayQuery(shown.href, stayQuery)} />

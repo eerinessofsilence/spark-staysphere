@@ -144,6 +144,14 @@ export async function requireAdminSession(): Promise<AdminSession> {
   return session;
 }
 
+/** Session-only back-office operations still exclude the tablet-only role. */
+export async function requireBackOfficeSession(): Promise<AdminSession> {
+  const session = await requireAdminSession();
+  const member = await teamService.findMemberById(session.memberId);
+  if (!member || member.role === 'Housekeeper') throw new AdminPermissionError();
+  return session;
+}
+
 /**
  * `requireAdminSession`, plus the signed-in member's role must be listed for
  * `key` — see `team-directory.ts`'s own doc comment on `hasPermission`.
@@ -157,8 +165,9 @@ export async function requirePermission(key: TeamPermissionKey): Promise<AdminSe
 
 export async function writeAdminSession(session: AdminSession): Promise<void> {
   const store = await cookies();
+  store.set(ADMIN_SESSION_COOKIE, '', { path: '/admin', httpOnly: true, sameSite: 'lax', maxAge: 0 });
   store.set(ADMIN_SESSION_COOKIE, await encodeSession(session), {
-    path: '/admin',
+    path: '/',
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -169,6 +178,7 @@ export async function writeAdminSession(session: AdminSession): Promise<void> {
 export async function clearAdminSession(): Promise<void> {
   const store = await cookies();
   store.set(ADMIN_SESSION_COOKIE, '', { path: '/admin', httpOnly: true, sameSite: 'lax', maxAge: 0 });
+  store.set(ADMIN_SESSION_COOKIE, '', { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 0 });
 }
 
 /**
@@ -186,7 +196,7 @@ export async function signIn(email: string, password: string): Promise<AdminSess
   const session: AdminSession = {
     memberId: member.id,
     interests: [],
-    onboarded: false,
+    onboarded: member.role === 'Housekeeper',
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
   await writeAdminSession(session);

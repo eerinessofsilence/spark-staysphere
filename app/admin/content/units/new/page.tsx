@@ -37,7 +37,6 @@ export default async function NewPhysicalRoomPage({
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.rooms'), href: '/admin/content/units' }]}
         title={t('units.newRoom')}
-        description={t('units.newDescription')}
       />
 
       <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

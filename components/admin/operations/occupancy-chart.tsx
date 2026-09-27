@@ -8,6 +8,7 @@ import type { AdminT } from '@/lib/i18n/admin/translate';
 import { DATE_FNS_LOCALES, lDateShort, lNights, lRoomCount } from '@/lib/i18n/format';
 import type { Locale } from '@/lib/i18n/locale';
 import { cn } from '@/lib/utils';
+import styles from './chart-gradients.module.css';
 
 const ticks = [0, 25, 50, 75, 100];
 
@@ -40,7 +41,7 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
   const lift = shown ? Math.min(share(shown.occupied, totalRooms), 70) : 0;
 
   return (
-    <figure className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
+    <figure className={cn('min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6', styles.palette)}>
       <figcaption>
         <h3 className="font-medium">{t('occupancy.title', { nights: lNights(days.length, locale) })}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{t('occupancy.body', { rooms: lRoomCount(totalRooms, locale) })}</p>
@@ -85,7 +86,7 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
                       <span
                         className={cn(
                           'relative block w-full max-w-6 rounded-t-[4px] transition-opacity duration-150',
-                          tonight ? 'bg-accent' : 'bg-tint-stone-ink',
+                          tonight ? styles.bar : styles.neutralBar,
                           active !== null && active !== index && 'opacity-50',
                         )}
                         style={{ height: `${Math.max(value, 1)}%` }}

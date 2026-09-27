@@ -46,6 +46,7 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
   try {
     const session = await signIn(parsed.data.email, parsed.data.password);
     if (!session) return { error: 'failed' };
+    if (session.onboarded) redirect('/housekeeper');
   } finally {
     endRequest(clientKey);
   }

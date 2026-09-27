@@ -50,6 +50,16 @@ export function AddOnFields({
 
   return (
     <div className="grid gap-6">
+      <div role="group" aria-labelledby="addon-photos-heading">
+        <h2 id="addon-photos-heading" className="text-base font-medium">
+          {t('addOn.photos')}
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t('addOn.photosHint')}</p>
+        <div className="mt-4">
+          <PhotoListEditor name="photos" initial={initial.photos} assets={assets} />
+        </div>
+      </div>
+
       <div role="group" aria-labelledby="addon-details-heading">
         <h2 id="addon-details-heading" className="text-base font-medium">
           {t('addOn.details')}
@@ -110,15 +120,6 @@ export function AddOnFields({
         ) : null}
       </div>
 
-      <div role="group" aria-labelledby="addon-photos-heading">
-        <h2 id="addon-photos-heading" className="text-base font-medium">
-          {t('addOn.photos')}
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">{t('addOn.photosHint')}</p>
-        <div className="mt-4">
-          <PhotoListEditor name="photos" initial={initial.photos} assets={assets} />
-        </div>
-      </div>
     </div>
   );
 }

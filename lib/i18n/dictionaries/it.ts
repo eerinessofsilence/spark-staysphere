@@ -150,8 +150,8 @@ export const it: Record<TranslationKey, string> = {
   'room.atTheHotel': "In hotel",
   'room.includedAtNoExtraCost': 'Incluso senza costi aggiuntivi.',
   'room.checkInCheckOut': 'Check-in e check-out',
-  'room.checkInFrom': 'Dalle 15:00',
-  'room.checkOutBy': 'Entro le 11:00',
+  'room.checkInFrom': 'Dalle 12:00',
+  'room.checkOutBy': 'Entro le 12:00',
   'room.lateCheckOutHint':
     'Parti più tardi? Aggiungi un check-out posticipato qui sotto per tenere la camera fino alle 18:00.',
   'room.cancellationExtra':
@@ -399,4 +399,13 @@ export const it: Record<TranslationKey, string> = {
   'error.somethingWrongBody': 'Impossibile caricare questa parte del percorso di prenotazione. Nulla è stato addebitato o prenotato.',
   'error.tryAgain': 'Riprova',
   'error.backToRooms': 'Torna alle camere',
+  'chat.title': 'Scrivi all’hotel',
+  'chat.intro': 'Domande sul soggiorno? Scrivi qui, la reception risponde in questa conversazione.',
+  'chat.placeholder': 'Scrivi all’hotel…',
+  'chat.send': 'Invia',
+  'chat.sending': 'Invio…',
+  'chat.empty': 'Ancora nessun messaggio.',
+  'chat.hotel': 'Reception',
+  'chat.you': 'Tu',
+  'chat.error': 'Impossibile inviare il messaggio. Riprova.',
 };

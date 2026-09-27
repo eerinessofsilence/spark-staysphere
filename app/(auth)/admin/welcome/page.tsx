@@ -17,17 +17,18 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
   if (!session) redirect('/admin/sign-in');
   const member = await teamService.findMemberById(session.memberId);
   if (!member) redirect('/admin/sign-in');
+  if (member.role === 'Housekeeper') redirect('/housekeeper');
 
   const t = await getAdminT();
   const rawNext = (await searchParams).next;
   const next = typeof rawNext === 'string' && rawNext.startsWith('/admin') ? rawNext : null;
 
   return (
-    <div className="rounded-[18px] bg-card p-6 shadow-soft sm:p-8">
+    <div className="w-full px-1 py-2 sm:px-4 sm:py-4">
       <StepHeader step={2} />
-      <p className="mt-6 text-sm text-muted-foreground">{t('welcome.hello', { name: member.name.split(' ')[0] ?? member.name })}</p>
+      <p className="mt-5 text-base text-muted-foreground">{t('welcome.hello', { name: member.name.split(' ')[0] ?? member.name })}</p>
       <h1 className="text-display mt-1 text-3xl">{t('welcome.title')}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{t('welcome.body')}</p>
+      <p className="mt-2 text-base text-muted-foreground">{t('welcome.body')}</p>
       <div className="mt-6">
         <InterestsForm initial={session.interests} next={next} />
       </div>

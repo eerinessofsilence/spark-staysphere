@@ -15,5 +15,7 @@ declare namespace Cloudflare {
     ADMIN_PASSWORD?: string;
     /** Signs the back-office session cookie. Unset, a fixed development secret applies — set it for anything reachable from outside. */
     ADMIN_SESSION_SECRET?: string;
+    /** Shared secret an inbound-email webhook must present (`x-inbound-secret`) before `POST /api/inbound/email` files a guest's mail — see lib/infrastructure/cloudflare-env.ts#getInboundEmailSecret. */
+    INBOUND_EMAIL_SECRET?: string;
   }
 }

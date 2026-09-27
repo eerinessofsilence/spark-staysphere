@@ -6,10 +6,11 @@ import { folderLabel, labelFromFilename, mediaTypeOf } from '@/lib/domain/media'
 import { Modal } from '@/components/site/modal';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { pluralForm } from '@/lib/i18n/plural';
-import { fieldClass, tag, pill } from '@/lib/ui';
+import { tag, pill } from '@/lib/ui';
 import { CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { cn } from '@/lib/utils';
 import { Select } from './fields';
+import { SearchInput } from '@/components/ui/search-input';
 
 interface MediaPickerProps {
   open: boolean;
@@ -73,13 +74,12 @@ export function MediaPicker({ open, onClose, assets, onPick, onPickMany, maxSele
         <label htmlFor="media-picker-search" className="sr-only">
           {t('media.search')}
         </label>
-        <input
+        <SearchInput
           id="media-picker-search"
-          type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t('media.searchPlaceholder')}
-          className={fieldClass}
+          wrapperClassName="min-w-0"
         />
         <label htmlFor="media-picker-folder" className="sr-only">
           {t('media.folder')}

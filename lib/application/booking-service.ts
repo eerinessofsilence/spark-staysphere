@@ -121,6 +121,7 @@ export class BookingService {
     private readonly crm?: CrmAdapter,
     private readonly pms?: PmsAdapter,
     private readonly clock: Clock = systemClock,
+    private readonly afterCheckout?: (booking: Booking) => Promise<void>,
   ) {}
 
   /**
@@ -302,6 +303,9 @@ export class BookingService {
     if (booking.status === 'cancelled') return { outcome: 'booking_cancelled', booking };
     if (!canTransitionStay(booking.stayState, state)) return { outcome: 'not_allowed', booking };
     const updated = await this.repository.setBookingStayState(booking.reference, state);
+    if (updated && state === 'checked_out') {
+      try { await this.afterCheckout?.(updated); } catch { /* The persisted checkout is retried by the document worker. */ }
+    }
     return updated ? { outcome: 'updated', booking: updated } : { outcome: 'not_found' };
   }
 

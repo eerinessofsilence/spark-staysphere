@@ -1,5 +1,7 @@
 'use client';
 
+import type * as React from 'react';
+
 import { CheckCircle, Clock, SignIn, SignOut, UserMinus, XCircle } from '@phosphor-icons/react/dist/ssr';
 import type { Booking, StayState } from '@/lib/domain/schemas';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
@@ -43,10 +45,13 @@ export function BookingStatusBadge({
   status,
   stayState,
   className,
+  trailing,
 }: {
   status: Booking['status'];
   stayState?: StayState;
   className?: string;
+  /** Drawn inside the pill after the words — the chevron of a badge that is also a menu. */
+  trailing?: React.ReactNode;
 }) {
   const locale = useAdminLocale();
   const t = useAdminT();
@@ -62,6 +67,7 @@ export function BookingStatusBadge({
     >
       <Icon weight="fill" className="size-4 shrink-0" aria-hidden="true" />
       {stay ? t(stayStateKey(stay)) : lBookingStatus(status, locale)}
+      {trailing}
     </span>
   );
 }

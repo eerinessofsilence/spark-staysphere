@@ -61,7 +61,7 @@ export function HousekeepingStatusMenu({
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-[60] outline-none">
           <Menu.Popup className="min-w-52 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
-            {HOUSEKEEPING_STATUSES.filter((option) => option !== status).map((option) => {
+            {HOUSEKEEPING_STATUSES.filter((option) => option !== status && option !== 'clean').map((option) => {
               const Icon = housekeepingStatusIcons[option];
               return (
                 <Menu.Item key={option} onClick={() => move(option)} className={cn(menuItemClass)}>

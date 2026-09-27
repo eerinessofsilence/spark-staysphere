@@ -27,7 +27,6 @@ export default async function NewAddOnPage() {
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.services'), href: '/admin/content/add-ons' }]}
         title={t('addOn.newTitle')}
-        description={t('addOn.newDescription')}
       />
 
       <div className="mt-8 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

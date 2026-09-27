@@ -29,6 +29,7 @@ export function StayStateMenu({
   canCancel,
   cancelBlockedReason,
   onChanged,
+  size = 'default',
 }: {
   reference: string;
   status: Booking['status'];
@@ -37,6 +38,13 @@ export function StayStateMenu({
   cancelBlockedReason?: string;
   /** The new state once the server has it — so a card holding its own copy of the stay can follow. */
   onChanged?: (state: StayState) => void;
+  /**
+   * `large` is the booking page's own: the status as a full-height button,
+   * as prominent as the page's other actions, because moving a stay is the
+   * one thing the desk opens that page to do. The default is the badge with
+   * a chevron the lists use.
+   */
+  size?: 'default' | 'large';
 }) {
   const router = useRouter();
   const t = useAdminT();
@@ -44,7 +52,8 @@ export function StayStateMenu({
   const [confirmingCancel, setConfirmingCancel] = React.useState(false);
   const closeCancel = React.useCallback(() => setConfirmingCancel(false), []);
 
-  if (status === 'cancelled') return <BookingStatusBadge status={status} />;
+  if (status === 'cancelled') return <BookingStatusBadge status={status} className={size === 'large' ? 'min-h-11 px-5 text-sm' : undefined} />;
+  const large = size === 'large';
 
   const move = async (state: StayState) => {
     setPending(true);
@@ -65,14 +74,20 @@ export function StayStateMenu({
         <Menu.Trigger
           disabled={pending}
           aria-label={t('stay.change')}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60"
+          className="inline-flex cursor-pointer items-center rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60"
         >
-          <BookingStatusBadge status={status} stayState={stayState} className="pr-2" />
-          {pending ? (
-            <ArrowPathIcon className="-ml-1 mr-2 size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
-          ) : (
-            <ChevronDownIcon className="-ml-1 mr-2 size-3.5 text-muted-foreground" aria-hidden="true" />
-          )}
+          <BookingStatusBadge
+            status={status}
+            stayState={stayState}
+            className={large ? 'min-h-11 gap-2 px-5 text-sm shadow-soft' : undefined}
+            trailing={
+              pending ? (
+                <ArrowPathIcon className={cn('animate-spin opacity-70', large ? 'size-4' : 'size-3.5')} aria-hidden="true" />
+              ) : (
+                <ChevronDownIcon className={cn('opacity-70', large ? 'size-4' : 'size-3.5')} aria-hidden="true" />
+              )
+            }
+          />
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-[60] outline-none">

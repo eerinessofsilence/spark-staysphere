@@ -14,6 +14,13 @@ import type {
   FrontDeskSegment,
 } from '@/lib/application/inventory-service';
 import { addIsoDays } from '@/lib/domain/dates';
+import {
+  dayProgress,
+  isEarlyCheckIn,
+  isLateCheckOut,
+  STANDARD_CHECK_IN_TIME,
+  STANDARD_CHECK_OUT_TIME,
+} from '@/lib/domain/stay-times';
 import type { PaymentMethod, StayState } from '@/lib/domain/schemas';
 import { nightsBetween } from '@/lib/domain/pricing';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
@@ -83,6 +90,14 @@ function segmentLabel(
     guest: segment.guestName,
     room,
     dates: lDateRange(segment.checkIn, segment.checkOut, locale),
+    timing: t('frontDesk.stayTiming', {
+      arrival: isEarlyCheckIn(segment.checkInTime)
+        ? t('frontDesk.earlyCheckInAt', { time: segment.checkInTime })
+        : t('frontDesk.arrivalAt', { time: segment.checkInTime }),
+      departure: isLateCheckOut(segment.checkOutTime)
+        ? t('frontDesk.lateCheckOutAt', { time: segment.checkOutTime })
+        : t('frontDesk.departureAt', { time: segment.checkOutTime }),
+    }),
   };
   if (segment.kind === 'demand') return t('frontDesk.demandLabel', stay);
   return t('frontDesk.bookingLabel', {
@@ -366,21 +381,20 @@ function SegmentBar({
   label,
   closedText,
   today,
+  shownDays,
   onSelect,
 }: {
   segment: FrontDeskSegment;
   label: string;
   closedText: string;
   today: string;
+  shownDays: number;
   onSelect: () => void;
 }) {
-  const style: React.CSSProperties = {
-    gridColumn: `${segment.start + 2} / span ${segment.span}`,
-    gridRow: 1,
-  };
+  const style = segmentTapeStyle(segment, shownDays);
 
   const base =
-    'relative z-10 mx-0.5 flex h-9 min-w-0 cursor-pointer items-center gap-1 self-center overflow-hidden rounded-full px-2.5 text-left text-xs font-medium transition-[filter] hover:brightness-95';
+    'relative z-10 mx-0.5 flex h-9 min-w-0 cursor-pointer items-center gap-1 self-center overflow-hidden rounded-full px-2.5 text-left text-xs font-medium ring-1 ring-card transition-[filter] hover:brightness-95';
 
   if (segment.kind === 'closed') {
     return (
@@ -417,8 +431,8 @@ function SegmentBar({
       className={cn(
         base,
         stayStatusMeta[status].className,
-        continuesBefore && 'ml-0 rounded-l-none',
-        continuesAfter && 'mr-0 rounded-r-none',
+        continuesBefore && 'rounded-l-none',
+        continuesAfter && 'rounded-r-none',
       )}
     >
       {segment.kind === 'booking' && segment.chosenByGuest ? (
@@ -427,6 +441,37 @@ function SegmentBar({
       <span className="truncate">{segment.span >= 2 ? lastName : initials}</span>
     </button>
   );
+}
+
+/**
+ * The board's columns are nights, but a reservation itself starts and ends
+ * within calendar days. Extend a tape into its check-out date and trim its
+ * two ends by their actual hotel-local times. This leaves a visible handover
+ * gap between a noon departure and a noon arrival instead of implying that a
+ * room is occupied for every hour of both dates.
+ */
+function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number): React.CSSProperties {
+  const startColumn = segment.start + 2;
+  const endColumn = Math.min(segment.start + segment.span + 1, shownDays) + 2;
+  const visibleDays = endColumn - startColumn;
+  const continuesBefore = segment.kind === 'booking' && segment.continuesBefore;
+  const continuesAfter = segment.kind === 'booking' && segment.continuesAfter;
+  const departureIsVisible = segment.start + segment.span < shownDays && !continuesAfter;
+  // A closed-to-sale night is held on exactly the same noon-to-noon hotel
+  // day as a stay. Otherwise a full-cell hatch covers the departure half of
+  // the preceding reservation and looks like a collision rather than a clean
+  // handover.
+  const checkInTime = segment.kind === 'closed' ? STANDARD_CHECK_IN_TIME : segment.checkInTime;
+  const checkOutTime = segment.kind === 'closed' ? STANDARD_CHECK_OUT_TIME : segment.checkOutTime;
+  const arrivalTrim = continuesBefore ? 0 : dayProgress(checkInTime);
+  const departureTrim = departureIsVisible ? 1 - dayProgress(checkOutTime) : 0;
+
+  return {
+    gridColumn: `${startColumn} / ${endColumn}`,
+    gridRow: 1,
+    marginInlineStart: arrivalTrim ? `calc((100% / ${visibleDays}) * ${arrivalTrim})` : undefined,
+    marginInlineEnd: departureTrim ? `calc((100% / ${visibleDays}) * ${departureTrim})` : undefined,
+  };
 }
 
 /**
@@ -561,6 +606,7 @@ function RoomRow({
           label={segmentLabel(segment, dates, room.number, today, t, locale)}
           closedText={t('frontDesk.closed')}
           today={today}
+          shownDays={dates.length}
           onSelect={() => onSelectSegment(segment)}
         />
       ))}
@@ -792,10 +838,12 @@ function CreateBookingForm({
 }) {
   const nights = nightsBetween(draft.checkIn, draft.checkOut);
   const [party, setParty] = React.useState<GuestParty>(emptyGuestParty);
+  const [requestId] = React.useState(() => crypto.randomUUID());
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('pay_at_hotel');
   const [quote, setQuote] = React.useState<FrontDeskQuoteResult | null>(null);
   const [quoting, setQuoting] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
+  const [createdReference, setCreatedReference] = React.useState<string>();
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string[]>>({});
   const [error, setError] = React.useState('');
 
@@ -825,7 +873,11 @@ function CreateBookingForm({
     setError('');
     setFieldErrors({});
     const { firstName, lastName, email, phone, adults, children } = party;
+    const documentUpload = new FormData();
+    if (party.document) documentUpload.set('photo', party.document.photo);
     const result = await createFrontDeskBookingAction({
+      requestId,
+      identity: party.document?.identity,
       roomSlug: draft.roomSlug,
       unitNumber: draft.roomNumber,
       checkIn: draft.checkIn,
@@ -834,18 +886,20 @@ function CreateBookingForm({
       children,
       guest: { firstName, lastName, email, phone },
       paymentMethod,
-    });
+    }, documentUpload).catch(() => ({ ok: false as const, message: 'Booking request failed. Please retry.', fieldErrors: {} }));
     setSubmitting(false);
     if (result.ok) {
       onCreated(result.message);
       return;
     }
     setError(result.message);
+    if ('createdReference' in result) setCreatedReference(result.createdReference);
     setFieldErrors(result.fieldErrors ?? {});
   }
 
   return (
     <form onSubmit={submit}>
+      <div inert={submitting || Boolean(createdReference)}>
       <p className="text-display text-2xl tabular-nums">{lRoomNumber(draft.roomNumber, locale)}</p>
       <p className="mt-0.5 text-sm text-muted-foreground">
         {t('frontDesk.newBookingBody', {
@@ -864,6 +918,7 @@ function CreateBookingForm({
 
       <PriceFooter t={t} locale={locale} quoting={quoting} quote={quote} paymentMethod={paymentMethod} />
 
+      </div>
       {error ? (
         <p role="alert" className="mt-3 text-sm font-medium text-danger">
           {error}
@@ -871,8 +926,8 @@ function CreateBookingForm({
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button type="submit" disabled={submitting || quoting || quote?.ok !== true} className={pill('primary')}>
-          {submitting ? t('frontDesk.creatingBooking') : t('frontDesk.createBooking')}
+        <button type="submit" disabled={submitting || (!createdReference && (quoting || quote?.ok !== true))} className={pill('primary')}>
+          {submitting ? t('frontDesk.creatingBooking') : createdReference ? 'Retry document upload' : t('frontDesk.createBooking')}
         </button>
         <button type="button" onClick={onCancel} className={pill('secondary')}>
           {t('frontDesk.cancel')}

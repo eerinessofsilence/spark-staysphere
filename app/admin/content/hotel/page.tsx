@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { PhotoField } from '@/components/admin/content/photo-field';
-import { ArrowTopRightOnSquareIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { contentService } from '@/lib/application/container';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { FacilitiesEditor } from '@/components/admin/content/facilities-editor';
@@ -31,13 +29,6 @@ export default async function HotelContentPage() {
     getAdminLocale(),
   ]);
   const t = adminT(locale);
-  const points = (count: number) =>
-    pluralForm(locale, count, {
-      one: t('hotel.pointsOne', { count }),
-      few: t('hotel.pointsFew', { count }),
-      many: t('hotel.pointsMany', { count }),
-      other: t('hotel.pointsMany', { count }),
-    });
 
   return (
     <AdminPage width="narrow">
@@ -120,133 +111,6 @@ export default async function HotelContentPage() {
                     <p className="mt-8 text-xs text-muted-foreground">
                       {t('hotel.onboardingNote', { timezone: hotel.timezone })}
                     </p>
-                  </div>
-                ),
-              },
-              {
-                value: 'photos',
-                label: t('hotel.tabPhotos'),
-                content: (
-                  <div className="grid gap-6">
-                    {hotel.areas.map((area) => (
-                      <div
-                        key={area.id}
-                        role="group"
-                        aria-labelledby={`area-${area.id}-heading`}
-                        className={`${card} grid gap-5`}
-                      >
-                        <div>
-                          <PhotoField name={`areas.${area.id}.photoUrl`} initial={area.photo.url} assets={assets} />
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {t('hotel.pointsHint', { points: points(area.hotspots.length) })}
-                          </p>
-                        </div>
-
-                        <div className="min-w-0">
-                          <h3 id={`area-${area.id}-heading`} className="text-base font-medium">
-                            {area.name}
-                          </h3>
-                          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                            <Field id={`area-${area.id}-name`} name={`areas.${area.id}.name`} label={t('hotel.name')}>
-                              <TextInput
-                                id={`area-${area.id}-name`}
-                                name={`areas.${area.id}.name`}
-                                defaultValue={area.name}
-                                required
-                              />
-                            </Field>
-                            <Field
-                              id={`area-${area.id}-photoAlt`}
-                              name={`areas.${area.id}.photoAlt`}
-                              label={t('hotel.photoAlt')}
-                            >
-                              <TextInput
-                                id={`area-${area.id}-photoAlt`}
-                                name={`areas.${area.id}.photoAlt`}
-                                defaultValue={area.photo.alt}
-                                required
-                              />
-                            </Field>
-                          </div>
-                          <div className="mt-4">
-                            <Field
-                              id={`area-${area.id}-description`}
-                              name={`areas.${area.id}.description`}
-                              label={t('hotel.description')}
-                              hint={t('hotel.plainText')}
-                            >
-                              <TextArea
-                                id={`area-${area.id}-description`}
-                                name={`areas.${area.id}.description`}
-                                defaultValue={area.description}
-                                required
-                              />
-                            </Field>
-                          </div>
-
-                          {area.hotspots.length > 0 ? (
-                            <div className="mt-6 grid gap-3 border-t border-border pt-6">
-                              <h4 className="text-sm font-medium">{t('hotel.pointsOnPhoto')}</h4>
-                              {area.hotspots.map((hotspot) => {
-                                const path = `areas.${area.id}.hotspots.${hotspot.id}`;
-                                return (
-                                  <details key={hotspot.id} className="group rounded-2xl border border-border">
-                                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                                      <span id={`hotspot-${hotspot.id}-heading`}>{hotspot.label}</span>
-                                      <ChevronDownIcon
-                                        className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
-                                        aria-hidden="true"
-                                      />
-                                    </summary>
-                                    <div
-                                      role="group"
-                                      aria-labelledby={`hotspot-${hotspot.id}-heading`}
-                                      className="grid gap-3 px-4 pb-4"
-                                    >
-                                      <div className="grid gap-3 sm:grid-cols-2">
-                                        <Field id={`hotspot-${hotspot.id}-label`} name={`${path}.label`} label={t('hotel.label')}>
-                                          <TextInput
-                                            id={`hotspot-${hotspot.id}-label`}
-                                            name={`${path}.label`}
-                                            defaultValue={hotspot.label}
-                                            required
-                                          />
-                                        </Field>
-                                        <Field id={`hotspot-${hotspot.id}-cta`} name={`${path}.cta`} label={t('hotel.buttonText')}>
-                                          <TextInput
-                                            id={`hotspot-${hotspot.id}-cta`}
-                                            name={`${path}.cta`}
-                                            defaultValue={hotspot.cta}
-                                            required
-                                          />
-                                        </Field>
-                                      </div>
-                                      <Field
-                                        id={`hotspot-${hotspot.id}-description`}
-                                        name={`${path}.description`}
-                                        label={t('hotel.description')}
-                                      >
-                                        <TextArea
-                                          id={`hotspot-${hotspot.id}-description`}
-                                          name={`${path}.description`}
-                                          defaultValue={hotspot.description}
-                                          required
-                                        />
-                                      </Field>
-                                      {hotspot.roomSlug ? (
-                                        <p className="text-xs text-muted-foreground">
-                                          {t('hotel.buttonOpens', { path: `/rooms/${hotspot.roomSlug}` })}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  </details>
-                                );
-                              })}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 ),
               },

@@ -20,7 +20,6 @@ export default async function SpinnerFramesPage() {
       <AdminPageHeader
         breadcrumbs={[{ label: t('nav.content') }, { label: t('nav.orbit'), href: '/admin/content/spinner' }]}
         title={t('frames.title')}
-        description={t('frames.description')}
       />
 
       {!content ? (

@@ -16,8 +16,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Signing in…',
     'signIn.failed': "That email and password don't match.",
     'signIn.tooMany': 'Too many attempts — give it a minute.',
-    'signIn.demoHint': 'Any team member signs in with the password {password}, for example {email}.',
-    'signIn.guestSite': 'Back to the guest site',
+    'signIn.forgotPassword': 'Forgot password?',
 
     'signIn.quote1': "I can see who's arriving and who's leaving before I've had my coffee.",
     'signIn.quote2': 'Changing a rate takes ten seconds, and I see the effect right away.',
@@ -64,8 +63,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Anmeldung läuft …',
     'signIn.failed': 'E-Mail und Passwort passen nicht zusammen.',
     'signIn.tooMany': 'Zu viele Versuche – warten Sie eine Minute.',
-    'signIn.demoHint': 'Jedes Teammitglied meldet sich mit dem Passwort {password} an, zum Beispiel {email}.',
-    'signIn.guestSite': 'Zurück zur Gästeseite',
+    'signIn.forgotPassword': 'Passwort vergessen?',
 
     'signIn.quote1': 'Ich sehe, wer ankommt und wer abreist, noch bevor mein Kaffee fertig ist.',
     'signIn.quote2': 'Einen Preis zu ändern dauert zehn Sekunden, und ich sehe die Wirkung sofort.',
@@ -112,8 +110,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Входим…',
     'signIn.failed': 'Почта и пароль не подходят друг к другу.',
     'signIn.tooMany': 'Слишком много попыток — подождите минуту.',
-    'signIn.demoHint': 'Любой участник команды входит с паролем {password}, например {email}.',
-    'signIn.guestSite': 'Назад на сайт для гостей',
+    'signIn.forgotPassword': 'Забыли пароль?',
 
     'signIn.quote1': 'Я вижу, кто заезжает и кто выезжает, ещё до того, как допью кофе.',
     'signIn.quote2': 'Поменять тариф — десять секунд, и сразу видно, как это скажется.',

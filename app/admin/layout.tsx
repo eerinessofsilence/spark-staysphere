@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import { getAdminSession } from '@/lib/application/admin-session';
-import { availableHotels, catalogService, hotelRepository, teamService } from '@/lib/application/container';
+import { availableHotels, catalogService, communicationsService, hotelRepository, teamService } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { roleLabel } from '@/components/admin/settings/team-data';
 import { AdminLocaleProvider } from '@/lib/i18n/admin/context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminT } from '@/lib/i18n/admin/translate';
 import { AdminShell } from '@/components/admin/shell/admin-shell';
-import type { RecentBooking } from '@/components/admin/shell/notification-bell';
+import type { RecentBooking, UnreadConversation } from '@/components/admin/shell/notification-bell';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +24,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session.onboarded) redirect('/admin/welcome');
   const member = await teamService.findMemberById(session.memberId);
   if (!member) redirect('/admin/sign-in');
+  if (member.role === 'Housekeeper') redirect('/housekeeper');
 
   const [selectedSlug, locale, roles] = await Promise.all([getSelectedHotelSlug(), getAdminLocale(), teamService.listRoles()]);
-  const [hotel, allBookings] = await Promise.all([catalogService.getHotel(selectedSlug), hotelRepository.listBookings()]);
+  const [hotel, allBookings, conversations] = await Promise.all([
+    catalogService.getHotel(selectedSlug),
+    hotelRepository.listBookings(),
+    communicationsService.listConversations(selectedSlug),
+  ]);
+  const unreadConversations: UnreadConversation[] = conversations
+    .filter((c) => c.unread > 0)
+    .map((c) => ({ id: c.id, guestName: c.guestName, lastMessage: c.lastMessage, lastMessageAt: c.lastMessageAt, unread: c.unread }));
   const rooms = await hotelRepository.listRooms(hotel.id);
   const roomNameById = new Map(rooms.map((room) => [room.id, room.name]));
 
@@ -53,6 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         hotels={availableHotels}
         selectedSlug={selectedSlug}
         recentBookings={recentBookings}
+        unreadConversations={unreadConversations}
       >
         {children}
       </AdminShell>

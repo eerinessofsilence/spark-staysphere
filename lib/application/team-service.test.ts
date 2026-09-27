@@ -58,7 +58,7 @@ describe('TeamService custom roles', () => {
     if (!result.ok) return;
     const reloaded = new TeamService(roleStore);
     expect(await reloaded.findMemberByEmail('NEW@example.com')).toMatchObject({ name: 'New User', status: 'active' });
-    expect(await reloaded.listMembers()).toHaveLength(6);
+    expect(await reloaded.listMembers()).toHaveLength(7);
     await reloaded.setMemberRole(result.member.id, 'Content editor');
     expect(await reloaded.findMemberById(result.member.id)).toMatchObject({ role: 'Content editor' });
   });

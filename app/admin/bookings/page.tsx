@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarBlank, MagnifyingGlass, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { catalogService, hotelRepository, inventoryService } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
@@ -10,8 +9,7 @@ import type { Booking } from '@/lib/domain/schemas';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
-import { fieldClass, pill } from '@/lib/ui';
-import { cn } from '@/lib/utils';
+import { pill } from '@/lib/ui';
 import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
 import {
   stayBucket,
@@ -29,6 +27,7 @@ import { SampleBookingsButton } from '@/components/admin/operations/sample-booki
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { SearchInput } from '@/components/ui/search-input';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,20 +156,13 @@ export default async function BookingsPage({
           <label htmlFor="bookings-search" className="sr-only">
             {t('ops.searchLabel')}
           </label>
-          <div className="relative min-w-0 flex-1 lg:w-56 lg:flex-none">
-            <MagnifyingGlassIcon
-              className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              id="bookings-search"
-              name="q"
-              type="search"
-              defaultValue={query}
-              placeholder={t('ops.searchPlaceholder')}
-              className={cn(fieldClass, 'pl-10')}
-            />
-          </div>
+          <SearchInput
+            id="bookings-search"
+            name="q"
+            defaultValue={query}
+            placeholder={t('ops.searchPlaceholder')}
+            wrapperClassName="flex-1 lg:w-56 lg:flex-none"
+          />
           <button type="submit" className={pill('secondary')}>
             {t('ops.search')}
           </button>

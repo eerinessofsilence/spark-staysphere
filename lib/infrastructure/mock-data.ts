@@ -120,7 +120,7 @@ const hotelAreas: HotelArea[] = [
     photo: { url: '/images/hotel/lobby.webp', width: 2000, height: 1126, alt: 'Marble reception desk with warm timber panelling and plants' },
     panorama: '/images/panoramas/lobby.webp',
     hotspots: [
-      { id: 'reception', label: 'Reception', description: 'Check-in from 15:00, check-out by 11:00 — or 18:00 with the late check-out.', x: 0.5, y: 0.6, href: '/rooms?addOn=addon_late', cta: 'Add a late check-out' },
+      { id: 'reception', label: 'Reception', description: 'Check-in from 12:00, check-out by 12:00 — or 18:00 with the late check-out.', x: 0.5, y: 0.6, href: '/rooms?addOn=addon_late', cta: 'Add a late check-out' },
       { id: 'transfer', label: 'Arrivals', description: 'Private transfers from Larnaca airport arrive at the lobby door, about fifty minutes on a good day.', x: 0.14, y: 0.52, href: '/rooms?addOn=addon_transfer', cta: 'Add an airport transfer' },
     ],
   },

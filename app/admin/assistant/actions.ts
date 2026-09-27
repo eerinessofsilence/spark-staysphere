@@ -1,6 +1,6 @@
 'use server';
 
-import { requireAdminSession } from '@/lib/application/admin-session';
+import { requireBackOfficeSession } from '@/lib/application/admin-session';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { adminAssistantService, assistantInterpreterSource } from '@/lib/application/container';
@@ -30,7 +30,7 @@ export type AdminAskResponse =
   | { ok: false; error: 'too_many_requests' | 'busy' | 'failed' };
 
 export async function askAdminAssistantAction(input: unknown): Promise<AdminAskResponse> {
-  await requireAdminSession();
+  await requireBackOfficeSession();
   const parsed = askSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'failed' };
 
@@ -54,7 +54,7 @@ export async function askAdminAssistantAction(input: unknown): Promise<AdminAskR
  * surfaces as a conflict exactly as it would from the admin form.
  */
 export async function applyAdminProposalAction(proposal: unknown): Promise<AdminApplyResult> {
-  await requireAdminSession();
+  await requireBackOfficeSession();
   const parsed = adminProposalSchema.safeParse(proposal);
   if (!parsed.success) return { ok: false, reason: 'validation', message: 'That proposal is not one this assistant made.' };
 

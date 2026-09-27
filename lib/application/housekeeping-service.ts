@@ -1,8 +1,9 @@
 import { addIsoDays } from '../domain/dates';
 import { defaultHousekeepingStatus, type RoomOccupancy } from '../domain/housekeeping';
-import type { CatalogReader, Clock, HousekeepingStore } from '../domain/ports';
+import { validateHousekeepingChange } from '../domain/housekeeping-change';
+import type { CatalogReader, Clock, HousekeepingEvent, HousekeepingStore } from '../domain/ports';
 import { byRoomNumber, facadeOf, type Facade } from '../domain/room-units';
-import { housekeepingStatusSchema, type HousekeepingStatus, type PhysicalRoom } from '../domain/schemas';
+import type { HousekeepingStatus, PhysicalRoom } from '../domain/schemas';
 import type { CatalogService } from './catalog-service';
 import type { FrontDeskRoom, FrontDeskSegment, InventoryService } from './inventory-service';
 
@@ -22,7 +23,7 @@ export interface HousekeepingRoom {
 
 export type SetHousekeepingStatusResult =
   | { ok: true; room: HousekeepingRoom }
-  | { ok: false; error: 'roomNotFound' | 'invalidStatus' };
+  | { ok: false; error: 'roomNotFound' | 'invalidStatus' | 'notAssigned' | 'photoRequired' | 'invalidPhoto' };
 
 const NOTE_MAX = 200;
 
@@ -102,26 +103,70 @@ export class HousekeepingService {
     return (await this.listRooms(hotelSlug, today)).find((room) => room.unit.id === unitId) ?? null;
   }
 
+  async listAssignments(hotelSlug: string) {
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    return this.store.listAssignments(hotel.id);
+  }
+
+  async listAssignedRooms(hotelSlug: string, today: string, memberId: string): Promise<HousekeepingRoom[]> {
+    const [rooms, assignments] = await Promise.all([this.listRooms(hotelSlug, today), this.listAssignments(hotelSlug)]);
+    const ids = new Set(assignments.filter((assignment) => assignment.memberId === memberId).map((assignment) => assignment.unitId));
+    return rooms.filter((room) => ids.has(room.unit.id));
+  }
+
+  async assignRoom(hotelSlug: string, unitId: string, memberId: string | null): Promise<boolean> {
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    const units = await this.repository.listPhysicalRooms(hotel.id);
+    if (!units.some((unit) => unit.id === unitId)) return false;
+    await this.store.setAssignment({ hotelId: hotel.id, unitId, memberId });
+    return true;
+  }
+
+  async listEvents(hotelSlug: string, unitId: string): Promise<HousekeepingEvent[]> {
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    return this.store.listEvents(hotel.id, unitId);
+  }
+
+  async getEvent(hotelSlug: string, id: string): Promise<HousekeepingEvent | null> {
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    return this.store.getEvent(hotel.id, id);
+  }
+
   async setStatus(
     hotelSlug: string,
     unitId: string,
     status: unknown,
     note: string,
     today: string,
+    actor: { memberId: string; assignedOnly: boolean; eventId: string; photoData: string | null },
   ): Promise<SetHousekeepingStatusResult> {
-    const parsed = housekeepingStatusSchema.safeParse(status);
-    if (!parsed.success) return { ok: false, error: 'invalidStatus' };
+    const parsed = validateHousekeepingChange(status, actor.photoData, actor.assignedOnly);
+    if (!parsed.ok) return parsed;
     const hotel = await this.catalog.getHotel(hotelSlug);
     const units = await this.repository.listPhysicalRooms(hotel.id);
-    if (!units.some((unit) => unit.id === unitId)) return { ok: false, error: 'roomNotFound' };
+    const unit = units.find((candidate) => candidate.id === unitId);
+    if (!unit) return { ok: false, error: 'roomNotFound' };
+    if (actor.assignedOnly) {
+      const assignments = await this.store.listAssignments(hotel.id);
+      if (!assignments.some((assignment) => assignment.unitId === unitId && assignment.memberId === actor.memberId)) {
+        return { ok: false, error: 'notAssigned' };
+      }
+    }
+    if (!/^[a-zA-Z0-9-]{1,80}$/.test(actor.eventId)) return { ok: false, error: 'invalidStatus' };
 
     const trimmed = note.trim().slice(0, NOTE_MAX);
-    await this.store.setRecord({
+    const timestamp = this.clock.now().toISOString();
+    const record = {
       unitId,
       hotelId: hotel.id,
-      status: parsed.data,
+      status: parsed.status,
       note: trimmed || null,
-      updatedAt: this.clock.now().toISOString(),
+      updatedAt: timestamp,
+    };
+    await this.store.saveChange(record, {
+      id: actor.eventId, hotelId: hotel.id, unitId, roomNumber: unit.number,
+      memberId: actor.memberId, status: parsed.status, note: record.note,
+      occurredAt: timestamp, photoData: actor.photoData,
     });
     const room = await this.getRoom(hotelSlug, unitId, today);
     return room ? { ok: true, room } : { ok: false, error: 'roomNotFound' };

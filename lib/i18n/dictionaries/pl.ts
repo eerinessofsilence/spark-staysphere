@@ -150,8 +150,8 @@ export const pl: Record<TranslationKey, string> = {
   'room.atTheHotel': 'W hotelu',
   'room.includedAtNoExtraCost': 'Wliczone bez dodatkowych opłat.',
   'room.checkInCheckOut': 'Przyjazd i wyjazd',
-  'room.checkInFrom': 'Od 15:00',
-  'room.checkOutBy': 'Do 11:00',
+  'room.checkInFrom': 'Od 12:00',
+  'room.checkOutBy': 'Do 12:00',
   'room.lateCheckOutHint':
     'Wyjeżdżasz później? Dodaj poniżej późne wymeldowanie, aby zatrzymać pokój do 18:00.',
   'room.cancellationExtra':
@@ -399,4 +399,13 @@ export const pl: Record<TranslationKey, string> = {
   'error.somethingWrongBody': 'Nie udało się załadować tej części procesu rezerwacji. Nic nie zostało pobrane ani zarezerwowane.',
   'error.tryAgain': 'Spróbuj ponownie',
   'error.backToRooms': 'Wróć do pokoi',
+  'chat.title': 'Napisz do hotelu',
+  'chat.intro': 'Pytania o pobyt? Napisz tutaj, recepcja odpowie w tym wątku.',
+  'chat.placeholder': 'Napisz do hotelu…',
+  'chat.send': 'Wyślij',
+  'chat.sending': 'Wysyłanie…',
+  'chat.empty': 'Brak wiadomości.',
+  'chat.hotel': 'Recepcja',
+  'chat.you': 'Ty',
+  'chat.error': 'Nie udało się wysłać wiadomości. Spróbuj ponownie.',
 };

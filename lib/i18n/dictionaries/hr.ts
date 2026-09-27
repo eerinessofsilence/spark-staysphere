@@ -150,8 +150,8 @@ export const hr: Record<TranslationKey, string> = {
   'room.atTheHotel': 'U hotelu',
   'room.includedAtNoExtraCost': 'Uključeno bez dodatnog troška.',
   'room.checkInCheckOut': 'Dolazak i odlazak',
-  'room.checkInFrom': 'Od 15:00',
-  'room.checkOutBy': 'Do 11:00',
+  'room.checkInFrom': 'Od 12:00',
+  'room.checkOutBy': 'Do 12:00',
   'room.lateCheckOutHint':
     'Odlazite kasnije? Dodajte ispod kasniji odlazak kako biste zadržali sobu do 18:00.',
   'room.cancellationExtra':
@@ -398,4 +398,13 @@ export const hr: Record<TranslationKey, string> = {
   'error.somethingWrongBody': 'Nismo mogli učitati ovaj dio postupka rezervacije. Ništa nije naplaćeno niti rezervirano.',
   'error.tryAgain': 'Pokušaj ponovno',
   'error.backToRooms': 'Natrag na sobe',
+  'chat.title': 'Pišite hotelu',
+  'chat.intro': 'Pitanja o boravku? Napišite ovdje, recepcija odgovara u ovom razgovoru.',
+  'chat.placeholder': 'Napišite hotelu…',
+  'chat.send': 'Pošalji',
+  'chat.sending': 'Šalje se…',
+  'chat.empty': 'Još nema poruka.',
+  'chat.hotel': 'Recepcija',
+  'chat.you': 'Vi',
+  'chat.error': 'Poruka nije poslana. Pokušajte ponovno.',
 };

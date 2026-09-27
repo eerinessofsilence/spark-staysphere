@@ -26,6 +26,8 @@ interface SampleStay {
   method: PaymentMethod;
   /** Cancelled after saving — with a card that leaves money owed back, with a transfer nothing. */
   cancelled?: boolean;
+  /** Already through the door: a stay that began before today is saved as checked in, so the desk sees "Check out", not "Check in", against it. */
+  checkedIn?: boolean;
   /** How many days before check-in the stay was booked. */
   leadDays: number;
   guest: Guest;
@@ -72,6 +74,7 @@ const SAMPLES: SampleStay[] = [
   },
   {
     key: 'inhouse-deluxe',
+    checkedIn: true,
     rooms: ['deluxe-sea', 'sea-view-room'],
     checkIn: -2,
     nights: 5,
@@ -83,6 +86,7 @@ const SAMPLES: SampleStay[] = [
   },
   {
     key: 'inhouse-family',
+    checkedIn: true,
     rooms: ['family-residence', 'family-loft'],
     checkIn: -1,
     nights: 4,
@@ -156,6 +160,87 @@ const SAMPLES: SampleStay[] = [
     cancelled: true,
     leadDays: 16,
     guest: { firstName: 'Hannah', lastName: 'Becker', email: 'hannah.becker@example.com', phone: '+49 170 987 6543' },
+  },
+  // Today's doors, so the dashboard's check-in / check-out lanes and its
+  // in-house list are never empty on the day the demo is shown.
+  {
+    key: 'today-arrival-1',
+    rooms: ['deluxe-sea', 'rooftop-king', 'sea-view-room'],
+    checkIn: 0,
+    nights: 3,
+    adults: 2,
+    addOnIds: ['addon_breakfast_room'],
+    method: 'card',
+    leadDays: 14,
+    guest: { firstName: 'Priya', lastName: 'Nair', email: 'priya.nair@example.com', phone: '+91 98765 43210' },
+  },
+  {
+    key: 'today-arrival-2',
+    rooms: ['garden-studio', 'courtyard-king', 'cove-studio'],
+    checkIn: 0,
+    nights: 2,
+    adults: 1,
+    method: 'apple_pay',
+    leadDays: 5,
+    guest: { firstName: 'Mateus', lastName: 'Almeida', email: 'mateus.almeida@example.com', phone: '+55 11 98765 4321' },
+  },
+  {
+    key: 'today-arrival-3',
+    rooms: ['coastal-twin', 'standard-queen', 'city-view-room'],
+    checkIn: 0,
+    nights: 4,
+    adults: 2,
+    children: 1,
+    method: 'pay_at_hotel',
+    leadDays: 21,
+    guest: { firstName: 'Freya', lastName: 'Lindqvist', email: 'freya.lindqvist@example.com', phone: '+46 73 555 1234' },
+  },
+  {
+    key: 'today-departure-1',
+    checkedIn: true,
+    rooms: ['pool-terrace', 'rooftop-king', 'terrace-suite'],
+    checkIn: -3,
+    nights: 3,
+    adults: 2,
+    addOnIds: ['addon_spa'],
+    method: 'card',
+    leadDays: 30,
+    guest: { firstName: 'Daniel', lastName: 'Kim', email: 'daniel.kim@example.com', phone: '+82 10 2345 6789' },
+  },
+  {
+    key: 'today-departure-2',
+    checkedIn: true,
+    rooms: ['skyline-loft', 'courtyard-king', 'family-loft'],
+    checkIn: -2,
+    nights: 2,
+    adults: 2,
+    method: 'google_pay',
+    leadDays: 8,
+    guest: { firstName: 'Grace', lastName: 'Mensah', email: 'grace.mensah@example.com', phone: '+233 24 123 4567' },
+  },
+  {
+    key: 'today-inhouse-1',
+    checkedIn: true,
+    rooms: ['corner-suite', 'standard-queen', 'signature-suite'],
+    checkIn: -1,
+    nights: 4,
+    adults: 2,
+    method: 'card',
+    leadDays: 12,
+    guest: { firstName: 'Lucas', lastName: 'Meyer', email: 'lucas.meyer@example.com', phone: '+41 79 234 5678' },
+  },
+  {
+    key: 'today-inhouse-2',
+    checkedIn: true,
+    rooms: ['garden-residence', 'rooftop-king', 'two-bedroom-residence'],
+    checkIn: -2,
+    nights: 5,
+    adults: 2,
+    children: 2,
+    addOnIds: ['addon_breakfast_room'],
+    method: 'bank_transfer',
+    leadDays: 45,
+    guest: { firstName: 'Isabel', lastName: 'Torres', email: 'isabel.torres@example.com', phone: '+34 612 345 678' },
   },
   {
     key: 'cancelled-unpaid',
@@ -374,6 +459,7 @@ export class SampleBookingService {
     await this.repository.savePaymentAttempt(attempt);
     await this.repository.saveBooking(booking);
     if (sample.cancelled) await this.repository.cancelBooking(booking.reference);
+    if (sample.checkedIn) await this.repository.setBookingStayState(booking.reference, 'checked_in');
     return booking;
   }
 

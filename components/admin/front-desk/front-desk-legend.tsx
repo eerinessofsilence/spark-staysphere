@@ -1,6 +1,7 @@
 'use client';
 
 import { Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
+import { LATE_CHECK_OUT_TIME, STANDARD_CHECK_IN_TIME, STANDARD_CHECK_OUT_TIME } from '@/lib/domain/stay-times';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,18 @@ export function FrontDeskLegend() {
       <li className="flex items-center gap-2">
         <PushPin weight="fill" className="size-4 text-foreground" aria-hidden="true" />
         {t('frontDesk.chosenByGuest')}
+      </li>
+      <li className="flex items-center gap-2">
+        <span aria-hidden="true" className="relative h-4 w-8 overflow-hidden rounded-full bg-stone">
+          <span className="absolute top-0 right-0 bottom-0 left-1/2 rounded-full bg-stay-confirmed" />
+        </span>
+        {t('frontDesk.stayTimingLegend', { checkIn: STANDARD_CHECK_IN_TIME, checkOut: STANDARD_CHECK_OUT_TIME })}
+      </li>
+      <li className="flex items-center gap-2">
+        <span aria-hidden="true" className="relative h-4 w-8 overflow-hidden rounded-full bg-stone">
+          <span className="absolute inset-y-0 left-1/2 right-0 rounded-full bg-stay-due-out" />
+        </span>
+        {t('frontDesk.lateCheckOutLegend', { time: LATE_CHECK_OUT_TIME })}
       </li>
     </ul>
   );

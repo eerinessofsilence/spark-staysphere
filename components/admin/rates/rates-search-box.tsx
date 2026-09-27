@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
-import { fieldClass, iconButton } from '@/lib/ui';
+import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { SearchInput } from '@/components/ui/search-input';
 
 /**
  * Always visible, unlike `BookingSearchFilter`'s modal-behind-a-pill: this
@@ -44,17 +45,12 @@ export function RatesSearchBox({ query }: { query: string }) {
       <label htmlFor="rates-search" className="sr-only">
         {t('rates.search')}
       </label>
-      <MagnifyingGlassIcon
-        className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-        aria-hidden="true"
-      />
-      <input
+      <SearchInput
         id="rates-search"
-        type="search"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         placeholder={t('rates.searchPlaceholder')}
-        className={cn(fieldClass, 'pl-10', query && 'pr-11')}
+        className={cn(query && 'pr-11')}
       />
       {query ? (
         <button

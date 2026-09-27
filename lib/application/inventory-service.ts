@@ -1,5 +1,6 @@
 import { demoHash, nightsInRange } from '../domain/availability';
 import { addIsoDays } from '../domain/dates';
+import { LATE_CHECK_OUT_TIME, STANDARD_CHECK_IN_TIME, STANDARD_CHECK_OUT_TIME } from '../domain/stay-times';
 import type {
   AvailabilityReader,
   BookingStore,
@@ -393,9 +394,6 @@ interface SegmentContext {
   capacity: number;
 }
 
-const CHECK_IN_TIME = '15:00';
-const CHECK_OUT_TIME = '11:00';
-const LATE_CHECK_OUT_TIME = '18:00';
 const LATE_CHECK_OUT_ADDON = 'addon_late';
 
 // Simulated demand needs a stay's worth of detail for the desk to read like a
@@ -432,8 +430,8 @@ function simulatedStay(
     children: context.capacity > adults && seed % 5 === 0 ? 1 : 0,
     ratePlanName: plan?.name ?? 'Standard rate',
     breakfastIncluded: plan?.breakfastIncluded ?? false,
-    checkInTime: CHECK_IN_TIME,
-    checkOutTime: seed % 7 === 0 ? LATE_CHECK_OUT_TIME : CHECK_OUT_TIME,
+    checkInTime: STANDARD_CHECK_IN_TIME,
+    checkOutTime: seed % 7 === 0 ? LATE_CHECK_OUT_TIME : STANDARD_CHECK_OUT_TIME,
     total,
     paid: channel.prepaid ? total : 0,
     currency: plan?.currency ?? 'EUR',
@@ -476,8 +474,8 @@ function toSegments(row: Map<string, NightOccupant>, unitNumber: string, context
           children: booking.children,
           ratePlanName: plan?.name ?? 'Standard rate',
           breakfastIncluded: plan?.breakfastIncluded ?? false,
-          checkInTime: CHECK_IN_TIME,
-          checkOutTime: booking.addOnIds.includes(LATE_CHECK_OUT_ADDON) ? LATE_CHECK_OUT_TIME : CHECK_OUT_TIME,
+          checkInTime: STANDARD_CHECK_IN_TIME,
+          checkOutTime: booking.addOnIds.includes(LATE_CHECK_OUT_ADDON) ? LATE_CHECK_OUT_TIME : STANDARD_CHECK_OUT_TIME,
           total: booking.total,
           paid: context.paid.get(booking.reference) ?? 0,
           currency: booking.currency,

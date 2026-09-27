@@ -10,6 +10,8 @@ import { readMediaObject } from '@/lib/application/container';
  * `lib/infrastructure/spinner-frame-storage-r2.ts#frameKey` — hence the
  * prefix check; `photos/` additionally serves validated CMS photo uploads.
  *
+ * `panoramas/` additionally serves stitched 360° tours from the room-scan flow (`content-service.ts#uploadPhoto`'s `kind: 'panorama'`).
+ *
  * `Cache-Control: immutable` is safe because a frame set's key includes its
  * own `frameSetId`: replacing the frames a hotel uploaded gets a new id, it
  * never overwrites an old key in place.
@@ -17,7 +19,7 @@ import { readMediaObject } from '@/lib/application/container';
 export async function GET(_request: Request, context: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await context.params;
   const key = path.join('/');
-  if (!key.startsWith('spinner/') && !key.startsWith('photos/')) return new Response('Not found', { status: 404 });
+  if (!key.startsWith('spinner/') && !key.startsWith('photos/') && !key.startsWith('panoramas/')) return new Response('Not found', { status: 404 });
 
   const object = await readMediaObject(key);
   if (!object) return new Response('Not found', { status: 404 });

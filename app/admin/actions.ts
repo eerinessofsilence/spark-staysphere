@@ -1,6 +1,6 @@
 'use server';
 
-import { requireAdminSession, requirePermission } from '@/lib/application/admin-session';
+import { requireBackOfficeSession, requirePermission } from '@/lib/application/admin-session';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { availableHotels, contentService, demoControl, sampleBookingService } from '@/lib/application/container';
@@ -48,7 +48,7 @@ export async function setRoomStatus(input: z.infer<typeof overrideSchema>): Prom
 
 /** A dozen past, in-house, upcoming and cancelled stays, so an empty demo has something to show. */
 export async function addSampleBookings(): Promise<{ created: number }> {
-  await requireAdminSession();
+  await requireBackOfficeSession();
   const hotelSlug = await getSelectedHotelSlug();
   const result = await sampleBookingService.seed(hotelSlug, toIsoDate(new Date()));
   refresh();
@@ -64,7 +64,7 @@ export async function resetDemoState(): Promise<void> {
 
 /** Switches which seed hotel `/admin` reads and writes through — see `hotel-context.ts`. */
 export async function setSelectedHotelAction(slug: string): Promise<void> {
-  await requireAdminSession();
+  await requireBackOfficeSession();
   if (!availableHotels.some((hotel) => hotel.slug === slug)) return;
   const store = await cookies();
   store.set(SELECTED_HOTEL_COOKIE, slug, { path: '/admin', maxAge: 60 * 60 * 24 * 365 });

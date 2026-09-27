@@ -4,6 +4,7 @@
 !.env.example
 .dev.vars
 node_modules/
+public/vendor/document-ocr/
 .next/
 .vinext/
 dist/
@@ -20,3 +21,12 @@ e2e/.artifacts/
 e2e/.auth/
 # CC0 Poly Haven assets for scripts/asteria-cove.blend — re-fetch with scripts/fetch-polyhaven.py
 scripts/blender-assets/
+
+# Vercel / Nitro build output (`npm run build:vercel`)
+.vercel/
+.output/
+.vercel
+.env*
+
+# Local scratch output from testing generated PDFs (accounting reports, content menu)
+output/

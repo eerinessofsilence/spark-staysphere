@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, GlobeAltIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Image } from '@phosphor-icons/react/dist/ssr';
 import type { MediaAsset } from '@/lib/domain/ports';
 import { labelFromFilename, mediaTypeOf } from '@/lib/domain/media';
@@ -13,6 +13,8 @@ import { TextInput } from './fields';
 import { MediaPicker } from './media-picker';
 import { useOrderedList } from './use-ordered-list';
 import { PhotoUpload } from './photo-upload';
+import { Modal } from '@/components/site/modal';
+import { PanoramaViewer } from '@/components/view-360';
 
 export interface MediaItemDraft {
   type: 'image' | '360';
@@ -40,6 +42,8 @@ export function MediaListEditor({
   suggestedFolder?: string;
 }) {
   const t = useAdminT();
+  /** The 360° view opened from its thumbnail, if any. */
+  const [tourUrl, setTourUrl] = React.useState<string | null>(null);
   const { rows, values: items, move, remove, addMany, update: updateRow } = useOrderedList(initial);
   const [uploaded, setUploaded] = React.useState<MediaAsset[]>([]);
   const allAssets = React.useMemo(() => [...new Map([...assets, ...uploaded].map((asset) => [asset.url, asset])).values()], [uploaded, assets]);
@@ -77,6 +81,21 @@ export function MediaListEditor({
                 className={cn('grid gap-2 rounded-2xl border p-3', rowError ? 'border-danger/60' : 'border-border')}
               >
                 <div className="flex flex-wrap items-center gap-3">
+                  {item.type === '360' ? (
+                    /* A 360° view is opened, not glanced at: its thumbnail is a
+                       button onto the draggable tour itself. */
+                    <button
+                      type="button"
+                      onClick={() => setTourUrl(item.url)}
+                      aria-label={t('media.open360', { title })}
+                      className="relative block size-16 shrink-0 overflow-hidden rounded-[18px] bg-ink"
+                    >
+                      <img src={item.url} alt="" className="size-full object-cover opacity-70" />
+                      <span className="absolute inset-0 grid place-items-center text-white">
+                        <GlobeAltIcon className="size-6" aria-hidden="true" />
+                      </span>
+                    </button>
+                  ) : (
                   <span className="block size-16 shrink-0 overflow-hidden rounded-[18px] bg-stone">
                     {asset ? (
                       // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
@@ -87,6 +106,7 @@ export function MediaListEditor({
                       </span>
                     )}
                   </span>
+                  )}
                   <div className="grid min-w-0 flex-1 basis-40 gap-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <label htmlFor={labelId} className="text-xs text-muted-foreground">
@@ -160,6 +180,12 @@ export function MediaListEditor({
         onPickMany={addAssets}
         maxSelection={30 - items.length}
       />
+
+      <Modal open={tourUrl !== null} onClose={() => setTourUrl(null)} title={t('media.view360')} className="sm:max-w-3xl">
+        <div className="relative aspect-video w-full overflow-hidden rounded-[18px] bg-ink">
+          {tourUrl ? <PanoramaViewer key={tourUrl} src={tourUrl} title={t('media.view360')} className="absolute inset-0 size-full" /> : null}
+        </div>
+      </Modal>
     </div>
   );
 }

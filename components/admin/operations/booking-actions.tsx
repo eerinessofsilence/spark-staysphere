@@ -3,7 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Menu } from '@base-ui/react/menu';
-import { ArrowTopRightOnSquareIcon, ChevronDownIcon, TableCellsIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, ChevronDownIcon, DocumentTextIcon, TableCellsIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { InvoiceModal, type InvoiceData } from '@/components/booking/invoice-modal';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
@@ -22,16 +23,20 @@ export function BookingHeaderActions({
   checkIn,
   canCancel,
   cancelBlockedReason,
+  invoice,
 }: {
   reference: string;
   checkIn: string;
   canCancel: boolean;
   /** Why cancelling is unavailable — shown under the disabled item. */
   cancelBlockedReason?: string;
+  /** The same shape the guest's own "View invoice" builds — see `InvoiceModal`. */
+  invoice: InvoiceData;
 }) {
   const t = useAdminT();
   const [confirming, setConfirming] = React.useState(false);
   const close = React.useCallback(() => setConfirming(false), []);
+  const [invoiceOpen, setInvoiceOpen] = React.useState(false);
 
   return (
     <>
@@ -59,6 +64,10 @@ export function BookingHeaderActions({
                 <ArrowTopRightOnSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 {t('ops.guestConfirmationPage')}
               </Menu.LinkItem>
+              <Menu.Item onClick={() => setInvoiceOpen(true)} className={menuItemClass}>
+                <DocumentTextIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                {t('booking.issueInvoice')}
+              </Menu.Item>
               <Menu.Separator className="my-1.5 h-px bg-border" />
               <Menu.Item
                 disabled={!canCancel}
@@ -79,6 +88,7 @@ export function BookingHeaderActions({
       </Menu.Root>
 
       <CancelBookingDialog reference={reference} open={confirming} onClose={close} />
+      <InvoiceModal invoice={invoice} open={invoiceOpen} onClose={() => setInvoiceOpen(false)} />
     </>
   );
 }

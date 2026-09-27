@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { catalogService, contentService, demoControl, hotelRepository } from '@/lib/application/container';
+import { catalogService, contentServiceFor, demoControl, hotelRepository } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
@@ -14,7 +13,8 @@ import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
 import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
 import { buildDateWindow, roomRatesHref } from '@/components/admin/rates/rates-shared';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { updateBaseRateAction } from '../actions';
+import { AddRoomRateButton } from '@/components/admin/content/add-room-rate-button';
+import { createRoomRateAction, updateBaseRateAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,7 @@ async function loadRoom(id: string) {
   const hotel = await catalogService.getHotel(selectedSlug);
   const rooms = await hotelRepository.listRooms(hotel.id);
   const room = rooms.find((candidate) => candidate.id === id);
-  return room ? { room, hotel } : null;
+  return room ? { room, hotel, selectedSlug } : null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -56,7 +56,8 @@ export default async function RoomRatesPage({
   const { id } = await params;
   const found = await loadRoom(id);
   if (!found) notFound();
-  const { room, hotel } = found;
+  const { room, hotel, selectedSlug } = found;
+  const contentService = contentServiceFor(selectedSlug);
 
   const locale = await getAdminLocale();
   const t = adminT(locale);
@@ -82,6 +83,13 @@ export default async function RoomRatesPage({
         breadcrumbs={[{ label: t('nav.roomRates'), href: '/admin/rates' }]}
         title={room.name}
         description={hotel.currency}
+        actions={
+          <AddRoomRateButton
+            rooms={[{ id: room.id, name: room.name }]}
+            currency={hotel.currency}
+            createRateAction={createRoomRateAction}
+          />
+        }
       />
 
       <DateWindowToolbar
@@ -101,9 +109,7 @@ export default async function RoomRatesPage({
           {rates.length === 0 ? (
             <div className="grid" style={{ gridTemplateColumns: columns }}>
               <div className="sticky left-0 z-20 bg-card px-4 py-3">
-                <Link href={`/admin/content/rooms/${room.id}`} className="text-sm text-muted-foreground hover:text-accent-strong">
-                  {t('rates.addInCms')}
-                </Link>
+                <span className="text-sm text-muted-foreground">{t('rates.noRate')}</span>
               </div>
             </div>
           ) : (

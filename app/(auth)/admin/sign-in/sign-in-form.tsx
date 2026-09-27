@@ -10,6 +10,19 @@ const initial: SignInState = { error: null };
 export function SignInForm({ demo }: { demo: { email: string; password: string } | null }) {
   const t = useAdminT();
   const [state, action, pending] = React.useActionState(signInAction, initial);
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
+
+  // A shared password has nothing to recover — it's the demo's one password
+  // for the whole hotel. "Forgot password?" fills both fields with it
+  // instead of ever printing it on the page: no text, no box, just a form
+  // that's ready to submit. Only shown when there is a demo password to
+  // fill in; a real deployment's own password isn't this page's to hand out.
+  function fillDemoCredentials() {
+    if (!demo) return;
+    if (emailRef.current) emailRef.current.value = demo.email;
+    if (passwordRef.current) passwordRef.current.value = demo.password;
+  }
 
   return (
     <form action={action} className="grid gap-4">
@@ -18,6 +31,7 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
           {t('account.email')}
         </label>
         <input
+          ref={emailRef}
           id="sign-in-email"
           name="email"
           type="email"
@@ -29,10 +43,17 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
         />
       </div>
       <div>
-        <label htmlFor="sign-in-password" className="mb-1.5 block text-sm text-muted-foreground">
-          {t('account.password')}
-        </label>
-        <input id="sign-in-password" name="password" type="password" required autoComplete="current-password" className={fieldClass} />
+        <div className="mb-1.5 flex items-baseline justify-between gap-3">
+          <label htmlFor="sign-in-password" className="block text-sm text-muted-foreground">
+            {t('account.password')}
+          </label>
+          {demo ? (
+            <button type="button" onClick={fillDemoCredentials} className="text-sm font-medium text-accent-strong hover:underline">
+              {t('signIn.forgotPassword')}
+            </button>
+          ) : null}
+        </div>
+        <input ref={passwordRef} id="sign-in-password" name="password" type="password" required autoComplete="current-password" className={fieldClass} />
       </div>
 
       {state.error ? (
@@ -44,12 +65,6 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
       <button type="submit" disabled={pending} className={pill('primary', 'mt-2 w-full')}>
         {pending ? t('signIn.signingIn') : t('signIn.continue')}
       </button>
-
-      {demo ? (
-        <p className="rounded-2xl bg-stone/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          {t('signIn.demoHint', { password: demo.password, email: demo.email })}
-        </p>
-      ) : null}
     </form>
   );
 }

@@ -22,11 +22,11 @@ export function Metric({
     <div className="flex min-w-0 flex-col rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
       <dt className="text-sm font-medium">{label}</dt>
       <dd className="mt-3">
-        <span className="text-display block text-2xl tabular-nums sm:text-4xl">{value}</span>
+        <span className="text-display block text-2xl tabular-nums sm:text-3xl">{value}</span>
         <span className="mt-1.5 block text-sm text-muted-foreground">{detail}</span>
       </dd>
       {/* Pinned to the bottom so marks line up across a row of cards whose copy wraps differently. */}
-      {chart ? <div className="mt-auto">{chart}</div> : null}
+      {chart ? <div className="mt-auto pt-6">{chart}</div> : null}
     </div>
   );
 }

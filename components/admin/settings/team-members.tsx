@@ -4,8 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, EnvelopeSimple } from '@phosphor-icons/react/dist/ssr';
-import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
-import { pluralForm } from '@/lib/i18n/plural';
+import { useAdminT } from '@/lib/i18n/admin/context';
 import { Modal } from '@/components/site/modal';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
@@ -19,7 +18,6 @@ import { initialsOf, roleLabel, type TeamMember, type TeamRole } from './team-da
 
 export function TeamMembers({ initialMembers, roles, canManage }: { initialMembers: TeamMember[]; roles: TeamRoleDefinition[]; canManage: boolean }) {
   const t = useAdminT();
-  const locale = useAdminLocale();
   const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
@@ -29,14 +27,6 @@ export function TeamMembers({ initialMembers, roles, canManage }: { initialMembe
   const [error, setError] = React.useState<'invalid' | 'duplicate' | ''>('');
   const [status, setStatus] = React.useState('');
   const close = React.useCallback(() => setOpen(false), []);
-
-  const count = members.length;
-  const canSignIn = pluralForm(locale, count, {
-    one: t('team.signInOne', { count }),
-    few: t('team.signInFew', { count }),
-    many: t('team.signInMany', { count }),
-    other: t('team.signInOther', { count }),
-  });
 
   const invite = (event: React.FormEvent) => {
     event.preventDefault();
@@ -90,7 +80,6 @@ export function TeamMembers({ initialMembers, roles, canManage }: { initialMembe
       <TeamTabs current="members" counts={{ members: members.length, roles: roles.length }} />
 
       <section aria-label={t('team.members')} className="mt-8">
-        <p className="text-sm text-muted-foreground">{canSignIn}</p>
 
       <p role="status" aria-live="polite" className="mt-3 min-h-5 text-sm font-medium text-success">
         {status}

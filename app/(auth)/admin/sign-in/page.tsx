@@ -22,7 +22,7 @@ export default async function SignInPage() {
   const { demo, password } = adminAuthConfig();
 
   return (
-    <div className="rounded-[18px] bg-card p-6 shadow-soft sm:p-8">
+    <div className="mx-auto w-full max-w-sm rounded-[18px] bg-card p-6 shadow-soft sm:p-8">
       <StepHeader step={1} />
       <h1 className="text-display mt-6 text-3xl">{t('signIn.heading')}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t('signIn.body')}</p>

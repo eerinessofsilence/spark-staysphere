@@ -4,9 +4,10 @@ import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
-import { fieldClass, iconButton, pill } from '@/lib/ui';
+import { iconButton, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
+import { SearchInput } from '@/components/ui/search-input';
 
 /**
  * The reservations search, as a compact pill on a phone rather than an
@@ -72,21 +73,14 @@ export function BookingSearchFilter({ query }: { query: string }) {
           <label htmlFor="bookings-search-mobile" className="sr-only">
             {t('ops.searchLabel')}
           </label>
-          <div className="relative min-w-0 flex-1">
-            <MagnifyingGlassIcon
-              className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              id="bookings-search-mobile"
-              type="search"
-              autoFocus
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={t('ops.searchPlaceholder')}
-              className={cn(fieldClass, 'pl-10')}
-            />
-          </div>
+          <SearchInput
+            id="bookings-search-mobile"
+            autoFocus
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={t('ops.searchPlaceholder')}
+            wrapperClassName="flex-1"
+          />
           <button type="submit" className={pill('primary')}>
             {t('ops.search')}
           </button>

@@ -345,8 +345,9 @@ export function ContentForm({
 
           return dock ? (
             <>
-              {/* Reserves the strip's own height so the last field never rides under it. */}
-              <div aria-hidden="true" className="h-24" />
+              {/* No spacer of its own: `AdminPage`'s bottom padding is what keeps
+                  the last field clear of the strip, so the card ends at its
+                  content instead of carrying a blank band. */}
               <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 lg:pl-[calc(17.5rem+1.5rem)]">
                 {/* Sized to what it holds, not stretched to a 672px strip: a
                     frosted capsule around the button, a few pixels of glass on

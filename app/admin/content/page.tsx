@@ -11,6 +11,7 @@ import { pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { CatalogTabs } from '@/components/admin/content/catalog-tabs';
 import { RowActions } from '@/components/admin/content/row-actions';
+import { ScanRoomButton } from '@/components/admin/content/scan-room-button';
 import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -41,7 +42,6 @@ export default async function RoomTypesPage({
     contentService.listRoomsContent(),
     contentService.listPhysicalRoomsContent(),
   ]);
-  const onSite = rooms.filter((room) => !room.hidden).length;
   const { pageItems: pageRooms, page: currentPage, totalPages } = paginate(rooms, page, pageSize);
   const pageRates = await Promise.all(pageRooms.map((room) => contentService.listRatesContent(room.id)));
   const pageItems = pageRooms.map((room, index) => ({ room, rates: pageRates[index]! }));
@@ -58,6 +58,7 @@ export default async function RoomTypesPage({
               {t('rooms.openSite')}
               <ArrowTopRightOnSquareIcon className="size-4" aria-hidden="true" />
             </a>
+            <ScanRoomButton rooms={rooms.map((room) => ({ id: room.id, name: room.name }))} />
             <Link href="/admin/content/rooms/new" className={pill('primary')}>
               <PlusIcon className="size-4" aria-hidden="true" />
               {t('rooms.newType')}
@@ -75,10 +76,7 @@ export default async function RoomTypesPage({
         <p className="mt-6 text-sm text-muted-foreground">{t('rooms.none')}</p>
       ) : (
         <>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {t('rooms.onSiteCount', { onSite, total: rooms.length })}
-          </p>
-          <div className="mt-4 overflow-hidden rounded-[18px] bg-card shadow-soft">
+          <div className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
             <TableCard caption={t('rooms.tableCaption')} className="sm:min-w-[46rem]" attached>
               <thead>
                 <tr className="border-b border-border">
@@ -104,7 +102,7 @@ export default async function RoomTypesPage({
                       key={room.id}
                       className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50"
                     >
-                      <Td className="align-middle">
+                      <Td>
                         {/* Stretched: the row opens the room type's own page from anywhere in
                             it, not only the photo and name — the rooms link and row menu sit
                             at a higher stacking level so their own clicks still reach them. */}
@@ -142,7 +140,7 @@ export default async function RoomTypesPage({
                           </span>
                         </Link>
                       </Td>
-                      <Td className={cn(deskOnly, 'align-middle whitespace-nowrap tabular-nums')}>
+                      <Td className={cn(deskOnly, 'whitespace-nowrap tabular-nums')}>
                         {cheapestPrice ? (
                           <>
                             {cheapestPrice}
@@ -152,7 +150,7 @@ export default async function RoomTypesPage({
                           <span className="text-muted-foreground">{t('rooms.noRate')}</span>
                         )}
                       </Td>
-                      <Td className={cn(deskOnly, 'relative z-10 align-middle tabular-nums')}>
+                      <Td className={cn(deskOnly, 'relative z-10 tabular-nums')}>
                         <Link
                           href={`/admin/content/units#type-${room.id}`}
                           className={cn('hover:text-accent-strong', roomCount === 0 && 'text-muted-foreground')}
@@ -160,7 +158,7 @@ export default async function RoomTypesPage({
                           {roomCount === 0 ? t('rooms.addRooms') : roomCount}
                         </Link>
                       </Td>
-                      <Td className={cn(deskOnly, 'align-middle')}>
+                      <Td className={deskOnly}>
                         {room.hidden ? (
                           <span className={tag()}>
                             <EyeSlash weight="fill" className="size-3.5" aria-hidden="true" />
@@ -173,7 +171,7 @@ export default async function RoomTypesPage({
                           </span>
                         )}
                       </Td>
-                      <Td className="relative z-10 align-middle text-right">
+                      <Td className="relative z-10 text-right">
                         <RowActions
                           id={room.id}
                           version={room.version}

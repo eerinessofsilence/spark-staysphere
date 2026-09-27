@@ -330,8 +330,8 @@ free-hand a width or a column track.
   that has no business animating just because the dialog opened.
 - Nothing else animates by default. A staggered fade-up on every card or section on scroll is the
   same genre of template motion rule 3 already bans in cards — the read is identical whether the
-  cliché is a visual one or a motion one. There are two scoped, deliberate exceptions to "nothing
-  else animates", both below; a template-motion request that doesn't match one of them should
+  cliché is a visual one or a motion one. There are three scoped, deliberate exceptions to "nothing
+  else animates", listed below; a template-motion request that doesn't match one of them should
   still be refused on rule 3's terms.
 - **Exception one — the arrival page's headings and sections** (`components/site/reveal.tsx`'s
   `Reveal`). Unlike the banned pattern, this fires once per element, the first time it crosses into
@@ -347,6 +347,13 @@ free-hand a width or a column track.
   the only thing saying what is happening. It stays inside the assistant panel, uses only
   `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
   the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
+- **Exception three — the assistant launcher**: the guest and admin buttons share
+  `components/assistant/assistant-launcher-visual.tsx`, a monochrome black/graphite mesh orb,
+  with subdued neutral-grey highlights and glow in both themes, as requested for this control.
+  The orb's contour, mesh and light animate by default; hovering or keyboard focus strengthens
+  its glow. Only decorative child layers move, leaving the button's hit area and focus ring stable.
+  Motion pauses when the panel opens or the launcher is hidden, and stays static under
+  `prefers-reduced-motion`. Touch keeps the normal tap-to-open action.
 
 ## Accessibility
 
