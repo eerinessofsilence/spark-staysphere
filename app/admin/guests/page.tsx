@@ -7,6 +7,7 @@ import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDate, lMoney, lNights } from '@/lib/i18n/format';
+import { pill } from '@/lib/ui';
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -58,7 +59,7 @@ export default async function GuestsPage({
     <AdminPage>
       <AdminPageHeader title={t('nav.guests')} actions={<CreateGuestButton />} />
 
-      <form role="search" action="/admin/guests" method="get" className="mt-2 flex">
+      <form role="search" action="/admin/guests" method="get" className="mt-2 flex gap-2">
         <label htmlFor="guests-search" className="sr-only">
           {t('guests.searchLabel')}
         </label>
@@ -69,6 +70,9 @@ export default async function GuestsPage({
           placeholder={t('guests.searchPlaceholder')}
           wrapperClassName="w-full sm:w-80"
         />
+        <button type="submit" className={pill('secondary')}>
+          {t('ops.search')}
+        </button>
       </form>
 
       <div className="mt-6">

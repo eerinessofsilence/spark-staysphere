@@ -7,6 +7,7 @@ import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDate, lMoney } from '@/lib/i18n/format';
+import { pill } from '@/lib/ui';
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -57,7 +58,7 @@ export default async function GroupsPage({
     <AdminPage>
       <AdminPageHeader title={t('nav.groups')} actions={<CreateGroupButton />} />
 
-      <form role="search" action="/admin/groups" method="get" className="mt-2 flex">
+      <form role="search" action="/admin/groups" method="get" className="mt-2 flex gap-2">
         <label htmlFor="groups-search" className="sr-only">
           {t('groups.searchLabel')}
         </label>
@@ -68,6 +69,9 @@ export default async function GroupsPage({
           placeholder={t('groups.searchPlaceholder')}
           wrapperClassName="w-full sm:w-80"
         />
+        <button type="submit" className={pill('secondary')}>
+          {t('ops.search')}
+        </button>
       </form>
 
       <div className="mt-6">

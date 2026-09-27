@@ -133,6 +133,12 @@ export class GuestDocumentService {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  /** Every document on file for the property, newest first — the `/admin/documents` grid, across guests. */
+  async listAll(hotelId: string) {
+    await this.retryDeletions(hotelId);
+    return (await this.store.list(hotelId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   async readImage(hotelId: string, id: string) {
     const document = await this.store.get(hotelId, id);
     if (!document || document.status !== "active") return null;
