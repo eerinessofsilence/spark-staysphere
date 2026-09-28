@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PencilSquareIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { housekeepingService } from '@/lib/application/container';
+import { findMemberById } from '@/lib/application/team-directory';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { housekeepingStatusKey, occupancyKey } from '@/lib/i18n/admin/housekeeping';
@@ -10,7 +11,9 @@ import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateRange, lFacade, lFloor, lRoomNumber } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
+import { CleaningLogFilters } from '@/components/admin/housekeeping/cleaning-log-filters';
 import { HousekeepingStatusForm } from '@/components/admin/housekeeping/housekeeping-status-form';
+import { paginate, parsePage, parsePageSize, Pagination, PAGE_SIZE } from '@/components/admin/operations/pagination';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export const dynamic = 'force-dynamic';
@@ -25,12 +28,57 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: adminPageTitle(adminT(locale), room ? lRoomNumber(room.unit.number, locale) : id) };
 }
 
-export default async function HousekeepingRoomPage({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, locale] = await Promise.all([params, getAdminLocale()]);
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function HousekeepingRoomPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ id }, locale, sp] = await Promise.all([params, getAdminLocale(), searchParams]);
   const t = adminT(locale);
   const room = await loadRoom(id);
   if (!room) notFound();
-  const events = await housekeepingService.listEvents(await getSelectedHotelSlug(), room.unit.id);
+  const allEvents = await housekeepingService.listEvents(await getSelectedHotelSlug(), room.unit.id);
+
+  const memberFilter = first(sp.member) ?? null;
+  const rawFrom = first(sp.from);
+  const from = rawFrom && ISO_DAY.test(rawFrom) ? rawFrom : null;
+  const rawTo = first(sp.to);
+  const to = from && rawTo && ISO_DAY.test(rawTo) ? rawTo : from;
+  const page = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.pageSize);
+
+  const events = allEvents.filter((event) => {
+    if (memberFilter && event.memberId !== memberFilter) return false;
+    if (from) {
+      const day = event.occurredAt.slice(0, 10);
+      if (day < from || day > (to ?? from)) return false;
+    }
+    return true;
+  });
+  const { pageItems: shownEvents, page: currentPage, totalPages } = paginate(events, page, pageSize);
+  const members = Array.from(new Set(allEvents.map((event) => event.memberId))).map((memberId) => ({
+    id: memberId,
+    name: findMemberById(memberId)?.name ?? memberId,
+  }));
+  const memberNames = new Map(members.map((m) => [m.id, m.name]));
+  const basePath = `/admin/housekeeping/${id}`;
+  function hrefFor(page?: number, pageSize?: number): string {
+    const urlParams = new URLSearchParams();
+    if (memberFilter) urlParams.set('member', memberFilter);
+    if (from) { urlParams.set('from', from); urlParams.set('to', to ?? from); }
+    if (page && page > 1) urlParams.set('page', String(page));
+    if (pageSize && pageSize !== PAGE_SIZE) urlParams.set('pageSize', String(pageSize));
+    const search = urlParams.toString();
+    return search ? `${basePath}?${search}` : basePath;
+  }
 
   return (
     <AdminPage width="narrow">
@@ -75,15 +123,28 @@ export default async function HousekeepingRoomPage({ params }: { params: Promise
 
       <section className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6" aria-labelledby="cleaning-log-heading">
         <h2 id="cleaning-log-heading" className="text-lg font-medium">{t('housekeeping.cleaningLog')}</h2>
-        {events.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">{t('housekeeping.noEvents')}</p> : (
-          <ol className="mt-4 divide-y divide-border">
-            {events.map((event) => <li key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <span>{t(housekeepingStatusKey(event.status))} · {event.memberId} · {t('housekeeping.eventRoomLabel', { room: event.roomNumber })}
-                {event.note ? <span className="block text-muted-foreground">{event.note}</span> : null}</span>
-              <span className="text-muted-foreground">{new Date(event.occurredAt).toLocaleString(locale)}</span>
-              {event.photoData ? <a href={`/housekeeper/photo/${event.id}`} target="_blank" rel="noreferrer" className="underline">{t('housekeeping.photoLink')}</a> : null}
-            </li>)}
-          </ol>
+        {allEvents.length > 0 ? <CleaningLogFilters members={members} member={memberFilter} from={from} to={to} /> : null}
+        {events.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">{t('housekeeping.noEvents')}</p>
+        ) : (
+          <>
+            <ol className="mt-4 divide-y divide-border">
+              {shownEvents.map((event) => <li key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                <span>{t(housekeepingStatusKey(event.status))} · {memberNames.get(event.memberId) ?? event.memberId} · {t('housekeeping.eventRoomLabel', { room: event.roomNumber })}
+                  {event.note ? <span className="block text-muted-foreground">{event.note}</span> : null}</span>
+                <span className="text-muted-foreground">{new Date(event.occurredAt).toLocaleString(locale)}</span>
+                {event.photoData ? <a href={`/housekeeper/photo/${event.id}`} target="_blank" rel="noreferrer" className="underline">{t('housekeeping.photoLink')}</a> : null}
+              </li>)}
+            </ol>
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={events.length}
+              pageSize={pageSize}
+              hrefFor={(next) => hrefFor(next, pageSize)}
+              pageSizeHrefFor={(size) => hrefFor(1, size)}
+            />
+          </>
         )}
       </section>
 
