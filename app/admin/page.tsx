@@ -92,11 +92,15 @@ export default async function AdminOverviewPage({
   // An empty day still shows who is next, so the desk never looks at a blank column.
   const arrivalsShown = moves.arrivals.length > 0 ? moves.arrivals : nextArrivals(bookings, today, 6);
   const departuresShown = moves.departures.length > 0 ? moves.departures : nextDepartures(bookings, today, 6);
+  const roomPhotos = new Map(rooms.map((room) => [room.id, room.media.find((m) => m.type === 'image')?.url]));
   const stayDetails = (booking: Booking) => ({
     guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
     roomName: roomNames.get(booking.roomTypeId) ?? booking.roomTypeId,
-    stay: lDateRange(booking.checkIn, booking.checkOut, locale),
-    guests: lGuests(booking.adults, booking.children, locale),
+    roomPhoto: roomPhotos.get(booking.roomTypeId),
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    adults: booking.adults,
+    children: booking.children,
   });
   const housekeepingMix = HOUSEKEEPING_STATUSES.map((status) => ({
     status,
