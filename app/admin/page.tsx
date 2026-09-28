@@ -31,6 +31,7 @@ import { BookingStatusBadge } from '@/components/admin/operations/booking-status
 import { BarList, Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
+import { RevenueTrend } from '@/components/admin/operations/revenue-trend';
 import { StayMoveButton } from '@/components/admin/operations/stay-move-button';
 import { stayStateKey } from '@/lib/i18n/admin/stay-state';
 import { cn } from '@/lib/utils';
@@ -57,7 +58,6 @@ export default async function AdminOverviewPage({
   const page = parsePage(sp.page);
   const pageSize = parsePageSize(sp.pageSize);
   const today = toIsoDate(new Date());
-  const yesterday = toIsoDate(addDays(parseISO(today), -1));
   const hotelSlug = await getSelectedHotelSlug();
   const [board, allBookings, housekeepingRooms] = await Promise.all([
     inventoryService.getFrontDesk(hotelSlug, today, 14),
@@ -92,7 +92,11 @@ export default async function AdminOverviewPage({
   }));
   const availability = roomTypeAvailability(board, new Map(overrides));
   const meals = mealsByDay(bookings, ratePlanLists.flat(), addOns, board.days.slice(0, 7).map((day) => day.date));
-  const kpis = { today: revenueKpis(bookings, board.totalRooms, today), yesterday: revenueKpis(bookings, board.totalRooms, yesterday) };
+  // The last week of the night's money, oldest first, today last — one KPI set per day.
+  const revenueDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = toIsoDate(addDays(parseISO(today), offset - 6));
+    return { date, ...revenueKpis(bookings, board.totalRooms, date) };
+  });
 
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const confirmed = sorted.filter((booking) => booking.status === 'confirmed');
@@ -322,31 +326,7 @@ export default async function AdminOverviewPage({
           <section aria-labelledby="revenue-today-heading" className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
             <h3 id="revenue-today-heading" className="font-medium">{t('dashboard.revenueToday')}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.revenueTodayBody')}</p>
-            <table className="mt-4 w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th scope="col" className="py-2 text-left font-normal"><span className="sr-only">{t('dashboard.revenueToday')}</span></th>
-                  <th scope="col" className="py-2 text-right font-normal">{t('dashboard.yesterday')}</th>
-                  <th scope="col" className="py-2 text-right font-normal">{t('dashboard.today')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    ['dashboard.revpar', (k: typeof kpis.today) => lMoney(k.revpar, hotel.currency, locale)],
-                    ['dashboard.adr', (k: typeof kpis.today) => lMoney(k.adr, hotel.currency, locale)],
-                    ['dashboard.roomRevenue', (k: typeof kpis.today) => lMoney(k.roomRevenue, hotel.currency, locale)],
-                    ['dashboard.orders', (k: typeof kpis.today) => String(k.orders)],
-                  ] as const
-                ).map(([key, show]) => (
-                  <tr key={key} className="border-b border-border last:border-b-0">
-                    <th scope="row" className="py-2.5 text-left font-medium">{t(key)}</th>
-                    <td className="py-2.5 text-right text-muted-foreground tabular-nums">{show(kpis.yesterday)}</td>
-                    <td className="py-2.5 text-right font-medium tabular-nums">{show(kpis.today)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <RevenueTrend days={revenueDays} currency={hotel.currency} />
           </section>
         <section aria-labelledby="meals-heading" className="min-w-0 flex-1 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
           <h3 id="meals-heading" className="font-medium">{t('dashboard.meals')}</h3>
