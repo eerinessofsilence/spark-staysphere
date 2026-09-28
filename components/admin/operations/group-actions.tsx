@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchInput } from '@/components/ui/search-input';
 
 export interface AttachableBooking {
   id: string;
@@ -28,6 +29,12 @@ export interface AttachableBooking {
 export function AttachBookingForm({ groupId, options }: { groupId: string; options: AttachableBooking[] }) {
   const t = useAdminT();
   const router = useRouter();
+  const [query, setQuery] = React.useState('');
+  const filtered = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return options;
+    return options.filter((option) => `${option.reference} ${option.guestName}`.toLowerCase().includes(needle));
+  }, [options, query]);
   const [bookingId, setBookingId] = React.useState(options[0]?.id ?? '');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -35,9 +42,10 @@ export function AttachBookingForm({ groupId, options }: { groupId: string; optio
   // `options` is server data, refreshed by the router after a successful
   // attach — the option just picked is gone from the next list, so the
   // trigger would otherwise be left showing its bare id instead of a label.
+  // The same reset applies as the search narrows `filtered` past it.
   React.useEffect(() => {
-    if (!options.some((option) => option.id === bookingId)) setBookingId(options[0]?.id ?? '');
-  }, [options, bookingId]);
+    if (!filtered.some((option) => option.id === bookingId)) setBookingId(filtered[0]?.id ?? '');
+  }, [filtered, bookingId]);
 
   if (options.length === 0) {
     return <p className="text-sm text-muted-foreground">{t('groups.noAttachable')}</p>;
@@ -61,23 +69,39 @@ export function AttachBookingForm({ groupId, options }: { groupId: string; optio
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
       <div className="min-w-56 flex-1">
+        <label htmlFor="attach-booking-search" className="mb-1.5 block text-sm text-muted-foreground">
+          {t('groups.attachSearchLabel')}
+        </label>
+        <SearchInput
+          id="attach-booking-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('groups.attachSearchPlaceholder')}
+          className="mb-2"
+        />
         <label htmlFor="attach-booking" className="mb-1.5 block text-sm text-muted-foreground">
           {t('groups.attachBooking')}
         </label>
-        <Select items={options.map((option) => ({ value: option.id, label: `${option.reference} — ${option.guestName} — ${option.roomName}` }))} value={bookingId} onValueChange={(value) => value && setBookingId(value)}>
-          <SelectTrigger id="attach-booking" className={cn(fieldClass, 'h-11 w-full justify-between gap-2 py-0')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
-            {options.map((option) => (
-              <SelectItem key={option.id} value={option.id} className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground">
-                {option.reference} — {option.guestName} — {option.roomName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {filtered.length === 0 ? (
+          <p className="min-h-11 rounded-2xl border border-dashed border-border px-4 py-2.5 text-sm text-muted-foreground">
+            {t('groups.attachNoMatch', { query })}
+          </p>
+        ) : (
+          <Select items={filtered.map((option) => ({ value: option.id, label: `${option.reference} — ${option.guestName} — ${option.roomName}` }))} value={bookingId} onValueChange={(value) => value && setBookingId(value)}>
+            <SelectTrigger id="attach-booking" className={cn(fieldClass, 'h-11 w-full justify-between gap-2 py-0')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+              {filtered.map((option) => (
+                <SelectItem key={option.id} value={option.id} className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground">
+                  {option.reference} — {option.guestName} — {option.roomName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
-      <button type="submit" disabled={submitting} className={pill('primary')}>
+      <button type="submit" disabled={submitting || !bookingId} className={pill('primary')}>
         {submitting ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : <PlusIcon className="size-4 shrink-0" aria-hidden="true" />}
         {t('groups.attach')}
       </button>
