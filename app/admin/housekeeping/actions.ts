@@ -51,9 +51,9 @@ export async function setHousekeepingStatusAction(
     return {
       ok: false,
       message: result.error === 'roomNotFound' ? t('housekeeping.roomNotFound')
-        : result.error === 'notAssigned' ? 'Этот номер вам не назначен.'
-        : result.error === 'photoRequired' ? 'Для статуса «Чисто» добавьте фото.'
-        : result.error === 'invalidPhoto' ? 'Фото должно быть JPEG, PNG или WebP до 700 КБ.'
+        : result.error === 'notAssigned' ? t('housekeeping.notAssignedToYou')
+        : result.error === 'photoRequired' ? t('housekeeping.photoRequired')
+        : result.error === 'invalidPhoto' ? t('housekeeping.invalidPhoto')
         : t('housekeeping.invalidStatus'),
     };
   }
@@ -71,14 +71,15 @@ export async function setHousekeepingStatusAction(
 }
 
 export async function assignHousekeepingRoomAction(unitId: string, memberId: string | null): Promise<HousekeepingActionResult> {
+  const t = await getAdminT();
   await requirePermission('team.permTeamRoles');
   if (memberId) {
     const member = await teamService.findMemberById(memberId);
-    if (!member || member.role !== 'Housekeeper') return { ok: false, message: 'Выберите сотрудника хаускипинга.' };
+    if (!member || member.role !== 'Housekeeper') return { ok: false, message: t('housekeeping.selectHousekeeper') };
   }
   const ok = await housekeepingService.assignRoom(await getSelectedHotelSlug(), unitId, memberId);
-  if (!ok) return { ok: false, message: 'Номер не найден.' };
+  if (!ok) return { ok: false, message: t('housekeeping.roomNotFound') };
   revalidatePath('/admin/housekeeping');
   revalidatePath('/housekeeper');
-  return { ok: true, message: 'Назначение сохранено.' };
+  return { ok: true, message: t('housekeeping.assignmentSaved') };
 }

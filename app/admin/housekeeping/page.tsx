@@ -121,7 +121,7 @@ export default async function HousekeepingPage({
                   <Th>{t('housekeeping.thType')}</Th>
                   <Th>{t('housekeeping.thOccupancy')}</Th>
                   <Th>{t('housekeeping.thStatus')}</Th>
-                  <Th>Хаускипер</Th>
+                  <Th>{t('housekeeping.thHousekeeper')}</Th>
                   <Th>{t('housekeeping.thUpdated')}</Th>
                 </tr>
               </thead>

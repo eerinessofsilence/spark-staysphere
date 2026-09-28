@@ -4,8 +4,8 @@ test('assigned rooms, tablet access, evidence and offline sync', async ({ page }
   await page.goto('/admin/housekeeping');
   const row = page.locator('tbody tr').first();
   const number = (await row.getByRole('link').innerText()).trim();
-  await row.getByRole('combobox', { name: 'Назначить хаускипера' }).selectOption('housekeeper-demo');
-  await expect(row.getByRole('combobox', { name: 'Назначить хаускипера' })).toHaveValue('housekeeper-demo');
+  await row.getByRole('combobox', { name: 'Assign housekeeper' }).selectOption('housekeeper-demo');
+  await expect(row.getByRole('combobox', { name: 'Assign housekeeper' })).toHaveValue('housekeeper-demo');
 
   await page.context().clearCookies();
   await page.setViewportSize({ width: 1024, height: 768 });

@@ -74,14 +74,14 @@ export default async function HousekeepingRoomPage({ params }: { params: Promise
       </div>
 
       <section className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6" aria-labelledby="cleaning-log-heading">
-        <h2 id="cleaning-log-heading" className="text-lg font-medium">Журнал уборки</h2>
-        {events.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Изменений пока нет.</p> : (
+        <h2 id="cleaning-log-heading" className="text-lg font-medium">{t('housekeeping.cleaningLog')}</h2>
+        {events.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">{t('housekeeping.noEvents')}</p> : (
           <ol className="mt-4 divide-y divide-border">
             {events.map((event) => <li key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <span>{t(housekeepingStatusKey(event.status))} · {event.memberId} · номер {event.roomNumber}
+              <span>{t(housekeepingStatusKey(event.status))} · {event.memberId} · {t('housekeeping.eventRoomLabel', { room: event.roomNumber })}
                 {event.note ? <span className="block text-muted-foreground">{event.note}</span> : null}</span>
               <span className="text-muted-foreground">{new Date(event.occurredAt).toLocaleString(locale)}</span>
-              {event.photoData ? <a href={`/housekeeper/photo/${event.id}`} target="_blank" rel="noreferrer" className="underline">Фото</a> : null}
+              {event.photoData ? <a href={`/housekeeper/photo/${event.id}`} target="_blank" rel="noreferrer" className="underline">{t('housekeeping.photoLink')}</a> : null}
             </li>)}
           </ol>
         )}

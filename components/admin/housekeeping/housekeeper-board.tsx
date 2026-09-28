@@ -10,8 +10,16 @@ import {
   type OfflineHousekeepingChange, type OfflineRoom,
 } from '@/lib/application/housekeeper-offline';
 import { fieldClass, pill } from '@/lib/ui';
-import { prepareHousekeepingPhoto } from '@/lib/application/housekeeping-photo';
+import { HousekeepingPhotoError, prepareHousekeepingPhoto, type HousekeepingPhotoErrorCode } from '@/lib/application/housekeeping-photo';
 import styles from './housekeeper-board.module.css';
+
+const photoErrorMessages: Record<HousekeepingPhotoErrorCode, string> = {
+  invalid_type: 'Нужно фото JPEG, PNG или WebP.',
+  decode_failed: 'Не удалось открыть фото. Выберите другое.',
+  processing_failed: 'Не удалось обработать фото.',
+  too_large: 'Фото слишком большое. Выберите другое.',
+  read_failed: 'Не удалось прочитать фото.',
+};
 
 const labels = { dirty: 'Грязный', in_progress: 'В процессе', clean: 'Чисто' } as const;
 const statusStyle = {
@@ -114,7 +122,7 @@ export function HousekeeperBoard({ scope, memberName, rooms }: { scope: string; 
       if (navigator.onLine) await sync();
       else setMessage('Сохранено на планшете. Отправится при появлении сети.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось сохранить изменение.');
+      setMessage(error instanceof HousekeepingPhotoError ? photoErrorMessages[error.code] : 'Не удалось сохранить изменение.');
     } finally { setWorking(null); }
   };
 

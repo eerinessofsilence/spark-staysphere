@@ -11,9 +11,17 @@ import { housekeepingStatusKey } from '@/lib/i18n/admin/housekeeping';
 import { lRelativeTime } from '@/lib/i18n/format';
 import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
-import { prepareHousekeepingPhoto } from '@/lib/application/housekeeping-photo';
+import { HousekeepingPhotoError, prepareHousekeepingPhoto, type HousekeepingPhotoErrorCode } from '@/lib/application/housekeeping-photo';
 import { toast } from '@/components/admin/shell/toast';
 import { HousekeepingStatusBadge, housekeepingStatusIcons, housekeepingStatusStyles } from './housekeeping-status-badge';
+
+const photoErrorKeys: Record<HousekeepingPhotoErrorCode, 'housekeeping.invalidPhoto' | 'housekeeping.photoDecodeFailed' | 'housekeeping.photoProcessingFailed' | 'housekeeping.photoTooLarge' | 'housekeeping.readPhotoFailed'> = {
+  invalid_type: 'housekeeping.invalidPhoto',
+  decode_failed: 'housekeeping.photoDecodeFailed',
+  processing_failed: 'housekeeping.photoProcessingFailed',
+  too_large: 'housekeeping.photoTooLarge',
+  read_failed: 'housekeeping.readPhotoFailed',
+};
 
 /**
  * The room's own page: every status as a tile to press, a note for the
@@ -46,7 +54,7 @@ export function HousekeepingStatusForm({
 
   const save = async () => {
     if (selected === 'clean' && !photo) {
-      toast.error('Для статуса «Чисто» добавьте фото.');
+      toast.error(t('housekeeping.photoRequired'));
       return;
     }
     setPending(true);
@@ -56,7 +64,7 @@ export function HousekeepingStatusForm({
       if (result.ok) { toast.success(result.message); router.refresh(); }
       else toast.error(result.message);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Не удалось прочитать фото.');
+      toast.error(error instanceof HousekeepingPhotoError ? t(photoErrorKeys[error.code]) : t('housekeeping.readPhotoFailed'));
     } finally { setPending(false); }
   };
 
@@ -105,7 +113,7 @@ export function HousekeepingStatusForm({
       <div className="mt-5">
         {selected === 'clean' ? (
           <label className="mb-4 block text-sm font-medium">
-            Фото после уборки · обязательно
+            {t('housekeeping.photoFieldLabel')}
             <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required
               onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} className="mt-2 block w-full" />
           </label>
