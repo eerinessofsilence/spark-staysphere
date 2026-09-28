@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { addDays, parseISO } from 'date-fns';
-import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
+import { Bed, CalendarBlank, SignIn, SignOut } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { demoControl, hotelRepository, housekeepingService, inventoryService } from '@/lib/application/container';
 import {
@@ -32,6 +32,8 @@ import { BarList, Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { StayMoveButton } from '@/components/admin/operations/stay-move-button';
+import { stayStateKey } from '@/lib/i18n/admin/stay-state';
+import { cn } from '@/lib/utils';
 import { TodaySearch } from '@/components/admin/operations/today-search';
 import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -204,6 +206,7 @@ export default async function AdminOverviewPage({
               line runs across, from `sm` up they sit side by side and it runs down. */}
           <div id="today-lanes" className="mt-5 grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             <Movements
+              kind="arrival"
               title={t('dashboard.arriving')}
               count={moves.arrivals.length}
               detail={moves.arrivals.length === 0 && arrivalsShown.length > 0 ? t('dashboard.nextUp') : undefined}
@@ -224,6 +227,7 @@ export default async function AdminOverviewPage({
               }
             />
             <Movements
+              kind="departure"
               title={t('dashboard.leaving')}
               count={moves.departures.length}
               detail={moves.departures.length === 0 && departuresShown.length > 0 ? t('dashboard.nextUp') : undefined}
@@ -249,6 +253,7 @@ export default async function AdminOverviewPage({
               in half the space each. */}
           <div className="mt-4 border-t border-border pt-4">
             <Movements
+              kind="inHouse"
               title={t('dashboard.inHouse')}
               detail={lGuests(moves.adults, moves.children, locale)}
               bookings={moves.inHouse}
@@ -278,6 +283,7 @@ export default async function AdminOverviewPage({
           ) : (
             <div className="mt-5 grid gap-6">
               <Movements
+                kind="arrival"
                 title={t('dashboard.arriving')}
                 bookings={arriving}
                 dates={arriving.map((booking) => booking.checkIn)}
@@ -286,6 +292,7 @@ export default async function AdminOverviewPage({
                 locale={locale}
               />
               <Movements
+                kind="departure"
                 title={t('dashboard.leaving')}
                 bookings={leaving}
                 dates={leaving.map((booking) => booking.checkOut)}
@@ -561,8 +568,11 @@ function Movements({
   count,
   showDates,
   columns = 1,
+  kind,
 }: {
   title: string;
+  /** Which door this lane is: sets the mark at each row's start — the same glyphs as `BookingStatusBadge`, coloured once the move has happened. */
+  kind: 'arrival' | 'departure' | 'inHouse';
   /** The figure beside the heading — today's count, even when the list falls back to what is next. */
   count?: number;
   /** One muted line under the heading — the head count in house, say. */
@@ -584,6 +594,19 @@ function Movements({
 }): ReactNode {
   const listClass = columns === 2 ? 'mt-3 grid gap-1.5 sm:grid-cols-2' : 'mt-3 grid gap-1.5';
   const shown = limit ? bookings.slice(0, limit) : bookings;
+  // Coloured once the move has happened — a guest who has come through the
+  // door — and muted while it is still due, so a lane reads at a glance.
+  const mark = (booking: Booking): { Icon: typeof SignIn; tone: string; label: string } => {
+    if (kind === 'inHouse') return { Icon: Bed, tone: 'bg-stay-in-house/10 text-stay-in-house', label: t('dashboard.inHouse') };
+    if (kind === 'arrival') {
+      return booking.stayState === 'checked_in' || booking.stayState === 'checked_out'
+        ? { Icon: SignIn, tone: 'bg-stay-in-house/10 text-stay-in-house', label: t(stayStateKey('checked_in')) }
+        : { Icon: SignIn, tone: 'bg-card text-muted-foreground', label: t('dashboard.arriving') };
+    }
+    return booking.stayState === 'checked_out'
+      ? { Icon: SignOut, tone: 'bg-stay-checked-out text-stay-checked-out-ink', label: t(stayStateKey('checked_out')) }
+      : { Icon: SignOut, tone: 'bg-card text-muted-foreground', label: t('dashboard.leaving') };
+  };
   return (
     <div className="min-w-0 py-4 first:pt-0 last:pb-0 sm:px-5 sm:py-0 sm:first:pl-0 sm:last:pr-0">
       <h4 className="text-sm font-medium">
@@ -600,6 +623,15 @@ function Movements({
               data-search={`${booking.guest.firstName} ${booking.guest.lastName} ${roomNames.get(booking.roomTypeId) ?? ''} ${booking.reference}`.toLowerCase()}
               className="flex min-w-0 items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm odd:bg-stone/70 even:bg-stone/30"
             >
+              {(() => {
+                const { Icon, tone, label } = mark(booking);
+                return (
+                  <span className={cn('grid size-8 shrink-0 place-items-center rounded-full', tone)}>
+                    <Icon weight="fill" className="size-4" aria-hidden="true" />
+                    <span className="sr-only">{label}</span>
+                  </span>
+                );
+              })()}
               <span className="min-w-0 flex-1">
                 <Link
                   href={`/admin/bookings/${booking.reference}`}
