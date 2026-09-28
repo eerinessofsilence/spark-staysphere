@@ -8,6 +8,7 @@ import {
   Bars3Icon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
+  CameraIcon,
   ArrowRightStartOnRectangleIcon,
   ChevronUpDownIcon,
   CheckBadgeIcon,
@@ -38,7 +39,6 @@ import { toast } from './toast';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { SearchInput } from '@/components/ui/search-input';
-import { OrbitVisual } from '@/components/assistant/assistant-launcher-visual';
 
 export interface HotelOption {
   slug: string;
@@ -164,8 +164,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
  * borrows "the primary action" from `DESIGN_SYSTEM.md › Rules` 6 rather than
  * "active states" — the orbit is important enough to find at a glance even
  * from a page that isn't it, the way the rest of the list's plain rows
- * aren't. The assistant launcher's orb (`OrbitVisual`) turns inside it,
- * clipped to the pill, so it also reads as kin to the orb in the corner.
+ * aren't.
  */
 export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
   const current = featuredItem.href === activeHref(usePathname() ?? '');
@@ -177,10 +176,10 @@ export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
         href={featuredItem.href}
         onClick={onNavigate}
         aria-current={current ? 'page' : undefined}
-        className={cn(itemClass, 'relative justify-center overflow-hidden bg-primary text-primary-foreground hover:bg-primary-hover')}
+        className={cn(itemClass, 'justify-center bg-primary text-primary-foreground hover:bg-primary-hover')}
       >
-        <OrbitVisual />
-        <span className="relative">{t(featuredItem.label)}</span>
+        <CameraIcon className="size-5 shrink-0" aria-hidden="true" />
+        {t(featuredItem.label)}
       </Link>
     </nav>
   );

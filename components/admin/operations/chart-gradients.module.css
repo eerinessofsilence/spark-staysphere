@@ -1,35 +1,27 @@
 .palette {
-  --plot-light: color-mix(in srgb, var(--accent) 48%, white);
-  --plot-mid: var(--accent);
-  --plot-deep: color-mix(in srgb, var(--accent-strong) 78%, #141414);
-  --plot-soft-light: color-mix(in srgb, var(--accent) 15%, var(--card));
-  --plot-soft-deep: color-mix(in srgb, var(--accent) 48%, var(--card));
-  --plot-stone-light: color-mix(in srgb, var(--muted-foreground) 20%, var(--card));
-  --plot-stone-deep: color-mix(in srgb, var(--muted-foreground) 55%, var(--card));
+  --plot-accent: var(--accent);
+  --plot-light: color-mix(in srgb, var(--accent) 30%, var(--card));
+  --plot-stone: color-mix(in srgb, var(--muted-foreground) 35%, var(--card));
 }
 
 .accent {
-  background: linear-gradient(135deg, var(--plot-light) 0%, var(--plot-mid) 48%, var(--plot-deep) 100%);
+  background: var(--plot-accent);
 }
 
 .light {
-  background: linear-gradient(135deg, var(--plot-soft-light), var(--plot-soft-deep));
+  background: var(--plot-light);
 }
 
 .stone {
-  background: linear-gradient(135deg, var(--plot-stone-light), var(--plot-stone-deep));
+  background: var(--plot-stone);
 }
 
 .bar {
-  background-image:
-    linear-gradient(90deg, #ffffff24, transparent 45%, #0000000a),
-    linear-gradient(180deg, var(--plot-light) 0%, var(--plot-mid) 45%, var(--plot-deep) 100%);
-  box-shadow: inset 0 1px 0 #ffffff59, inset 1px 0 0 #ffffff26;
+  background: var(--plot-accent);
 }
 
 .neutralBar {
-  background: linear-gradient(180deg, var(--plot-stone-light), var(--plot-stone-deep));
-  box-shadow: inset 0 1px 0 #ffffff59;
+  background: var(--plot-stone);
 }
 
 .glow {
@@ -40,30 +32,26 @@
   box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.mixSegment {
-  box-shadow: inset 0 1px 0 #ffffff59;
-}
-
 /* The housekeeping mix bar's own five status colours (see globals.css's
    --hk-* tokens for why they're their own scale, and the validation note) —
    a part's own colour rather than a rank-ordered tone, so a status keeps
    its colour across days as the mix of rooms behind it changes. */
 .hkOutOfOrder {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--hk-out-of-order) 55%, white), var(--hk-out-of-order) 55%, color-mix(in srgb, var(--hk-out-of-order) 82%, black));
+  background: var(--hk-out-of-order);
 }
 
 .hkDirty {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--hk-dirty) 55%, white), var(--hk-dirty) 55%, color-mix(in srgb, var(--hk-dirty) 82%, black));
+  background: var(--hk-dirty);
 }
 
 .hkInProgress {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--hk-in-progress) 55%, white), var(--hk-in-progress) 55%, color-mix(in srgb, var(--hk-in-progress) 82%, black));
+  background: var(--hk-in-progress);
 }
 
 .hkClean {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--hk-clean) 55%, white), var(--hk-clean) 55%, color-mix(in srgb, var(--hk-clean) 82%, black));
+  background: var(--hk-clean);
 }
 
 .hkInspected {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--hk-inspected) 55%, white), var(--hk-inspected) 55%, color-mix(in srgb, var(--hk-inspected) 82%, black));
+  background: var(--hk-inspected);
 }
