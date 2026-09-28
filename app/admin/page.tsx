@@ -23,14 +23,16 @@ import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { housekeepingStatusKey } from '@/lib/i18n/admin/housekeeping';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { lDateRange, lDateShort, lGuests, lMoney, lNights, STATUS_LABEL } from '@/lib/i18n/format';
+import { lDateRange, lDateShort, lGuests, lMoney, lNights } from '@/lib/i18n/format';
 import { INTL_TAGS, type Locale } from '@/lib/i18n/locale';
 import { pill } from '@/lib/ui';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { BarList, Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
+import { cn } from '@/lib/utils';
 import { Movements } from '@/components/admin/operations/movements-list';
+import { RoomStatusBadge } from '@/components/admin/operations/room-status-badge';
 import { WeekMovements } from '@/components/admin/operations/week-movements';
 import chartTones from '@/components/admin/operations/chart-gradients.module.css';
 import { RevenueTrend } from '@/components/admin/operations/revenue-trend';
@@ -365,10 +367,10 @@ export default async function AdminOverviewPage({
               <thead>
                 <tr className="border-b border-border">
                   <Th>{t('dashboard.thRoomType')}</Th>
-                  <Th className="text-right">{t('dashboard.thTotalRooms')}</Th>
-                  <Th className="text-right">{t('dashboard.thSold')}</Th>
-                  <Th className="text-right">{t('dashboard.thAvailable')}</Th>
-                  <Th>{t('dashboard.thSaleStatus')}</Th>
+                  <Th className="w-20 text-right">{t('dashboard.thTotalRooms')}</Th>
+                  <Th className="w-20 text-right">{t('dashboard.thSold')}</Th>
+                  <Th className="w-24 text-right">{t('dashboard.thAvailable')}</Th>
+                  <Th className="w-40 text-right">{t('dashboard.thSaleStatus')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -378,11 +380,21 @@ export default async function AdminOverviewPage({
                       <Link href={`/admin/rates/${row.roomTypeId}`} className="hover:text-accent-strong before:absolute before:inset-0">
                         {row.name}
                       </Link>
+                      {/* How full the type is tonight, as a bar under its name — the
+                          three figures beside it, read at a glance. */}
+                      <span className="mt-1.5 block h-1 w-24 overflow-hidden rounded-full bg-stone" aria-hidden="true">
+                        <span
+                          className={cn('block h-full rounded-full', row.available === 0 ? 'bg-danger' : 'bg-accent')}
+                          style={{ width: `${row.total === 0 ? 0 : Math.round((row.sold / row.total) * 100)}%` }}
+                        />
+                      </span>
                     </Td>
-                    <Td className="text-right tabular-nums">{row.total}</Td>
+                    <Td className="text-right tabular-nums text-muted-foreground">{row.total}</Td>
                     <Td className="text-right tabular-nums">{row.sold}</Td>
-                    <Td className="text-right tabular-nums">{row.available}</Td>
-                    <Td className="whitespace-nowrap">{STATUS_LABEL[locale][row.status]}</Td>
+                    <Td className={cn('text-right tabular-nums', row.available === 0 && 'text-danger')}>{row.available}</Td>
+                    <Td className="text-right">
+                      <RoomStatusBadge status={row.status} remaining={row.available} locale={locale} />
+                    </Td>
                   </tr>
                 ))}
               </tbody>
