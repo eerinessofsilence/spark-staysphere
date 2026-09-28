@@ -1,16 +1,24 @@
 'use client';
 
 import * as React from 'react';
+import { DayPicker } from 'react-day-picker';
 import { format, parseISO } from 'date-fns';
 import type { FrontDeskDay } from '@/lib/application/inventory-service';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import type { AdminT } from '@/lib/i18n/admin/translate';
 import { DATE_FNS_LOCALES, lDateShort, lNights, lRoomCount } from '@/lib/i18n/format';
 import type { Locale } from '@/lib/i18n/locale';
+import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { CALENDAR_CLASS_NAMES, CALENDAR_COMPONENTS } from '@/components/search/stay-dates-field';
+import { Modal } from '@/components/site/modal';
 import styles from './chart-gradients.module.css';
 
+const ISO = 'yyyy-MM-dd';
 const ticks = [0, 25, 50, 75, 100];
+const PRESETS = [7, 14, 30] as const;
+
+type Period = { key: 'preset'; nights: (typeof PRESETS)[number] } | { key: 'custom'; nights: number };
 
 function share(occupied: number, totalRooms: number): number {
   return totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
@@ -28,12 +36,46 @@ function describe(day: FrontDeskDay, totalRooms: number, tonight: boolean, t: Ad
   });
 }
 
-/** Tonight carries the accent as the active day; the rest stay in the neutral stone ink. */
-export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; totalRooms: number }) {
+/**
+ * Tonight carries the accent as the active day; the rest stay in the neutral
+ * stone ink. `allDays` is the widest window the desk fetched (see the
+ * dashboard's `getFrontDesk` call) — the period picker below only ever
+ * slices it, so switching costs no round trip.
+ */
+export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[]; totalRooms: number }) {
   const [active, setActive] = React.useState<number | null>(null);
+  const [period, setPeriod] = React.useState<Period>({ key: 'preset', nights: 14 });
+  const [open, setOpen] = React.useState(false);
+  const [draft, setDraft] = React.useState<Date | undefined>(undefined);
+  const [months, setMonths] = React.useState(1);
   const t = useAdminT();
   const locale = useAdminLocale();
   const dateFns = DATE_FNS_LOCALES[locale];
+
+  const today = allDays[0]!.date;
+  const windowEnd = allDays[allDays.length - 1]!.date;
+
+  React.useEffect(() => {
+    const query = window.matchMedia('(min-width: 640px)');
+    const apply = () => setMonths(query.matches ? 2 : 1);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+
+  const nights = period.nights;
+  const days = allDays.slice(0, nights);
+
+  // The window always starts tonight — there is nothing to view before it —
+  // so the dialog only ever asks for its last night, not a two-ended range.
+  React.useEffect(() => {
+    if (open) setDraft(parseISO(days[days.length - 1]!.date));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const close = React.useCallback(() => setOpen(false), []);
+  const draftIso = draft ? format(draft, ISO) : null;
+
   const peak = days.reduce((best, day, index) => (day.occupied > (days[best]?.occupied ?? -1) ? index : best), 0);
   const shown = active === null ? undefined : days[active];
   const offset = active === null ? '-50%' : active < 2 ? '-12%' : active > days.length - 3 ? '-88%' : '-50%';
@@ -47,7 +89,33 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
         <p className="mt-1 text-sm text-muted-foreground">{t('occupancy.body', { rooms: lRoomCount(totalRooms, locale) })}</p>
       </figcaption>
 
-      <div className="mt-8 flex gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label={t('reports.period')}>
+        {PRESETS.map((n) => {
+          const isActive = period.key === 'preset' && period.nights === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => setPeriod({ key: 'preset', nights: n })}
+              className={pill(isActive ? 'primary' : 'secondary', 'min-h-9 px-3.5 text-xs')}
+            >
+              {t('dashboard.nextDays', { n })}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className={pill(period.key === 'custom' ? 'primary' : 'secondary', 'min-h-9 px-3.5 text-xs')}
+        >
+          {t('reports.customDates')}
+        </button>
+      </div>
+
+      <div className="mt-6 flex gap-2">
         <div aria-hidden="true" className="relative h-48 w-10 shrink-0 text-xs text-muted-foreground tabular-nums sm:h-56">
           {ticks.map((tick) => (
             <span key={tick} className="absolute right-0 translate-y-1/2" style={{ bottom: `${tick}%` }}>
@@ -70,8 +138,8 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
             <ol aria-label={t('occupancy.byNight')} className="absolute inset-0 flex">
               {days.map((day, index) => {
                 const value = share(day.occupied, totalRooms);
-                const tonight = index === 0;
-                const labelled = tonight || (index === peak && peak !== 0);
+                const tonight = day.date === today;
+                const labelled = tonight || (index === peak && !tonight);
                 return (
                   <li key={day.date} className="flex min-w-0 flex-1">
                     <button
@@ -120,7 +188,7 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
                   {t('occupancy.tooltipHead', { occupied: shown.occupied, total: totalRooms, share: share(shown.occupied, totalRooms) })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {active === 0 ? `${t('occupancy.tonight')} · ` : ''}
+                  {shown.date === today ? `${t('occupancy.tonight')} · ` : ''}
                   {t('occupancy.tooltipBody', { date: lDateShort(shown.date, locale), arrivals: shown.arrivals, departures: shown.departures })}
                 </p>
               </div>
@@ -128,13 +196,13 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
           </div>
 
           <ol aria-hidden="true" className="mt-2 flex">
-            {days.map((day, index) => (
+            {days.map((day) => (
               <li key={day.date} className="min-w-0 flex-1 text-center text-[11px] leading-tight text-muted-foreground">
                 <span className="block sm:hidden">{format(parseISO(day.date), 'EEEEE', { locale: dateFns })}</span>
                 <span className="hidden truncate sm:block">
-                  {index === 0 ? t('occupancy.today') : format(parseISO(day.date), 'EEE', { locale: dateFns })}
+                  {day.date === today ? t('occupancy.today') : format(parseISO(day.date), 'EEE', { locale: dateFns })}
                 </span>
-                <span className={cn('block tabular-nums', index === 0 && 'font-semibold text-foreground')}>
+                <span className={cn('block tabular-nums', day.date === today && 'font-semibold text-foreground')}>
                   {format(parseISO(day.date), 'd')}
                 </span>
               </li>
@@ -175,6 +243,46 @@ export function OccupancyChart({ days, totalRooms }: { days: FrontDeskDay[]; tot
           </table>
         </div>
       </details>
+
+      <Modal open={open} onClose={close} title={t('occupancy.throughDate')} className="sm:max-w-[36rem]">
+        <DayPicker
+          mode="single"
+          selected={draft}
+          onSelect={setDraft}
+          numberOfMonths={months}
+          showOutsideDays={false}
+          weekStartsOn={1}
+          fixedWeeks
+          defaultMonth={draft ?? parseISO(today)}
+          disabled={{ before: parseISO(today), after: parseISO(windowEnd) }}
+          classNames={CALENDAR_CLASS_NAMES}
+          components={CALENDAR_COMPONENTS}
+          locale={DATE_FNS_LOCALES[locale]}
+        />
+        <div className="mt-4 border-t border-border pt-4">
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            {draftIso ? `${lDateShort(today, locale)} – ${lDateShort(draftIso, locale)}` : t('occupancy.throughDate')}
+          </p>
+          <div className="mt-4 flex justify-center gap-2">
+            <button type="button" onClick={close} className={pill('ghost', 'min-h-10 px-4')}>
+              {t('frontDesk.cancel')}
+            </button>
+            <button
+              type="button"
+              disabled={!draftIso}
+              onClick={() => {
+                if (!draftIso) return;
+                const span = Math.round((parseISO(draftIso).getTime() - parseISO(today).getTime()) / 86_400_000) + 1;
+                setPeriod({ key: 'custom', nights: Math.max(1, span) });
+                close();
+              }}
+              className={pill('primary', 'min-h-10 px-5')}
+            >
+              {t('ops.show')}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </figure>
   );
 }

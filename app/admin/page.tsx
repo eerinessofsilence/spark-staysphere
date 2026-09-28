@@ -49,6 +49,10 @@ export const dynamic = 'force-dynamic';
 // which the badge deliberately shares one green for. See that file's note
 // for the validation behind these five and chart-gradients.module.css for
 // where they're applied.
+// A hotel with many room types would otherwise stretch this card to their
+// count; a handful is a glance, the rest live on Room rates already.
+const ROOM_TYPES_SHOWN = 6;
+
 const housekeepingMixTone: Record<(typeof HOUSEKEEPING_STATUSES)[number], string> = {
   out_of_order: chartTones.hkOutOfOrder,
   dirty: chartTones.hkDirty,
@@ -75,7 +79,7 @@ export default async function AdminOverviewPage({
   const today = toIsoDate(new Date());
   const hotelSlug = await getSelectedHotelSlug();
   const [board, allBookings, housekeepingRooms] = await Promise.all([
-    inventoryService.getFrontDesk(hotelSlug, today, 14),
+    inventoryService.getFrontDesk(hotelSlug, today, 90),
     hotelRepository.listBookings(),
     housekeepingService.listRooms(hotelSlug, today),
   ]);
@@ -285,7 +289,7 @@ export default async function AdminOverviewPage({
           </div>
         </section>
 
-        <OccupancyChart days={board.days} totalRooms={board.totalRooms} />
+        <OccupancyChart allDays={board.days} totalRooms={board.totalRooms} />
 
 
         <section aria-labelledby="week-heading" className="min-w-0 flex-1 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
@@ -351,9 +355,17 @@ export default async function AdminOverviewPage({
       </div>
 
         <section aria-labelledby="rooms-by-type-heading" className="mt-6 min-w-0 overflow-hidden rounded-[18px] bg-card shadow-soft">
-          <div className="p-5 pb-0 sm:p-6 sm:pb-0">
-            <h3 id="rooms-by-type-heading" className="font-medium">{t('dashboard.roomsByType')}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.roomsByTypeBody')}</p>
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 pb-0 sm:p-6 sm:pb-0">
+            <div className="min-w-0">
+              <h3 id="rooms-by-type-heading" className="font-medium">{t('dashboard.roomsByType')}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.roomsByTypeBody')}</p>
+            </div>
+            {availability.length > ROOM_TYPES_SHOWN ? (
+              <Link href="/admin/rates" className={pill('secondary', 'min-h-9 px-3.5 text-xs')}>
+                {t('dashboard.allRoomTypes')}
+                <ArrowRightIcon className="size-4" aria-hidden="true" />
+              </Link>
+            ) : null}
           </div>
           <div className="mt-4">
             <TableCard caption={t('dashboard.roomsByType')} className="min-w-[28rem]" attached>
@@ -367,7 +379,7 @@ export default async function AdminOverviewPage({
                 </tr>
               </thead>
               <tbody>
-                {availability.map((row) => (
+                {availability.slice(0, ROOM_TYPES_SHOWN).map((row) => (
                   <tr key={row.roomTypeId} className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50">
                     <Td className="font-medium">
                       <Link href={`/admin/rates/${row.roomTypeId}`} className="hover:text-accent-strong before:absolute before:inset-0">
