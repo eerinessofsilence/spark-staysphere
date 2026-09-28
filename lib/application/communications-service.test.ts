@@ -54,6 +54,15 @@ describe('CommunicationsService', () => {
     expect(first.some((c) => c.unread === 0)).toBe(true);
   });
 
+  it('deleting a thread removes it and its messages, and refuses another hotel’s', async () => {
+    const [first] = await service.listConversations(hotel.slug);
+    expect(await service.remove('somewhere-else', first!.id)).toBe(false);
+    expect(await service.remove(hotel.slug, first!.id)).toBe(true);
+    expect(await service.openThread(hotel.slug, first!.id)).toBeNull();
+    expect(await mockMessagingStore.listMessages(first!.id)).toEqual([]);
+    expect((await service.listConversations(hotel.slug)).some((c) => c.id === first!.id)).toBe(false);
+  });
+
   it('opening a thread clears its unread count and lists messages oldest first', async () => {
     const [unread] = (await service.listConversations(hotel.slug)).filter((c) => c.unread > 0);
     const thread = await service.openThread(hotel.slug, unread.id);

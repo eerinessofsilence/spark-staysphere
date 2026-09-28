@@ -3,14 +3,19 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftIcon, ArrowPathIcon, CalendarDaysIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
-import { sendMessageAction } from '@/app/admin/communications/actions';
+import { Menu } from '@base-ui/react/menu';
+import { ArrowLeftIcon, ArrowPathIcon, CalendarDaysIcon, EllipsisHorizontalIcon, PaperAirplaneIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { deleteConversationAction, sendMessageAction } from '@/app/admin/communications/actions';
 import { initialsOf } from '@/lib/application/team-directory';
 import type { ChatMessage, Conversation } from '@/lib/domain/ports';
+import type { Booking, StayState } from '@/lib/domain/schemas';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/admin/shell/toast';
+import { Modal } from '@/components/site/modal';
+import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
+import { menuItemClass } from '@/components/admin/operations/booking-row-actions';
 import { CHANNEL_ICON, channelKey } from './conversation-list';
 
 /** What the thread header says about the stay, resolved by the page from the booking the thread is tied to. */
@@ -18,6 +23,77 @@ export interface ThreadStay {
   reference: string;
   roomName: string;
   dates: string;
+  status: Booking['status'];
+  stayState: StayState;
+}
+
+/**
+ * The thread's own "⋯": the booking it belongs to, and the one destructive
+ * thing a desk can do to a thread. Deleting asks first and then leaves for
+ * the inbox, since the thread being looked at is the one that's gone.
+ */
+function ThreadActions({ conversation }: { conversation: Conversation }) {
+  const t = useAdminT();
+  const router = useRouter();
+  const [confirming, setConfirming] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const close = React.useCallback(() => setConfirming(false), []);
+
+  const remove = async () => {
+    setPending(true);
+    const result = await deleteConversationAction(conversation.id);
+    setPending(false);
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    close();
+    toast.success(t('comms.deleted'));
+    router.push('/admin/communications');
+    router.refresh();
+  };
+
+  return (
+    <>
+      <Menu.Root modal={false}>
+        <Menu.Trigger
+          aria-label={t('comms.actions')}
+          className={iconButton('light', 'size-10 text-muted-foreground hover:text-foreground data-popup-open:bg-stone data-popup-open:text-foreground')}
+        >
+          <EllipsisHorizontalIcon className="size-5" aria-hidden="true" />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50 outline-none">
+            <Menu.Popup className="min-w-48 rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+              {conversation.bookingReference ? (
+                <Menu.LinkItem render={<Link href={`/admin/bookings/${conversation.bookingReference}`} />} closeOnClick className={menuItemClass}>
+                  <CalendarDaysIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {t('comms.openBooking')}
+                </Menu.LinkItem>
+              ) : null}
+              <Menu.Item onClick={() => setConfirming(true)} className={cn(menuItemClass, 'text-danger data-highlighted:bg-danger/10')}>
+                <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
+                {t('comms.deleteChat')}
+              </Menu.Item>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+
+      <Modal open={confirming} onClose={close} title={t('comms.deleteChat')}>
+        <p className="text-sm">{t('comms.deleteConfirm', { name: conversation.guestName })}</p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={remove} disabled={pending} className={pill('primary')}>
+            {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+            {t('comms.deleteChat')}
+          </button>
+          <button type="button" onClick={close} className={pill('secondary')}>
+            {t('frontDesk.cancel')}
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
 }
 
 
@@ -113,17 +189,9 @@ export function Thread({ conversation, messages, stay }: { conversation: Convers
             )}
           </p>
         </div>
-        {conversation.bookingReference ? (
-          <>
-            <Link href={`/admin/bookings/${conversation.bookingReference}`} className={pill('secondary', 'hidden min-h-10 shrink-0 px-4 text-sm sm:inline-flex')}>
-              {t('comms.openBooking')}
-            </Link>
-            {/* A phone's header has no room for words next to the name: the booking is the calendar. */}
-            <Link href={`/admin/bookings/${conversation.bookingReference}`} aria-label={t('comms.openBooking')} title={t('comms.openBooking')} className={iconButton('light', 'size-10 sm:hidden')}>
-              <CalendarDaysIcon className="size-4" aria-hidden="true" />
-            </Link>
-          </>
-        ) : null}
+        {/* The stay's own status, as the reservations list shows it; on a phone the "⋯" alone is the header's right edge. */}
+        {stay ? <BookingStatusBadge status={stay.status} stayState={stay.stayState} className="hidden shrink-0 sm:inline-flex" /> : null}
+        <ThreadActions conversation={conversation} />
       </header>
 
       <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto bg-stone/30 px-4 py-4 sm:px-6" aria-live="polite">

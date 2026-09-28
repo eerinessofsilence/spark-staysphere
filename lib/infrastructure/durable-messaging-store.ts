@@ -33,4 +33,8 @@ export const durableMessagingStore: MessagingStore = {
     const db = getDemoDatabase();
     return db ? d1.markRead(db, conversationId) : mockMessagingStore.markRead(conversationId);
   },
+  deleteConversation(hotelId, id) {
+    const db = getDemoDatabase();
+    return db ? d1.deleteConversation(db, hotelId, id) : mockMessagingStore.deleteConversation(hotelId, id);
+  },
 };

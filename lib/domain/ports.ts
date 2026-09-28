@@ -248,6 +248,8 @@ export interface MessagingStore {
   listMessages(conversationId: string): Promise<ChatMessage[]>;
   saveMessage(message: ChatMessage): Promise<void>;
   markRead(conversationId: string): Promise<void>;
+  /** The thread and every message in it, gone for good; `false` when it isn't this hotel's. */
+  deleteConversation(hotelId: string, id: string): Promise<boolean>;
 }
 
 /** `/admin/accounting/reports`' "Daily list" report types: who arrives, who leaves, who is already in house on a given date. */

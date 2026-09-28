@@ -48,6 +48,13 @@ export const mockMessagingStore: MessagingStore = {
     const conversation = conversations.get(conversationId);
     if (conversation) conversations.set(conversationId, { ...conversation, unread: 0 });
   },
+  async deleteConversation(hotelId, id) {
+    const conversation = conversations.get(id);
+    if (conversation?.hotelId !== hotelId) return false;
+    conversations.delete(id);
+    for (const [messageId, message] of messages) if (message.conversationId === id) messages.delete(messageId);
+    return true;
+  },
 };
 
 /** Test seam: forget everything, so each test starts from an empty inbox. */

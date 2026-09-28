@@ -125,6 +125,13 @@ export class CommunicationsService {
     return { conversation: { ...conversation, unread: 0 }, messages };
   }
 
+  /** Drops the thread and its messages for the desk. The booking it was tied to is untouched. */
+  async remove(hotelSlug: string, id: string): Promise<boolean> {
+    const hotel = await this.repository.getHotel(hotelSlug);
+    if (!hotel) return false;
+    return this.store.deleteConversation(hotel.id, id);
+  }
+
   async send(hotelSlug: string, conversationId: string, rawBody: string, author: string): Promise<SendResult> {
     const body = rawBody.trim();
     if (!body) return { ok: false, error: 'empty' };

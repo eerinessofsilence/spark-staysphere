@@ -109,6 +109,16 @@ export const d1MessagingStore = {
     await ensureSchema(db);
     await db.prepare('UPDATE conversations SET unread = 0 WHERE id = ?').bind(conversationId).run();
   },
+
+  async deleteConversation(db: D1Database, hotelId: string, id: string): Promise<boolean> {
+    await ensureSchema(db);
+    const [thread] = await db.batch([
+      db.prepare('DELETE FROM conversations WHERE hotel_id = ? AND id = ?').bind(hotelId, id),
+      // Only once the thread row went: another hotel's id must not shed its messages.
+      db.prepare('DELETE FROM conversation_messages WHERE changes() > 0 AND conversation_id = ?').bind(id),
+    ]);
+    return (thread?.meta.changes ?? 0) > 0;
+  },
 } satisfies {
   [K in keyof MessagingStore]: (db: D1Database, ...args: Parameters<MessagingStore[K]>) => ReturnType<MessagingStore[K]>;
 };

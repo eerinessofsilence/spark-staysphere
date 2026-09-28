@@ -48,6 +48,8 @@ export async function Inbox({ currentId }: { currentId: string | null }) {
         reference: stayBooking.reference,
         roomName: roomName.get(stayBooking.roomTypeId) ?? stayBooking.roomTypeId,
         dates: lDateRange(stayBooking.checkIn, stayBooking.checkOut, locale),
+        status: stayBooking.status,
+        stayState: stayBooking.stayState,
       }
     : null;
   const unread = conversations.reduce((sum, c) => sum + c.unread, 0);

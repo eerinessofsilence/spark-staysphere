@@ -44,6 +44,16 @@ export async function sendMessageAction(conversationId: string, body: string): P
   return { ok: true, id: result.message.id };
 }
 
+export async function deleteConversationAction(conversationId: string): Promise<CommsActionResult> {
+  const t = await getAdminT();
+  const gate = await permitted();
+  if (!gate.ok) return gate;
+  const removed = await communicationsService.remove(await getSelectedHotelSlug(), conversationId);
+  if (!removed) return { ok: false, message: t('comms.errorNotFound') };
+  revalidatePath('/admin/communications');
+  return { ok: true, id: conversationId };
+}
+
 export async function startConversationAction(bookingReference: string, channel: string): Promise<CommsActionResult> {
   const t = await getAdminT();
   const gate = await permitted();
