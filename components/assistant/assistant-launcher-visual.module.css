@@ -12,13 +12,14 @@
   pointer-events: none;
 }
 
-/* Recolored off `--primary-foreground` for a spot living on a filled `bg-primary`
-   pill (ink by day, lime by night) instead of the assistant's own fixed dark tones. */
-.onPrimary {
-  --orb-highlight: var(--primary-foreground);
-  --orb-accent: color-mix(in srgb, var(--primary-foreground) 75%, transparent);
-  --orb-mid: color-mix(in srgb, var(--primary-foreground) 45%, transparent);
-  --orb-shade: color-mix(in srgb, var(--primary-foreground) 22%, transparent);
+/* `OrbitVisual`: the same orb pulled over a wide pill rather than a round
+   button. The SVG stretches to the box (`preserveAspectRatio="none"`), so the
+   body — 73/120 of the viewBox — needs a 160% box to reach the pill's edges,
+   with the ribbons riding just outside them the way they ring the launcher. */
+.stretched .orb {
+  inset: -27%;
+  width: 154%;
+  height: 154%;
 }
 
 /* The assistant stays monochrome in both themes. */
@@ -102,12 +103,12 @@
   rotate: 0deg;
 }
 
-:global(button:focus-visible) .visual[data-paused='false'] .halo {
+:global(:is(button, a):focus-visible) .visual[data-paused='false'] .halo {
   opacity: 0.5;
 }
 
 @media (hover: hover) {
-  :global(button:hover) .visual[data-paused='false'] .halo {
+  :global(:is(button, a):hover) .visual[data-paused='false'] .halo {
     opacity: 0.5;
   }
 }
@@ -137,24 +138,24 @@
     animation-play-state: running;
   }
 
-  :global(button:focus-visible) .visual[data-paused='false'] * {
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] * {
     animation-play-state: running;
   }
-  :global(button:focus-visible) .visual[data-paused='false'] .halo {
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] .halo {
     scale: 1.12;
   }
-  :global(button:focus-visible) .visual[data-paused='false'] .orb {
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] .orb {
     scale: 1.06;
   }
 
   @media (hover: hover) {
-    :global(button:hover) .visual[data-paused='false'] * {
+    :global(:is(button, a):hover) .visual[data-paused='false'] * {
       animation-play-state: running;
     }
-    :global(button:hover) .visual[data-paused='false'] .halo {
+    :global(:is(button, a):hover) .visual[data-paused='false'] .halo {
       scale: 1.12;
     }
-    :global(button:hover) .visual[data-paused='false'] .orb {
+    :global(:is(button, a):hover) .visual[data-paused='false'] .orb {
       scale: 1.06;
     }
   }

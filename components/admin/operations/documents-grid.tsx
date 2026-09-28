@@ -4,12 +4,16 @@ import * as React from 'react';
 import Link from 'next/link';
 import type { GuestDocument } from '@/lib/domain/guest-document';
 import { Modal } from '@/components/site/modal';
-import { useAdminT } from '@/lib/i18n/admin/context';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { lDateRange } from '@/lib/i18n/format';
 import { pill, tag } from '@/lib/ui';
 import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from './client-pagination';
 
 export type DocumentTile = Omit<GuestDocument, 'objectKeys' | 'hotelId'> & {
   guestName: string;
+  /** The stay the document was scanned for — what its photo is kept until. `null` once that booking is gone. */
+  checkIn: string | null;
+  checkOut: string | null;
 };
 
 function imageUrl(id: string): string {
@@ -18,6 +22,7 @@ function imageUrl(id: string): string {
 
 export function DocumentsGrid({ documents }: { documents: DocumentTile[] }) {
   const t = useAdminT();
+  const locale = useAdminLocale();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(CLIENT_PAGE_SIZE);
@@ -60,8 +65,19 @@ export function DocumentsGrid({ documents }: { documents: DocumentTile[] }) {
                   {' · '}
                   {document.identity.documentNumber}
                 </span>
-                <span className="mt-2 block">
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {document.identity.dateOfBirth || '—'}
+                  {' · '}
+                  {document.identity.nationality || document.identity.issuingCountry || '—'}
+                </span>
+                {document.checkIn && document.checkOut ? (
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    {lDateRange(document.checkIn, document.checkOut, locale)}
+                  </span>
+                ) : null}
+                <span className="mt-2 flex flex-wrap gap-1.5">
                   <span className={tag()}>{statusLabel(document.status, t)}</span>
+                  {document.status === 'active' ? <span className={tag('text-muted-foreground')}>{t('documents.photoUntilCheckout')}</span> : null}
                 </span>
               </span>
             </button>
@@ -121,6 +137,16 @@ export function DocumentsGrid({ documents }: { documents: DocumentTile[] }) {
                     {open.reservationReference}
                   </Link>
                 </dd>
+              </div>
+              {open.checkIn && open.checkOut ? (
+                <div>
+                  <dt className="text-muted-foreground">{t('documents.stay')}</dt>
+                  <dd className="mt-0.5 font-medium">{lDateRange(open.checkIn, open.checkOut, locale)}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-muted-foreground">{t('documents.dateOfBirth')}</dt>
+                <dd className="mt-0.5 font-medium">{open.identity.dateOfBirth || '—'}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">{t('documents.documentNumber')}</dt>

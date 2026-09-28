@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   BanknotesIcon,
   Bars3Icon,
-  ArrowPathRoundedSquareIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   ArrowRightStartOnRectangleIcon,
@@ -88,7 +87,7 @@ const groups: NavGroup[] = [
  * that component. The orbit is the product's own promise ("see the stay"),
  * not another CMS screen — `DESIGN_SYSTEM.md › Rules` 1 and 4.
  */
-const featuredItem: NavItem = { href: '/admin/content/spinner', label: 'nav.orbit', icon: ArrowPathRoundedSquareIcon };
+const featuredItem: Pick<NavItem, 'href' | 'label'> = { href: '/admin/content/spinner', label: 'nav.orbit' };
 
 const itemClass =
   'flex min-h-11 items-center gap-3 rounded-full px-3 text-sm font-medium transition-colors';
@@ -161,11 +160,13 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
  * fixed in place whichever way a long nav list scrolls (see `AdminShell`
  * and `AdminMobileMenu`).
  *
- * Filled always, not only when current: this is the one nav entry that
- * borrows "the primary action" from `DESIGN_SYSTEM.md › Rules` 6 rather than
- * "active states" — the orbit is important enough to find at a glance even
- * from a page that isn't it, the way the rest of the list's plain rows
- * aren't.
+ * Drawn as the assistant launcher's own orb (`OrbitVisual`) stretched over
+ * the pill, always animating, not as a filled pill with an icon: it's the
+ * one nav entry that should be found at a glance even from a page that
+ * isn't it, the way the rest of the list's plain rows aren't — and it now
+ * reads as the same object as the assistant's orb in the corner. Like that
+ * orb it stays monochrome in both schemes, so the label is the launcher's
+ * own warm white over ink rather than `text-primary-foreground`.
  */
 export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
   const current = featuredItem.href === activeHref(usePathname() ?? '');
@@ -177,12 +178,14 @@ export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
         href={featuredItem.href}
         onClick={onNavigate}
         aria-current={current ? 'page' : undefined}
-        className={cn(itemClass, 'justify-center bg-primary text-primary-foreground hover:bg-primary-hover')}
+        className={cn(
+          itemClass,
+          'relative justify-center scale-100 outline-none transition-[scale] duration-200 ease-out active:scale-95',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        )}
       >
-        <span className="relative size-5 shrink-0">
-          <OrbitVisual onPrimary />
-        </span>
-        {t(featuredItem.label)}
+        <OrbitVisual />
+        <span className="relative text-[#f7f5f0] [text-shadow:0_1px_4px_var(--ink)]">{t(featuredItem.label)}</span>
       </Link>
     </nav>
   );

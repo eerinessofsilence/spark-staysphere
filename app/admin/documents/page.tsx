@@ -30,15 +30,21 @@ export default async function DocumentsPage() {
   const bookings = allBookings.filter((booking) => booking.hotelId === hotel.id);
   const directory = buildGuestDirectory(bookings, profiles, hotel.currency);
   const nameById = new Map(directory.map((guest) => [guest.id, `${guest.firstName} ${guest.lastName}`.trim()]));
+  const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
 
-  const tiles: DocumentTile[] = documents.map(({ objectKeys: _keys, hotelId: _hotel, ...document }) => ({
-    ...document,
-    guestName: nameById.get(document.guestId) ?? document.guestId,
-  }));
+  const tiles: DocumentTile[] = documents.map(({ objectKeys: _keys, hotelId: _hotel, ...document }) => {
+    const booking = bookingById.get(document.reservationId);
+    return {
+      ...document,
+      guestName: nameById.get(document.guestId) ?? document.guestId,
+      checkIn: booking?.checkIn ?? null,
+      checkOut: booking?.checkOut ?? null,
+    };
+  });
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('nav.documents')} />
+      <AdminPageHeader title={t('nav.documents')} description={t('documents.retentionNote')} />
 
       {tiles.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">

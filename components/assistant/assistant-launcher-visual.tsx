@@ -104,22 +104,23 @@ export function AssistantLauncherVisual({ open = false, hidden = false }: { open
 }
 
 /**
- * The same orb, minus the assistant's own "AI"/close cross-fade — for a spot
- * that wants this exact spinning mesh as an icon rather than as the
- * assistant's launcher, e.g. the sidebar's 360 Orbit pill. Always running,
- * never paused: unlike the launcher, there's no open state to save motion
- * for. `onPrimary` recolors it from the assistant's own fixed dark palette
- * to the pill's own `--primary-foreground`, so it reads on both the ink and
- * the lime pill instead of one fixed tone.
+ * The same orb, pulled over a wide pill instead of a round button — the
+ * sidebar's 360 Orbit. Identical layers and keyframes to the launcher's,
+ * minus its "AI"/close cross-fade, and always running: there's no open
+ * state to save motion for. The SVG stretches to whatever box it sits in
+ * (`preserveAspectRatio="none"`); the rotations still happen in the square
+ * viewBox before that stretch, so the outline stays a steady ellipse with
+ * the ripples travelling round it, and strokes are pinned in screen pixels
+ * so the lengthwise stretch doesn't fatten them.
  */
-export function OrbitVisual({ className, onPrimary = false }: { className?: string; onPrimary?: boolean }) {
+export function OrbitVisual({ className }: { className?: string }) {
   const id = useId().replace(/:/g, '');
   const paint = (name: string) => `url(#${id}-${name})`;
 
   return (
-    <span className={cn(styles.visual, onPrimary && styles.onPrimary, className)} data-open="false" data-paused="false" aria-hidden="true">
+    <span className={cn(styles.visual, styles.stretched, className)} data-open="false" data-paused="false" aria-hidden="true">
       <span className={styles.halo} />
-      <svg className={styles.orb} viewBox="0 0 120 120" fill="none" focusable="false">
+      <svg className={styles.orb} viewBox="0 0 120 120" preserveAspectRatio="none" fill="none" focusable="false">
         <defs>
           <radialGradient id={`${id}-body`} cx="38%" cy="30%" r="73%">
             <stop stopColor="var(--orb-mid)" />
@@ -147,20 +148,20 @@ export function OrbitVisual({ className, onPrimary = false }: { className?: stri
         </defs>
         <g className={styles.body}>
           <path d={contour(0.4, 36.5)} fill={paint('body')} />
-          <g className={styles.mesh} stroke={paint('mesh')} strokeWidth="0.38">
-            <path d={latitudeMesh} />
-            <path d={longitudeMesh} />
+          <g className={styles.mesh} stroke={paint('mesh')} strokeWidth="0.3">
+            <path d={latitudeMesh} vectorEffect="non-scaling-stroke" />
+            <path d={longitudeMesh} vectorEffect="non-scaling-stroke" />
           </g>
           <path className={styles.light} d={contour(0.4, 36.5)} fill={paint('light')} />
         </g>
         <g className={styles.ribbons} stroke={paint('rim')}>
           {shellContours.map((path, index) => (
-            <path key={index} d={path} strokeWidth={index % 3 === 0 ? 1.15 : 0.6} opacity={0.8 - index * 0.06} />
+            <path key={index} d={path} strokeWidth={index % 3 === 0 ? 0.85 : 0.45} opacity={0.8 - index * 0.06} vectorEffect="non-scaling-stroke" />
           ))}
         </g>
-        <g className={styles.filaments} stroke={paint('rim')} strokeWidth="0.65" opacity="0.75">
-          <path d={contour(2.8, 38.3)} />
-          <path d={contour(4.5, 40)} />
+        <g className={styles.filaments} stroke={paint('rim')} strokeWidth="0.5" opacity="0.75">
+          <path d={contour(2.8, 38.3)} vectorEffect="non-scaling-stroke" />
+          <path d={contour(4.5, 40)} vectorEffect="non-scaling-stroke" />
         </g>
       </svg>
     </span>
