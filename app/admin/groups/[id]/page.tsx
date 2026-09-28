@@ -11,6 +11,7 @@ import { lDate, lDateRange, lMoney } from '@/lib/i18n/format';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { AttachBookingForm, DeleteGroupButton, RemoveFromGroupButton } from '@/components/admin/operations/group-actions';
+import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -34,7 +35,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: adminPageTitle(t, loaded ? loaded.group.name : t('nav.groups')) };
 }
 
-export default async function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function GroupDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
   const locale = await getAdminLocale();
   const t = adminT(locale);
@@ -42,6 +49,11 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
   if (!loaded) notFound();
   const { hotel, group, summary, roomTypes, allBookings } = loaded;
   const roomTypeNames = new Map(roomTypes.map((room) => [room.id, room.name]));
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.pageSize);
+  const { pageItems: shownBookings, page: currentPage, totalPages } = paginate(summary.bookings, page, pageSize);
+  const basePath = `/admin/groups/${id}`;
 
   const attachOptions = attachableBookings(allBookings, hotel.id, group.id)
     .filter((booking) => !summary.bookings.some((member) => member.id === booking.id))
@@ -87,6 +99,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           {summary.bookings.length === 0 ? (
             <p className="px-5 py-6 text-sm text-muted-foreground sm:px-6">{t('groups.noBookingsYet')}</p>
           ) : (
+            <>
             <TableCard caption={t('guests.bookingsHeading')} className="min-w-[52rem]" attached>
               <thead>
                 <tr className="border-b border-border">
@@ -102,7 +115,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                 </tr>
               </thead>
               <tbody>
-                {summary.bookings.map((booking) => (
+                {shownBookings.map((booking) => (
                   <tr key={booking.id} className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50">
                     <Td className="whitespace-nowrap font-medium">
                       <Link href={`/admin/bookings/${booking.reference}`} className="hover:text-accent-strong before:absolute before:inset-0">
@@ -126,6 +139,16 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                 ))}
               </tbody>
             </TableCard>
+            <Pagination
+              attached
+              page={currentPage}
+              totalPages={totalPages}
+              total={summary.bookings.length}
+              pageSize={pageSize}
+              hrefFor={simplePageHref(basePath, pageSize)}
+              pageSizeHrefFor={simplePageSizeHref(basePath)}
+            />
+            </>
           )}
         </div>
       </section>
