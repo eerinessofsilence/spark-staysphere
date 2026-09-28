@@ -8,6 +8,7 @@ import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { DocumentsGrid, type DocumentTile } from '@/components/admin/operations/documents-grid';
+import { SampleDocumentsButton } from '@/components/admin/operations/sample-documents-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,15 +45,20 @@ export default async function DocumentsPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('nav.documents')} description={t('documents.retentionNote')} />
+      <AdminPageHeader
+        title={t('nav.documents')}
+        description={t('documents.retentionNote')}
+        actions={tiles.length > 0 ? <SampleDocumentsButton /> : undefined}
+      />
 
       {tiles.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
           <IdentificationIcon className="size-6 text-muted-foreground" aria-hidden="true" />
           <div>
             <h2 className="text-display text-2xl">{t('documents.emptyTitle')}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t('documents.emptyBody')}</p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t('documents.emptyBody', { hotel: hotel.name })}</p>
           </div>
+          <SampleDocumentsButton variant="primary" />
         </div>
       ) : (
         <DocumentsGrid documents={tiles} />

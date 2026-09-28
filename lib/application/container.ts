@@ -43,6 +43,7 @@ import { HousekeepingService } from './housekeeping-service';
 import { InventoryService } from './inventory-service';
 import { ReportsService } from './reports-service';
 import { SampleBookingService } from './sample-bookings';
+import { SampleDocumentService } from './sample-documents';
 import { TeamService } from './team-service';
 import { GuestDocumentService } from './guest-document-service';
 import { guestDocumentStore } from '../infrastructure/guest-document-store';
@@ -127,6 +128,9 @@ export const bookingService = new BookingService(
 
 /** Fills an empty demo with sample stays; only ever run from the back office. */
 export const sampleBookingService = new SampleBookingService(hotelRepository);
+
+/** Sample passports for `/admin/documents`, on every hotel's sample stays — see `sample-documents.ts`. */
+export const sampleDocumentService = new SampleDocumentService(hotelRepository, guestDocumentService, sampleBookingService);
 
 /** Which ids came from mock-data.ts — the only ones content-service refuses to hard-delete. */
 const seedIds: Record<CatalogEntryKind, ReadonlySet<string>> = {

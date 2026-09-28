@@ -3,7 +3,7 @@
 import { requireBackOfficeSession, requirePermission } from '@/lib/application/admin-session';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { availableHotels, contentService, demoControl, sampleBookingService } from '@/lib/application/container';
+import { availableHotels, contentService, demoControl, sampleBookingService, sampleDocumentService } from '@/lib/application/container';
 import { getSelectedHotelSlug, SELECTED_HOTEL_COOKIE } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { roomStatusSchema } from '@/lib/domain/schemas';
@@ -51,6 +51,19 @@ export async function addSampleBookings(): Promise<{ created: number }> {
   await requireBackOfficeSession();
   const hotelSlug = await getSelectedHotelSlug();
   const result = await sampleBookingService.seed(hotelSlug, toIsoDate(new Date()));
+  refresh();
+  return result;
+}
+
+/** Every property at once, not just the selected one: the switcher shouldn't land on an empty documents grid anywhere. */
+export async function addSampleDocuments(): Promise<{ created: number }> {
+  await requirePermission('team.permViewBookings');
+  const result = await sampleDocumentService.seedAll(
+    availableHotels.map((hotel) => hotel.slug),
+    toIsoDate(new Date()),
+  );
+  revalidatePath('/admin/documents');
+  revalidatePath('/admin/guests');
   refresh();
   return result;
 }
