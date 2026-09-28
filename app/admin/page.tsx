@@ -121,13 +121,6 @@ export default async function AdminOverviewPage({
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const confirmed = sorted.filter((booking) => booking.status === 'confirmed');
   const revenue = confirmed.reduce((sum, booking) => sum + booking.total, 0);
-  const weekEnd = toIsoDate(addDays(parseISO(today), 7));
-  const arriving = confirmed
-    .filter((booking) => booking.checkIn >= today && booking.checkIn < weekEnd)
-    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
-  const leaving = confirmed
-    .filter((booking) => booking.checkOut >= today && booking.checkOut < weekEnd)
-    .sort((a, b) => a.checkOut.localeCompare(b.checkOut));
   const { pageItems: recent, page: currentPage, totalPages } = paginate(sorted, page, pageSize);
   const tonight = board.days[0];
   const onSite = rooms.filter((room) => !room.hidden).length;
@@ -297,10 +290,10 @@ export default async function AdminOverviewPage({
 
         <section aria-labelledby="week-heading" className="min-w-0 flex-1 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
           <h3 id="week-heading" className="font-medium">
-            {t('dashboard.next7Days')}
+            {t('dashboard.movements')}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.next7Body')}</p>
-          <WeekMovements arriving={arriving} leaving={leaving} roomNames={roomNames} />
+          <WeekMovements bookings={confirmed} today={today} roomNames={roomNames} />
         </section>
         </div>
 
