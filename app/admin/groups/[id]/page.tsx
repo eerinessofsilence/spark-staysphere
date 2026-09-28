@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { catalogService, hotelRepository } from '@/lib/application/container';
@@ -8,7 +7,7 @@ import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDate, lDateRange, lMoney } from '@/lib/i18n/format';
-import { cn } from '@/lib/utils';
+import { Metric } from '@/components/admin/operations/metric-card';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { AttachBookingForm, DeleteGroupButton, RemoveFromGroupButton } from '@/components/admin/operations/group-actions';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -62,10 +61,10 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
 
       {group.notes ? <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{group.notes}</p> : null}
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label={t('guests.thBookings')}>{summary.bookingsCount}</Stat>
-        <Stat label={t('groups.thAmount')}>{lMoney(summary.amount, hotel.currency, locale)}</Stat>
-        <Stat label={t('groups.thCreated')}>{lDate(group.createdAt.slice(0, 10), locale)}</Stat>
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Metric label={t('guests.thBookings')} value={String(summary.bookingsCount)} detail={t('groups.metricBookingsDetail')} />
+        <Metric label={t('groups.thAmount')} value={lMoney(summary.amount, hotel.currency, locale)} detail={t('groups.metricAmountDetail')} />
+        <Metric label={t('groups.thCreated')} value={lDate(group.createdAt.slice(0, 10), locale)} detail={t('groups.metricCreatedDetail')} />
       </dl>
 
       <section aria-labelledby="group-attach-heading" className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
@@ -130,14 +129,5 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
     </AdminPage>
-  );
-}
-
-function Stat({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className={cn('rounded-2xl border border-border bg-stone/40 px-3.5 py-2.5')}>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-semibold tabular-nums">{children}</dd>
-    </div>
   );
 }

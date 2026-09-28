@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
@@ -15,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { Metric } from '@/components/admin/operations/metric-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,14 +69,26 @@ export default async function GuestDetailPage({ params, searchParams }: { params
         </span>
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label={t('guests.thBookings')}>{guest.bookingsCount}</Stat>
-        <Stat label={t('guests.thSpent')}>{lMoney(guest.totalSpent, guest.currency, locale)}</Stat>
-        <Stat label={t('guests.thNights')}>{lNights(guest.nights, locale)}</Stat>
-        <Stat label={t('guests.thLastStay')}>{guest.lastCheckIn ? lDate(guest.lastCheckIn, locale) : t('guests.neverStayed')}</Stat>
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          label={t('guests.thBookings')}
+          value={String(guest.bookingsCount)}
+          detail={guest.cancelledCount > 0 ? t('guests.cancelledCount', { count: guest.cancelledCount }) : t('guests.metricBookingsDetail')}
+        />
+        <Metric label={t('guests.thSpent')} value={lMoney(guest.totalSpent, guest.currency, locale)} detail={t('guests.metricSpentDetail')} />
+        <Metric label={t('guests.thNights')} value={lNights(guest.nights, locale)} detail={t('guests.metricNightsDetail')} />
+        <Metric
+          label={t('guests.thLastStay')}
+          value={guest.lastCheckIn ? lDate(guest.lastCheckIn, locale) : t('guests.neverStayed')}
+          detail={t('guests.metricLastStayDetail')}
+        />
       </dl>
 
-      {loaded.profile?.identity ? <p className="mt-4 text-sm text-muted-foreground">Date of Birth: {loaded.profile.identity.dateOfBirth || '—'} · Nationality: {loaded.profile.identity.nationality || '—'} · Gender: {loaded.profile.identity.gender || '—'}</p> : null}
+      {loaded.profile?.identity ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          {t('documents.dateOfBirth')}: {loaded.profile.identity.dateOfBirth || '—'} · {t('documents.nationality')}: {loaded.profile.identity.nationality || '—'} · {t('guests.gender')}: {loaded.profile.identity.gender || '—'}
+        </p>
+      ) : null}
       <nav aria-label="Guest profile" className="mt-6 flex w-max gap-1 rounded-full border border-border bg-card p-1">
         {[['bookings', t('guests.bookingsHeading')], ['documents', 'Documents']].map(([key, label]) => <Link key={key} href={`/admin/guests/${encodeURIComponent(guest.id)}?tab=${key}`} aria-current={(key === 'documents') === documentsTab ? 'page' : undefined} className={cn('rounded-full px-4 py-2 text-sm font-medium', (key === 'documents') === documentsTab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone')}>{label}</Link>)}
       </nav>
@@ -125,14 +137,5 @@ export default async function GuestDetailPage({ params, searchParams }: { params
         </div>
       </section>}
     </AdminPage>
-  );
-}
-
-function Stat({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className={cn('rounded-2xl border border-border bg-stone/40 px-3.5 py-2.5')}>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-semibold tabular-nums">{children}</dd>
-    </div>
   );
 }
