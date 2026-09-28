@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { BanknotesIcon, CalendarDaysIcon, ClockIcon, EnvelopeIcon, MoonIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import { catalogService, hotelRepository, guestDocumentService } from '@/lib/application/container';
 import { requirePermission } from '@/lib/application/admin-session';
-import { GuestDocuments } from '@/components/admin/operations/guest-documents';
+import { DocumentsGrid, type DocumentTile } from '@/components/admin/operations/documents-grid';
 import { bookingsForGuest, buildGuestDirectory } from '@/lib/application/guest-directory';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
@@ -48,7 +48,18 @@ export default async function GuestDetailPage({ params, searchParams }: { params
   if (!loaded) notFound();
   const { guest, history, roomTypes } = loaded;
   const documentsTab = (await searchParams).tab === 'documents';
-  const documents = documentsTab ? (await guestDocumentService.listForGuest(loaded.hotelId, guest.id)).map(({ objectKeys: _keys, hotelId: _hotel, ...document }) => document) : [];
+  const bookingById = new Map(history.map((booking) => [booking.id, booking]));
+  const documentTiles: DocumentTile[] = documentsTab
+    ? (await guestDocumentService.listForGuest(loaded.hotelId, guest.id)).map(({ objectKeys: _keys, hotelId: _hotel, ...document }) => {
+        const booking = bookingById.get(document.reservationId);
+        return {
+          ...document,
+          guestName: `${guest.firstName} ${guest.lastName}`,
+          checkIn: booking?.checkIn ?? null,
+          checkOut: booking?.checkOut ?? null,
+        };
+      })
+    : [];
   const roomTypeNames = new Map(roomTypes.map((room) => [room.id, room.name]));
 
   return (
@@ -94,7 +105,13 @@ export default async function GuestDetailPage({ params, searchParams }: { params
       <nav aria-label="Guest profile" className="mt-6 flex w-max gap-1 rounded-full border border-border bg-card p-1">
         {[['bookings', t('guests.bookingsHeading')], ['documents', 'Documents']].map(([key, label]) => <Link key={key} href={`/admin/guests/${encodeURIComponent(guest.id)}?tab=${key}`} aria-current={(key === 'documents') === documentsTab ? 'page' : undefined} className={cn('rounded-full px-4 py-2 text-sm font-medium', (key === 'documents') === documentsTab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-stone')}>{label}</Link>)}
       </nav>
-      {documentsTab ? <GuestDocuments documents={documents} /> : <section aria-labelledby="guest-bookings-heading" className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
+      {documentsTab ? (
+        documentTiles.length === 0 ? (
+          <p className="mt-6 rounded-[18px] bg-card p-6 text-sm text-muted-foreground">{t('documents.emptyGuestBody')}</p>
+        ) : (
+          <DocumentsGrid documents={documentTiles} />
+        )
+      ) : <section aria-labelledby="guest-bookings-heading" className="mt-6 overflow-hidden rounded-[18px] bg-card shadow-soft">
         <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
           <h2 id="guest-bookings-heading" className="text-base font-medium">
             {t('guests.bookingsHeading')}

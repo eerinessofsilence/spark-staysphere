@@ -364,6 +364,7 @@ export const operations = defineArea({
 
     'documents.emptyTitle': 'No documents yet',
     'documents.emptyBody': 'Passports and IDs scanned at check-in for {hotel} show up here.',
+    'documents.emptyGuestBody': 'No documents yet. Scan a passport or ID when adding a booking for this guest.',
     'documents.addSample': 'Add sample documents',
     'documents.addingSample': 'Adding…',
     'documents.sampleAdded': '{count} sample documents added across every property.',
@@ -789,6 +790,7 @@ export const operations = defineArea({
 
     'documents.emptyTitle': 'Noch keine Dokumente',
     'documents.emptyBody': 'Beim Check-in gescannte Pässe und Ausweise für {hotel} erscheinen hier.',
+    'documents.emptyGuestBody': 'Noch keine Dokumente. Scannen Sie einen Pass oder Ausweis beim Anlegen einer Buchung für diesen Gast.',
     'documents.addSample': 'Beispieldokumente hinzufügen',
     'documents.addingSample': 'Wird hinzugefügt …',
     'documents.sampleAdded': '{count} Beispieldokumente über alle Hotels hinzugefügt.',
@@ -1214,6 +1216,7 @@ export const operations = defineArea({
 
     'documents.emptyTitle': 'Пока нет документов',
     'documents.emptyBody': 'Паспорта и удостоверения, отсканированные при заселении в {hotel}, появятся здесь.',
+    'documents.emptyGuestBody': 'Пока нет документов. Отсканируйте паспорт или удостоверение при создании брони для этого гостя.',
     'documents.addSample': 'Добавить демо-документы',
     'documents.addingSample': 'Добавляем…',
     'documents.sampleAdded': 'Добавлено демо-документов по всем отелям: {count}.',
