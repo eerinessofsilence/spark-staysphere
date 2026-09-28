@@ -12,15 +12,21 @@ export function Metric({
   value,
   detail,
   chart,
+  icon,
 }: {
   label: string;
   value: string;
   detail: string;
   chart?: ReactNode;
+  /** A Heroicons outline mark beside the label — the interface glyph for what the figure counts (rule 5), never a tinted-circle feature icon (rule 3). */
+  icon?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-col rounded-[18px] bg-card p-5 shadow-soft sm:p-6">
-      <dt className="text-sm font-medium">{label}</dt>
+      <dt className="flex items-center gap-2 text-sm font-medium">
+        {icon ? <span className="shrink-0 text-muted-foreground [&>svg]:size-5" aria-hidden="true">{icon}</span> : null}
+        {label}
+      </dt>
       <dd className="mt-3">
         <span className="text-display block text-2xl tabular-nums sm:text-3xl">{value}</span>
         <span className="mt-1.5 block text-sm text-muted-foreground">{detail}</span>

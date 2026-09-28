@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BanknotesIcon, CalendarDaysIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { notFound } from 'next/navigation';
 import { catalogService, hotelRepository } from '@/lib/application/container';
 import { attachableBookings, summarizeGroup } from '@/lib/application/group-directory';
@@ -62,9 +63,9 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
       {group.notes ? <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{group.notes}</p> : null}
 
       <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Metric label={t('guests.thBookings')} value={String(summary.bookingsCount)} detail={t('groups.metricBookingsDetail')} />
-        <Metric label={t('groups.thAmount')} value={lMoney(summary.amount, hotel.currency, locale)} detail={t('groups.metricAmountDetail')} />
-        <Metric label={t('groups.thCreated')} value={lDate(group.createdAt.slice(0, 10), locale)} detail={t('groups.metricCreatedDetail')} />
+        <Metric icon={<CalendarDaysIcon />} label={t('guests.thBookings')} value={String(summary.bookingsCount)} detail={t('groups.metricBookingsDetail')} />
+        <Metric icon={<BanknotesIcon />} label={t('groups.thAmount')} value={lMoney(summary.amount, hotel.currency, locale)} detail={t('groups.metricAmountDetail')} />
+        <Metric icon={<ClockIcon />} label={t('groups.thCreated')} value={lDate(group.createdAt.slice(0, 10), locale)} detail={t('groups.metricCreatedDetail')} />
       </dl>
 
       <section aria-labelledby="group-attach-heading" className="mt-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

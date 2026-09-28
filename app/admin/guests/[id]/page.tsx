@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, CalendarDaysIcon, ClockIcon, EnvelopeIcon, MoonIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import { catalogService, hotelRepository, guestDocumentService } from '@/lib/application/container';
 import { requirePermission } from '@/lib/application/admin-session';
 import { GuestDocuments } from '@/components/admin/operations/guest-documents';
@@ -71,13 +71,15 @@ export default async function GuestDetailPage({ params, searchParams }: { params
 
       <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
+          icon={<CalendarDaysIcon />}
           label={t('guests.thBookings')}
           value={String(guest.bookingsCount)}
           detail={guest.cancelledCount > 0 ? t('guests.cancelledCount', { count: guest.cancelledCount }) : t('guests.metricBookingsDetail')}
         />
-        <Metric label={t('guests.thSpent')} value={lMoney(guest.totalSpent, guest.currency, locale)} detail={t('guests.metricSpentDetail')} />
-        <Metric label={t('guests.thNights')} value={lNights(guest.nights, locale)} detail={t('guests.metricNightsDetail')} />
+        <Metric icon={<BanknotesIcon />} label={t('guests.thSpent')} value={lMoney(guest.totalSpent, guest.currency, locale)} detail={t('guests.metricSpentDetail')} />
+        <Metric icon={<MoonIcon />} label={t('guests.thNights')} value={lNights(guest.nights, locale)} detail={t('guests.metricNightsDetail')} />
         <Metric
+          icon={<ClockIcon />}
           label={t('guests.thLastStay')}
           value={guest.lastCheckIn ? lDate(guest.lastCheckIn, locale) : t('guests.neverStayed')}
           detail={t('guests.metricLastStayDetail')}
