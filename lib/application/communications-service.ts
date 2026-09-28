@@ -132,7 +132,7 @@ export class CommunicationsService {
     return this.store.deleteConversation(hotel.id, id);
   }
 
-  async send(hotelSlug: string, conversationId: string, rawBody: string, author: string): Promise<SendResult> {
+  async send(hotelSlug: string, conversationId: string, rawBody: string, author: string, subject?: string): Promise<SendResult> {
     const body = rawBody.trim();
     if (!body) return { ok: false, error: 'empty' };
     if (body.length > MESSAGE_MAX) return { ok: false, error: 'tooLong' };
@@ -160,12 +160,66 @@ export class CommunicationsService {
           hotelName: hotel!.name,
           body,
           conversationId,
+          subject,
         });
       } catch (error) {
         console.error('Communications: outbound delivery failed.', error);
       }
     }
     return { ok: true, message };
+  }
+
+  /**
+   * A booking-lifecycle email an automation sends on its own — see
+   * `email-automations-service.ts`. Its own thread, filed under the `email`
+   * channel specifically rather than `start()`'s "any channel this booking
+   * already has": a guest's open site-chat thread for the same stay must
+   * never swallow the send the way `send()`'s chat-channel skip would.
+   */
+  async sendSystemEmail(hotelSlug: string, bookingReference: string, subject: string, body: string, author: string): Promise<void> {
+    const hotel = await this.repository.getHotel(hotelSlug);
+    const booking = hotel ? await this.repository.getBookingByReference(bookingReference) : null;
+    if (!hotel || !booking || booking.hotelId !== hotel.id) return;
+    const existing = (await this.store.listConversations(hotel.id)).find(
+      (c) => c.channel === 'email' && c.bookingReference === booking.reference,
+    );
+    const now = this.clock.now().toISOString();
+    const conversation: Conversation = existing ?? {
+      id: crypto.randomUUID(),
+      hotelId: hotel.id,
+      channel: 'email',
+      guestName: guestName(booking),
+      guestEmail: booking.guest.email,
+      guestPhone: booking.guest.phone,
+      bookingReference: booking.reference,
+      lastMessage: '',
+      lastMessageAt: now,
+      unread: 0,
+      createdAt: now,
+    };
+    if (!existing) await this.store.saveConversation(conversation);
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      from: 'hotel',
+      author,
+      body,
+      sentAt: now,
+    };
+    await this.store.saveMessage(message);
+    try {
+      await this.outbound.send({
+        channel: 'email',
+        to: { email: conversation.guestEmail, phone: conversation.guestPhone },
+        guestName: conversation.guestName,
+        hotelName: hotel.name,
+        body,
+        conversationId: conversation.id,
+        subject,
+      });
+    } catch (error) {
+      console.error('Communications: automated email delivery failed.', error);
+    }
   }
 
   /**

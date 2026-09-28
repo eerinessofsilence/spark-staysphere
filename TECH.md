@@ -427,10 +427,28 @@ How messages get in and out:
   `email()` Worker that parses the message and calls this route) or a provider's inbound-parse
   webhook at it; neither is part of the demo.
 - **Replies out.** A desk reply on email, WhatsApp or SMS goes through the `OutboundMessenger` port.
-  The demo adapter (`lib/infrastructure/logging-outbound-messenger.ts`) logs the message and delivers
-  nothing — the reply is still in the thread — and a production one is a provider adapter (Resend or
-  MailChannels for mail, Twilio or the WhatsApp Cloud API for the rest) behind the same shape. Site-chat
-  replies need no carrier: the guest's page reads them.
+  Email has a real adapter: `container.ts` resolves `RESEND_API_KEY` at call time (never cached, the
+  same rule as every other key in `cloudflare-env.ts`) and sends through Resend
+  (`lib/infrastructure/resend-outbound-messenger.ts`) when it is set, falling back to the logging
+  adapter (`lib/infrastructure/logging-outbound-messenger.ts`) — which delivers nothing but still
+  leaves the reply in the thread — when it is not. WhatsApp and SMS have no provider yet and always
+  log. Site-chat replies need no carrier: the guest's page reads them.
+- **Automation, out.** `/admin/settings/automations` is four per-hotel switches — booking confirmed,
+  an arrival reminder the day before check-in, booking cancelled, and a thank-you after check-out —
+  each on by default. `EmailAutomationsService` (`lib/application/email-automations-service.ts`) is
+  the one place that decides whether to fire: `BookingService.confirm`/`cancelTrip`/`cancelAsHotel`
+  call it through the same optional-callback shape `afterCheckout` already used for guest-document
+  deletion, and `setStayStateAsHotel`'s existing checkout hook now also calls it. The arrival reminder
+  has no lifecycle event to hang off, so `GET /api/internal/arrival-reminders` — a daily Vercel Cron
+  job gated by `CRON_SECRET`, the same bearer-token pattern as `/api/internal/document-deletions` —
+  finds every confirmed, still-booked stay whose check-in is exactly tomorrow and sends one each;
+  matching on that one day is what keeps a re-run idempotent without its own "already sent" marker.
+  Every automation's email is filed into the guest's own thread through
+  `CommunicationsService.sendSystemEmail` — a booking's `email`-channel thread specifically, never
+  whichever channel `start()` would reuse, so an open site-chat thread for the same stay can't
+  silently swallow the send — so the desk sees what went out in Communications, same as a reply it
+  typed itself. Settings persist per hotel in `AutomationSettingsStore` (`email_automations` in D1,
+  the in-memory fallback everywhere else).
 
 ### Languages
 

@@ -122,6 +122,8 @@ export class BookingService {
     private readonly pms?: PmsAdapter,
     private readonly clock: Clock = systemClock,
     private readonly afterCheckout?: (booking: Booking) => Promise<void>,
+    private readonly afterConfirm?: (booking: Booking) => Promise<void>,
+    private readonly afterCancel?: (booking: Booking) => Promise<void>,
   ) {}
 
   /**
@@ -243,6 +245,7 @@ export class BookingService {
 
     const cancelled = await this.repository.cancelBooking(booking.reference);
     if (!cancelled) return { outcome: 'not_found' };
+    try { await this.afterCancel?.(cancelled); } catch { /* Best-effort, same as notifyDownstream. */ }
     return { outcome: 'cancelled', trip: this.summarize(cancelled, room) };
   }
 
@@ -285,6 +288,9 @@ export class BookingService {
     if (booking.status === 'cancelled') return { outcome: 'already_cancelled', booking };
     if (!this.isBeforeCheckIn(booking.checkIn)) return { outcome: 'stay_started', booking };
     const cancelled = await this.repository.cancelBooking(booking.reference);
+    if (cancelled) {
+      try { await this.afterCancel?.(cancelled); } catch { /* Best-effort, same as notifyDownstream. */ }
+    }
     return cancelled ? { outcome: 'cancelled', booking: cancelled } : { outcome: 'not_found' };
   }
 
@@ -432,6 +438,7 @@ export class BookingService {
 
     const saved = await this.repository.saveBooking(booking);
     await this.notifyDownstream(saved);
+    try { await this.afterConfirm?.(saved); } catch { /* Best-effort, same as notifyDownstream. */ }
     return saved;
   }
 

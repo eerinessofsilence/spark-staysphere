@@ -50,11 +50,21 @@ export function getPrivateDocumentBucket(): R2Bucket | null {
   return bound && typeof bound === 'object' && 'put' in bound ? bound : hostPrivateDocumentBucket();
 }
 
-export function getDocumentCronSecret(): string | null { return variable('CRON_SECRET'); }
+export function getCronSecret(): string | null { return variable('CRON_SECRET'); }
 
 /** Resolved at call time like the rest; `null` keeps the inbound-email webhook closed. */
 export function getInboundEmailSecret(): string | null {
   return variable('INBOUND_EMAIL_SECRET');
+}
+
+/** Same call-time-resolution rule as `getOpenAiKey`. Unset keeps outbound email logged, not sent. */
+export function getResendApiKey(): string | null {
+  return variable('RESEND_API_KEY');
+}
+
+/** The address automation and desk-reply emails send from. Resend's own shared sandbox address until a hotel's domain is verified with them. */
+export function getResendFromEmail(): string {
+  return variable('RESEND_FROM_EMAIL') ?? 'onboarding@resend.dev';
 }
 
 /**

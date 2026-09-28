@@ -3,6 +3,7 @@ import type {
   CatalogEntryKind,
   DemoControlPort,
   HotelRepository,
+  OutboundMessenger,
   ProductRecognizer,
   RoomRecognizer,
   RoomSearchInterpreter,
@@ -11,13 +12,15 @@ import type {
 import type { Hotel } from '../domain/schemas';
 import type { ProductGuess } from '../domain/product-recognition';
 import type { RoomGuess } from '../domain/room-recognition';
-import { getAdminAuthEnv, getInboundEmailSecret, getMediaBucket, getOpenAiKey } from '../infrastructure/cloudflare-env';
+import { getAdminAuthEnv, getInboundEmailSecret, getMediaBucket, getOpenAiKey, getResendApiKey, getResendFromEmail } from '../infrastructure/cloudflare-env';
+import { durableAutomationSettingsStore } from '../infrastructure/durable-automation-settings-store';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableGeneratedReportStore } from '../infrastructure/durable-generated-report-store';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { durableHousekeepingStore } from '../infrastructure/durable-housekeeping-store';
 import { durableMessagingStore } from '../infrastructure/durable-messaging-store';
 import { loggingOutboundMessenger } from '../infrastructure/logging-outbound-messenger';
+import { createResendOutboundMessenger } from '../infrastructure/resend-outbound-messenger';
 import { durableRoleStore } from '../infrastructure/durable-role-store';
 import { durableSpinnerFrameStoragePort } from '../infrastructure/durable-spinner-frame-storage';
 import { durableSpinnerMarkupPort } from '../infrastructure/durable-spinner-markup';
@@ -39,6 +42,7 @@ import { CatalogService } from './catalog-service';
 import { CommunicationsService } from './communications-service';
 import { ContentService } from './content-service';
 import { systemClock } from '../domain/clock';
+import { EmailAutomationsService } from './email-automations-service';
 import { HousekeepingService } from './housekeeping-service';
 import { InventoryService } from './inventory-service';
 import { ReportsService } from './reports-service';
@@ -48,7 +52,7 @@ import { TeamService } from './team-service';
 import { GuestDocumentService } from './guest-document-service';
 import { guestDocumentStore } from '../infrastructure/guest-document-store';
 import { privateDocumentStorage } from '../infrastructure/private-document-storage';
-import { getDocumentCronSecret } from '../infrastructure/cloudflare-env';
+import { getCronSecret } from '../infrastructure/cloudflare-env';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -106,14 +110,44 @@ export const reportsService = new ReportsService(
   systemClock,
 );
 
+/**
+ * Email only: resolved at call time like every other key here, falling
+ * back to the log the same way a missing OpenAI key falls back to
+ * keywords. WhatsApp and SMS desk replies still have no carrier and keep
+ * going through the log unconditionally.
+ */
+const outboundMessenger: OutboundMessenger = {
+  async send(input) {
+    const apiKey = input.channel === 'email' ? getResendApiKey() : null;
+    if (!apiKey) return loggingOutboundMessenger.send(input);
+    try {
+      await createResendOutboundMessenger(apiKey, getResendFromEmail()).send(input);
+    } catch (error) {
+      console.error('Communications: Resend delivery failed, falling back to the log.', error);
+      await loggingOutboundMessenger.send(input);
+    }
+  },
+};
+
 /** The guest inbox — see `communications-service.ts`; D1 with an in-memory fallback like the others. */
-export const communicationsService = new CommunicationsService(durableMessagingStore, hotelRepository, systemClock, loggingOutboundMessenger);
+export const communicationsService = new CommunicationsService(durableMessagingStore, hotelRepository, systemClock, outboundMessenger);
+
+/** A booking carries a hotel id; every hotel's id and slug are fixed seed data (see CLAUDE.md), so this never needs a CMS read. */
+const hotelSlugById = new Map(demoHotels.map((hotel) => [hotel.id, hotel.slug]));
+
+/** Confirmation, arrival reminder, cancellation and thank-you emails — see `email-automations-service.ts`. */
+export const emailAutomationsService = new EmailAutomationsService(durableAutomationSettingsStore, hotelRepository, communicationsService, hotelSlugById);
 
 export const guestDocumentService = new GuestDocumentService(hotelRepository, guestDocumentStore, privateDocumentStorage);
 
-export function documentCronAuthorized(token: string | null): boolean {
-  const secret = getDocumentCronSecret();
+export function cronAuthorized(token: string | null): boolean {
+  const secret = getCronSecret();
   return Boolean(secret && token === `Bearer ${secret}`);
+}
+
+/** Whether an automation's email actually leaves, or only gets logged — `/admin/settings/automations`'s own status line. */
+export function emailDeliveryConfigured(): boolean {
+  return getResendApiKey() !== null;
 }
 
 export const bookingService = new BookingService(
@@ -123,7 +157,12 @@ export const bookingService = new BookingService(
   mockCrmAdapter,
   mockPmsAdapter,
   systemClock,
-  (booking) => guestDocumentService.afterCheckout(booking),
+  async (booking) => {
+    await guestDocumentService.afterCheckout(booking);
+    await emailAutomationsService.notifyCheckedOut(booking);
+  },
+  (booking) => emailAutomationsService.notifyConfirmed(booking),
+  (booking) => emailAutomationsService.notifyCancelled(booking),
 );
 
 /** Fills an empty demo with sample stays; only ever run from the back office. */

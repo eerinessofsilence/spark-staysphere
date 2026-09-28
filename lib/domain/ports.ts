@@ -238,7 +238,23 @@ export interface OutboundMessenger {
     hotelName: string;
     body: string;
     conversationId: string;
+    /** A desk reply has none — it's a line in an existing thread. A system email always has one. */
+    subject?: string;
   }): Promise<void>;
+}
+
+/** A booking-lifecycle moment that can send the guest an email on its own, no desk member involved. */
+export const EMAIL_AUTOMATION_KINDS = ['booking_confirmed', 'arrival_reminder', 'booking_cancelled', 'checked_out'] as const;
+export type EmailAutomationKind = (typeof EMAIL_AUTOMATION_KINDS)[number];
+
+/**
+ * Per-hotel on/off switches for the automations above — `/admin/settings/automations`.
+ * Unset reads as on: a hotel that never visited the screen still gets the emails,
+ * the same "silence means the default" rule `getRoomStatusOverride` uses.
+ */
+export interface AutomationSettingsStore {
+  list(hotelId: string): Promise<Partial<Record<EmailAutomationKind, boolean>>>;
+  set(hotelId: string, kind: EmailAutomationKind, enabled: boolean): Promise<void>;
 }
 
 export interface MessagingStore {

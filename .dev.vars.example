@@ -17,6 +17,17 @@ ADMIN_SESSION_SECRET=change-me-to-something-long-and-random
 # to file a guest's mail into /admin/communications. Unset, that route stays closed.
 # INBOUND_EMAIL_SECRET=replace_me
 
+# Outbound email — a desk reply on the email channel, and the four booking-lifecycle automations
+# at /admin/settings/automations (confirmation, arrival reminder, cancellation, thank-you). Unset,
+# every send is only logged, never delivered — see lib/infrastructure/resend-outbound-messenger.ts.
+# RESEND_API_KEY=re_...
+# RESEND_FROM_EMAIL=onboarding@resend.dev
+
+# Bearer token Vercel Cron sends as `Authorization: Bearer <value>` — gates both
+# /api/internal/document-deletions and /api/internal/arrival-reminders. Unset, both stay closed
+# (harmless: nothing calls them outside the scheduled cron). See docs/GUEST_DOCUMENTS.md.
+# CRON_SECRET=replace_me
+
 # Vercel only (see TECH.md's "Hosting"): the database and file store that stand in for D1 and R2.
 # On Vercel these are project environment variables, not .dev.vars; locally they let a
 # `npm run build:vercel` output run against a file database, e.g. TURSO_DATABASE_URL=file:local.db.

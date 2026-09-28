@@ -3,5 +3,8 @@
   "framework": null,
   "buildCommand": "npm run build:vercel",
   "installCommand": "npm ci",
-  "crons": [{ "path": "/api/internal/document-deletions", "schedule": "0 3 * * *" }]
+  "crons": [
+    { "path": "/api/internal/document-deletions", "schedule": "0 3 * * *" },
+    { "path": "/api/internal/arrival-reminders", "schedule": "0 8 * * *" }
+  ]
 }

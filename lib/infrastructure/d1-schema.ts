@@ -51,6 +51,7 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_conversations_hotel ON conversations (hotel_id, last_message_at)`,
   `CREATE TABLE IF NOT EXISTS conversation_messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, sender TEXT NOT NULL, author TEXT NOT NULL, body TEXT NOT NULL, sent_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_conversation_messages_thread ON conversation_messages (conversation_id, sent_at)`,
+  `CREATE TABLE IF NOT EXISTS email_automations (hotel_id TEXT NOT NULL, kind TEXT NOT NULL, enabled INTEGER NOT NULL, PRIMARY KEY (hotel_id, kind))`,
 ];
 
 const ready = new WeakMap<D1Database, Promise<void>>();

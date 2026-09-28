@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   BanknotesIcon,
   Bars3Icon,
+  BoltIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   CameraIcon,
@@ -76,6 +77,7 @@ const groups: NavGroup[] = [
       { href: '/admin/channel-manager', label: 'nav.channelManager', icon: PuzzlePieceIcon },
       { href: '/admin/housekeeping', label: 'nav.housekeeping', icon: CheckBadgeIcon },
       { href: '/admin/settings/team', label: 'nav.team', icon: UserGroupIcon },
+      { href: '/admin/settings/automations', label: 'nav.automations', icon: BoltIcon },
       { href: '/admin/content/hotel', label: 'nav.hotelSettings', icon: BuildingOffice2Icon },
     ],
   },
