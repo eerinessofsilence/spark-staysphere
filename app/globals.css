@@ -234,6 +234,25 @@ body {
   --stay-due-out: #a85a07;
   --stay-checked-out: #e7e4dd;
   --stay-checked-out-ink: #5f5e58;
+
+  /*
+   * The housekeeping mix bar's own five, one per status, severity-ordered
+   * red -> navy like the badge's own worst-to-best reading. A fixed hue per
+   * status rather than a tone picked by rank, and — unlike the design
+   * system's shared --success/--warning/--danger, which read "confirmed"
+   * or "on hold" everywhere they appear — scoped to this one chart so nothing
+   * else on the page inherits a meaning it wasn't given. Validated against
+   * DESIGN_SYSTEM.md's data-viz palette checks (dataviz skill): lightness
+   * band, chroma floor, adjacent-pair CVD Delta E, the normal-vision floor,
+   * and contrast — the CVD/contrast WARN bands are legal here because the
+   * mix bar always pairs each part with a visible legend label and count,
+   * never colour alone.
+   */
+  --hk-out-of-order: #b32035;
+  --hk-dirty: #c56c21;
+  --hk-in-progress: #c3aa48;
+  --hk-clean: #00876d;
+  --hk-inspected: #125a98;
   --stay-no-show: #f4e1de;
   --stay-no-show-ink: #8f3a31;
   --background: var(--canvas);
@@ -345,6 +364,12 @@ html:has([data-admin-shell]) {
   --warning: #f0b85a;
   --danger: #ff8a80;
   --star: #e0b23c;
+  /* Same five hues, restepped for the dark surface and re-validated — not a lightened copy of the light values. */
+  --hk-out-of-order: #d31e3d;
+  --hk-dirty: #be7e51;
+  --hk-in-progress: #7b6000;
+  --hk-clean: #339a83;
+  --hk-inspected: #005eb3;
   --background: var(--canvas);
   --foreground: #f4f2ec;
   --card: #1e1e1e;

@@ -43,15 +43,17 @@ import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page'
 
 export const dynamic = 'force-dynamic';
 
-// Same colours as `HousekeepingStatusBadge`: dirty the warning ink, clean and
-// inspected the same green as a checked-in stay, out of order the danger
-// ink — a status means the same thing on this mix bar as everywhere else.
+// The mix bar's own five colours (globals.css's --hk-* tokens), not the
+// badge's: distinct hues for every status, including clean vs inspected,
+// which the badge deliberately shares one green for. See that file's note
+// for the validation behind these five and chart-gradients.module.css for
+// where they're applied.
 const housekeepingMixTone: Record<(typeof HOUSEKEEPING_STATUSES)[number], string> = {
-  dirty: chartTones.statusWarning,
-  in_progress: chartTones.stone,
-  clean: chartTones.statusSuccess,
-  inspected: chartTones.statusInHouse,
-  out_of_order: chartTones.statusDanger,
+  out_of_order: chartTones.hkOutOfOrder,
+  dirty: chartTones.hkDirty,
+  in_progress: chartTones.hkInProgress,
+  clean: chartTones.hkClean,
+  inspected: chartTones.hkInspected,
 };
 
 export async function generateMetadata(): Promise<Metadata> {
