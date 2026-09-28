@@ -12,14 +12,28 @@
   pointer-events: none;
 }
 
-/* `OrbitVisual`: the same orb pulled over a wide pill rather than a round
-   button. The SVG stretches to the box (`preserveAspectRatio="none"`), so the
-   body — 73/120 of the viewBox — needs a 160% box to reach the pill's edges,
-   with the ribbons riding just outside them the way they ring the launcher. */
+/* `OrbitVisual`: the launcher's layers laid over a filled `bg-primary` pill
+   and clipped to it — the pill keeps its own shape and colour, the orb only
+   lends its motion. Recoloured off the pill's own tokens so the mesh reads on
+   ink by day and lime by night, and no halo: the pill's fill is the body.
+   The SVG stretches to the box (`preserveAspectRatio="none"`); sized so the
+   outermost ribbon (~42/120 of the viewBox) just reaches the pill's edge. */
+.stretched {
+  --orb-highlight: var(--primary-foreground);
+  --orb-accent: color-mix(in srgb, var(--primary-foreground) 70%, transparent);
+  --orb-mid: color-mix(in srgb, var(--primary) 82%, var(--primary-foreground));
+  --orb-shade: var(--primary);
+}
+
+.stretched .halo {
+  display: none;
+}
+
 .stretched .orb {
-  inset: -27%;
-  width: 154%;
-  height: 154%;
+  inset: -22%;
+  width: 144%;
+  height: 144%;
+  filter: none;
 }
 
 /* The assistant stays monochrome in both themes. */

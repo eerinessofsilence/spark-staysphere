@@ -160,13 +160,12 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
  * fixed in place whichever way a long nav list scrolls (see `AdminShell`
  * and `AdminMobileMenu`).
  *
- * Drawn as the assistant launcher's own orb (`OrbitVisual`) stretched over
- * the pill, always animating, not as a filled pill with an icon: it's the
- * one nav entry that should be found at a glance even from a page that
- * isn't it, the way the rest of the list's plain rows aren't — and it now
- * reads as the same object as the assistant's orb in the corner. Like that
- * orb it stays monochrome in both schemes, so the label is the launcher's
- * own warm white over ink rather than `text-primary-foreground`.
+ * Filled always, not only when current: this is the one nav entry that
+ * borrows "the primary action" from `DESIGN_SYSTEM.md › Rules` 6 rather than
+ * "active states" — the orbit is important enough to find at a glance even
+ * from a page that isn't it, the way the rest of the list's plain rows
+ * aren't. The assistant launcher's orb (`OrbitVisual`) turns inside it,
+ * clipped to the pill, so it also reads as kin to the orb in the corner.
  */
 export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
   const current = featuredItem.href === activeHref(usePathname() ?? '');
@@ -178,14 +177,10 @@ export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
         href={featuredItem.href}
         onClick={onNavigate}
         aria-current={current ? 'page' : undefined}
-        className={cn(
-          itemClass,
-          'relative justify-center scale-100 outline-none transition-[scale] duration-200 ease-out active:scale-95',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-        )}
+        className={cn(itemClass, 'relative justify-center overflow-hidden bg-primary text-primary-foreground hover:bg-primary-hover')}
       >
         <OrbitVisual />
-        <span className="relative text-[#f7f5f0] [text-shadow:0_1px_4px_var(--ink)]">{t(featuredItem.label)}</span>
+        <span className="relative">{t(featuredItem.label)}</span>
       </Link>
     </nav>
   );

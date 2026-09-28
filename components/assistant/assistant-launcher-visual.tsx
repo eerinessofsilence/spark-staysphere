@@ -104,14 +104,16 @@ export function AssistantLauncherVisual({ open = false, hidden = false }: { open
 }
 
 /**
- * The same orb, pulled over a wide pill instead of a round button — the
- * sidebar's 360 Orbit. Identical layers and keyframes to the launcher's,
- * minus its "AI"/close cross-fade, and always running: there's no open
- * state to save motion for. The SVG stretches to whatever box it sits in
+ * The launcher's orb layers laid over the sidebar's 360 Orbit pill — the
+ * pill stays a filled `bg-primary` pill and clips this to its shape; only
+ * the motion is borrowed. Identical layers and keyframes to the launcher's,
+ * minus its halo and "AI"/close cross-fade, recoloured off the pill's own
+ * tokens (see `.stretched`), and always running: there's no open state to
+ * save motion for. The SVG stretches to whatever box it sits in
  * (`preserveAspectRatio="none"`); the rotations still happen in the square
- * viewBox before that stretch, so the outline stays a steady ellipse with
- * the ripples travelling round it, and strokes are pinned in screen pixels
- * so the lengthwise stretch doesn't fatten them.
+ * viewBox before that stretch, so the mesh keeps turning as a mesh and the
+ * ribbons' ripples travel round the edge; strokes are pinned in screen
+ * pixels so the lengthwise stretch doesn't fatten them.
  */
 export function OrbitVisual({ className }: { className?: string }) {
   const id = useId().replace(/:/g, '');
@@ -119,13 +121,12 @@ export function OrbitVisual({ className }: { className?: string }) {
 
   return (
     <span className={cn(styles.visual, styles.stretched, className)} data-open="false" data-paused="false" aria-hidden="true">
-      <span className={styles.halo} />
       <svg className={styles.orb} viewBox="0 0 120 120" preserveAspectRatio="none" fill="none" focusable="false">
         <defs>
           <radialGradient id={`${id}-body`} cx="38%" cy="30%" r="73%">
             <stop stopColor="var(--orb-mid)" />
             <stop offset="0.38" stopColor="var(--orb-shade)" />
-            <stop offset="0.7" stopColor="var(--ink)" />
+            <stop offset="0.7" stopColor="var(--orb-shade)" />
             <stop offset="0.9" stopColor="var(--orb-shade)" />
             <stop offset="1" stopColor="var(--orb-mid)" />
           </radialGradient>
