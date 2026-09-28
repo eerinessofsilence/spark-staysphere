@@ -40,7 +40,7 @@ export function WeekMovements({
 
   return (
     <div className="mt-4">
-      <div role="tablist" aria-label={t('dashboard.next7Days')} className="inline-flex gap-1 rounded-full bg-stone/60 p-1">
+      <div role="tablist" aria-label={t('dashboard.next7Days')} className="mb-3 inline-flex gap-1 rounded-full bg-stone/60 p-1">
         {(
           [
             ['arrival', t('dashboard.arriving'), arriving.length],
