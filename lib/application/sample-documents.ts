@@ -62,12 +62,21 @@ export class SampleDocumentService {
     private readonly sampleBookings: SampleBookingService,
   ) {}
 
-  /** Idempotent: a stay with any document record already — live, pending deletion or retired — is left alone. */
+  /**
+   * Idempotent: a stay with a document already — live, pending deletion or
+   * retired — is left alone. One still marked `uploading` is not: that's a
+   * press cut off mid-upload (a serverless timeout, say), and `attach` picks
+   * such a record up and finishes it, so pressing again completes the seed.
+   */
   async seed(hotelSlug: string, today: string): Promise<{ created: number }> {
     const hotel = await this.repository.getHotel(hotelSlug);
     if (!hotel) return { created: 0 };
     await this.sampleBookings.seed(hotelSlug, today);
-    const documented = new Set((await this.documents.listAll(hotel.id)).map((document) => document.reservationId));
+    const documented = new Set(
+      (await this.documents.listAll(hotel.id))
+        .filter((document) => document.status !== 'uploading')
+        .map((document) => document.reservationId),
+    );
     // Current and upcoming stays first, then stays that were never checked
     // out (a sample seeded weeks ago is mostly those by now), newest first —
     // `attach` refuses only a checked-out stay, and the grid should not be
