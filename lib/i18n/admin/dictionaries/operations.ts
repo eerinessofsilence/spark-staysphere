@@ -52,6 +52,7 @@ export const operations = defineArea({
     'ops.datesPick': 'Pick the first day, then the last.',
     'ops.clearDates': 'Clear dates',
     'ops.showStays': 'Show stays',
+    'ops.addGroupBooking': 'Add group booking',
 
     'ops.search': 'Search',
     'ops.searchChange': 'Search: {query}. Change it',
@@ -457,6 +458,7 @@ export const operations = defineArea({
     'ops.datesPick': 'Wählen Sie den ersten Tag, dann den letzten.',
     'ops.clearDates': 'Daten löschen',
     'ops.showStays': 'Aufenthalte anzeigen',
+    'ops.addGroupBooking': 'Gruppenbuchung hinzufügen',
 
     'ops.search': 'Suchen',
     'ops.searchChange': 'Suche: {query}. Ändern',
@@ -862,6 +864,7 @@ export const operations = defineArea({
     'ops.datesPick': 'Выберите первый день, затем последний.',
     'ops.clearDates': 'Сбросить даты',
     'ops.showStays': 'Показать проживания',
+    'ops.addGroupBooking': 'Добавить групповое бронирование',
 
     'ops.search': 'Найти',
     'ops.searchChange': 'Поиск: {query}. Изменить',

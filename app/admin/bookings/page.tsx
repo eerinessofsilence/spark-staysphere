@@ -11,6 +11,7 @@ import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
+import { CreateGroupButton } from '@/components/admin/operations/create-group-button';
 import {
   stayBucket,
   stayBucketKey,
@@ -124,7 +125,12 @@ export default async function BookingsPage({
     <AdminPage>
       <AdminPageHeader
         title={t('nav.reservations')}
-        actions={<AddBookingButton roomTypes={bookableRoomTypes} today={today} />}
+        actions={
+          <>
+            <CreateGroupButton label={t('ops.addGroupBooking')} variant="secondary" />
+            <AddBookingButton roomTypes={bookableRoomTypes} today={today} />
+          </>
+        }
       />
 
       {/* One row of compact controls on a phone — Filters, Any dates and

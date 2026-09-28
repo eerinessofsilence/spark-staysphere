@@ -5,17 +5,18 @@ import { useRouter } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { createGroupAction } from '@/app/admin/groups/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';
-import { fieldClass, pill } from '@/lib/ui';
+import { fieldClass, pill, type PillVariant } from '@/lib/ui';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
 
 /**
- * The header's own way into `/admin/groups`, the same spot `AddBookingButton`
- * takes on Reservations. A group is just a name (and an optional note) —
- * bookings are attached to it afterward, one at a time, from the group's
- * own page.
+ * The header's own way into `/admin/groups`. A group is just a name (and an
+ * optional note) — bookings are attached to it afterward, one at a time,
+ * from the group's own page. Reservations' own "Add group booking" is the
+ * same flow under a label that says what it's for from that screen, so it
+ * takes an override rather than being its own copy of this modal.
  */
-export function CreateGroupButton() {
+export function CreateGroupButton({ label, variant = 'primary' }: { label?: string; variant?: PillVariant } = {}) {
   const t = useAdminT();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -47,12 +48,12 @@ export function CreateGroupButton() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={pill('primary')}>
+      <button type="button" onClick={() => setOpen(true)} className={pill(variant)}>
         <PlusIcon className="size-4 shrink-0" aria-hidden="true" />
-        {t('groups.add')}
+        {label ?? t('groups.add')}
       </button>
 
-      <Modal open={open} onClose={close} title={t('groups.add')}>
+      <Modal open={open} onClose={close} title={label ?? t('groups.add')}>
         <form onSubmit={submit} className="grid gap-4">
           <div>
             <label htmlFor="group-name" className="mb-1.5 block text-sm text-muted-foreground">
