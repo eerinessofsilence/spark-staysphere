@@ -269,11 +269,6 @@ function PassportCapture({
         className={cn("mb-4 w-full rounded-[18px] bg-stone", !camera && "hidden")}
         aria-label="Document camera"
       />
-      {camera ? (
-        <button type="button" className={pill("primary")} onClick={() => void capture()}>
-          Take Photo
-        </button>
-      ) : null}
       <div className={cn("grid min-w-0 gap-5", review && "sm:grid-cols-2")}>
         {url ? (
           <img
@@ -367,25 +362,6 @@ function PassportCapture({
           </div>
         ) : null}
       </div>
-      {!photo ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" className={pill("secondary")} onClick={() => void openCamera()}>
-            Open camera
-          </button>
-          <label className={cn(pill("secondary"), "cursor-pointer")}>
-            Upload photo
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              className="sr-only"
-              onChange={(event) => {
-                void upload(event.target.files?.[0]);
-                event.target.value = "";
-              }}
-            />
-          </label>
-        </div>
-      ) : null}
       {matches.length ? (
         <div className="mt-5 rounded-[18px] border border-border p-4">
           <h4 className="font-medium">Possible existing guest</h4>
@@ -433,6 +409,10 @@ function PassportCapture({
           {error}
         </p>
       ) : null}
+      {/* One row of actions in every state — the primary first, Cancel last —
+          rather than a stray button under the camera and another row above
+          this one. With the camera open there is nothing to "open", so
+          Take Photo takes its place. */}
       <div className="mt-5 flex flex-wrap gap-3">
         {photo ? (
           <button
@@ -443,12 +423,33 @@ function PassportCapture({
           >
             {review ? "Confirm" : "Use Photo"}
           </button>
-        ) : null}
+        ) : camera ? (
+          <button type="button" className={pill("primary")} onClick={() => void capture()}>
+            Take Photo
+          </button>
+        ) : (
+          <button type="button" className={pill("primary")} onClick={() => void openCamera()}>
+            Open camera
+          </button>
+        )}
         {photo ? (
           <button type="button" disabled={busy} className={pill("secondary")} onClick={rescan}>
             {review ? "Rescan" : "Retake"}
           </button>
-        ) : null}
+        ) : (
+          <label className={cn(pill("secondary"), "cursor-pointer")}>
+            Upload photo
+            <input
+              type="file"
+              accept="image/jpeg,image/png"
+              className="sr-only"
+              onChange={(event) => {
+                void upload(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        )}
         <button type="button" className={pill("secondary")} onClick={onCancel}>
           Cancel
         </button>
