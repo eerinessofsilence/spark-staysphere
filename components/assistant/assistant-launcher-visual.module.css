@@ -12,6 +12,15 @@
   pointer-events: none;
 }
 
+/* Recolored off `--primary-foreground` for a spot living on a filled `bg-primary`
+   pill (ink by day, lime by night) instead of the assistant's own fixed dark tones. */
+.onPrimary {
+  --orb-highlight: var(--primary-foreground);
+  --orb-accent: color-mix(in srgb, var(--primary-foreground) 75%, transparent);
+  --orb-mid: color-mix(in srgb, var(--primary-foreground) 45%, transparent);
+  --orb-shade: color-mix(in srgb, var(--primary-foreground) 22%, transparent);
+}
+
 /* The assistant stays monochrome in both themes. */
 .halo {
   position: absolute;

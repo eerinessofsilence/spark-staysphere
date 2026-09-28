@@ -2,6 +2,7 @@
 
 import { useId } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils';
 import styles from './assistant-launcher-visual.module.css';
 
 // One deterministic vector mesh; only its layers move, with no per-frame JS.
@@ -98,6 +99,70 @@ export function AssistantLauncherVisual({ open = false, hidden = false }: { open
       <span className={styles.close}>
         <XMarkIcon className="size-6" />
       </span>
+    </span>
+  );
+}
+
+/**
+ * The same orb, minus the assistant's own "AI"/close cross-fade — for a spot
+ * that wants this exact spinning mesh as an icon rather than as the
+ * assistant's launcher, e.g. the sidebar's 360 Orbit pill. Always running,
+ * never paused: unlike the launcher, there's no open state to save motion
+ * for. `onPrimary` recolors it from the assistant's own fixed dark palette
+ * to the pill's own `--primary-foreground`, so it reads on both the ink and
+ * the lime pill instead of one fixed tone.
+ */
+export function OrbitVisual({ className, onPrimary = false }: { className?: string; onPrimary?: boolean }) {
+  const id = useId().replace(/:/g, '');
+  const paint = (name: string) => `url(#${id}-${name})`;
+
+  return (
+    <span className={cn(styles.visual, onPrimary && styles.onPrimary, className)} data-open="false" data-paused="false" aria-hidden="true">
+      <span className={styles.halo} />
+      <svg className={styles.orb} viewBox="0 0 120 120" fill="none" focusable="false">
+        <defs>
+          <radialGradient id={`${id}-body`} cx="38%" cy="30%" r="73%">
+            <stop stopColor="var(--orb-mid)" />
+            <stop offset="0.38" stopColor="var(--orb-shade)" />
+            <stop offset="0.7" stopColor="var(--ink)" />
+            <stop offset="0.9" stopColor="var(--orb-shade)" />
+            <stop offset="1" stopColor="var(--orb-mid)" />
+          </radialGradient>
+          <linearGradient id={`${id}-rim`} x1="38" y1="21" x2="72" y2="103" gradientUnits="userSpaceOnUse">
+            <stop stopColor="var(--orb-highlight)" />
+            <stop offset="0.28" stopColor="var(--orb-accent)" />
+            <stop offset="0.65" stopColor="var(--orb-mid)" />
+            <stop offset="1" stopColor="var(--orb-shade)" />
+          </linearGradient>
+          <linearGradient id={`${id}-mesh`} x1="41" y1="25" x2="78" y2="97" gradientUnits="userSpaceOnUse">
+            <stop stopColor="var(--orb-highlight)" stopOpacity="0.6" />
+            <stop offset="0.5" stopColor="var(--orb-accent)" stopOpacity="0.35" />
+            <stop offset="1" stopColor="var(--orb-highlight)" stopOpacity="0.45" />
+          </linearGradient>
+          <radialGradient id={`${id}-light`} cx="50%" cy="0%" r="85%">
+            <stop stopColor="var(--orb-accent)" stopOpacity="0.55" />
+            <stop offset="0.48" stopColor="var(--orb-accent)" stopOpacity="0.08" />
+            <stop offset="1" stopColor="var(--orb-accent)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <g className={styles.body}>
+          <path d={contour(0.4, 36.5)} fill={paint('body')} />
+          <g className={styles.mesh} stroke={paint('mesh')} strokeWidth="0.38">
+            <path d={latitudeMesh} />
+            <path d={longitudeMesh} />
+          </g>
+          <path className={styles.light} d={contour(0.4, 36.5)} fill={paint('light')} />
+        </g>
+        <g className={styles.ribbons} stroke={paint('rim')}>
+          {shellContours.map((path, index) => (
+            <path key={index} d={path} strokeWidth={index % 3 === 0 ? 1.15 : 0.6} opacity={0.8 - index * 0.06} />
+          ))}
+        </g>
+        <g className={styles.filaments} stroke={paint('rim')} strokeWidth="0.65" opacity="0.75">
+          <path d={contour(2.8, 38.3)} />
+          <path d={contour(4.5, 40)} />
+        </g>
+      </svg>
     </span>
   );
 }

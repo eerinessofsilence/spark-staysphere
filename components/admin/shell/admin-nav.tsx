@@ -39,6 +39,7 @@ import { toast } from './toast';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { SearchInput } from '@/components/ui/search-input';
+import { OrbitVisual } from '@/components/assistant/assistant-launcher-visual';
 
 export interface HotelOption {
   slug: string;
@@ -178,7 +179,9 @@ export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
         aria-current={current ? 'page' : undefined}
         className={cn(itemClass, 'justify-center bg-primary text-primary-foreground hover:bg-primary-hover')}
       >
-        <featuredItem.icon className="size-5 shrink-0" aria-hidden="true" />
+        <span className="relative size-5 shrink-0">
+          <OrbitVisual onPrimary />
+        </span>
         {t(featuredItem.label)}
       </Link>
     </nav>
