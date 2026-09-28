@@ -31,6 +31,7 @@ import { BookingStatusBadge } from '@/components/admin/operations/booking-status
 import { BarList, Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
+import chartTones from '@/components/admin/operations/chart-gradients.module.css';
 import { RevenueTrend } from '@/components/admin/operations/revenue-trend';
 import { StayMoveButton } from '@/components/admin/operations/stay-move-button';
 import { stayStateKey } from '@/lib/i18n/admin/stay-state';
@@ -41,6 +42,17 @@ import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export const dynamic = 'force-dynamic';
+
+// Same colours as `HousekeepingStatusBadge`: dirty the warning ink, clean and
+// inspected the same green as a checked-in stay, out of order the danger
+// ink — a status means the same thing on this mix bar as everywhere else.
+const housekeepingMixTone: Record<(typeof HOUSEKEEPING_STATUSES)[number], string> = {
+  dirty: chartTones.statusWarning,
+  in_progress: chartTones.stone,
+  clean: chartTones.statusSuccess,
+  inspected: chartTones.statusInHouse,
+  out_of_order: chartTones.statusDanger,
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = adminT(await getAdminLocale());
@@ -89,6 +101,7 @@ export default async function AdminOverviewPage({
     status,
     label: t(housekeepingStatusKey(status)),
     value: housekeepingRooms.filter((room) => room.status === status).length,
+    tone: housekeepingMixTone[status],
   }));
   const availability = roomTypeAvailability(board, new Map(overrides));
   const meals = mealsByDay(bookings, ratePlanLists.flat(), addOns, board.days.slice(0, 7).map((day) => day.date));
@@ -320,7 +333,7 @@ export default async function AdminOverviewPage({
                 {t('dashboard.openHousekeeping')}
               </Link>
             </div>
-            <MixBar segments={housekeepingMix.map(({ label, value }) => ({ label, value }))} />
+            <MixBar segments={housekeepingMix.map(({ label, value, tone }) => ({ label, value, tone }))} />
           </section>
 
           <section aria-labelledby="revenue-today-heading" className="min-w-0 rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

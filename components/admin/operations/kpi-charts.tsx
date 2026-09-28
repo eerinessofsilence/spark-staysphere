@@ -79,6 +79,8 @@ export function OccupancyGauge({
 export interface MixSegment {
   label: string;
   value: number;
+  /** This part's own colour (bar segment and legend dot) — a status meaning the same thing everywhere it appears, rather than a tone picked by rank. Falls back to the rank-ordered `MIX_TONES` when omitted. */
+  tone?: string;
 }
 
 const MIX_TONES = [
@@ -101,7 +103,7 @@ export function MixBar({ segments }: { segments: MixSegment[] }) {
         {parts.map((segment, index) => (
           <span
             key={segment.label}
-            className={cn('h-full first:rounded-l-full last:rounded-r-full', styles.mixSegment, MIX_TONES[index % MIX_TONES.length])}
+            className={cn('h-full first:rounded-l-full last:rounded-r-full', styles.mixSegment, segment.tone ?? MIX_TONES[index % MIX_TONES.length])}
             style={{ width: `${(segment.value / total) * 100}%` }}
           />
         ))}
@@ -111,7 +113,7 @@ export function MixBar({ segments }: { segments: MixSegment[] }) {
           <li key={segment.label} className="flex min-w-0 items-center gap-1.5">
             <span
               aria-hidden="true"
-              className={cn('size-2 shrink-0 rounded-full', MIX_TONES[index % MIX_TONES.length])}
+              className={cn('size-2 shrink-0 rounded-full', segment.tone ?? MIX_TONES[index % MIX_TONES.length])}
             />
             <span className="truncate text-muted-foreground">{segment.label}</span>
             <span className="ml-auto font-medium tabular-nums">{segment.value}</span>
