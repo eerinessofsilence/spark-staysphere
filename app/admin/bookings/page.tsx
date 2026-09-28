@@ -6,9 +6,10 @@ import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { nightsBetween } from '@/lib/domain/pricing';
 import type { Booking } from '@/lib/domain/schemas';
+import type { AdminLocale } from '@/lib/i18n/admin/locale';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
-import { lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
+import { lBookingStatus, lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
 import { CreateGroupButton } from '@/components/admin/operations/create-group-button';
@@ -26,7 +27,7 @@ import { FilterPills } from '@/components/admin/operations/filter-pills';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
-import { TableCard, Td, Th } from '@/components/admin/operations/table';
+import { SortableTh, TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { SearchInput } from '@/components/ui/search-input';
 
@@ -65,7 +66,52 @@ function parseRange(fromParam: string | string[] | undefined, toParam: string | 
   return from <= to ? { from, to } : { from: to, to: from };
 }
 
-function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: number, pageSize?: number): string {
+type SortField = 'reference' | 'guest' | 'room' | 'stay' | 'total' | 'status';
+type Sort = { field: SortField; dir: 'asc' | 'desc' } | null;
+
+const SORT_FIELDS: readonly SortField[] = ['reference', 'guest', 'room', 'stay', 'total', 'status'];
+
+function parseSort(value: string | string[] | undefined): Sort {
+  const [field, dir] = (typeof value === 'string' ? value : '').split(':');
+  if (!SORT_FIELDS.includes(field as SortField)) return null;
+  return { field: field as SortField, dir: dir === 'asc' ? 'asc' : 'desc' };
+}
+
+/** Clicking a column cycles it off → ascending → descending → off, rather than only ever toggling two states. */
+function nextSort(current: Sort, field: SortField): Sort {
+  if (!current || current.field !== field) return { field, dir: 'asc' };
+  return current.dir === 'asc' ? { field, dir: 'desc' } : null;
+}
+
+function sortKey(booking: Booking, field: SortField, roomNames: Map<string, string>, locale: AdminLocale): string | number {
+  switch (field) {
+    case 'reference':
+      return booking.reference;
+    case 'guest':
+      return `${booking.guest.firstName} ${booking.guest.lastName}`.toLowerCase();
+    case 'room':
+      return (roomNames.get(booking.roomTypeId) ?? booking.roomTypeId).toLowerCase();
+    case 'stay':
+      return booking.checkIn;
+    case 'total':
+      return booking.total;
+    case 'status':
+      return lBookingStatus(booking.status, locale).toLowerCase();
+  }
+}
+
+/** `null` keeps the list in its default order — newest booking first — rather than re-sorting it. */
+function applySort(bookings: Booking[], sort: Sort, roomNames: Map<string, string>, locale: AdminLocale): Booking[] {
+  if (!sort) return bookings;
+  return [...bookings].sort((a, b) => {
+    const av = sortKey(a, sort.field, roomNames, locale);
+    const bv = sortKey(b, sort.field, roomNames, locale);
+    const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return sort.dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function hrefFor(filter: Filter, query: string, range: DayRange | null, sort: Sort, page?: number, pageSize?: number): string {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
   if (filter !== 'all') params.set('status', filter);
@@ -73,6 +119,7 @@ function hrefFor(filter: Filter, query: string, range: DayRange | null, page?: n
     params.set('from', range.from);
     params.set('to', range.to);
   }
+  if (sort) params.set('sort', `${sort.field}:${sort.dir}`);
   if (page && page > 1) params.set('page', String(page));
   if (pageSize && pageSize !== PAGE_SIZE) params.set('pageSize', String(pageSize));
   const search = params.toString();
@@ -90,6 +137,7 @@ export default async function BookingsPage({
   const query = typeof params.q === 'string' ? params.q.trim() : '';
   const filter = parseFilter(params.status);
   const range = parseRange(params.from, params.to);
+  const sort = parseSort(params.sort);
   const page = parsePage(params.page);
   const pageSize = parsePageSize(params.pageSize);
   const today = toIsoDate(new Date());
@@ -113,7 +161,8 @@ export default async function BookingsPage({
   const counts: Record<Filter, number> = { all: searched.length, upcoming: 0, in_house: 0, past: 0, cancelled: 0 };
   for (const booking of searched) counts[stayBucket(booking, today)] += 1;
   const visible = filter === 'all' ? searched : searched.filter((booking) => stayBucket(booking, today) === filter);
-  const { pageItems, page: currentPage, totalPages } = paginate(visible, page, pageSize);
+  const ordered = applySort(visible, sort, roomNames, locale);
+  const { pageItems, page: currentPage, totalPages } = paginate(ordered, page, pageSize);
 
   const rows = await Promise.all(
     pageItems.map(async (booking) => ({ booking, room: await inventoryService.getBookingRoom(booking) })),
@@ -147,7 +196,7 @@ export default async function BookingsPage({
             key: option,
             label: option === 'all' ? t('bookings.all') : t(stayBucketKey[option]),
             count: counts[option],
-            href: hrefFor(option, query, range),
+            href: hrefFor(option, query, range, sort),
             current: option === filter,
           }))}
         />
@@ -212,12 +261,43 @@ export default async function BookingsPage({
           <TableCard caption={t('bookings.tableCaption')} className="min-w-[62rem]" attached>
             <thead>
               <tr className="border-b border-border">
-                <Th>{t('ops.thBookingNumber')}</Th>
-                <Th>{t('ops.thGuest')}</Th>
-                <Th>{t('ops.thRoom')}</Th>
-                <Th>{t('ops.thStay')}</Th>
-                <Th className="text-right">{t('ops.thTotal')}</Th>
-                <Th>{t('ops.thStatus')}</Th>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'reference'), undefined, pageSize)}
+                  direction={sort?.field === 'reference' ? sort.dir : undefined}
+                >
+                  {t('ops.thBookingNumber')}
+                </SortableTh>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'guest'), undefined, pageSize)}
+                  direction={sort?.field === 'guest' ? sort.dir : undefined}
+                >
+                  {t('ops.thGuest')}
+                </SortableTh>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'room'), undefined, pageSize)}
+                  direction={sort?.field === 'room' ? sort.dir : undefined}
+                >
+                  {t('ops.thRoom')}
+                </SortableTh>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'stay'), undefined, pageSize)}
+                  direction={sort?.field === 'stay' ? sort.dir : undefined}
+                >
+                  {t('ops.thStay')}
+                </SortableTh>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'total'), undefined, pageSize)}
+                  direction={sort?.field === 'total' ? sort.dir : undefined}
+                  align="right"
+                >
+                  {t('ops.thTotal')}
+                </SortableTh>
+                <SortableTh
+                  href={hrefFor(filter, query, range, nextSort(sort, 'status'), undefined, pageSize)}
+                  direction={sort?.field === 'status' ? sort.dir : undefined}
+                >
+                  {t('ops.thStatus')}
+                </SortableTh>
                 <Th className="w-14">
                   <span className="sr-only">{t('ops.thActions')}</span>
                 </Th>
@@ -306,8 +386,8 @@ export default async function BookingsPage({
             totalPages={totalPages}
             total={visible.length}
             pageSize={pageSize}
-            hrefFor={(next) => hrefFor(filter, query, range, next, pageSize)}
-            pageSizeHrefFor={(size) => hrefFor(filter, query, range, 1, size)}
+            hrefFor={(next) => hrefFor(filter, query, range, sort, next, pageSize)}
+            pageSizeHrefFor={(size) => hrefFor(filter, query, range, sort, 1, size)}
           />
           </div>
         )}
