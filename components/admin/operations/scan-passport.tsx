@@ -6,6 +6,7 @@ import { Modal } from "@/components/site/modal";
 import { fieldClass, pill } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 import { documentOcrService } from "@/lib/application/document-ocr-service";
+import { documentPhotoCanvas } from "@/lib/application/document-ocr-image";
 import { confirmScannedGuestAction } from "@/app/admin/guests/documents/actions";
 import {
   emptyIdentity,
@@ -59,7 +60,7 @@ export function ScanPassport({
         open={open}
         onClose={() => setOpen(false)}
         title="Scan Passport"
-        className="sm:max-w-4xl"
+        fullScreen
       >
         {open ? (
           <PassportCapture
@@ -86,7 +87,9 @@ function PassportCapture({
   onConfirm: (guest: Guest, document: ScannedGuestDocument) => void;
 }) {
   const video = React.useRef<HTMLVideoElement>(null);
+  const reviewHeading = React.useRef<HTMLHeadingElement>(null);
   const stream = React.useRef<MediaStream | null>(null);
+  const cameraAttempt = React.useRef(0);
   const abort = React.useRef(new AbortController());
   const [camera, setCamera] = React.useState(false);
   const [photo, setPhoto] = React.useState<File | null>(null);
@@ -101,18 +104,20 @@ function PassportCapture({
   const [matches, setMatches] = React.useState<(Guest & { id: string })[]>([]);
 
   function stopCamera() {
+    cameraAttempt.current++;
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
     setCamera(false);
   }
   async function openCamera() {
+    const attempt = ++cameraAttempt.current;
     setError("");
     try {
       const media = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
         audio: false,
       });
-      if (abort.current.signal.aborted) {
+      if (abort.current.signal.aborted || attempt !== cameraAttempt.current) {
         media.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -124,7 +129,9 @@ function PassportCapture({
         await video.current.play();
       }
     } catch {
-      setError("Camera unavailable. You can upload a JPEG or PNG photo below.");
+      if (!abort.current.signal.aborted && attempt === cameraAttempt.current) {
+        setError("Camera unavailable. You can upload a JPEG or PNG photo below.");
+      }
     }
   }
   React.useEffect(() => {
@@ -145,6 +152,9 @@ function PassportCapture({
     setUrl(preview);
     return () => URL.revokeObjectURL(preview);
   }, [photo]);
+  React.useEffect(() => {
+    if (review) reviewHeading.current?.focus();
+  }, [review]);
 
   async function fromCanvas(canvas: HTMLCanvasElement) {
     const blob = await new Promise<Blob | null>((resolve) =>
@@ -160,19 +170,14 @@ function PassportCapture({
   }
   async function upload(file?: File) {
     if (!file) return;
+    stopCamera();
     setError("");
     if (!["image/jpeg", "image/png"].includes(file.type) || file.size > MAX_DOCUMENT_BYTES) {
       setError("Use a JPEG or PNG photo up to 8 MB.");
       return;
     }
     try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 2600 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
+      const canvas = await documentPhotoCanvas(file);
       await fromCanvas(canvas); // Strip metadata; retain no copy of the uploaded original.
     } catch {
       setError("This image could not be opened. Choose another photo.");
@@ -197,6 +202,9 @@ function PassportCapture({
       const result = await documentOcrService.recognize(photo, abort.current.signal);
       setFields(result.fields);
       setConfidence(result.confidence);
+      if (![result.fields.firstName, result.fields.lastName, result.fields.documentNumber].some(Boolean)) {
+        setError("No document details could be read. Retake a close-up of the identity page with both machine-readable lines sharp and fully visible, or enter the details below.");
+      }
       setReview(true);
     } catch {
       if (!abort.current.signal.aborted) {
@@ -254,13 +262,18 @@ function PassportCapture({
   return (
     <div>
       {review ? (
-        <h3 className="mb-4 text-xl font-semibold">Review Guest Information</h3>
+        <h3 ref={reviewHeading} tabIndex={-1} className="mb-4 text-xl font-semibold outline-none">Review Guest Information</h3>
       ) : (
         <p className="mb-4 text-sm text-muted-foreground">
           Photograph the full identity page, including the machine-readable lines. Keep it flat and
           avoid reflections.
         </p>
       )}
+      {error ? (
+        <p role="alert" className="mb-4 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
       <video
         ref={video}
         autoPlay
@@ -269,16 +282,16 @@ function PassportCapture({
         className={cn("mb-4 w-full rounded-[18px] bg-stone", !camera && "hidden")}
         aria-label="Document camera"
       />
-      <div className={cn("grid min-w-0 gap-5", review && "sm:grid-cols-2")}>
+      <div className={cn("grid min-w-0 gap-5", review && "md:grid-cols-2")}>
         {url ? (
           <img
             src={url}
             alt="Document photo for review"
-            className="max-h-96 w-full rounded-[18px] bg-stone object-contain"
+            className="max-h-64 w-full rounded-[18px] bg-stone object-contain sm:max-h-96"
           />
         ) : null}
         {review ? (
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
             {(Object.keys(identityLabels) as IdentityField[]).map((key) => (
               <div key={key}>
                 <label className="mb-1 block text-sm" htmlFor={`passport-${key}`}>
@@ -402,11 +415,6 @@ function PassportCapture({
       {busy ? (
         <p role="status" className="mt-4 text-sm">
           {review ? "Confirming guest…" : "Recognizing document…"}
-        </p>
-      ) : null}
-      {error ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {error}
         </p>
       ) : null}
       {/* One row of actions in every state — the primary first, Cancel last —

@@ -39,13 +39,18 @@ interface ModalProps {
    * stages use this on tablets, where a card over the stage is too cramped.
    */
   sheet?: boolean;
+  /**
+   * Let an immersive workflow own the whole phone viewport. Desktop keeps the
+   * normal centred dialog treatment unless the caller changes it explicitly.
+   */
+  fullScreen?: boolean;
 }
 
 /** Tab-reachable elements a focus trap should cycle between. */
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, children, className, chrome = true, sheet = false }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, chrome = true, sheet = false, fullScreen = false }: ModalProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   // A client component still renders once on the server, where there is no
   // `document.body` to portal into. Only portal after the browser has it.
@@ -116,8 +121,11 @@ export function Modal({ open, onClose, title, children, className, chrome = true
   return createPortal(
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground',
-        sheet ? 'sm:p-6' : 'sm:items-center sm:p-6',
+        'fixed inset-0 z-50 flex justify-center text-foreground',
+        fullScreen
+          ? 'items-stretch p-0 sm:items-center sm:p-6'
+          : 'items-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+        !fullScreen && (sheet ? 'sm:p-6' : 'sm:items-center sm:p-6'),
       )}
     >
       <button
@@ -147,7 +155,11 @@ export function Modal({ open, onClose, title, children, className, chrome = true
           // those standalone properties — listing `transform` moves nothing.
           'relative flex w-full flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-soft-lg outline-none transition-[opacity,translate,scale] duration-200 ease-out',
           'max-h-[85dvh] sm:max-h-[88vh]',
-          sheet ? 'sm:max-w-none' : 'sm:max-w-lg',
+          fullScreen
+            ? 'h-[100dvh] max-h-none rounded-none sm:h-auto sm:max-h-[88vh] sm:rounded-[18px] sm:max-w-4xl'
+            : sheet
+              ? 'sm:max-w-none'
+              : 'sm:max-w-lg',
           // A phone gets the sheet's own move, sliding up off the bottom edge
           // it is pinned to; a desk's centred card has no edge to come from,
           // so it settles in from a touch smaller and a touch faded instead.
@@ -171,7 +183,7 @@ export function Modal({ open, onClose, title, children, className, chrome = true
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">{children}</div>
           </>
         ) : (
           // A plain block, not `overflow-y-auto`: a caller with a single,

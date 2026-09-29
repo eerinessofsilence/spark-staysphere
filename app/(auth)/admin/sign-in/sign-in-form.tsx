@@ -15,9 +15,11 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
 
   // A shared password has nothing to recover — it's the demo's one password
   // for the whole hotel. "Forgot password?" fills both fields with it
-  // instead of ever printing it on the page: no text, no box, just a form
-  // that's ready to submit. Only shown when there is a demo password to
-  // fill in; a real deployment's own password isn't this page's to hand out.
+  // instead of ever printing it on the page — the email field itself stays
+  // blank with a neutral placeholder rather than a real team member's
+  // address, so the sign-in page never shows a name before anyone's signed
+  // in. Only shown when there is a demo password to fill in; a real
+  // deployment's own password isn't this page's to hand out.
   function fillDemoCredentials() {
     if (!demo) return;
     if (emailRef.current) emailRef.current.value = demo.email;
@@ -38,7 +40,7 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
           required
           autoComplete="username"
           autoFocus
-          defaultValue={demo?.email ?? ''}
+          placeholder={t('signIn.emailPlaceholder')}
           className={fieldClass}
         />
       </div>

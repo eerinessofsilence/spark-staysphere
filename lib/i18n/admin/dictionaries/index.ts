@@ -10,6 +10,7 @@ import { frontDesk } from './frontDesk';
 import { housekeeping } from './housekeeping';
 import { onboarding } from './onboarding';
 import { operations } from './operations';
+import { orders } from './orders';
 import { settings } from './settings';
 import { shell } from './shell';
 import { spinner } from './spinner';
@@ -47,6 +48,7 @@ function merge<L extends AdminLocale>(locale: L) {
     ...dashboard[locale],
     ...account[locale],
     ...operations[locale],
+    ...orders[locale],
     ...frontDesk[locale],
     ...housekeeping[locale],
     ...communications[locale],

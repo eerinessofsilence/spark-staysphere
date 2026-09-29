@@ -8,28 +8,62 @@ import { useAdminT } from "@/lib/i18n/admin/context";
 import { UploadDropzone } from "./upload-dropzone";
 import { useUploadBusy } from "./content-form";
 
+type DecodedPhoto = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close: () => void;
+};
+
 /** Decode locally, strip metadata and resize before sending one bounded file at a time. */
 export async function preparePhoto(file: File): Promise<File> {
-  const bitmap = await createImageBitmap(file);
+  let decoded: DecodedPhoto;
   try {
-    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+    const bitmap = await createImageBitmap(file);
+    decoded = { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close() };
+  } catch {
+    // iOS can expose a camera/gallery image as HEIC while its ImageBitmap
+    // decoder is unavailable. The regular image element uses the platform's
+    // decoder and gives us a second chance before reporting an invalid upload.
+    const url = URL.createObjectURL(file);
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new Error("Cannot decode image"));
+        element.src = url;
+      });
+      decoded = { source: image, width: image.naturalWidth, height: image.naturalHeight, close: () => URL.revokeObjectURL(url) };
+    } catch (error) {
+      URL.revokeObjectURL(url);
+      throw error;
+    }
+  }
+  try {
+    const scale = Math.min(1, 2400 / Math.max(decoded.width, decoded.height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.width = Math.max(1, Math.round(decoded.width * scale));
+    canvas.height = Math.max(1, Math.round(decoded.height * scale));
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Cannot decode image");
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (value) => (value ? resolve(value) : reject(new Error("Cannot encode image"))),
-        "image/webp",
-        0.88,
-      ),
-    );
-    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type: blob.type });
+    context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
+    const blob = await encodePhoto(canvas);
+    const extension = blob.type === "image/webp" ? "webp" : blob.type === "image/png" ? "png" : "jpg";
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + `.${extension}`, { type: blob.type });
   } finally {
-    bitmap.close();
+    decoded.close();
   }
+}
+
+async function encodePhoto(canvas: HTMLCanvasElement): Promise<Blob> {
+  const encode = (type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+  const webp = await encode("image/webp", 0.88);
+  if (webp?.type === "image/webp") return webp;
+  const jpeg = await encode("image/jpeg", 0.9);
+  if (jpeg) return jpeg;
+  if (webp) return webp;
+  throw new Error("Cannot encode image");
 }
 
 export function PhotoUpload({
@@ -82,7 +116,7 @@ export function PhotoUpload({
         if (!mounted.current) break;
         try {
           if (
-            !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+            !file.type.startsWith("image/") ||
             file.size > MAX_PHOTO_BYTES ||
             file.size === 0
           ) {

@@ -22,7 +22,7 @@ export default async function BookPage({ params, searchParams }: PageProps<'/boo
   const addOnIds = parseAddOnIds(query);
 
   const detail = await catalogService
-    .getRoomDetail(DEMO_HOTEL_SLUG, slug, criteria, addOnIds)
+    .getRoomDetail(DEMO_HOTEL_SLUG, slug, criteria, addOnIds, parseRoomNumber(query) ?? undefined)
     .catch((error: unknown) => {
       if (error instanceof RoomNotFoundError) notFound();
       throw error;

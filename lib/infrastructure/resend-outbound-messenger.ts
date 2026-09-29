@@ -23,6 +23,8 @@ export function createResendOutboundMessenger(apiKey: string, fromEmail: string)
           to: [input.to.email],
           subject: input.subject ?? `Message from ${input.hotelName}`,
           text: input.body,
+          // The designed alternative an automation carries (`lib/application/email-html.ts`); a desk's own reply has none and stays text-only.
+          ...(input.html ? { html: input.html } : {}),
         }),
       });
       if (!response.ok) {

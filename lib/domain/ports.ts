@@ -21,6 +21,7 @@ import type {
 } from './schemas';
 import type { SpinnerZone, SpinnerZoneUpsert } from './spinner-markup';
 import type { StoredTeamMember } from './team-member';
+import type { HotelOrder, OrderStatus } from './orders';
 // Type-only: `RoomFilters`/`CatalogFacets` are application-layer shapes, but
 // the assistant's contract is stated in terms of them rather than a second,
 // domain-owned copy. A type import has no runtime edge, so this does not
@@ -72,6 +73,13 @@ export interface BookingStore {
 export interface PaymentAttemptStore {
   savePaymentAttempt(attempt: PaymentAttempt): Promise<PaymentAttempt>;
   listPaymentAttempts(bookingId: string): Promise<PaymentAttempt[]>;
+}
+
+/** Hotel services/orders shown on the operational Orders grid. */
+export interface OrderStore {
+  listOrders(hotelId: string): Promise<HotelOrder[]>;
+  createOrder(order: HotelOrder): Promise<HotelOrder>;
+  setOrderStatus(hotelId: string, orderId: string, status: OrderStatus): Promise<HotelOrder | null>;
 }
 
 /**
@@ -240,21 +248,63 @@ export interface OutboundMessenger {
     conversationId: string;
     /** A desk reply has none — it's a line in an existing thread. A system email always has one. */
     subject?: string;
+    /** A designed HTML alternative to `body` — only an automation's email carries one (`lib/application/email-html.ts`); a desk's own reply is plain text. Ignored for a channel other than `email`. */
+    html?: string;
   }): Promise<void>;
 }
 
-/** A booking-lifecycle moment that can send the guest an email on its own, no desk member involved. */
-export const EMAIL_AUTOMATION_KINDS = ['booking_confirmed', 'arrival_reminder', 'booking_cancelled', 'checked_out'] as const;
-export type EmailAutomationKind = (typeof EMAIL_AUTOMATION_KINDS)[number];
+/**
+ * What sets an automation off: three booking-lifecycle events fired by the
+ * code that already handles them (`BookingService.confirm`, a cancel, the
+ * desk marking a stay checked out), and two calendar-relative moments swept
+ * daily by `EmailAutomationsService.sendScheduled` — so many days before
+ * check-in, or so many days after check-out. `days` only applies to the
+ * latter two.
+ */
+export const AUTOMATION_TRIGGER_KINDS = ['booking_confirmed', 'booking_cancelled', 'checked_out', 'before_check_in', 'after_check_out'] as const;
+export type AutomationTriggerKind = (typeof AUTOMATION_TRIGGER_KINDS)[number];
+
+export interface AutomationTrigger {
+  kind: AutomationTriggerKind;
+  /** Required for 'before_check_in' and 'after_check_out'; unused otherwise. */
+  days?: number;
+}
 
 /**
- * Per-hotel on/off switches for the automations above — `/admin/settings/automations`.
- * Unset reads as on: a hotel that never visited the screen still gets the emails,
- * the same "silence means the default" rule `getRoomStatusOverride` uses.
+ * One email automation — the four the product ships with, plus whatever a
+ * hotel team builds on `/admin/settings/automations`. `builtIn` ones can't
+ * be deleted and their trigger *kind* can't change (each is what the
+ * matching lifecycle event fires), but their days, subject, body and on/off
+ * switch are as editable as a custom rule's.
  */
-export interface AutomationSettingsStore {
-  list(hotelId: string): Promise<Partial<Record<EmailAutomationKind, boolean>>>;
-  set(hotelId: string, kind: EmailAutomationKind, enabled: boolean): Promise<void>;
+export interface EmailAutomationRule {
+  id: string;
+  hotelId: string;
+  trigger: AutomationTrigger;
+  enabled: boolean;
+  subject: string;
+  body: string;
+  builtIn: boolean;
+  updatedAt: string;
+}
+
+export interface AutomationRuleStore {
+  list(hotelId: string): Promise<EmailAutomationRule[]>;
+  upsert(rule: EmailAutomationRule): Promise<void>;
+  delete(hotelId: string, id: string): Promise<void>;
+}
+
+/**
+ * One row per guest an automation has already emailed — the daily sweep's
+ * only defence against sending "3 days after check-out" again on tomorrow's
+ * run, or several times the same day on Cloudflare's ten-minute tick. Event
+ * triggers (`booking_confirmed`, `booking_cancelled`, `checked_out`) fire
+ * once, from the code path that already guards their own event, so they
+ * don't need this.
+ */
+export interface AutomationSendLogStore {
+  wasSent(ruleId: string, bookingId: string): Promise<boolean>;
+  markSent(hotelId: string, ruleId: string, bookingId: string): Promise<void>;
 }
 
 export interface MessagingStore {
@@ -497,7 +547,7 @@ export interface MediaLibraryPort {
   list(): MediaAsset[] | Promise<MediaAsset[]>;
   find(url: string): MediaAsset | undefined | Promise<MediaAsset | undefined>;
   /** `kind` files the object where `mediaTypeOf` will read it back as a 360° view (`panoramas/…`) or a photo (`photos/…`). */
-  upload?(input: { hotelId: string; filename: string; width: number; height: number; bytes: ArrayBuffer; kind?: 'photo' | 'panorama' }): Promise<MediaAsset>;
+  upload?(input: { hotelId: string; filename: string; contentType: string; width: number; height: number; bytes: ArrayBuffer; kind?: 'photo' | 'panorama' }): Promise<MediaAsset>;
 }
 
 /** The kinds of catalog entity the CMS can overlay onto seed data. `room` is a room type; `unit` is one physical room. */

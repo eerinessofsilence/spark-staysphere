@@ -224,9 +224,19 @@ export function ScanModal<TDraft>({
   }
 
   function toFile(canvas: HTMLCanvasElement, name: string, quality: number): Promise<File | null> {
-    return new Promise((resolve) =>
-      canvas.toBlob((blob) => resolve(blob ? new File([blob], name, { type: blob.type }) : null), 'image/webp', quality),
-    );
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob?.type === 'image/webp') {
+          resolve(new File([blob], name.replace(/\.[^.]+$/, '.webp'), { type: blob.type }));
+          return;
+        }
+        canvas.toBlob(
+          (jpeg) => resolve(jpeg ? new File([jpeg], name.replace(/\.[^.]+$/, '.jpg'), { type: jpeg.type || 'image/jpeg' }) : blob ? new File([blob], name, { type: blob.type }) : null),
+          'image/jpeg',
+          quality,
+        );
+      }, 'image/webp', quality);
+    });
   }
 
   async function useFile(raw: File, panorama: Panorama | null = null) {

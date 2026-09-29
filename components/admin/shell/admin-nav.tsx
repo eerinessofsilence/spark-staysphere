@@ -10,6 +10,7 @@ import {
   BuildingOffice2Icon,
   CalendarDaysIcon,
   CameraIcon,
+  ClipboardDocumentListIcon,
   ArrowRightStartOnRectangleIcon,
   ChevronUpDownIcon,
   CheckBadgeIcon,
@@ -66,11 +67,12 @@ const groups: NavGroup[] = [
       { href: '/admin/front-desk', label: 'nav.frontDesk', icon: TableCellsIcon },
       { href: '/admin/bookings', label: 'nav.reservations', icon: CalendarDaysIcon },
       { href: '/admin/guests', label: 'nav.guests', icon: UserCircleIcon },
+      { href: '/admin/content/add-ons', label: 'nav.services', icon: ShoppingBagIcon },
+      { href: '/admin/orders', label: 'nav.orders', icon: ClipboardDocumentListIcon },
       { href: '/admin/documents', label: 'nav.documents', icon: IdentificationIcon },
       { href: '/admin/groups', label: 'nav.groups', icon: RectangleGroupIcon },
       { href: '/admin/communications', label: 'nav.communications', icon: ChatBubbleLeftRightIcon },
       { href: '/admin/content', label: 'nav.rooms', icon: DocumentTextIcon },
-      { href: '/admin/content/add-ons', label: 'nav.services', icon: ShoppingBagIcon },
       { href: '/admin/rates', label: 'nav.roomRates', icon: TagIcon },
       { href: '/admin/accounting', label: 'nav.accounting', icon: BanknotesIcon },
       { href: '/admin/accounting/reports', label: 'nav.reports', icon: ChartBarIcon },
@@ -92,7 +94,7 @@ const groups: NavGroup[] = [
 const featuredItem: Pick<NavItem, 'href' | 'label'> = { href: '/admin/content/spinner', label: 'nav.orbit' };
 
 const itemClass =
-  'flex min-h-11 items-center gap-3 rounded-full px-3 text-sm font-medium transition-colors';
+  'flex min-h-11 items-center gap-3 rounded-full px-3 text-sm font-medium transition-colors duration-200 ease-out';
 
 /** The longest matching href wins, so /admin/content/hotel lights its own item and every other /admin/content page lights Rooms. */
 function activeHref(pathname: string): string | null {
@@ -129,7 +131,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                       itemClass,
                       current
                         ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-stone hover:text-foreground',
+                        : 'text-muted-foreground can-hover:bg-stone can-hover:text-foreground',
                     )}
                   >
                     <item.icon className="size-5 shrink-0" aria-hidden="true" />
@@ -178,7 +180,7 @@ export function AdminFeaturedNav({ onNavigate }: { onNavigate?: () => void }) {
         href={featuredItem.href}
         onClick={onNavigate}
         aria-current={current ? 'page' : undefined}
-        className={cn(itemClass, 'justify-center bg-primary text-primary-foreground hover:bg-primary-hover')}
+        className={cn(itemClass, 'justify-center bg-primary text-primary-foreground can-hover:bg-primary-hover')}
       >
         <CameraIcon className="size-5 shrink-0" aria-hidden="true" />
         {t(featuredItem.label)}
@@ -355,6 +357,19 @@ export function AdminMobileMenu({
 }) {
   const [open, setOpen] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
+  /**
+   * A tap on a nav row navigates *and* closes the sheet from the same
+   * `onClick` — closing on the same tick as the click cuts off `itemClass`'s
+   * own `transition-colors` before it has a single frame to run, so the row
+   * never visibly goes active before the whole sheet vanishes under it. The
+   * route change itself is already under way (`Link` doesn't wait on this
+   * handler), so holding the sheet open past one repaint costs nothing but
+   * lets the tapped row's own highlight register — the close animation
+   * `Modal` already runs is what reads as "switching tabs" rather than a cut.
+   */
+  const navigate = React.useCallback(() => {
+    requestAnimationFrame(() => setTimeout(close, 140));
+  }, [close]);
   const t = useAdminT();
 
   return (
@@ -385,14 +400,14 @@ export function AdminMobileMenu({
         <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
           <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           <div className="mt-4">
-            <AdminNav onNavigate={close} />
+            <AdminNav onNavigate={navigate} />
           </div>
         </div>
 
         <div className="shrink-0 px-5 pb-5 sm:px-6 sm:pb-6">
-          <AdminFeaturedNav onNavigate={close} />
+          <AdminFeaturedNav onNavigate={navigate} />
           <div className="mt-3 grid gap-1 border-t border-border pt-3">
-            <AccountMenu member={member} onNavigate={close} />
+            <AccountMenu member={member} onNavigate={navigate} />
           </div>
         </div>
       </Modal>

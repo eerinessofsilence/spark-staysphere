@@ -283,6 +283,7 @@ export default async function RoomContentPage({
                         submitLabel={t('room.saveRate')}
                         versionKey={`rate:${rate.id}`}
                         showRatesLink={index === 0}
+                        sticky={false}
                         initial={{
                           name: rate.name,
                           nightlyPrice: rate.nightlyPrice,
@@ -316,6 +317,7 @@ export default async function RoomContentPage({
                     currency={hotel.currency}
                     submitLabel={t('room.addRateButton')}
                     resetOnSuccess
+                    sticky={false}
                   />
                 </div>
               </details>

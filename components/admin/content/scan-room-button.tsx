@@ -99,7 +99,11 @@ export function ScanRoomButton({ rooms }: { rooms: ScanRoomOption[] }) {
       }
       toast.success(t('scanRoom.added', { name }));
       setOpen(false);
-      router.push(`/admin/content/rooms/${result.id}?created=1`);
+      // The scan starts from the room-type catalog. Return there after the
+      // save so the newly created type is immediately visible at the top of
+      // the grid instead of leaving the operator on a detail page.
+      router.push('/admin/content');
+      router.refresh();
     });
   }
 

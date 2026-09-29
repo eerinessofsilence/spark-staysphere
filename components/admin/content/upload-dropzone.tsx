@@ -67,7 +67,7 @@ export function UploadDropzone({
         <input
           ref={input}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           multiple={multiple}
           aria-label={chooseLabel ?? t("upload.choose")}
           className="sr-only"

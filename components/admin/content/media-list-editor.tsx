@@ -181,8 +181,14 @@ export function MediaListEditor({
         maxSelection={30 - items.length}
       />
 
-      <Modal open={tourUrl !== null} onClose={() => setTourUrl(null)} title={t('media.view360')} className="sm:max-w-3xl">
-        <div className="relative aspect-video w-full overflow-hidden rounded-[18px] bg-ink">
+      <Modal
+        open={tourUrl !== null}
+        onClose={() => setTourUrl(null)}
+        title={t('media.view360')}
+        fullScreen
+        className="sm:max-w-4xl"
+      >
+        <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[18px] bg-ink sm:aspect-video sm:h-auto">
           {tourUrl ? <PanoramaViewer key={tourUrl} src={tourUrl} title={t('media.view360')} className="absolute inset-0 size-full" /> : null}
         </div>
       </Modal>

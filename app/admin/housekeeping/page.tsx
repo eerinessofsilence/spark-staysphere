@@ -14,6 +14,7 @@ import { lDateShort, lFloor } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { HousekeepingStatusMenu } from '@/components/admin/housekeeping/housekeeping-status-menu';
 import { HousekeepingAssigneeSelect } from '@/components/admin/housekeeping/housekeeping-assignee-select';
+import { AssignHousekeeperButton } from '@/components/admin/housekeeping/assign-housekeeper-button';
 import { FilterPills } from '@/components/admin/operations/filter-pills';
 import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
@@ -80,10 +81,20 @@ export default async function HousekeepingPage({
   for (const room of rooms) counts[room.status] += 1;
   const visible = filter === 'all' ? rooms : rooms.filter((room) => room.status === filter);
   const { pageItems, page: currentPage, totalPages } = paginate(visible, page, pageSize);
+  const assignableRooms = rooms.map((room) => ({
+    unitId: room.unit.id,
+    number: room.unit.number,
+    floor: room.unit.floor,
+    roomTypeName: room.roomTypeName,
+    currentAssigneeName: staff.find((member) => member.id === assignedByUnit.get(room.unit.id))?.name ?? null,
+  }));
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('housekeeping.title')} />
+      <AdminPageHeader
+        title={t('housekeeping.title')}
+        actions={canAssign ? <AssignHousekeeperButton rooms={assignableRooms} housekeepers={housekeepers} /> : null}
+      />
 
       <div className="mt-2">
         <FilterPills

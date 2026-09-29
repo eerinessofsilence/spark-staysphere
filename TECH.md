@@ -433,22 +433,40 @@ How messages get in and out:
   adapter (`lib/infrastructure/logging-outbound-messenger.ts`) — which delivers nothing but still
   leaves the reply in the thread — when it is not. WhatsApp and SMS have no provider yet and always
   log. Site-chat replies need no carrier: the guest's page reads them.
-- **Automation, out.** `/admin/settings/automations` is four per-hotel switches — booking confirmed,
-  an arrival reminder the day before check-in, booking cancelled, and a thank-you after check-out —
-  each on by default. `EmailAutomationsService` (`lib/application/email-automations-service.ts`) is
-  the one place that decides whether to fire: `BookingService.confirm`/`cancelTrip`/`cancelAsHotel`
-  call it through the same optional-callback shape `afterCheckout` already used for guest-document
-  deletion, and `setStayStateAsHotel`'s existing checkout hook now also calls it. The arrival reminder
-  has no lifecycle event to hang off, so `GET /api/internal/arrival-reminders` — a daily Vercel Cron
-  job gated by `CRON_SECRET`, the same bearer-token pattern as `/api/internal/document-deletions` —
-  finds every confirmed, still-booked stay whose check-in is exactly tomorrow and sends one each;
-  matching on that one day is what keeps a re-run idempotent without its own "already sent" marker.
-  Every automation's email is filed into the guest's own thread through
-  `CommunicationsService.sendSystemEmail` — a booking's `email`-channel thread specifically, never
-  whichever channel `start()` would reuse, so an open site-chat thread for the same stay can't
-  silently swallow the send — so the desk sees what went out in Communications, same as a reply it
-  typed itself. Settings persist per hotel in `AutomationSettingsStore` (`email_automations` in D1,
-  the in-memory fallback everywhere else).
+- **Automation, out.** `/admin/settings/automations` is a per-hotel list of `EmailAutomationRule`s —
+  the four the product ships with (booking confirmed, an arrival reminder a day before check-in,
+  booking cancelled, a thank-you after check-out), each on by default, plus whatever a hotel team
+  builds itself: a custom rule off one of five triggers — the three lifecycle events above, or a
+  calendar-relative "N days before check-in" / "N days after check-out" — with its own subject and
+  body. A built-in rule's trigger *kind* is fixed (it's what the matching event fires), but its
+  `days`, subject, body and on/off switch are exactly as editable as a custom rule's; a built-in
+  can't be deleted, a custom rule can. Every field a rule's text can carry —
+  `{{guestFirstName}}`, `{{reference}}`, `{{checkIn}}`, `{{total}}`, `{{hotelName}}`, and so on
+  (`AUTOMATION_PLACEHOLDERS`) — is substituted at send time; the settings screen's preview modal
+  (`AutomationPreviewButton`) renders the same substitution against a fabricated sample stay, never
+  a real booking, so the team can see exactly what a guest gets before switching a rule on.
+  `EmailAutomationsService` (`lib/application/email-automations-service.ts`) is the one place that
+  decides whether to fire: `BookingService.confirm`/`cancelTrip`/`cancelAsHotel` call it through the
+  same optional-callback shape `afterCheckout` already used for guest-document deletion, and
+  `setStayStateAsHotel`'s existing checkout hook now also calls it, each firing every enabled rule
+  whose trigger matches that event. The two calendar-relative triggers have no lifecycle event to
+  hang off, so `GET /api/internal/scheduled-automations` — a daily Vercel Cron job gated by
+  `CRON_SECRET`, the same bearer-token pattern as `/api/internal/document-deletions` — and the
+  Cloudflare Worker's own `scheduled()` (ticking every ten minutes, `vite.config.ts`'s
+  `triggers.crons`) both call `runScheduledAutomations` (`lib/application/scheduled-automations.ts`),
+  which matches every enabled `before_check_in`/`after_check_out` rule against every confirmed
+  booking whose check-in or check-out lands exactly `days` away from today. Unlike the old single
+  fixed "exactly tomorrow" arrival reminder, several rules can now share a booking and Cloudflare's
+  own tick would otherwise refire the same email all day, so a send log
+  (`AutomationSendLogStore`, `automation_sends` in D1) is checked before sending and written after —
+  the scheduled sweep's only idempotency; the three event triggers fire once, from the code path
+  that already guards their own event, and need none. Every automation's email is filed into the
+  guest's own thread through `CommunicationsService.sendSystemEmail` — a booking's `email`-channel
+  thread specifically, never whichever channel `start()` would reuse, so an open site-chat thread
+  for the same stay can't silently swallow the send — so the desk sees what went out in
+  Communications, same as a reply it typed itself. Rules persist per hotel in `AutomationRuleStore`
+  (`email_automation_rules` in D1, the in-memory fallback everywhere else); a hotel with no stored
+  rows still gets the four built-ins, merged in at read time.
 
 ### Languages
 

@@ -3,6 +3,16 @@
 @import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
+/**
+ * `hover:` alone stays on until the next tap on a touch screen — there is no
+ * pointer to move away and clear `:hover`, so a phone's last-tapped nav row
+ * (or any other `hover:`-styled control) reads as highlighted right next to
+ * the one that's actually current. `can-hover:` is the same styles, gated
+ * to devices that can actually hover — a mouse or trackpad — so touch never
+ * sees a stuck state. Prefer this over `hover:` for anything whose hover
+ * style could be mistaken for a *selected* state (nav rows, list rows).
+ */
+@custom-variant can-hover (@media (hover: hover) and (pointer: fine) { &:hover });
 
 @theme inline {
   --color-background: var(--background);

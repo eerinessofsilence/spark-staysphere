@@ -95,15 +95,20 @@ export default async function PhysicalRoomsPage() {
                     {t('units.noneForType', { name: type.name })}
                   </p>
                 ) : (
-                  <ul className="mt-4 flex flex-wrap gap-2">
+                  <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {own.map((room) => (
                       <li key={room.id}>
                         <Link
                           href={`/admin/content/units/${room.id}`}
-                          aria-label={lRoomNumber(room.number, locale)}
-                          className={pill('secondary', 'min-w-18 px-4 tabular-nums')}
+                          aria-label={`${t('form.edit')} ${lRoomNumber(room.number, locale)}`}
+                          className="group flex min-h-20 w-full items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 transition-colors hover:border-accent hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         >
-                          {room.number}
+                          <span className="text-lg font-semibold tabular-nums group-hover:text-accent-strong">
+                            {room.number}
+                          </span>
+                          <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground">
+                            {t('form.edit')}
+                          </span>
                         </Link>
                       </li>
                     ))}

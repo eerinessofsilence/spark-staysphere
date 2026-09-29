@@ -2,8 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { contentService } from '@/lib/application/container';
+import type { MediaItemDraft } from '@/components/admin/content/media-list-editor';
 import { getAdminT } from '@/lib/i18n/admin/server';
-import { formStateFromError, type ContentFormState } from '../../_lib/form-state';
+import { formStateFromError, parseJsonList, type ContentFormState } from '../../_lib/form-state';
 import { revalidateContent } from '../../_lib/revalidate';
 
 export async function createPhysicalRoomAction(
@@ -14,6 +15,7 @@ export async function createPhysicalRoomAction(
   const result = await contentService.createPhysicalRoom({
     roomTypeId,
     number: String(formData.get('number') ?? ''),
+    media: parseJsonList<MediaItemDraft>(formData, 'media'),
   });
   if (!result.ok) return formStateFromError(result.error, await getAdminT());
 

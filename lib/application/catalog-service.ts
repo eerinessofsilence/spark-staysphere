@@ -270,14 +270,26 @@ export class CatalogService {
     roomSlug: string,
     criteria: StayCriteria,
     addOnIds: string[],
+    unitNumber?: string,
   ): Promise<RoomDetail> {
     const hotel = await this.getHotel(hotelSlug);
     const rooms = await this.repository.listRooms(hotel.id);
     const room = rooms.find((candidate) => candidate.slug === roomSlug && !candidate.hidden);
     if (!room) throw new RoomNotFoundError(roomSlug);
 
-    const offer = await this.buildOffer(room, criteria);
-    if (!offer) throw new RoomNotFoundError(roomSlug);
+    const baseOffer = await this.buildOffer(room, criteria);
+    if (!baseOffer) throw new RoomNotFoundError(roomSlug);
+
+    // An exact room chosen from the floor plan may have its own gallery. An
+    // empty gallery deliberately falls back to the room type's photos.
+    const unit = unitNumber
+      ? (await this.repository.listPhysicalRooms(hotel.id)).find(
+          (candidate) => candidate.roomTypeId === room.id && candidate.number === unitNumber,
+        )
+      : undefined;
+    const offer = unit?.media?.length
+      ? { ...baseOffer, room: { ...baseOffer.room, media: unit.media } }
+      : baseOffer;
 
     const addOns = await this.repository.listAddOns(hotel.id);
     const enabledIds = new Set(addOns.filter((addOn) => addOn.enabled).map((addOn) => addOn.id));

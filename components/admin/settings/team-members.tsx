@@ -79,9 +79,9 @@ export function TeamMembers({ initialMembers, roles, canManage }: { initialMembe
       />
       <TeamTabs current="members" counts={{ members: members.length, roles: roles.length }} />
 
-      <section aria-label={t('team.members')} className="mt-8">
+      <section aria-label={t('team.members')} className="mt-6">
 
-      <p role="status" aria-live="polite" className="mt-3 min-h-5 text-sm font-medium text-success">
+      <p role="status" aria-live="polite" className="mt-2 min-h-5 text-sm font-medium text-success">
         {status}
       </p>
 

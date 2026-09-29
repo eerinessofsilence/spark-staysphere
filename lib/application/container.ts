@@ -3,6 +3,7 @@ import type {
   CatalogEntryKind,
   DemoControlPort,
   HotelRepository,
+  OrderStore,
   OutboundMessenger,
   ProductRecognizer,
   RoomRecognizer,
@@ -13,12 +14,14 @@ import type { Hotel } from '../domain/schemas';
 import type { ProductGuess } from '../domain/product-recognition';
 import type { RoomGuess } from '../domain/room-recognition';
 import { getAdminAuthEnv, getInboundEmailSecret, getMediaBucket, getOpenAiKey, getResendApiKey, getResendFromEmail } from '../infrastructure/cloudflare-env';
-import { durableAutomationSettingsStore } from '../infrastructure/durable-automation-settings-store';
+import { durableAutomationRuleStore } from '../infrastructure/durable-automation-rules-store';
+import { durableAutomationSendLogStore } from '../infrastructure/durable-automation-send-log';
 import { durableCatalogContentPort } from '../infrastructure/durable-catalog-content';
 import { durableGeneratedReportStore } from '../infrastructure/durable-generated-report-store';
 import { durableDemoControlPort, durableHotelRepository } from '../infrastructure/durable-hotel-repository';
 import { durableHousekeepingStore } from '../infrastructure/durable-housekeeping-store';
 import { durableMessagingStore } from '../infrastructure/durable-messaging-store';
+import { mockOrderStore } from '../infrastructure/orders-store-mock';
 import { loggingOutboundMessenger } from '../infrastructure/logging-outbound-messenger';
 import { createResendOutboundMessenger } from '../infrastructure/resend-outbound-messenger';
 import { durableRoleStore } from '../infrastructure/durable-role-store';
@@ -45,6 +48,7 @@ import { systemClock } from '../domain/clock';
 import { EmailAutomationsService } from './email-automations-service';
 import { HousekeepingService } from './housekeeping-service';
 import { InventoryService } from './inventory-service';
+import { OrdersService } from './orders-service';
 import { ReportsService } from './reports-service';
 import { SampleBookingService } from './sample-bookings';
 import { SampleDocumentService } from './sample-documents';
@@ -91,6 +95,9 @@ export const catalogService = new CatalogService(hotelRepository, bookingEngineA
 
 export const inventoryService = new InventoryService(hotelRepository, demoControl, catalogService);
 
+/** Service-order grid. The mock store is the demo adapter; production can replace it at this boundary. */
+export const ordersService = new OrdersService(mockOrderStore satisfies OrderStore);
+
 /** Cleaning status per physical room — see `housekeeping-service.ts`; the store is D1 with an in-memory fallback like the others. */
 export const housekeepingService = new HousekeepingService(
   durableHousekeepingStore,
@@ -135,8 +142,8 @@ export const communicationsService = new CommunicationsService(durableMessagingS
 /** A booking carries a hotel id; every hotel's id and slug are fixed seed data (see CLAUDE.md), so this never needs a CMS read. */
 const hotelSlugById = new Map(demoHotels.map((hotel) => [hotel.id, hotel.slug]));
 
-/** Confirmation, arrival reminder, cancellation and thank-you emails — see `email-automations-service.ts`. */
-export const emailAutomationsService = new EmailAutomationsService(durableAutomationSettingsStore, hotelRepository, communicationsService, hotelSlugById);
+/** Confirmation, arrival reminder, cancellation, thank-you and any custom automation — see `email-automations-service.ts`. */
+export const emailAutomationsService = new EmailAutomationsService(durableAutomationRuleStore, durableAutomationSendLogStore, hotelRepository, communicationsService, hotelSlugById);
 
 export const guestDocumentService = new GuestDocumentService(hotelRepository, guestDocumentStore, privateDocumentStorage);
 

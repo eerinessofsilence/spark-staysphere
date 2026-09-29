@@ -48,6 +48,15 @@ describe('mergeCatalog', () => {
     const merged = mergeCatalog(seed, overlay);
     expect(merged.slice(0, 2)).toEqual(seed);
   });
+
+  it('puts newly created entries first when requested, newest first', () => {
+    const overlay = [
+      { ...entry('room_old', { id: 'room_old', name: 'Older' }), updatedAt: '2026-01-02T00:00:00.000Z' },
+      { ...entry('room_new', { id: 'room_new', name: 'Newest' }), updatedAt: '2026-01-03T00:00:00.000Z' },
+    ];
+    const merged = mergeCatalog(seed, overlay, { newEntriesFirst: true });
+    expect(merged.map((item) => item.id)).toEqual(['room_new', 'room_old', 'room_a', 'room_b']);
+  });
 });
 
 describe('effectiveVersion', () => {

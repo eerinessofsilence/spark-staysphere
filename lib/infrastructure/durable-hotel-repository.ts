@@ -51,7 +51,10 @@ export const durableHotelRepository: HotelRepository = {
       'room',
       hotelId,
     )) as CatalogEntryRecord<RoomType>[];
-    return mergeCatalog(seed, overlay);
+    // CMS-created room types are the records an operator just added, so keep
+    // them above the demo seed catalog. Among new types, the most recently
+    // created/updated entry comes first; seed entries keep their curated order.
+    return mergeCatalog(seed, overlay, { newEntriesFirst: true });
   },
 
   async listPhysicalRooms(hotelId) {

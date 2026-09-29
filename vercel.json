@@ -5,6 +5,6 @@
   "installCommand": "npm ci",
   "crons": [
     { "path": "/api/internal/document-deletions", "schedule": "0 3 * * *" },
-    { "path": "/api/internal/arrival-reminders", "schedule": "0 8 * * *" }
+    { "path": "/api/internal/scheduled-automations", "schedule": "0 8 * * *" }
   ]
 }

@@ -41,6 +41,8 @@ interface RateFormProps {
   showRatesLink?: boolean;
   /** For a rate form already sitting inside a `Modal` — see `ContentForm`'s own `bare`. */
   bare?: boolean;
+  /** Keep this nested form's action row in view; disable when the page has its own fixed save dock. */
+  sticky?: boolean;
 }
 
 /** Shared by "add a rate" and "edit this rate" — the currency is fixed to the hotel's own and shown, not editable (see content-service.ts's currency rule). */
@@ -56,6 +58,7 @@ export function RateForm({
   resetOnSuccess = false,
   showRatesLink = false,
   bare = false,
+  sticky = true,
 }: RateFormProps) {
   const t = useAdminT();
   // The Room Rates link sits inside the sentence, so the template is split around it.
@@ -70,6 +73,7 @@ export function RateForm({
       versionKey={versionKey}
       resetOnSuccess={resetOnSuccess}
       bare={bare}
+      sticky={sticky}
     >
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">

@@ -10,6 +10,7 @@ import type { CatalogEntryRecord } from './ports';
 export function mergeCatalog<T extends { id: string }>(
   seed: T[],
   overlay: CatalogEntryRecord<T>[],
+  options: { newEntriesFirst?: boolean } = {},
 ): T[] {
   const overlayById = new Map(overlay.map((entry) => [entry.id, entry.data]));
   const merged = seed.map((item) => overlayById.get(item.id) ?? item);
@@ -17,10 +18,14 @@ export function mergeCatalog<T extends { id: string }>(
   const seedIds = new Set(seed.map((item) => item.id));
   const created = overlay
     .filter((entry) => !seedIds.has(entry.id))
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) =>
+      options.newEntriesFirst
+        ? b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id)
+        : a.id.localeCompare(b.id),
+    )
     .map((entry) => entry.data);
 
-  return [...merged, ...created];
+  return options.newEntriesFirst ? [...created, ...merged] : [...merged, ...created];
 }
 
 /**

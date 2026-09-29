@@ -11,6 +11,7 @@ import type { OutboundMessenger } from '../domain/ports';
 export const loggingOutboundMessenger: OutboundMessenger = {
   async send(input) {
     const to = input.channel === 'email' ? input.to.email : (input.to.phone ?? input.to.email);
-    console.info(`[outbound:${input.channel}] to ${to} (${input.guestName}) from ${input.hotelName}: ${input.body}`);
+    const designed = input.html ? ' (designed HTML available)' : '';
+    console.info(`[outbound:${input.channel}] to ${to} (${input.guestName}) from ${input.hotelName}: ${input.body}${designed}`);
   },
 };

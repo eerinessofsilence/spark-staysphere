@@ -759,6 +759,11 @@ function SelectionDetail({
           <p className="font-medium">{segment.guestName}</p>
         </div>
         {stay}
+        <div className="mt-6">
+          <Link href="/admin/bookings" className={pill('primary')}>
+            {t('ops.edit')}
+          </Link>
+        </div>
         <p className="mt-5 text-xs leading-relaxed text-muted-foreground">{t('frontDesk.demandBody')}</p>
       </div>
     );
@@ -787,7 +792,7 @@ function SelectionDetail({
       {stay}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Link href={`/admin/bookings/${segment.reference}`} className={pill('secondary')}>
+        <Link href={`/admin/bookings/${segment.reference}`} className={pill('primary')}>
           {t('ops.edit')}
         </Link>
       </div>

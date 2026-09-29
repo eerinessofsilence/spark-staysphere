@@ -5,6 +5,7 @@ import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lFloor } from '@/lib/i18n/format';
 import { ContentForm } from '@/components/admin/content/content-form';
+import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { NewPhysicalRoomFields } from '@/components/admin/content/new-physical-room-fields';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { createPhysicalRoomAction } from './actions';
@@ -24,9 +25,10 @@ export default async function NewPhysicalRoomPage({
   const [params, locale] = await Promise.all([searchParams, getAdminLocale()]);
   const t = adminT(locale);
   const requested = Array.isArray(params.type) ? params.type[0] : params.type;
-  const [types, suggestions] = await Promise.all([
+  const [types, suggestions, assets] = await Promise.all([
     contentService.listRoomsContent(),
     contentService.suggestRoomNumbers(),
+    contentService.listMedia(),
   ]);
   // A room can't exist without a type; the Rooms page sends a hotel with none to create one first.
   if (types.length === 0) redirect('/admin/content/units');
@@ -52,6 +54,22 @@ export default async function NewPhysicalRoomPage({
               suggestion: suggestions[type.id] ?? '',
             }))}
           />
+          <div className="mt-8 border-t border-border pt-6" id="unit-media">
+            <div role="group" aria-labelledby="unit-media-heading">
+              <h2 id="unit-media-heading" className="text-base font-medium">
+                {t('unit.photos')}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t('unit.photosHint')}</p>
+              <div className="mt-4">
+                <MediaListEditor
+                  name="media"
+                  initial={[]}
+                  assets={assets}
+                  suggestedFolder={`rooms/${types.find((type) => type.id === initialTypeId)?.slug ?? ''}`}
+                />
+              </div>
+            </div>
+          </div>
         </ContentForm>
       </div>
     </AdminPage>

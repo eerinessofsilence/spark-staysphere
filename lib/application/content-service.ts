@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { nightsInRange } from '../domain/availability';
 import { effectiveVersion } from '../domain/catalog-overlay';
 import { isEquirectangular, isPanorama } from '../domain/media';
-import { MAX_GALLERY_PHOTOS, MAX_PHOTO_BYTES, webpDimensions } from '../domain/photo-upload';
+import { MAX_GALLERY_PHOTOS, MAX_PHOTO_BYTES, imageDimensions } from '../domain/photo-upload';
 import type { Polygon } from '../domain/polygon/geometry';
 import { checkPolygon, requireUuid } from '../domain/polygon/validate';
 import { floorOf, nextRoomNumber } from '../domain/room-units';
@@ -201,8 +201,13 @@ export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
 const physicalRoomFieldsSchema = z.object({
   number: z.string().trim().toUpperCase().regex(ROOM_NUMBER, ROOM_NUMBER_MESSAGE),
+  media: z.array(mediaItemSchema).default([]),
 });
 export type PhysicalRoomFieldsInput = z.infer<typeof physicalRoomFieldsSchema>;
+
+const updatePhysicalRoomSchema = physicalRoomFieldsSchema.extend({
+  roomTypeId: z.string().min(1, 'Pick a room type.'),
+});
 
 const createPhysicalRoomSchema = physicalRoomFieldsSchema.extend({
   roomTypeId: z.string().min(1, 'Pick a room type.'),
@@ -418,10 +423,10 @@ export class ContentService {
   async uploadPhoto(filename: string, contentType: string, bytes: ArrayBuffer, kind: 'photo' | 'panorama' = 'photo'): Promise<ContentResult<MediaAsset>> {
     const denied = await this.permit('team.permEditContent');
     if (denied) return fail(denied);
-    if (bytes.byteLength > MAX_PHOTO_BYTES || contentType !== 'image/webp') {
+    if (bytes.byteLength > MAX_PHOTO_BYTES || !['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
       return fail({ kind: 'rule', message: 'Choose a JPEG, PNG or WebP photo up to 10 MB.' });
     }
-    const dimensions = webpDimensions(bytes);
+    const dimensions = imageDimensions(bytes, contentType);
     if (!dimensions) return fail({ kind: 'rule', message: 'This photo could not be read. Choose another image.' });
     if (kind === 'panorama' && Math.abs(dimensions.width / dimensions.height - 2) >= 0.01) {
       return fail({ kind: 'rule', message: 'A 360° view must be an equirectangular (2:1) panorama.' });
@@ -430,7 +435,7 @@ export class ContentService {
     const hotel = await this.hotel();
     const safeName = filename.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 120) || 'photo.webp';
     try {
-      return ok(await this.media.upload({ hotelId: hotel.id, filename: safeName, ...dimensions, bytes, kind }));
+      return ok(await this.media.upload({ hotelId: hotel.id, filename: safeName, contentType, ...dimensions, bytes, kind }));
     } catch {
       return fail({ kind: 'rule', message: 'Photo could not be uploaded. Please try again.' });
     }
@@ -724,6 +729,9 @@ export class ContentService {
       return fail({ kind: 'validation', fieldErrors: { number: [`Room ${input.number} already exists.`] } });
     }
 
+    const media = await this.resolveMedia(input.media, 'media');
+    if (!media.ok) return fail({ kind: 'validation', fieldErrors: media.fieldErrors });
+
     const id = uniqueId(`unit_${input.number}`, new Set(rooms.map((room) => room.id)));
     const room = physicalRoomSchema.parse({
       id,
@@ -731,6 +739,7 @@ export class ContentService {
       roomTypeId: type.id,
       number: input.number,
       floor: floorOf(input.number),
+      media: media.media,
     } satisfies PhysicalRoom);
 
     const result = await this.content.upsertEntry({ kind: 'unit', id, hotelId: hotel.id, data: room, expectedVersion: 0 });
@@ -744,26 +753,38 @@ export class ContentService {
     const current = await this.getPhysicalRoomContent(id);
     if (!current) return fail({ kind: 'not_found' });
 
-    const parsed = physicalRoomFieldsSchema.safeParse(rawInput);
+    const parsed = updatePhysicalRoomSchema.safeParse(rawInput);
     if (!parsed.success) return fail({ kind: 'validation', fieldErrors: fieldErrorsOf(parsed.error) });
-    const { number } = parsed.data;
+    const { number, roomTypeId, media: inputMedia } = parsed.data;
+
+    const [types, rooms] = await Promise.all([
+      this.repository.listRooms(current.hotelId),
+      this.repository.listPhysicalRooms(current.hotelId),
+    ]);
+    const nextType = types.find((type) => type.id === roomTypeId);
+    if (!nextType) return fail({ kind: 'validation', fieldErrors: { roomTypeId: ['Pick an existing room type.'] } });
+
+    const media = await this.resolveMedia(inputMedia, 'media');
+    if (!media.ok) return fail({ kind: 'validation', fieldErrors: media.fieldErrors });
 
     if (number !== current.number) {
-      const rooms = await this.repository.listPhysicalRooms(current.hotelId);
       if (rooms.some((room) => room.id !== id && room.number === number)) {
         return fail({ kind: 'validation', fieldErrors: { number: [`Room ${number} already exists.`] } });
       }
+    }
+
+    if (number !== current.number || roomTypeId !== current.roomTypeId) {
       const chosen = (await this.currentStays(current.roomTypeId)).find((stay) => stay.unitNumber === current.number);
       if (chosen) {
         return ruleError(
-          `A guest chose room ${current.number} for booking ${chosen.reference}, so its number can't change until that stay is over.`,
-          'number',
+          `A guest chose room ${current.number} for booking ${chosen.reference}, so this room can't be moved or renumbered until that stay is over.`,
+          roomTypeId !== current.roomTypeId ? 'roomTypeId' : 'number',
         );
       }
     }
 
     const { version: _version, ...rest } = current;
-    const next = physicalRoomSchema.parse({ ...rest, number, floor: floorOf(number) } satisfies PhysicalRoom);
+    const next = physicalRoomSchema.parse({ ...rest, roomTypeId, number, floor: floorOf(number), media: media.media } satisfies PhysicalRoom);
     const result = await this.content.upsertEntry({
       kind: 'unit',
       id,

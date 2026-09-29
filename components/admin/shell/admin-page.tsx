@@ -21,7 +21,7 @@ export function AdminPage({
         width === 'wide' ? 'container-page-start' : 'container-form',
         // The bottom padding is the assistant launcher's clearance: 64px of orb
         // plus its 24px inset, so the last row's controls can scroll above it.
-        'pt-4 pb-28 lg:pt-10',
+        'box-border min-w-0 max-w-full overflow-x-clip pt-4 pb-28 lg:pt-10',
       )}
     >
       {children}

@@ -15,7 +15,8 @@ export function HousekeepingAssigneeSelect({ unitId, memberId, staff }: {
   const [pending, startTransition] = React.useTransition();
   const [message, setMessage] = React.useState('');
   return (
-    <div className="relative z-10">
+    <div className="relative z-10 inline-block w-48 max-w-full">
+      {/* `select` is a replaced element and shrinks to its own content width by default; the wrapping `div` is a plain block box and would otherwise stretch to fill the table cell — mismatched widths sent the chevron below (positioned off *this* div's right edge) drifting past the select's own visible border. `inline-block` on the div plus `w-full` on the select keeps the two the same width, always. */}
       <select aria-label={t('housekeeping.assignHousekeeper')} value={value} disabled={pending}
         onChange={(event) => {
           const next = event.target.value;
@@ -27,7 +28,7 @@ export function HousekeepingAssigneeSelect({ unitId, memberId, staff }: {
             setMessage(result.ok ? '' : result.message);
           });
         }}
-        className="min-h-11 max-w-48 appearance-none rounded-xl border border-border bg-card py-2 pr-9 pl-3 text-sm focus-visible:outline-2 focus-visible:outline-accent">
+        className="min-h-11 w-full appearance-none rounded-xl border border-border bg-card py-2 pr-9 pl-3 text-sm focus-visible:outline-2 focus-visible:outline-accent">
         <option value="">{t('housekeeping.notAssigned')}</option>
         {staff.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
       </select>

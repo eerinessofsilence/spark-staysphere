@@ -115,6 +115,19 @@ trip, a `role="status"` message change), not on content the action happens not t
 The scanner serves its worker, WASM and trained data locally from `public/vendor/document-ocr`;
 it does not fall back to a CDN. Recognition failure still opens editable review fields.
 
+**A passport photo produces empty or corrupted fields although OCR ran.** Whole-photo OCR can
+misread MRZ filler characters and omit rows among bilingual labels. The scanner retries a
+contrast-enhanced MRZ crop with a restricted alphabet, then sparse text. The parser accepts
+clipped trailing fillers and checks numeric fields, and prefers printed names over corrupted
+repeated-letter tails. An unreadable result is reported above the review fields.
+
+**Tesseract initialization hangs on a missing language file.** Its language-load rejection does
+not always reject `createWorker()`. The scanner checks the local trained data before creating
+the worker, forwards worker failures, and bounds recognition with a timeout.
+
+**Front-desk e2e cannot open Add booking.** The first-visit admin tour can intercept the click.
+Scanner tests mark `admin-tour.seen.v1` in their own browser context before navigation.
+
 **Passport upload unavailable while CMS uploads work.** Identity documents use the separate
 `PRIVATE_DOCUMENTS` R2 binding (or a private Blob store on Vercel). The public MEDIA adapter is
 intentionally not a fallback. See `docs/GUEST_DOCUMENTS.md` for host configuration and retries.

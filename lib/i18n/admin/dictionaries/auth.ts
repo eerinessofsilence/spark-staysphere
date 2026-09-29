@@ -17,6 +17,7 @@ export const auth = defineArea({
     'signIn.failed': "That email and password don't match.",
     'signIn.tooMany': 'Too many attempts — give it a minute.',
     'signIn.forgotPassword': 'Forgot password?',
+    'signIn.emailPlaceholder': 'you@yourhotel.com',
 
     'signIn.quote1': "I can see who's arriving and who's leaving before I've had my coffee.",
     'signIn.quote2': 'Changing a rate takes ten seconds, and I see the effect right away.',
@@ -64,6 +65,7 @@ export const auth = defineArea({
     'signIn.failed': 'E-Mail und Passwort passen nicht zusammen.',
     'signIn.tooMany': 'Zu viele Versuche – warten Sie eine Minute.',
     'signIn.forgotPassword': 'Passwort vergessen?',
+    'signIn.emailPlaceholder': 'sie@ihrhotel.com',
 
     'signIn.quote1': 'Ich sehe, wer ankommt und wer abreist, noch bevor mein Kaffee fertig ist.',
     'signIn.quote2': 'Einen Preis zu ändern dauert zehn Sekunden, und ich sehe die Wirkung sofort.',
@@ -111,6 +113,7 @@ export const auth = defineArea({
     'signIn.failed': 'Почта и пароль не подходят друг к другу.',
     'signIn.tooMany': 'Слишком много попыток — подождите минуту.',
     'signIn.forgotPassword': 'Забыли пароль?',
+    'signIn.emailPlaceholder': 'you@yourhotel.com',
 
     'signIn.quote1': 'Я вижу, кто заезжает и кто выезжает, ещё до того, как допью кофе.',
     'signIn.quote2': 'Поменять тариф — десять секунд, и сразу видно, как это скажется.',

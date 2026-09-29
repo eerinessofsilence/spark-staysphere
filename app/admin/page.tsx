@@ -38,7 +38,6 @@ import chartTones from '@/components/admin/operations/chart-gradients.module.css
 import { RevenueTrend } from '@/components/admin/operations/revenue-trend';
 import { StayMoveButton } from '@/components/admin/operations/stay-move-button';
 import { TodaySearch } from '@/components/admin/operations/today-search';
-import { paginate, parsePage, parsePageSize, Pagination, simplePageHref, simplePageSizeHref } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -66,16 +65,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: adminPageTitle(t, t('dashboard.title')) };
 }
 
-export default async function AdminOverviewPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function AdminOverviewPage() {
   const locale = await getAdminLocale();
   const t = adminT(locale);
-  const sp = await searchParams;
-  const page = parsePage(sp.page);
-  const pageSize = parsePageSize(sp.pageSize);
   const today = toIsoDate(new Date());
   const hotelSlug = await getSelectedHotelSlug();
   const [board, allBookings, housekeepingRooms] = await Promise.all([
@@ -125,7 +117,7 @@ export default async function AdminOverviewPage({
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const confirmed = sorted.filter((booking) => booking.status === 'confirmed');
   const revenue = confirmed.reduce((sum, booking) => sum + booking.total, 0);
-  const { pageItems: recent, page: currentPage, totalPages } = paginate(sorted, page, pageSize);
+  const recent = sorted.slice(0, 5);
   const tonight = board.days[0];
   const onSite = rooms.filter((room) => !room.hidden).length;
   const tomorrow = board.days[1];
@@ -408,17 +400,9 @@ export default async function AdminOverviewPage({
         </section>
 
       <section aria-labelledby="recent-heading" className="mt-12">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="recent-heading" className="text-display text-3xl">
-            {t('dashboard.recentReservations')}
-          </h2>
-          {recent.length > 0 ? (
-            <Link href="/admin/bookings" className={pill('secondary')}>
-              {t('dashboard.allReservations')}
-              <ArrowRightIcon className="size-4" aria-hidden="true" />
-            </Link>
-          ) : null}
-        </div>
+        <h2 id="recent-heading" className="text-display text-3xl">
+          {t('dashboard.recentReservations')}
+        </h2>
 
         {recent.length === 0 ? (
           <div className="mt-5 flex flex-col items-center gap-3 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
@@ -434,6 +418,7 @@ export default async function AdminOverviewPage({
             </Link>
           </div>
         ) : (
+          <>
           <div className="mt-5 overflow-hidden rounded-[18px] bg-card shadow-soft">
             <TableCard caption={t('dashboard.tableCaption')} className="min-w-[50rem]" attached>
               <thead>
@@ -482,16 +467,14 @@ export default async function AdminOverviewPage({
                 ))}
               </tbody>
             </TableCard>
-            <Pagination
-              attached
-              page={currentPage}
-              totalPages={totalPages}
-              total={sorted.length}
-              pageSize={pageSize}
-              hrefFor={simplePageHref('/admin', pageSize)}
-              pageSizeHrefFor={simplePageSizeHref('/admin')}
-            />
           </div>
+          <div className="mt-5 flex justify-center">
+            <Link href="/admin/bookings" className={pill('secondary')}>
+              {t('dashboard.allReservations')}
+              <ArrowRightIcon className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+          </>
         )}
       </section>
     </AdminPage>

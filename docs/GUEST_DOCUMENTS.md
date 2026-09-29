@@ -11,7 +11,11 @@ language data are served from this application; no passport is sent to an extern
 The provider port is `DocumentOcrProvider` in `lib/domain/guest-document.ts`; the browser
 service is `lib/application/document-ocr-service.ts`. Tesseract configuration follows its
 [official local installation documentation](https://github.com/naptha/tesseract.js/blob/master/docs/local-installation.md).
-The parser supports TD1/TD2/TD3 MRZ and English printed labels. Missing/unverified values
+Recognition retries a contrast-enhanced MRZ crop with its restricted alphabet, then sparse text
+when the whole photograph is insufficient. The parser supports TD1/TD2/TD3 MRZ, clipped trailing
+fillers, common numeric OCR substitutions, and English labels on bilingual pages. It merges
+readable fields across passes and shows an explanation above the form if no details can be read.
+Missing/unverified values
 need staff review; it does not infer missing issue dates or validate document authenticity.
 
 Nothing is persisted by OCR. Confirm validates reviewed fields, offers matching profiles

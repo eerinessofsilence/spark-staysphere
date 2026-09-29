@@ -176,7 +176,7 @@ export class CommunicationsService {
    * already has": a guest's open site-chat thread for the same stay must
    * never swallow the send the way `send()`'s chat-channel skip would.
    */
-  async sendSystemEmail(hotelSlug: string, bookingReference: string, subject: string, body: string, author: string): Promise<void> {
+  async sendSystemEmail(hotelSlug: string, bookingReference: string, subject: string, body: string, author: string, html?: string): Promise<void> {
     const hotel = await this.repository.getHotel(hotelSlug);
     const booking = hotel ? await this.repository.getBookingByReference(bookingReference) : null;
     if (!hotel || !booking || booking.hotelId !== hotel.id) return;
@@ -216,6 +216,7 @@ export class CommunicationsService {
         body,
         conversationId: conversation.id,
         subject,
+        html,
       });
     } catch (error) {
       console.error('Communications: automated email delivery failed.', error);

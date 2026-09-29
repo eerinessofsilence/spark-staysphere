@@ -10,7 +10,8 @@ import { lFacade, lFloor, lRoomNumber } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { ContentForm } from '@/components/admin/content/content-form';
 import { DeleteEntityButton } from '@/components/admin/content/delete-entity-button';
-import { Field, TextInput } from '@/components/admin/content/fields';
+import { Field, Select, TextInput } from '@/components/admin/content/fields';
+import { MediaListEditor } from '@/components/admin/content/media-list-editor';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { deletePhysicalRoomAction, updatePhysicalRoomAction } from './actions';
 
@@ -28,7 +29,11 @@ export default async function PhysicalRoomPage({ params }: { params: Promise<{ i
   const room = await contentService.getPhysicalRoomContent(id);
   if (!room) notFound();
 
-  const type = await contentService.getRoomContent(room.roomTypeId);
+  const [type, types, assets] = await Promise.all([
+    contentService.getRoomContent(room.roomTypeId),
+    contentService.listRoomsContent(),
+    contentService.listMedia(),
+  ]);
   const seed = contentService.isSeedEntry('unit', room.id);
   const backHref = `/admin/content/units#type-${room.roomTypeId}`;
   const side = type ? lFacade(facadeOf(type.view), locale) : null;
@@ -75,26 +80,47 @@ export default async function PhysicalRoomPage({ params }: { params: Promise<{ i
             />
           </Field>
 
-          <dl className="mt-6 grid gap-4 border-t border-border pt-6 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">{t('unit.roomType')}</dt>
-              <dd className="mt-0.5 font-medium">
-                {type ? (
-                  <Link href={`/admin/content/rooms/${type.id}`} className="hover:text-accent-strong">
-                    {type.name}
-                  </Link>
-                ) : (
-                  room.roomTypeId
-                )}
-              </dd>
-              <dd className="mt-0.5 text-xs text-muted-foreground">{t('unit.keepsType')}</dd>
-            </div>
+          <Field id="unit-roomTypeId" name="roomTypeId" label={t('unit.roomType')} hint={t('unit.keepsType')}>
+            <Select id="unit-roomTypeId" name="roomTypeId" defaultValue={room.roomTypeId} required>
+              {types.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {t(candidate.hidden ? 'units.typeOptionHidden' : 'units.typeOption', {
+                    name: candidate.name,
+                    floor: lFloor(candidate.floor, locale),
+                  })}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <dl className="mt-6 grid gap-4 border-t border-border pt-6 text-sm">
             <div>
               <dt className="text-xs text-muted-foreground">{t('unit.side')}</dt>
               <dd className="mt-0.5 font-medium">{side ?? '—'}</dd>
               <dd className="mt-0.5 text-xs text-muted-foreground">{t('unit.sideHint')}</dd>
             </div>
           </dl>
+
+          <div className="mt-6 border-t border-border pt-6" id="unit-media">
+            <div role="group" aria-labelledby="unit-media-heading">
+              <h2 id="unit-media-heading" className="text-base font-medium">
+                {t('unit.photos')}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t('unit.photosHint')}</p>
+              <div className="mt-4">
+                <MediaListEditor
+                  name="media"
+                  initial={(room.media ?? []).map((item) => ({
+                    type: item.type === '360' ? '360' : 'image',
+                    url: item.url,
+                    label: item.label,
+                  }))}
+                  assets={assets}
+                  suggestedFolder={type ? `rooms/${type.slug}` : undefined}
+                />
+              </div>
+            </div>
+          </div>
         </ContentForm>
       </div>
 

@@ -350,6 +350,18 @@ export const physicalRoomSchema = z.object({
   roomTypeId: z.string(),
   number: z.string().regex(ROOM_NUMBER),
   floor: z.number().int().nonnegative(),
+  /** Optional room-specific gallery; when absent, the room inherits its type's media. */
+  media: z
+    .array(
+      z.object({
+        type: z.enum(['image', '360', 'gltf']),
+        url: z.string(),
+        label: z.string().optional(),
+        width: z.number().int().positive().optional(),
+        height: z.number().int().positive().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type PhysicalRoom = z.infer<typeof physicalRoomSchema>;

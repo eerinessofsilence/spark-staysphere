@@ -36,7 +36,7 @@ export const operations = defineArea({
     'ops.cancelConfirmYes': 'Yes, cancel booking',
     'ops.keepBooking': 'Keep booking',
     'ops.rowActions': 'Actions for {reference}',
-    'ops.edit': 'Edit',
+    'ops.edit': 'Edit Booking',
 
     'ops.cancelled': 'Booking cancelled. Its nights are back on sale.',
     'ops.cancelAlready': 'This booking was already cancelled.',
@@ -462,7 +462,7 @@ export const operations = defineArea({
     'ops.cancelConfirmYes': 'Ja, Buchung stornieren',
     'ops.keepBooking': 'Buchung behalten',
     'ops.rowActions': 'Aktionen für {reference}',
-    'ops.edit': 'Bearbeiten',
+    'ops.edit': 'Buchung bearbeiten',
 
     'ops.cancelled': 'Buchung storniert. Die Nächte sind wieder buchbar.',
     'ops.cancelAlready': 'Diese Buchung war bereits storniert.',
@@ -888,7 +888,7 @@ export const operations = defineArea({
     'ops.cancelConfirmYes': 'Да, отменить бронь',
     'ops.keepBooking': 'Оставить бронь',
     'ops.rowActions': 'Действия для {reference}',
-    'ops.edit': 'Редактировать',
+    'ops.edit': 'Редактировать бронь',
 
     'ops.cancelled': 'Бронь отменена. Ночи снова в продаже.',
     'ops.cancelAlready': 'Эта бронь уже была отменена.',
