@@ -48,6 +48,7 @@ export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Date | undefined>(undefined);
   const [months, setMonths] = React.useState(1);
+  const chartRef = React.useRef<HTMLDivElement>(null);
   const t = useAdminT();
   const locale = useAdminLocale();
   const dateFns = DATE_FNS_LOCALES[locale];
@@ -72,6 +73,18 @@ export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[
     if (open) setDraft(parseISO(days[days.length - 1]!.date));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Hover drives the desktop tooltip. On touch there is no hover, so a press
+  // pins the same tooltip until another bar or the space outside the chart is
+  // pressed. This keeps the detail card readable after the finger lifts.
+  React.useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && chartRef.current?.contains(event.target)) return;
+      setActive(null);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
 
   const close = React.useCallback(() => setOpen(false), []);
   const draftIso = draft ? format(draft, ISO) : null;
@@ -124,7 +137,7 @@ export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[
           ))}
         </div>
 
-        <div className="relative min-w-0 flex-1">
+        <div ref={chartRef} className="relative min-w-0 flex-1">
           <div className="relative h-48 sm:h-56">
             {ticks.map((tick) => (
               <div
@@ -145,11 +158,18 @@ export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[
                     <button
                       type="button"
                       aria-label={describe(day, totalRooms, tonight, t, locale)}
+                      onPointerDown={() => setActive(index)}
                       onPointerEnter={() => setActive(index)}
-                      onPointerLeave={() => setActive((current) => (current === index ? null : current))}
+                      onPointerLeave={(event) => {
+                        // Touch has no stable hover boundary; keep its
+                        // selection pinned until the user chooses elsewhere.
+                        if (event.pointerType === 'touch') return;
+                        setActive((current) => (current === index ? null : current));
+                      }}
+                      onPointerCancel={() => setActive((current) => (current === index ? null : current))}
                       onFocus={() => setActive(index)}
                       onBlur={() => setActive(null)}
-                      className="flex h-full w-full cursor-default items-end justify-center rounded-t-lg px-px outline-none focus-visible:bg-stone/60"
+                      className="flex h-full w-full touch-pan-y cursor-default items-end justify-center rounded-t-lg px-px outline-none focus-visible:bg-stone/60"
                     >
                       <span
                         className={cn(
@@ -176,7 +196,8 @@ export function OccupancyChart({ allDays, totalRooms }: { allDays: FrontDeskDay[
 
             {shown && active !== null ? (
               <div
-                aria-hidden="true"
+                role="status"
+                aria-live="polite"
                 className="pointer-events-none absolute z-10 rounded-2xl border border-border bg-card px-3 py-2 whitespace-nowrap shadow-soft"
                 style={{
                   left: `${((active + 0.5) / days.length) * 100}%`,

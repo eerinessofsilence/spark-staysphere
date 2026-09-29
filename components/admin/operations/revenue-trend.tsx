@@ -37,6 +37,7 @@ export function RevenueTrend({ days, currency }: { days: RevenueDay[]; currency:
   const locale = useAdminLocale();
   const dateFns = DATE_FNS_LOCALES[locale];
   const [active, setActive] = React.useState<{ metric: MetricKey; index: number } | null>(null);
+  const chartRef = React.useRef<HTMLDivElement>(null);
   const today = days[days.length - 1];
   const yesterday = days[days.length - 2];
   const percent = new Intl.NumberFormat(INTL_TAGS[locale], { style: 'percent', signDisplay: 'exceptZero', maximumFractionDigits: 0 });
@@ -47,9 +48,21 @@ export function RevenueTrend({ days, currency }: { days: RevenueDay[]; currency:
     return percent.format((today[metric] - yesterday[metric]) / yesterday[metric]);
   };
 
+  // Desktop uses hover; on touch a press pins the metric/date tooltip so it
+  // remains visible after the finger lifts. A pointer outside the charts
+  // clears the selection.
+  React.useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && chartRef.current?.contains(event.target)) return;
+      setActive(null);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
+
   return (
     <div className={cn('mt-5', styles.palette)}>
-      <div className="grid gap-4">
+      <div ref={chartRef} className="grid gap-4">
         {METRICS.map((metric) => {
           const max = Math.max(...days.map((day) => day[metric.key]), 0);
           const change = delta(metric.key);
@@ -75,11 +88,16 @@ export function RevenueTrend({ days, currency }: { days: RevenueDay[]; currency:
                         <button
                           type="button"
                           aria-label={`${lDateShort(day.date, locale)} · ${show(metric, value)}`}
+                          onPointerDown={() => setActive({ metric: metric.key, index })}
                           onPointerEnter={() => setActive({ metric: metric.key, index })}
-                          onPointerLeave={() => setActive((current) => (current?.metric === metric.key && current.index === index ? null : current))}
+                          onPointerLeave={(event) => {
+                            if (event.pointerType === 'touch') return;
+                            setActive((current) => (current?.metric === metric.key && current.index === index ? null : current));
+                          }}
+                          onPointerCancel={() => setActive((current) => (current?.metric === metric.key && current.index === index ? null : current))}
                           onFocus={() => setActive({ metric: metric.key, index })}
                           onBlur={() => setActive(null)}
-                          className="flex h-full w-full cursor-default items-end rounded-t-[4px] outline-none focus-visible:bg-stone/60"
+                          className="flex h-full w-full touch-pan-y cursor-default items-end rounded-t-[4px] outline-none focus-visible:bg-stone/60"
                         >
                           <span
                             className={cn(
@@ -96,7 +114,8 @@ export function RevenueTrend({ days, currency }: { days: RevenueDay[]; currency:
                 </ol>
                 {shown && hovered !== null ? (
                   <div
-                    aria-hidden="true"
+                    role="status"
+                    aria-live="polite"
                     className="pointer-events-none absolute bottom-full z-10 mb-1.5 rounded-2xl border border-border bg-card px-3 py-1.5 whitespace-nowrap shadow-soft"
                     style={{ left: `${((hovered + 0.5) / days.length) * 100}%`, transform: `translateX(${hovered < 2 ? '-12%' : hovered > days.length - 3 ? '-88%' : '-50%'})` }}
                   >
