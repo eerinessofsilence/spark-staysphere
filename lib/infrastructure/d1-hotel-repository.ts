@@ -180,11 +180,12 @@ export async function cancelBooking(
   return { ...existing, status: 'cancelled' };
 }
 
-export async function listBookings(db: D1Database): Promise<Booking[]> {
+export async function listBookings(db: D1Database, options: { hotelId?: string; limit?: number } = {}): Promise<Booking[]> {
   await ensureSchema(db);
-  const { results } = await db
-    .prepare(`${BOOKING_SELECT} ORDER BY b.created_at DESC`)
-    .all<BookingRow>();
+  const where = options.hotelId ? ' WHERE b.hotel_id = ?' : '';
+  const limit = options.limit === undefined ? '' : ' LIMIT ?';
+  const bindings = [...(options.hotelId ? [options.hotelId] : []), ...(options.limit === undefined ? [] : [Math.max(0, Math.floor(options.limit))])];
+  const { results } = await db.prepare(`${BOOKING_SELECT}${where} ORDER BY b.created_at DESC${limit}`).bind(...bindings).all<BookingRow>();
   return results.map(rowToBooking);
 }
 
@@ -205,9 +206,19 @@ export async function listBookings(db: D1Database): Promise<Booking[]> {
  * exist. Re-reads by idempotency key afterward so a genuinely concurrent
  * duplicate returns whichever row actually won, not necessarily this one.
  */
-export async function saveBooking(db: D1Database, booking: Booking): Promise<Booking> {
+export async function saveBooking(db: D1Database, booking: Booking, inventoryCapacity?: number): Promise<Booking> {
   await ensureSchema(db);
 
+  const nights = booking.status === 'confirmed' ? nightsInRange(booking.checkIn, booking.checkOut) : [];
+  const roomUnitCollision = booking.unitNumber
+    ? `AND NOT EXISTS (SELECT 1 FROM booking_units u JOIN bookings occupied ON occupied.id = u.booking_id WHERE occupied.hotel_id = ? AND u.unit_number = ? AND occupied.status = 'confirmed' AND occupied.check_in < ? AND occupied.check_out > ?)`
+    : '';
+  const insertSelect = inventoryCapacity !== undefined && nights.length
+    ? `SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${nights.map(() => `(COALESCE((SELECT held FROM inventory_holds WHERE room_type_id = ? AND date = ?), 0) < ?)`).join(' AND ')} ${roomUnitCollision}`
+    : `SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? ${roomUnitCollision}`;
+  const insertBindings = inventoryCapacity !== undefined && nights.length
+    ? [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...nights.flatMap((night) => [booking.roomTypeId, night, Math.max(0, Math.floor(inventoryCapacity))]), ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn] : [])]
+    : [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn] : [])];
   const statements = [
     db
       .prepare(
@@ -216,34 +227,13 @@ export async function saveBooking(db: D1Database, booking: Booking): Promise<Boo
           check_in, check_out, adults, children,
           guest_first_name, guest_last_name, guest_email, guest_phone,
           add_on_ids, total, currency, status, created_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) ${insertSelect}
         ON CONFLICT (idempotency_key) DO NOTHING`,
       )
-      .bind(
-        booking.id,
-        booking.reference,
-        booking.idempotencyKey,
-        booking.hotelId,
-        booking.roomTypeId,
-        booking.ratePlanId,
-        booking.checkIn,
-        booking.checkOut,
-        booking.adults,
-        booking.children,
-        booking.guest.firstName,
-        booking.guest.lastName,
-        booking.guest.email,
-        booking.guest.phone,
-        JSON.stringify(booking.addOnIds),
-        booking.total,
-        booking.currency,
-        booking.status,
-        booking.createdAt,
-      ),
+      .bind(...insertBindings),
   ];
 
   if (booking.status === 'confirmed') {
-    const nights = nightsInRange(booking.checkIn, booking.checkOut);
     if (nights.length > 0) {
       const placeholders = nights.map(() => '(?)').join(', ');
       statements.push(
@@ -273,7 +263,14 @@ export async function saveBooking(db: D1Database, booking: Booking): Promise<Boo
   await db.batch(statements);
 
   const saved = await findBookingByIdempotencyKey(db, booking.idempotencyKey);
-  if (!saved) throw new Error('Booking insert did not persist.');
+  if (!saved) {
+    if (inventoryCapacity !== undefined) {
+      const error = new Error('Room inventory changed before confirmation.');
+      error.name = 'BookingInventoryConflictError';
+      throw error;
+    }
+    throw new Error('Booking insert did not persist.');
+  }
   return saved;
 }
 
@@ -293,7 +290,7 @@ export async function savePaymentAttempt(
   await ensureSchema(db);
   await db
     .prepare(
-      'INSERT INTO payment_attempts (id, booking_id, provider, status, amount, currency) VALUES (?,?,?,?,?,?)',
+      'INSERT INTO payment_attempts (id, booking_id, provider, status, amount, currency) VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING',
     )
     .bind(attempt.id, attempt.bookingId, attempt.provider, attempt.status, attempt.amount, attempt.currency)
     .run();

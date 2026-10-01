@@ -9,7 +9,9 @@ export async function GET(request: Request) {
   try {
     const sent = await runScheduledAutomations(hotelRepository);
     return Response.json({ ok: true, sent }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return Response.json({ ok: false }, { status: 503 });
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Scheduled automation run failed', { route: '/api/internal/scheduled-automations', code: 'service_unavailable', requestId }, error);
+    return Response.json({ ok: false, requestId }, { status: 503 });
   }
 }

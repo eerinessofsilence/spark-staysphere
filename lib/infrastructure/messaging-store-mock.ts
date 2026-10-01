@@ -8,6 +8,9 @@ const conversations = new Map<string, Conversation>();
 const messages = new Map<string, ChatMessage>();
 
 export const mockMessagingStore: MessagingStore = {
+  async countUnreadConversations(hotelId) {
+    return [...conversations.values()].filter((conversation) => conversation.hotelId === hotelId && conversation.unread > 0).length;
+  },
   async listConversations(hotelId) {
     return [...conversations.values()]
       .filter((conversation) => conversation.hotelId === hotelId)

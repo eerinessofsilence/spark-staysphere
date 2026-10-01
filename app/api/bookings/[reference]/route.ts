@@ -1,6 +1,8 @@
 import { BookingError } from '@/lib/application/booking-service';
 import { bookingService } from '@/lib/application/container';
 import { matchesGuestEmail } from '@/lib/domain/booking';
+import { beginRequest, checkRateLimit, clientKeyFromHeaders, endRequest } from '@/lib/application/assistant-rate-limit';
+import { writeBookingConfirmationAccess } from '@/lib/application/admin-session';
 
 /**
  * GET /api/bookings/:reference?email=… — a booking from the current process.
@@ -19,17 +21,27 @@ export async function GET(
 ): Promise<Response> {
   const { reference } = await context.params;
   const email = new URL(request.url).searchParams.get('email');
+  const clientKey = clientKeyFromHeaders(request.headers);
+  if (!checkRateLimit(clientKey, 'bookingLookup') || !beginRequest(clientKey)) {
+    return Response.json({ error: 'rate_limited', message: 'Too many lookup attempts. Try again shortly.' }, { status: 429 });
+  }
   const notFound = () =>
     Response.json({ error: 'not_found', message: `No booking found for ${reference}.` }, { status: 404 });
 
-  if (!email) return notFound();
-
   try {
+    if (!email) return notFound();
     const booking = await bookingService.getByReference(reference);
     if (!matchesGuestEmail(booking.guest.email, email)) return notFound();
+    // A successful guest-email check can reclaim the confirmation on a new
+    // browser, without making the short reference itself an access token.
+    await writeBookingConfirmationAccess(reference);
     return Response.json({ booking });
   } catch (error) {
     if (error instanceof BookingError && error.code === 'not_found') return notFound();
-    throw error;
+    const requestId = crypto.randomUUID();
+    console.error('Guest booking lookup failed', { route: '/api/bookings/[reference]', code: 'service_unavailable', requestId }, error);
+    return Response.json({ error: 'unavailable', message: 'The booking is temporarily unavailable.', requestId }, { status: 503 });
+  } finally {
+    endRequest(clientKey);
   }
 }

@@ -326,6 +326,9 @@ export const DEMO_ADMIN_PASSWORD = 'staysphere';
  */
 export function adminAuthConfig(): { password: string; sessionSecret: string; demo: boolean } {
   const { password, sessionSecret } = getAdminAuthEnv();
+  if (process.env.NODE_ENV === 'production' && (!password || !sessionSecret || sessionSecret.length < 32)) {
+    throw new Error('Production requires ADMIN_PASSWORD and an ADMIN_SESSION_SECRET of at least 32 characters.');
+  }
   return {
     password: password ?? DEMO_ADMIN_PASSWORD,
     sessionSecret: sessionSecret ?? 'staysphere-development-session-secret',

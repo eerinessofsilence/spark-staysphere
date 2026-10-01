@@ -5,6 +5,7 @@ import { bookingService, catalogService, communicationsService, DEMO_HOTEL_SLUG 
 import { buildPriceBreakdown, nightsBetween } from '@/lib/domain/pricing';
 import type { PaymentMethod } from '@/lib/domain/schemas';
 import { ConfirmationView } from '@/components/booking/confirmation-view';
+import { canViewBookingConfirmation } from '@/lib/application/admin-session';
 
 const PAYMENT_METHODS: readonly string[] = ['card', 'apple_pay', 'google_pay', 'bank_transfer', 'pay_at_hotel'];
 
@@ -14,6 +15,10 @@ export const metadata: Metadata = {
 
 export default async function ConfirmationPage({ params }: PageProps<'/booking/[reference]'>) {
   const { reference } = await params;
+  // The reference is intentionally short for the guest's receipt. It is not
+  // an authentication credential: the booking action grants this browser a
+  // signed, HttpOnly, route-scoped confirmation cookie.
+  if (!(await canViewBookingConfirmation(reference))) notFound();
 
   const confirmation = await bookingService.getConfirmation(reference).catch((error: unknown) => {
     if (error instanceof BookingError && error.code === 'not_found') notFound();

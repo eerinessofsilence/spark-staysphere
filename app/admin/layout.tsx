@@ -8,6 +8,7 @@ import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminT } from '@/lib/i18n/admin/translate';
 import { AdminShell } from '@/components/admin/shell/admin-shell';
 import type { RecentBooking, UnreadConversation } from '@/components/admin/shell/notification-bell';
+import { AdminServiceUnavailable } from '@/components/admin/shell/admin-service-unavailable';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,29 +20,65 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // sending someone there never loops back through here. Server actions
   // check the same session themselves (`requireAdminSession`): a layout
   // only guards what renders, not what can be posted to.
-  const session = await getAdminSession();
+  let session;
+  try {
+    session = await getAdminSession();
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Admin session lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+    return <AdminServiceUnavailable locale={await getAdminLocale()} />;
+  }
   if (!session) redirect('/admin/sign-in');
   if (!session.onboarded) redirect('/admin/welcome');
-  const member = await teamService.findMemberById(session.memberId);
+  let member;
+  try {
+    member = await teamService.findMemberById(session.memberId);
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Admin member lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+    return <AdminServiceUnavailable locale={await getAdminLocale()} />;
+  }
   if (!member) redirect('/admin/sign-in');
   if (member.role === 'Housekeeper') redirect('/housekeeper');
 
-  const [selectedSlug, locale, roles] = await Promise.all([getSelectedHotelSlug(), getAdminLocale(), teamService.listRoles()]);
-  const [hotel, allBookings, conversations] = await Promise.all([
-    catalogService.getHotel(selectedSlug),
-    hotelRepository.listBookings(),
-    communicationsService.listConversations(selectedSlug),
-  ]);
+  const [selectedSlug, locale] = await Promise.all([getSelectedHotelSlug(), getAdminLocale()]);
+  let hotel;
+  let roles;
+  try {
+    [hotel, roles] = await Promise.all([catalogService.getHotel(selectedSlug), teamService.listRoles()]);
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Admin shell data lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+    return <AdminServiceUnavailable locale={locale} />;
+  }
+  let recentBookingsRaw;
+  let conversations;
+  let unreadMessagesCount;
+  try {
+    [recentBookingsRaw, conversations, unreadMessagesCount] = await Promise.all([
+      hotelRepository.listBookings({ hotelId: hotel.id, limit: RECENT_BOOKINGS_LIMIT }),
+      communicationsService.listConversations(selectedSlug, RECENT_BOOKINGS_LIMIT),
+      communicationsService.countUnreadConversations(selectedSlug),
+    ]);
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Admin notification summary failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+    return <AdminServiceUnavailable locale={locale} />;
+  }
   const unreadConversations: UnreadConversation[] = conversations
     .filter((c) => c.unread > 0)
     .map((c) => ({ id: c.id, guestName: c.guestName, lastMessage: c.lastMessage, lastMessageAt: c.lastMessageAt, unread: c.unread }));
-  const rooms = await hotelRepository.listRooms(hotel.id);
+  let rooms;
+  try {
+    rooms = await hotelRepository.listRooms(hotel.id);
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Admin room lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+    return <AdminServiceUnavailable locale={locale} />;
+  }
   const roomNameById = new Map(rooms.map((room) => [room.id, room.name]));
 
-  const recentBookings: RecentBooking[] = allBookings
-    .filter((booking) => booking.hotelId === hotel.id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, RECENT_BOOKINGS_LIMIT)
+  const recentBookings: RecentBooking[] = recentBookingsRaw
     .map((booking) => ({
       reference: booking.reference,
       guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
@@ -62,6 +99,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         selectedSlug={selectedSlug}
         recentBookings={recentBookings}
         unreadConversations={unreadConversations}
+        unreadMessagesCount={unreadMessagesCount}
       >
         {children}
       </AdminShell>

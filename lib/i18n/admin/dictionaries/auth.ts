@@ -16,6 +16,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Signing in…',
     'signIn.failed': "That email and password don't match.",
     'signIn.tooMany': 'Too many attempts — give it a minute.',
+    'signIn.unavailable': 'Sign-in is temporarily unavailable. Please try again shortly.',
     'signIn.forgotPassword': 'Forgot password?',
     'signIn.emailPlaceholder': 'you@yourhotel.com',
 
@@ -64,6 +65,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Anmeldung läuft …',
     'signIn.failed': 'E-Mail und Passwort passen nicht zusammen.',
     'signIn.tooMany': 'Zu viele Versuche – warten Sie eine Minute.',
+    'signIn.unavailable': 'Die Anmeldung ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.',
     'signIn.forgotPassword': 'Passwort vergessen?',
     'signIn.emailPlaceholder': 'sie@ihrhotel.com',
 
@@ -112,6 +114,7 @@ export const auth = defineArea({
     'signIn.signingIn': 'Входим…',
     'signIn.failed': 'Почта и пароль не подходят друг к другу.',
     'signIn.tooMany': 'Слишком много попыток — подождите минуту.',
+    'signIn.unavailable': 'Вход временно недоступен. Повторите попытку чуть позже.',
     'signIn.forgotPassword': 'Забыли пароль?',
     'signIn.emailPlaceholder': 'you@yourhotel.com',
 

@@ -82,7 +82,22 @@ export const mockHotelRepository: HotelRepository = {
   async findBookingByIdempotencyKey(key) {
     return bookingsByIdempotencyKey.get(key) ?? null;
   },
-  async saveBooking(booking) {
+  async saveBooking(booking, inventoryCapacity) {
+    const replay = bookingsByIdempotencyKey.get(booking.idempotencyKey);
+    if (replay) return replay;
+    if (booking.status === 'confirmed' && inventoryCapacity !== undefined) {
+      const conflict = nightsInRange(booking.checkIn, booking.checkOut).some((date) =>
+        (demoHolds.get(`${booking.roomTypeId}|${date}`) ?? 0) >= inventoryCapacity,
+      ) || Boolean(booking.unitNumber && [...bookingsByReference.values()].some((existing) =>
+        existing.status === 'confirmed' && existing.hotelId === booking.hotelId && existing.unitNumber === booking.unitNumber &&
+        existing.checkIn < booking.checkOut && existing.checkOut > booking.checkIn,
+      ));
+      if (conflict) {
+        const error = new Error('Room inventory changed before confirmation.');
+        error.name = 'BookingInventoryConflictError';
+        throw error;
+      }
+    }
     bookingsByIdempotencyKey.set(booking.idempotencyKey, booking);
     bookingsByReference.set(booking.reference, booking);
     if (booking.status === 'confirmed') {
@@ -122,8 +137,11 @@ export const mockHotelRepository: HotelRepository = {
     bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
     return updated;
   },
-  async listBookings() {
-    return [...bookingsByReference.values()].map(withGroup).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listBookings(options = {}) {
+    const items = [...bookingsByReference.values()].map(withGroup)
+      .filter((booking) => !options.hotelId || booking.hotelId === options.hotelId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return options.limit === undefined ? items : items.slice(0, Math.max(0, options.limit));
   },
   async createBookingGroup(group) {
     bookingGroups.set(group.id, group);
@@ -170,7 +188,7 @@ export const mockHotelRepository: HotelRepository = {
   },
   async savePaymentAttempt(attempt) {
     const existing = paymentAttempts.get(attempt.bookingId) ?? [];
-    paymentAttempts.set(attempt.bookingId, [...existing, attempt]);
+    if (!existing.some((item) => item.id === attempt.id)) paymentAttempts.set(attempt.bookingId, [...existing, attempt]);
     return attempt;
   },
   async listPaymentAttempts(bookingId) {

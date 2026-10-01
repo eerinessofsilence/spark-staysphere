@@ -60,7 +60,7 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
 
       {state.error ? (
         <p role="alert" className="text-sm font-medium text-danger">
-          {state.error === 'tooMany' ? t('signIn.tooMany') : t('signIn.failed')}
+          {state.error === 'tooMany' ? t('signIn.tooMany') : state.error === 'unavailable' ? t('signIn.unavailable') : t('signIn.failed')}
         </p>
       ) : null}
 

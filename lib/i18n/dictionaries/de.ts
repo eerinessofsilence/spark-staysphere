@@ -395,7 +395,7 @@ export const de: Record<TranslationKey, string> = {
   'error.browseRooms': 'Zimmer durchsuchen',
   'error.backToHotel': 'Zurück zum Hotel',
   'error.somethingWrongTitle': 'Etwas ist schiefgelaufen',
-  'error.somethingWrongBody': 'Dieser Teil des Buchungsvorgangs konnte nicht geladen werden. Es wurde nichts belastet oder reserviert.',
+  'error.somethingWrongBody': 'Diese Seite konnte nicht geladen werden. Bitte versuchen Sie es gleich noch einmal.',
   'error.tryAgain': 'Erneut versuchen',
   'error.backToRooms': 'Zurück zu den Zimmern',
   'chat.title': 'Dem Hotel schreiben',

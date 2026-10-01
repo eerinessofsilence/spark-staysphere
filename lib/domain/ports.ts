@@ -57,7 +57,7 @@ export interface AvailabilityReader {
 
 export interface BookingStore {
   findBookingByIdempotencyKey(key: string): Promise<Booking | null>;
-  saveBooking(booking: Booking): Promise<Booking>;
+  saveBooking(booking: Booking, inventoryCapacity?: number): Promise<Booking>;
   getBookingByReference(reference: string): Promise<Booking | null>;
   /**
    * Marks a booking cancelled and gives back the nights it was holding, so
@@ -67,7 +67,7 @@ export interface BookingStore {
   cancelBooking(reference: string): Promise<Booking | null>;
   /** The desk's check-in / check-out / no-show mark. Inventory is untouched: the booking itself stays as it is. */
   setBookingStayState(reference: string, state: StayState): Promise<Booking | null>;
-  listBookings(): Promise<Booking[]>;
+  listBookings(options?: { hotelId?: string; limit?: number }): Promise<Booking[]>;
 }
 
 export interface PaymentAttemptStore {
@@ -308,7 +308,8 @@ export interface AutomationSendLogStore {
 }
 
 export interface MessagingStore {
-  listConversations(hotelId: string): Promise<Conversation[]>;
+  listConversations(hotelId: string, limit?: number): Promise<Conversation[]>;
+  countUnreadConversations(hotelId: string): Promise<number>;
   getConversation(hotelId: string, id: string): Promise<Conversation | null>;
   saveConversation(conversation: Conversation): Promise<void>;
   listMessages(conversationId: string): Promise<ChatMessage[]>;

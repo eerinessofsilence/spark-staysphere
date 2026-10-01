@@ -29,11 +29,12 @@ interface AdminShellProps {
   recentBookings: RecentBooking[];
   /** Guest threads the desk has not opened — the bell's second section and the badge on the Communications item. */
   unreadConversations: UnreadConversation[];
+  unreadMessagesCount: number;
   children: ReactNode;
 }
 
-export function AdminShell({ locale, member, hotelName, location, hotels, selectedSlug, recentBookings, unreadConversations, children }: AdminShellProps) {
-  const unreadMessages = unreadConversations.reduce((sum, c) => sum + c.unread, 0);
+export function AdminShell({ locale, member, hotelName, location, hotels, selectedSlug, recentBookings, unreadConversations, unreadMessagesCount, children }: AdminShellProps) {
+  const unreadMessages = unreadMessagesCount;
   return (
     <AdminBadgesProvider badges={{ '/admin/communications': unreadMessages }}>
     <div data-admin-shell lang={locale} className="min-h-dvh lg:grid lg:grid-cols-shell">
@@ -41,7 +42,7 @@ export function AdminShell({ locale, member, hotelName, location, hotels, select
         <div className="flex h-full flex-col rounded-[18px] bg-card p-3 shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <AdminBrand />
-            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} conversations={unreadConversations} />
+            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
           </div>
           <div className="mt-3">
             <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
@@ -63,7 +64,7 @@ export function AdminShell({ locale, member, hotelName, location, hotels, select
           <div className="flex h-14 items-center gap-2 rounded-full bg-card pr-2 pl-3 shadow-soft">
             <AdminBrand />
             <div className="min-w-0 flex-1" />
-            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} conversations={unreadConversations} />
+            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
             <AdminMobileMenu member={member} hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           </div>
         </div>

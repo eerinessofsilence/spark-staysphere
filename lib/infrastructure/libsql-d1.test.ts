@@ -3,6 +3,8 @@ import { ensureSchema } from './d1-schema';
 import { createLibsqlD1 } from './libsql-d1';
 import * as housekeeping from './housekeeping-store-d1';
 import { d1MessagingStore as messaging } from './messaging-store-d1';
+import * as bookings from './d1-hotel-repository';
+import { bookingSchema } from '../domain/schemas';
 
 /**
  * The D1 stand-in has to run the real `*-d1.ts` modules, dialect and all:
@@ -15,6 +17,40 @@ function fresh(): D1Database {
 }
 
 describe('libSQL as D1', () => {
+  it('atomically rejects a competing last-room booking', async () => {
+    const db = fresh();
+    const makeBooking = (id: string) => bookingSchema.parse({
+      id, reference: id.toUpperCase(), idempotencyKey: `idem-${id}`, hotelId: 'hotel-1',
+      roomTypeId: 'room-1', ratePlanId: 'rate-1', checkIn: '2026-12-10', checkOut: '2026-12-12',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: `${id}@example.com`, phone: '123456789' },
+      addOnIds: [], total: 200, currency: 'EUR', status: 'confirmed', createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    const outcomes = await Promise.allSettled([
+      bookings.saveBooking(db, makeBooking('one'), 1),
+      bookings.saveBooking(db, makeBooking('two'), 1),
+    ]);
+    expect(outcomes.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.filter((item) => item.status === 'rejected')).toHaveLength(1);
+    const inventory = await db.prepare('SELECT held FROM inventory_holds WHERE room_type_id = ? ORDER BY date').bind('room-1').all<{ held: number }>();
+    expect(inventory.results.map((row) => row.held)).toEqual([1, 1]);
+  });
+
+  it('atomically rejects overlapping reservations for the same physical room', async () => {
+    const db = fresh();
+    const makeBooking = (id: string) => bookingSchema.parse({
+      id, reference: id.toUpperCase(), idempotencyKey: `unit-${id}`, hotelId: 'hotel-1',
+      roomTypeId: 'room-1', ratePlanId: 'rate-1', checkIn: '2026-12-10', checkOut: '2026-12-12',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: `${id}@example.com`, phone: '123456789' },
+      addOnIds: [], unitNumber: '101', total: 200, currency: 'EUR', status: 'confirmed', createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    const outcomes = await Promise.allSettled([
+      bookings.saveBooking(db, makeBooking('one'), 2),
+      bookings.saveBooking(db, makeBooking('two'), 2),
+    ]);
+    expect(outcomes.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.filter((item) => item.status === 'rejected')).toHaveLength(1);
+  });
+
   it('bootstraps the schema and round-trips a thread through the messaging store', async () => {
     const db = fresh();
     await ensureSchema(db);

@@ -9,6 +9,8 @@ import {
 } from '@/lib/application/booking-intake';
 import type { PaymentMethod, Quote } from '@/lib/domain/schemas';
 import { mapBookingError } from '@/app/api/_lib/http';
+import { writeBookingConfirmationAccess } from '@/lib/application/admin-session';
+import { adminAuthConfig } from '@/lib/application/container';
 
 /**
  * The booking UI's only entry point to quotes and confirmation. Both actions go
@@ -85,7 +87,11 @@ export async function confirmBooking(input: ConfirmBookingInput): Promise<Confir
   }
 
   try {
+    // Validate that the confirmation capability can be signed before any
+    // booking/payment work is committed.
+    adminAuthConfig();
     const booking = await confirmForSlug(parsed.data, input.idempotencyKey);
+    await writeBookingConfirmationAccess(booking.reference);
     return { ok: true, reference: booking.reference };
   } catch (error) {
     const mapped = mapBookingError(error);

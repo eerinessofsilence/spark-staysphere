@@ -113,7 +113,7 @@ export function createReference(): string {
 
 export class BookingService {
   constructor(
-    private readonly repository: Pick<CatalogReader, 'listAddOns' | 'listRatePlans' | 'listRooms'> &
+    private readonly repository: Pick<CatalogReader, 'listAddOns' | 'listRatePlans' | 'listRooms' | 'listPhysicalRooms'> &
       BookingStore &
       PaymentAttemptStore,
     private readonly bookingEngine: BookingEngineAdapter,
@@ -406,8 +406,6 @@ export class BookingService {
       amount: quote.price.total,
       currency: quote.price.currency,
     };
-    await this.repository.savePaymentAttempt(attempt);
-
     if (payment && !payment.authorized) {
       throw new BookingError(
         'payment_declined',
@@ -436,7 +434,27 @@ export class BookingService {
       createdAt: new Date().toISOString(),
     } satisfies Booking);
 
-    const saved = await this.repository.saveBooking(booking);
+    let saved: Booking;
+    try {
+      const units = await this.repository.listPhysicalRooms(input.hotelId);
+      const inventoryCapacity = units.filter((unit) => unit.roomTypeId === input.roomTypeId).length;
+      saved = await this.repository.saveBooking(booking, inventoryCapacity);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'BookingInventoryConflictError') {
+        throw new BookingError(
+          'unavailable',
+          'That room is no longer available for those dates. Choose another room or shift your stay.',
+        );
+      }
+      throw error;
+    }
+    // Only persist the attempt after the booking won its idempotency race.
+    // The deterministic id makes concurrent replays one ledger row.
+    await this.repository.savePaymentAttempt({
+      ...attempt,
+      id: `pay_${saved.id}`,
+      bookingId: saved.id,
+    });
     await this.notifyDownstream(saved);
     try { await this.afterConfirm?.(saved); } catch { /* Best-effort, same as notifyDownstream. */ }
     return saved;

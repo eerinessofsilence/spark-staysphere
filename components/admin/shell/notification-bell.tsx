@@ -60,15 +60,17 @@ export function NotificationBell({
   hotelSlug,
   bookings,
   conversations = [],
+  unreadMessagesCount,
 }: {
   hotelSlug: string;
   bookings: RecentBooking[];
   conversations?: UnreadConversation[];
+  unreadMessagesCount?: number;
 }) {
   const [unseenBookings, setUnseenBookings] = React.useState(0);
   // Unread messages are a server-side count, so they show from the first
   // paint; the bookings half waits for localStorage below.
-  const unreadMessages = conversations.reduce((sum, c) => sum + c.unread, 0);
+  const unreadMessages = unreadMessagesCount ?? conversations.reduce((sum, c) => sum + c.unread, 0);
   const unseenCount = unseenBookings + unreadMessages;
   const locale = useAdminLocale();
   const t = useAdminT();

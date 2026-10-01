@@ -9,9 +9,13 @@ import { mockMessagingStore } from './messaging-store-mock';
  * `durable-housekeeping-store.ts`.
  */
 export const durableMessagingStore: MessagingStore = {
-  listConversations(hotelId) {
+  countUnreadConversations(hotelId) {
     const db = getDemoDatabase();
-    return db ? d1.listConversations(db, hotelId) : mockMessagingStore.listConversations(hotelId);
+    return db ? d1.countUnreadConversations(db, hotelId) : mockMessagingStore.countUnreadConversations(hotelId);
+  },
+  listConversations(hotelId, limit) {
+    const db = getDemoDatabase();
+    return db ? d1.listConversations(db, hotelId, limit) : mockMessagingStore.listConversations(hotelId).then((items) => limit === undefined ? items : items.slice(0, limit));
   },
   getConversation(hotelId, id) {
     const db = getDemoDatabase();

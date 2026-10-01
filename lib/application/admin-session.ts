@@ -104,19 +104,58 @@ export async function decodeSession(token: string | undefined): Promise<AdminSes
 
   const bytes = fromBase64Url(payload);
   if (!bytes) return null;
+  let parsed: Partial<AdminSession>;
   try {
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<AdminSession>;
-    if (typeof parsed.memberId !== 'string' || typeof parsed.exp !== 'number') return null;
-    if (parsed.exp * 1000 < Date.now()) return null;
-    if (!(await teamService.findMemberById(parsed.memberId))) return null;
-    return {
-      memberId: parsed.memberId,
-      interests: Array.isArray(parsed.interests) ? parsed.interests.filter(isAdminInterest) : [],
-      onboarded: parsed.onboarded === true,
-      exp: parsed.exp,
-    };
+    parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<AdminSession>;
   } catch {
     return null;
+  }
+  if (typeof parsed.memberId !== 'string' || typeof parsed.exp !== 'number') return null;
+  if (parsed.exp * 1000 < Date.now()) return null;
+  // A repository failure is an infrastructure error, not proof that this
+  // otherwise valid session is invalid. Let the route surface a retryable 503.
+  if (!(await teamService.findMemberById(parsed.memberId))) return null;
+  return {
+    memberId: parsed.memberId,
+    interests: Array.isArray(parsed.interests) ? parsed.interests.filter(isAdminInterest) : [],
+    onboarded: parsed.onboarded === true,
+    exp: parsed.exp,
+  };
+}
+
+/** Short lived, signed proof that this browser just completed this booking. */
+export async function writeBookingConfirmationAccess(reference: string): Promise<void> {
+  const store = await cookies();
+  const payload = `${reference}.${Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30}`;
+  store.set(`booking-confirmation-${reference}`, `${payload}.${await hmac(adminAuthConfig().sessionSecret, payload)}`, {
+    path: `/booking/${reference}`,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function hasBookingConfirmationAccess(reference: string): Promise<boolean> {
+  const store = await cookies();
+  const token = store.get(`booking-confirmation-${reference}`)?.value;
+  if (!token) return false;
+  const [tokenReference, expiry, signature] = token.split('.');
+  if (tokenReference !== reference || !expiry || !signature || !/^\d+$/.test(expiry)) return false;
+  const payload = `${tokenReference}.${expiry}`;
+  return Number(expiry) > Math.floor(Date.now() / 1000) &&
+    sameString(signature, await hmac(adminAuthConfig().sessionSecret, payload));
+}
+
+/** Booking operations staff may open the same confirmation from the admin desk. */
+export async function canViewBookingConfirmation(reference: string): Promise<boolean> {
+  if (await hasBookingConfirmationAccess(reference)) return true;
+  try {
+    await requirePermission('team.permViewBookings');
+    return true;
+  } catch (error) {
+    if (error instanceof AdminAuthError || error instanceof AdminPermissionError) return false;
+    throw error;
   }
 }
 

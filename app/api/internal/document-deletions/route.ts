@@ -6,5 +6,9 @@ export async function GET(request: Request) {
   try {
     await guestDocumentService.retryDeletions();
     return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch { return Response.json({ ok: false }, { status: 503 }); }
+  } catch (error) {
+    const requestId = crypto.randomUUID();
+    console.error('Document deletion retry failed', { route: '/api/internal/document-deletions', code: 'service_unavailable', requestId }, error);
+    return Response.json({ ok: false, requestId }, { status: 503 });
+  }
 }

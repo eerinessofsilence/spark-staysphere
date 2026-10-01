@@ -9,7 +9,7 @@
 
 const WINDOW_MS = 60_000;
 /** A guest's search is one request; the admin chat is a request per answer, and a new room type is seven of them; sign-in is guessing a password. */
-const MAX_REQUESTS_PER_WINDOW = { search: 8, chat: 30, signIn: 10 } as const;
+const MAX_REQUESTS_PER_WINDOW = { search: 8, chat: 30, signIn: 10, bookingLookup: 6 } as const;
 export type RateLimitKind = keyof typeof MAX_REQUESTS_PER_WINDOW;
 
 const requestLog = new Map<string, number[]>();

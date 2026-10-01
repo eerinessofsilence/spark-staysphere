@@ -105,13 +105,19 @@ export class CommunicationsService {
     private readonly outbound: OutboundMessenger,
   ) {}
 
-  async listConversations(hotelSlug: string): Promise<Conversation[]> {
+  async listConversations(hotelSlug: string, limit?: number): Promise<Conversation[]> {
     const hotel = await this.repository.getHotel(hotelSlug);
     if (!hotel) return [];
-    const existing = await this.store.listConversations(hotel.id);
-    if (existing.length > 0) return existing;
+    const existing = await this.store.listConversations(hotel.id, limit);
+    if (existing.length > 0) return limit === undefined ? existing : existing.slice(0, limit);
     await this.seedDemo(hotel.id);
-    return this.store.listConversations(hotel.id);
+    const seeded = await this.store.listConversations(hotel.id, limit);
+    return limit === undefined ? seeded : seeded.slice(0, limit);
+  }
+
+  async countUnreadConversations(hotelSlug: string): Promise<number> {
+    const hotel = await this.repository.getHotel(hotelSlug);
+    return hotel ? this.store.countUnreadConversations(hotel.id) : 0;
   }
 
   /** The thread and its messages; opening it is what clears the unread count. */

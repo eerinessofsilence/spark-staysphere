@@ -21,16 +21,23 @@ const bodySchema = z.object({
  * than opening a thread under someone else's stay.
  */
 export async function POST(request: Request): Promise<Response> {
+  const requestId = crypto.randomUUID();
   const parsed = await parseJsonBody(request, bodySchema, 'Send an email address and a message.');
   if (!parsed.ok) return parsed.response;
   const { reference, name, email, body } = parsed.data;
-  const result = await communicationsService.receive(DEMO_HOTEL_SLUG, {
+  let result;
+  try {
+    result = await communicationsService.receive(DEMO_HOTEL_SLUG, {
     channel: 'chat',
     name,
     email,
     bookingReference: reference ?? null,
     body,
-  });
+    });
+  } catch (error) {
+    console.error('Guest conversation request failed', { route: '/api/conversations', code: 'internal_error', requestId }, error);
+    return Response.json({ error: 'unavailable', message: 'The message could not be filed.', requestId }, { status: 503 });
+  }
   if (!result.ok) {
     return Response.json({ error: result.error, message: 'The message could not be filed.' }, { status: 400 });
   }

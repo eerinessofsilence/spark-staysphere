@@ -395,7 +395,7 @@ export const hr: Record<TranslationKey, string> = {
   'error.browseRooms': 'Pregledaj sobe',
   'error.backToHotel': 'Natrag na hotel',
   'error.somethingWrongTitle': 'Nešto je pošlo po zlu',
-  'error.somethingWrongBody': 'Nismo mogli učitati ovaj dio postupka rezervacije. Ništa nije naplaćeno niti rezervirano.',
+  'error.somethingWrongBody': 'Stranicu nije bilo moguće učitati. Pokušajte ponovno uskoro.',
   'error.tryAgain': 'Pokušaj ponovno',
   'error.backToRooms': 'Natrag na sobe',
   'chat.title': 'Pišite hotelu',

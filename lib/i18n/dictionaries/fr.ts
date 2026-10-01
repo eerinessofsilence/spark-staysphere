@@ -396,7 +396,7 @@ export const fr: Record<TranslationKey, string> = {
   'error.browseRooms': 'Parcourir les chambres',
   'error.backToHotel': "Retour à l'hôtel",
   'error.somethingWrongTitle': "Une erreur s'est produite",
-  'error.somethingWrongBody': "Impossible de charger cette partie du parcours de réservation. Rien n'a été débité ni réservé.",
+  'error.somethingWrongBody': 'Impossible de charger cette page. Réessayez dans un instant.',
   'error.tryAgain': 'Réessayer',
   'error.backToRooms': 'Retour aux chambres',
   'chat.title': 'Écrire à l’hôtel',

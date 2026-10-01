@@ -396,7 +396,7 @@ export const es: Record<TranslationKey, string> = {
   'error.browseRooms': 'Explorar habitaciones',
   'error.backToHotel': 'Volver al hotel',
   'error.somethingWrongTitle': 'Algo salió mal',
-  'error.somethingWrongBody': 'No pudimos cargar esta parte del proceso de reserva. No se cobró ni se reservó nada.',
+  'error.somethingWrongBody': 'No se pudo cargar esta página. Inténtalo de nuevo en un momento.',
   'error.tryAgain': 'Reintentar',
   'error.backToRooms': 'Volver a las habitaciones',
   'chat.title': 'Escribir al hotel',

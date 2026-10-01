@@ -104,9 +104,9 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.findBookingByIdempotencyKey(db, key) : mockHotelRepository.findBookingByIdempotencyKey(key);
   },
-  saveBooking(booking) {
+  saveBooking(booking, inventoryCapacity) {
     const db = getDemoDatabase();
-    return db ? d1.saveBooking(db, booking) : mockHotelRepository.saveBooking(booking);
+    return db ? d1.saveBooking(db, booking, inventoryCapacity) : mockHotelRepository.saveBooking(booking, inventoryCapacity);
   },
   getBookingByReference(reference) {
     const db = getDemoDatabase();

@@ -25,6 +25,7 @@ const bodySchema = z.object({
  * otherwise the mail is filed without one rather than refused.
  */
 export async function POST(request: Request): Promise<Response> {
+  const requestId = crypto.randomUUID();
   if (!inboundEmailAuthorized(request.headers.get('x-inbound-secret'))) {
     return Response.json({ error: 'unauthorized', message: 'Inbound email is not enabled for this caller.' }, { status: 401 });
   }
@@ -35,8 +36,14 @@ export async function POST(request: Request): Promise<Response> {
 
   const file = (bookingReference: string | null) =>
     communicationsService.receive(DEMO_HOTEL_SLUG, { channel: 'email', name: from.name, email: from.email, bookingReference, body });
-  let result = await file(reference ?? null);
-  if (!result.ok && result.error === 'bookingMismatch') result = await file(null);
+  let result;
+  try {
+    result = await file(reference ?? null);
+    if (!result.ok && result.error === 'bookingMismatch') result = await file(null);
+  } catch (error) {
+    console.error('Inbound email request failed', { route: '/api/inbound/email', code: 'service_unavailable', requestId }, error);
+    return Response.json({ error: 'unavailable', message: 'The email could not be filed.', requestId }, { status: 503 });
+  }
   if (!result.ok) return Response.json({ error: result.error, message: 'The email could not be filed.' }, { status: 400 });
   return Response.json({ conversationId: result.conversation.id }, { status: 202 });
 }

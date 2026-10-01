@@ -414,7 +414,7 @@ export const en = {
   'error.browseRooms': 'Browse rooms',
   'error.backToHotel': 'Back to the hotel',
   'error.somethingWrongTitle': 'Something went wrong',
-  'error.somethingWrongBody': 'We could not load this part of the booking flow. Nothing was charged or reserved.',
+  'error.somethingWrongBody': 'This page could not be loaded. Try again in a moment.',
   'error.tryAgain': 'Try again',
   'error.backToRooms': 'Back to rooms',
   'chat.title': 'Message the hotel',

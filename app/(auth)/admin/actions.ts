@@ -22,7 +22,7 @@ import { beginRequest, checkRateLimit, clientKeyFromHeaders, endRequest } from '
  */
 
 export interface SignInState {
-  error: 'failed' | 'tooMany' | null;
+  error: 'failed' | 'tooMany' | 'unavailable' | null;
 }
 
 const signInSchema = z.object({
@@ -44,7 +44,14 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
   if (!checkRateLimit(clientKey, 'signIn')) return { error: 'tooMany' };
   if (!beginRequest(clientKey)) return { error: 'tooMany' };
   try {
-    const session = await signIn(parsed.data.email, parsed.data.password);
+    let session;
+    try {
+      session = await signIn(parsed.data.email, parsed.data.password);
+    } catch (error) {
+      const requestId = crypto.randomUUID();
+      console.error('Admin sign-in storage failure', { route: '/admin/sign-in', code: 'service_unavailable', requestId }, error);
+      return { error: 'unavailable' };
+    }
     if (!session) return { error: 'failed' };
     if (session.onboarded) redirect('/housekeeper');
   } finally {

@@ -35,6 +35,19 @@ if (!db) {
 }
 config.d1_databases = [{ binding: 'DB', database_name: D1_NAME, database_id: db.uuid ?? db.database_id }];
 
+// Apply the idempotent DDL before traffic can reach a newly deployed Worker.
+// The runtime bootstrap remains as a recovery path, but sign-in and booking
+// requests no longer have to create the full schema on the first request.
+const schemaSource = readFileSync('lib/infrastructure/d1-schema.ts', 'utf8');
+const schemaBlock = schemaSource.match(/const STATEMENTS = \[([\s\S]*?)\n\];/);
+if (!schemaBlock) throw new Error('Could not find D1 schema statements.');
+const schemaStatements = [...schemaBlock[1].matchAll(/^\s*`([^`]+)`[,]?\s*$/gm)].map((match) => match[1]);
+if (schemaStatements.length === 0) throw new Error('D1 schema is empty.');
+const schemaFile = 'dist/d1-schema.sql';
+writeFileSync(schemaFile, `${schemaStatements.join(';\n')};\n`);
+console.log('Applying D1 schema before deployment...');
+wrangler(['d1', 'execute', D1_NAME, '--remote', '--file', schemaFile]);
+
 try {
   // `r2 bucket list` has no --json; its plain output is one `name:` line per bucket.
   const buckets = wrangler(['r2', 'bucket', 'list'])

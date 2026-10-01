@@ -393,7 +393,7 @@ export const ru: Record<TranslationKey, string> = {
   'error.browseRooms': 'Смотреть номера',
   'error.backToHotel': 'Вернуться на главную',
   'error.somethingWrongTitle': 'Что-то пошло не так',
-  'error.somethingWrongBody': 'Не удалось загрузить эту часть процесса бронирования. Ничего не было списано или забронировано.',
+  'error.somethingWrongBody': 'Не удалось загрузить страницу. Повторите попытку через минуту.',
   'error.tryAgain': 'Повторить',
   'error.backToRooms': 'Вернуться к номерам',
   'chat.title': 'Написать отелю',

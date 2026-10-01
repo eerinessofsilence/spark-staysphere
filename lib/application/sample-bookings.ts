@@ -456,8 +456,8 @@ export class SampleBookingService {
       currency: price.currency,
     };
 
-    await this.repository.savePaymentAttempt(attempt);
     await this.repository.saveBooking(booking);
+    await this.repository.savePaymentAttempt(attempt);
     if (sample.cancelled) await this.repository.cancelBooking(booking.reference);
     if (sample.checkedIn) await this.repository.setBookingStayState(booking.reference, 'checked_in');
     return booking;

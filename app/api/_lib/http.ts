@@ -98,6 +98,7 @@ export function toBookingErrorResponse(error: unknown, logLabel: string, fallbac
       { status: STATUS_BY_BOOKING_ERROR_CODE[mapped.code] ?? 400 },
     );
   }
-  console.error(logLabel, error);
-  return Response.json({ error: 'internal', message: fallbackMessage }, { status: 500 });
+  const requestId = crypto.randomUUID();
+  console.error('API request failed', { route: logLabel, code: 'internal_error', requestId }, error);
+  return Response.json({ error: 'internal', message: fallbackMessage, requestId }, { status: 500 });
 }

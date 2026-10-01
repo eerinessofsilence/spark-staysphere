@@ -53,11 +53,16 @@ function toMessage(row: MessageRow): ChatMessage {
 }
 
 export const d1MessagingStore = {
-  async listConversations(db: D1Database, hotelId: string): Promise<Conversation[]> {
+  async countUnreadConversations(db: D1Database, hotelId: string): Promise<number> {
+    await ensureSchema(db);
+    const row = await db.prepare('SELECT COUNT(*) AS count FROM conversations WHERE hotel_id = ? AND unread > 0').bind(hotelId).first<{ count: number }>();
+    return row?.count ?? 0;
+  },
+  async listConversations(db: D1Database, hotelId: string, limit?: number): Promise<Conversation[]> {
     await ensureSchema(db);
     const { results } = await db
-      .prepare(`SELECT ${CONVERSATION_COLUMNS} FROM conversations WHERE hotel_id = ? ORDER BY last_message_at DESC`)
-      .bind(hotelId)
+      .prepare(`SELECT ${CONVERSATION_COLUMNS} FROM conversations WHERE hotel_id = ? ORDER BY last_message_at DESC${limit === undefined ? '' : ' LIMIT ?'}`)
+      .bind(...(limit === undefined ? [hotelId] : [hotelId, Math.max(0, Math.floor(limit))]))
       .all<ConversationRow>();
     return results.map(toConversation);
   },
