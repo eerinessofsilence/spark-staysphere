@@ -118,9 +118,9 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.transferBookingRoomType(db, input) : mockHotelRepository.transferBookingRoomType(input);
   },
-  extendBookingStay(input) {
+  changeBookingStayDates(input) {
     const db = getDemoDatabase();
-    return db ? d1.extendBookingStay(db, input) : mockHotelRepository.extendBookingStay(input);
+    return db ? d1.changeBookingStayDates(db, input) : mockHotelRepository.changeBookingStayDates(input);
   },
   getBookingByReference(reference) {
     const db = getDemoDatabase();

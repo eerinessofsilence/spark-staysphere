@@ -153,7 +153,7 @@ export async function transferBookingRoomType(
          WHERE COALESCE(h.held, 0) >= ?
        )
        AND NOT EXISTS (
-         SELECT 1 FROM bookings occupied
+         SELECT 1 FROM json_each(?) nights, bookings occupied
          LEFT JOIN booking_units u ON u.booking_id = occupied.id
          LEFT JOIN booking_room_assignments a ON a.booking_id = occupied.id
          WHERE occupied.id <> ? AND occupied.hotel_id = bookings.hotel_id AND occupied.status = 'confirmed'
@@ -204,40 +204,40 @@ export async function transferBookingRoomType(
   return (result[0]?.meta.changes ?? 0) > 0;
 }
 
-export async function extendBookingStay(
+export async function changeBookingStayDates(
   db: D1Database,
-  input: Parameters<BookingStore['extendBookingStay']>[0],
+  input: Parameters<BookingStore['changeBookingStayDates']>[0],
 ): Promise<boolean> {
   await ensureSchema(db);
-  if (input.addedNights.length === 0) return false;
+  if (input.addedNights.length === 0 && input.releasedNights.length === 0) return false;
   const guard = crypto.randomUUID();
-  const result = await db.batch([
+  const statements = [
     db.prepare(
-      `UPDATE bookings SET check_out = ?, total = ?
-       WHERE id = ? AND status = 'confirmed' AND room_type_id = ? AND check_out = ? AND total = ?
+      `UPDATE bookings SET check_in = ?, check_out = ?, total = ?
+       WHERE id = ? AND status = 'confirmed' AND room_type_id = ? AND check_in = ? AND check_out = ? AND total = ?
        AND NOT EXISTS (
          SELECT 1 FROM json_each(?) nights
          LEFT JOIN inventory_holds h ON h.room_type_id = ? AND h.date = nights.value
          WHERE COALESCE(h.held, 0) >= ?
        )
        AND NOT EXISTS (
-         SELECT 1 FROM bookings occupied
+         SELECT 1 FROM json_each(?) nights
+         JOIN bookings occupied ON occupied.id <> ?
          LEFT JOIN booking_units u ON u.booking_id = occupied.id
          LEFT JOIN booking_room_assignments a ON a.booking_id = occupied.id
-         WHERE occupied.id <> ? AND occupied.hotel_id = bookings.hotel_id AND occupied.status = 'confirmed'
+         WHERE occupied.hotel_id = bookings.hotel_id AND occupied.status = 'confirmed'
            AND ((a.assignments IS NOT NULL AND EXISTS (
              SELECT 1 FROM json_each(a.assignments) period
              WHERE json_extract(period.value, '$.roomNumber') = ?
-               AND json_extract(period.value, '$.fromDate') < ?
-               AND json_extract(period.value, '$.toDate') > ?
+               AND json_extract(period.value, '$.fromDate') <= nights.value
+               AND json_extract(period.value, '$.toDate') > nights.value
            )) OR (a.assignments IS NULL AND u.unit_number = ?
-             AND occupied.check_in < ? AND occupied.check_out > ?))
+             AND occupied.check_in <= nights.value AND occupied.check_out > nights.value))
        )`,
     ).bind(
-      input.newCheckOut, input.newTotal, input.bookingId, input.roomTypeId, input.expectedCheckOut, input.expectedTotal,
+      input.newCheckIn, input.newCheckOut, input.newTotal, input.bookingId, input.roomTypeId, input.expectedCheckIn, input.expectedCheckOut, input.expectedTotal,
       JSON.stringify(input.addedNights), input.roomTypeId, input.capacity,
-      input.bookingId, input.roomNumber, input.newCheckOut, input.expectedCheckOut,
-      input.roomNumber, input.newCheckOut, input.expectedCheckOut,
+      JSON.stringify(input.addedNights), input.bookingId, input.roomNumber, input.roomNumber,
     ),
     db.prepare('INSERT INTO booking_mutation_guards (id) SELECT ? WHERE changes() > 0').bind(guard),
     db.prepare(
@@ -256,7 +256,14 @@ export async function extendBookingStay(
        SELECT ?, ? WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
        ON CONFLICT (booking_id) DO UPDATE SET assignments = excluded.assignments`,
     ).bind(input.bookingId, JSON.stringify(input.assignments), guard),
-  ]);
+  ];
+  if (input.releasedNights.length > 0) {
+    statements.push(...input.releasedNights.map((night) => db.prepare(
+      `UPDATE inventory_holds SET held = MAX(held - 1, 0) WHERE room_type_id = ? AND date = ?
+       AND EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)`
+    ).bind(input.roomTypeId, night, guard)));
+  }
+  const result = await db.batch(statements);
   return (result[0]?.meta.changes ?? 0) > 0;
 }
 

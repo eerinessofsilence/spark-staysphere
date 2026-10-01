@@ -93,6 +93,7 @@ const stayExtensionSchema = z.object({
   reference: z.string().min(1),
   roomTypeId: z.string().min(1),
   roomNumber: z.string().regex(ROOM_NUMBER),
+  newCheckIn: stayCriteriaFieldsSchema.shape.checkIn,
   newCheckOut: stayCriteriaFieldsSchema.shape.checkOut,
 });
 
@@ -131,7 +132,7 @@ export async function reviewFrontDeskStayExtensionAction(input: unknown): Promis
   if (!parsed.success) return { ok: false, message: t('frontDesk.dateChangeInvalid') };
   try {
     const result = await inventoryService.reviewStayExtension(await getSelectedHotelSlug(), parsed.data.reference,
-      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckOut);
+      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckIn, parsed.data.newCheckOut);
     return result.ok ? result : { ok: false, message: stayExtensionMessage(result.reason, t) };
   } catch { return { ok: false, message: t('frontDesk.moveFailed') }; }
 }
@@ -144,7 +145,7 @@ export async function confirmFrontDeskStayExtensionAction(input: unknown): Promi
   if (!parsed.success) return { ok: false, message: t('frontDesk.dateChangeInvalid') };
   try {
     const result = await inventoryService.confirmStayExtension(await getSelectedHotelSlug(), parsed.data.reference,
-      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckOut, parsed.data.expectedOldTotal, parsed.data.expectedNewTotal);
+      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckIn, parsed.data.newCheckOut, parsed.data.expectedOldTotal, parsed.data.expectedNewTotal);
     if (result !== 'ok') return { ok: false, message: stayExtensionMessage(result, t) };
     revalidatePath('/admin/front-desk'); revalidatePath('/admin/bookings'); revalidatePath(`/admin/bookings/${parsed.data.reference}`); revalidatePath('/admin');
     return { ok: true };

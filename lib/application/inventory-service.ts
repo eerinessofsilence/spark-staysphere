@@ -167,6 +167,7 @@ export interface StayExtensionReview {
   reference: string;
   guestName: string;
   checkIn: string;
+  newCheckIn: string;
   oldCheckOut: string;
   newCheckOut: string;
   roomNumber: string;
@@ -188,7 +189,7 @@ export class InventoryService {
   constructor(
     private readonly repository: AvailabilityReader &
       Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms' | 'listRatePlans' | 'listAddOns'> &
-      Pick<BookingStore, 'listBookings' | 'saveBookingRoomAssignments' | 'transferBookingRoomType' | 'extendBookingStay'> &
+      Pick<BookingStore, 'listBookings' | 'saveBookingRoomAssignments' | 'transferBookingRoomType' | 'changeBookingStayDates'> &
       Pick<PaymentAttemptStore, 'listPaymentAttempts'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
@@ -628,16 +629,17 @@ export class InventoryService {
   }
 
   private async prepareStayExtension(
-    hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string,
+    hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckIn: string, newCheckOut: string,
   ): Promise<
     | { ok: false; reason: StayExtensionError }
-    | { ok: true; review: StayExtensionReview; booking: Booking; capacity: number; addedNights: string[]; assignments: BookingRoomAssignment[] }
+    | { ok: true; review: StayExtensionReview; booking: Booking; capacity: number; addedNights: string[]; releasedNights: string[]; assignments: BookingRoomAssignment[] }
   > {
     const hotel = await this.catalog.getHotel(hotelSlug);
     const booking = (await this.repository.listBookings({ hotelId: hotel.id })).find((item) => item.reference === reference);
     const today = new Date().toISOString().slice(0, 10);
     if (!booking || booking.status !== 'confirmed') return { ok: false, reason: 'not_found' };
-    if (newCheckOut <= booking.checkOut || booking.checkOut < today) return { ok: false, reason: 'invalid_date' };
+    if ((newCheckIn === booking.checkIn && newCheckOut === booking.checkOut) || booking.checkOut < today ||
+      newCheckIn < today || newCheckIn >= newCheckOut) return { ok: false, reason: 'invalid_date' };
     const [rooms, physicalRooms, addOns] = await Promise.all([
       this.repository.listRooms(hotel.id), this.repository.listPhysicalRooms(hotel.id), this.repository.listAddOns(hotel.id),
     ]);
@@ -645,12 +647,20 @@ export class InventoryService {
     const activeType = booking.roomAssignments?.find((period) => period.roomNumber === roomNumber && period.toDate === booking.checkOut)?.roomTypeId
       ?? booking.roomTypeId;
     if (activeType !== roomTypeId || !units.some((unit) => unit.number === roomNumber)) return { ok: false, reason: 'invalid_date' };
-    const plan = (await this.repository.listRatePlans(roomTypeId)).find((item) => item.id === booking.ratePlanId);
-    if (!plan || plan.currency !== booking.currency || !(await this.isUnitFreeForStay(hotelSlug, roomTypeId, roomNumber, booking.checkOut, newCheckOut))) {
-      return { ok: false, reason: 'unavailable' };
+    if (booking.roomAssignments?.some((period) => period.roomNumber !== roomNumber || (period.roomTypeId ?? booking.roomTypeId) !== roomTypeId)) {
+      return { ok: false, reason: 'invalid_date' };
     }
+    const plan = (await this.repository.listRatePlans(roomTypeId)).find((item) => item.id === booking.ratePlanId);
+    const bookingNights = nightsInRange(booking.checkIn, booking.checkOut);
+    const nextNights = nightsInRange(newCheckIn, newCheckOut);
+    const bookingSet = new Set(bookingNights);
+    const nextSet = new Set(nextNights);
+    const addedNights = nextNights.filter((night) => !bookingSet.has(night));
+    const releasedNights = bookingNights.filter((night) => !nextSet.has(night));
+    if (!plan || plan.currency !== booking.currency || (addedNights.length > 0 && !(await this.isUnitFreeForStay(hotelSlug, roomTypeId, roomNumber,
+      addedNights[0]!, addIsoDays(addedNights.at(-1)!, 1))))) return { ok: false, reason: 'unavailable' };
     const oldNights = nightsInRange(booking.checkIn, booking.checkOut).length;
-    const newNights = nightsInRange(booking.checkIn, newCheckOut).length;
+    const newNights = nextNights.length;
     const chosenAddOns = addOns.filter((addOn) => booking.addOnIds.includes(addOn.id));
     const oldRate = buildPriceBreakdown({ ratePlan: plan, addOns: chosenAddOns, nights: oldNights, adults: booking.adults, children: booking.children });
     const newRate = buildPriceBreakdown({ ratePlan: plan, addOns: chosenAddOns, nights: newNights, adults: booking.adults, children: booking.children });
@@ -660,25 +670,30 @@ export class InventoryService {
       : [{ roomNumber, roomTypeId, fromDate: booking.checkIn, toDate: booking.checkOut }];
     const last = baseAssignments.findIndex((period) => period.roomNumber === roomNumber && period.roomTypeId === roomTypeId && period.toDate === booking.checkOut);
     if (last < 0) return { ok: false, reason: 'invalid_date' };
-    const assignments = baseAssignments.map((period, index) => index === last ? { ...period, toDate: newCheckOut } : period);
-    return { ok: true, booking, capacity: units.length, addedNights: nightsInRange(booking.checkOut, newCheckOut), assignments,
-      review: { reference, guestName: `${booking.guest.firstName} ${booking.guest.lastName}`, checkIn: booking.checkIn,
+    const assignments = baseAssignments.flatMap((period, index) => {
+      const fromDate = index === 0 ? newCheckIn : period.fromDate < newCheckIn ? newCheckIn : period.fromDate;
+      const toDate = index === last ? newCheckOut : period.toDate > newCheckOut ? newCheckOut : period.toDate;
+      return fromDate < toDate ? [{ ...period, fromDate, toDate }] : [];
+    });
+    return { ok: true, booking, capacity: units.length, addedNights, releasedNights, assignments,
+      review: { reference, guestName: `${booking.guest.firstName} ${booking.guest.lastName}`, checkIn: booking.checkIn, newCheckIn,
         oldCheckOut: booking.checkOut, newCheckOut, roomNumber, oldTotal: booking.total, newTotal, oldNights, newNights, currency: booking.currency } };
   }
 
-  async reviewStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string) {
-    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckOut);
+  async reviewStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckIn: string, newCheckOut: string) {
+    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckIn, newCheckOut);
     return prepared.ok ? { ok: true as const, review: prepared.review } : prepared;
   }
 
-  async confirmStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string,
+  async confirmStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckIn: string, newCheckOut: string,
     expectedOldTotal: number, expectedNewTotal: number): Promise<'ok' | StayExtensionError> {
-    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckOut);
+    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckIn, newCheckOut);
     if (!prepared.ok) return prepared.reason;
     if (prepared.review.oldTotal !== expectedOldTotal || prepared.review.newTotal !== expectedNewTotal) return 'price_changed';
-    const saved = await this.repository.extendBookingStay({ bookingId: prepared.booking.id, expectedCheckOut: prepared.booking.checkOut,
-      expectedTotal: prepared.booking.total, roomTypeId, roomNumber, newCheckOut, newTotal: prepared.review.newTotal,
-      capacity: prepared.capacity, addedNights: prepared.addedNights, assignments: prepared.assignments });
+    const saved = await this.repository.changeBookingStayDates({ bookingId: prepared.booking.id, expectedCheckIn: prepared.booking.checkIn,
+      expectedCheckOut: prepared.booking.checkOut, expectedTotal: prepared.booking.total, roomTypeId, roomNumber,
+      newCheckIn: prepared.review.newCheckIn, newCheckOut: prepared.review.newCheckOut, newTotal: prepared.review.newTotal,
+      capacity: prepared.capacity, addedNights: prepared.addedNights, releasedNights: prepared.releasedNights, assignments: prepared.assignments });
     return saved ? 'ok' : 'unavailable';
   }
 

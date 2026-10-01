@@ -277,10 +277,10 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
     finally { setTypeMoveSaving(false); }
   };
 
-  const reviewStayExtension = async (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, roomTypeId: string, roomNumber: string, newCheckOut: string) => {
+  const reviewStayExtension = async (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, roomTypeId: string, roomNumber: string, newCheckIn: string, newCheckOut: string) => {
     setMovingReference(segment.reference);
     try {
-      const result = await reviewFrontDeskStayExtensionAction({ reference: segment.reference, roomTypeId, roomNumber, newCheckOut });
+      const result = await reviewFrontDeskStayExtensionAction({ reference: segment.reference, roomTypeId, roomNumber, newCheckIn, newCheckOut });
       if (!result.ok) { toast.error(result.message); return; }
       setStayExtension({ roomTypeId, roomNumber, review: result.review }); setStayExtensionError(null);
     } catch { toast.error(t('frontDesk.moveFailed')); } finally { setMovingReference(null); }
@@ -289,7 +289,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
     if (!stayExtension || stayExtensionSaving) return;
     setStayExtensionSaving(true); setStayExtensionError(null);
     try {
-      const result = await confirmFrontDeskStayExtensionAction({ reference: stayExtension.review.reference, roomTypeId: stayExtension.roomTypeId, roomNumber: stayExtension.roomNumber, newCheckOut: stayExtension.review.newCheckOut, expectedOldTotal: stayExtension.review.oldTotal, expectedNewTotal: stayExtension.review.newTotal });
+      const result = await confirmFrontDeskStayExtensionAction({ reference: stayExtension.review.reference, roomTypeId: stayExtension.roomTypeId, roomNumber: stayExtension.roomNumber, newCheckIn: stayExtension.review.newCheckIn, newCheckOut: stayExtension.review.newCheckOut, expectedOldTotal: stayExtension.review.oldTotal, expectedNewTotal: stayExtension.review.newTotal });
       if (!result.ok) { setStayExtensionError(result.message); return; }
       setStayExtension(null); toast.success(t('frontDesk.dateChangeSaved')); router.refresh();
     } catch { setStayExtensionError(t('frontDesk.moveFailed')); } finally { setStayExtensionSaving(false); }
@@ -452,7 +452,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                   locale={locale}
                   onSelectSegment={(segment) => select(segment, room, group)}
                   onDragCreate={(startIndex, endIndex) => startBooking(group, room, startIndex, endIndex)}
-                  onResizeBooking={(segment, newCheckOut) => reviewStayExtension(segment, group.roomTypeId, room.number, newCheckOut)}
+                  onResizeBooking={(segment, newCheckIn, newCheckOut) => reviewStayExtension(segment, group.roomTypeId, room.number, newCheckIn, newCheckOut)}
                   movingReference={movingReference}
                   onDropBooking={moveBookingByDrop}
                 />
@@ -545,7 +545,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       <Modal open={Boolean(stayExtension)} onClose={() => { if (!stayExtensionSaving) setStayExtension(null); }} className="sm:max-w-lg" title={t('frontDesk.dateChangeTitle')}>
         {stayExtension ? <div className="space-y-5">
           <p className="text-sm text-muted-foreground">{t('frontDesk.dateChangeBooking', { reference: stayExtension.review.reference, guest: stayExtension.review.guestName })}</p>
-          <p className="text-sm">{t('frontDesk.dateChangeDates', { checkIn: lDateShort(stayExtension.review.checkIn, locale), oldCheckOut: lDateShort(stayExtension.review.oldCheckOut, locale), newCheckOut: lDateShort(stayExtension.review.newCheckOut, locale) })}</p>
+          <p className="text-sm">{t('frontDesk.dateChangeDates', { oldCheckIn: lDateShort(stayExtension.review.checkIn, locale), newCheckIn: lDateShort(stayExtension.review.newCheckIn, locale), oldCheckOut: lDateShort(stayExtension.review.oldCheckOut, locale), newCheckOut: lDateShort(stayExtension.review.newCheckOut, locale) })}</p>
           <div className="divide-y divide-border rounded-[18px] border border-border px-4">
             <div className="flex items-center justify-between gap-4 py-3 text-sm"><span>{t('frontDesk.dateChangeOldPrice')}</span><strong>{lMoney(stayExtension.review.oldTotal, stayExtension.review.currency, locale)}</strong></div>
             <div className="flex items-center justify-between gap-4 py-3 text-sm"><span>{t('frontDesk.dateChangeNewPrice')}</span><strong>{lMoney(stayExtension.review.newTotal, stayExtension.review.currency, locale)}</strong></div>
@@ -588,6 +588,8 @@ function SegmentBar({
   onPointerDown,
   resizeHint,
   resizeEndIndex,
+  resizeStartIndex,
+  resizeLabel,
 }: {
   segment: FrontDeskSegment;
   label: string;
@@ -601,8 +603,10 @@ function SegmentBar({
   onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   resizeHint?: string;
   resizeEndIndex?: number;
+  resizeStartIndex?: number;
+  resizeLabel?: string;
 }) {
-  const style = segmentTapeStyle(segment, shownDays, resizeEndIndex);
+  const style = segmentTapeStyle(segment, shownDays, resizeStartIndex, resizeEndIndex);
 
   const base =
     'relative z-10 mx-0.5 flex h-9 min-w-0 cursor-pointer items-center gap-1 self-center overflow-hidden rounded-full px-2.5 text-left text-xs font-medium ring-1 ring-card transition-[filter] hover:brightness-95';
@@ -656,6 +660,7 @@ function SegmentBar({
         <ArrowLeft weight="bold" className="size-3.5 shrink-0" aria-hidden="true" />
       ) : null}
       <span className="truncate">{segment.guestName}</span>
+      {resizeLabel ? <span className="shrink-0 text-[10px] opacity-80">{resizeLabel}</span> : null}
     </button>
   );
 }
@@ -667,9 +672,9 @@ function SegmentBar({
  * gap between a noon departure and a noon arrival instead of implying that a
  * room is occupied for every hour of both dates.
  */
-function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number, resizeEndIndex?: number): React.CSSProperties {
-  const startColumn = segment.start + 2;
-  const endColumn = Math.min(resizeEndIndex === undefined ? segment.start + segment.span + 1 : resizeEndIndex + 2, shownDays) + 2;
+function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number, resizeStartIndex?: number, resizeEndIndex?: number): React.CSSProperties {
+  const startColumn = (resizeStartIndex ?? segment.start) + 2;
+  const endColumn = Math.min(resizeEndIndex === undefined ? segment.start + segment.span + 1 : resizeEndIndex + 1, shownDays) + 2;
   const visibleDays = endColumn - startColumn;
   const continuesBefore = segment.kind === 'booking' && segment.continuesBefore;
   const continuesAfter = segment.kind === 'booking' && segment.continuesAfter;
@@ -729,14 +734,14 @@ function RoomRow({
   onDragCreate: (startIndex: number, endIndex: number) => void;
   movingReference: string | null;
   onDropBooking: (drag: BookingRoomDrag, targetRoomTypeId: string, targetRoomNumber: string) => void;
-  onResizeBooking: (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, newCheckOut: string) => void;
+  onResizeBooking: (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, newCheckIn: string, newCheckOut: string) => void;
 }) {
   const rowRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ pointerId: number; start: number } | null>(null);
   const [live, setLive] = React.useState<{ start: number; end: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
-  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number; currentEnd: number } | null>(null);
-  const [resizePreview, setResizePreview] = React.useState<{ segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number } | null>(null);
+  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; edge: 'start' | 'end'; startIndex: number; endIndex: number; currentStartIndex: number; currentEndIndex: number; moved: boolean; invalid: boolean } | null>(null);
+  const [resizePreview, setResizePreview] = React.useState<{ segment: Extract<FrontDeskSegment, { kind: 'booking' }>; startIndex: number; endIndex: number } | null>(null);
 
   const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
 
@@ -753,7 +758,13 @@ function RoomRow({
 
   function nightIndexAt(x: number, y: number): number | null {
     const cell = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-night-index]');
-    return cell ? Number(cell.dataset.nightIndex) : null;
+    if (cell) return Number(cell.dataset.nightIndex);
+    const underPointer = [...(rowRef.current?.querySelectorAll<HTMLElement>('[data-night-index]') ?? [])]
+      .find((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;
+      });
+    return underPointer ? Number(underPointer.dataset.nightIndex) : null;
   }
 
   /** Extends the live range from the drag's start toward `index`, stopping at the first occupied night either way. */
@@ -781,9 +792,27 @@ function RoomRow({
     const resize = resizeRef.current;
     if (resize?.pointerId === event.pointerId) {
       const index = nightIndexAt(event.clientX, event.clientY);
-      if (index !== null && index >= resize.endIndex && !room.segments.some((other) => other !== resize.segment && other.start < index + 1 && other.start + other.span > resize.endIndex)) {
-        resize.currentEnd = index;
-        setResizePreview({ segment: resize.segment, endIndex: index });
+      if (index !== null) {
+        const startIndex = resize.edge === 'start' ? index : resize.startIndex;
+        const endIndex = resize.edge === 'end' ? index + 1 : resize.endIndex;
+        const rangeValid = startIndex < endIndex && endIndex - startIndex >= 1;
+        const addedStart = Math.min(startIndex, resize.segment.start);
+        const addedEnd = Math.max(endIndex, resize.segment.start + resize.segment.span);
+        const overlaps = room.segments.some((other) => other !== resize.segment && other.start < addedEnd && other.start + other.span > addedStart);
+        const beforeToday = resize.edge === 'start' && startIndex < resize.segment.start && dates[startIndex]! < today;
+        if (rangeValid && !overlaps && !beforeToday) {
+          resize.invalid = false;
+          resize.currentStartIndex = startIndex;
+          resize.currentEndIndex = endIndex;
+          resize.moved ||= startIndex !== resize.startIndex || endIndex !== resize.endIndex;
+          setResizePreview({ segment: resize.segment, startIndex, endIndex });
+        } else {
+          resize.invalid = true;
+          setResizePreview(null);
+        }
+      } else {
+        resize.invalid = true;
+        setResizePreview(null);
       }
       return;
     }
@@ -797,10 +826,13 @@ function RoomRow({
     if (resize?.pointerId === event.pointerId) {
       resizeRef.current = null;
       rowRef.current?.releasePointerCapture(event.pointerId);
-      const index = nightIndexAt(event.clientX, event.clientY) ?? resize.currentEnd;
+      const startIndex = resize.currentStartIndex;
+      const endIndex = resize.currentEndIndex;
       setResizePreview(null);
-      if (index >= resize.endIndex && !room.segments.some((other) => other !== resize.segment && other.start < index + 1 && other.start + other.span > resize.endIndex)) {
-        onResizeBooking(resize.segment, addIsoDays(dates[index]!, 1));
+      if (event.type === 'pointerup' && resize.moved && !resize.invalid) {
+        const newCheckIn = dates[startIndex] ?? resize.segment.checkIn;
+        const newCheckOut = dates[endIndex] ?? addIsoDays(dates.at(-1)!, 1);
+        onResizeBooking(resize.segment, newCheckIn, newCheckOut);
       }
       return;
     }
@@ -814,11 +846,14 @@ function RoomRow({
 
   function startBookingResize(event: React.PointerEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    if (event.button !== 0 || event.pointerType !== 'mouse' || event.clientX < rect.right - 14 || segment.continuesAfter || movingReference) return;
+    if (event.button !== 0 || event.pointerType !== 'mouse' || movingReference || segment.status !== 'confirmed' || segment.roomTo <= today || segment.stayState === 'checked_out' || segment.checkIn < today) return;
+    const edge = event.clientX <= rect.left + 14 ? 'start' : event.clientX >= rect.right - 14 ? 'end' : null;
+    if (!edge || (edge === 'start' && segment.continuesBefore) || (edge === 'end' && segment.continuesAfter)) return;
     event.preventDefault(); event.stopPropagation();
+    const startIndex = segment.start;
     const endIndex = segment.start + segment.span;
-    resizeRef.current = { pointerId: event.pointerId, segment, endIndex, currentEnd: endIndex - 1 };
-    setResizePreview({ segment, endIndex: endIndex - 1 });
+    resizeRef.current = { pointerId: event.pointerId, segment, edge, startIndex, endIndex, currentStartIndex: startIndex, currentEndIndex: endIndex, moved: false, invalid: false };
+    setResizePreview({ segment, startIndex, endIndex });
     rowRef.current?.setPointerCapture(event.pointerId);
   }
 
@@ -920,9 +955,10 @@ function RoomRow({
           onPointerDown={segment.kind === 'booking' ? (event) => startBookingResize(event, segment) : undefined}
           resizeHint={t('frontDesk.resizeHint')}
           resizeEndIndex={resizePreview?.segment === segment ? resizePreview.endIndex : undefined}
+          resizeStartIndex={resizePreview?.segment === segment ? resizePreview.startIndex : undefined}
+          resizeLabel={resizePreview?.segment === segment ? t('frontDesk.resizePreview', { change: `${resizePreview.endIndex - resizePreview.startIndex - segment.span > 0 ? '+' : ''}${resizePreview.endIndex - resizePreview.startIndex - segment.span}` }) : undefined}
         />
       ))}
-      {resizePreview ? <div aria-hidden="true" className="pointer-events-none relative z-10 mx-0.5 flex h-9 items-center self-center overflow-hidden rounded-full border-2 border-dashed border-accent bg-accent-soft/75 px-2.5 text-xs font-medium text-accent-strong" style={{ gridColumn: `${resizePreview.segment.start + 2} / ${Math.min(resizePreview.endIndex + 2, dates.length + 1)}`, gridRow: 1 }}><span className="truncate">{t('frontDesk.resizePreview', { nights: Math.max(1, resizePreview.endIndex - (resizePreview.segment.start + resizePreview.segment.span) + 1) })}</span></div> : null}
       {live ? (
         <div
           aria-hidden="true"
