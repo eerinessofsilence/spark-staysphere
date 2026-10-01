@@ -624,11 +624,6 @@ function SegmentBar({
   }
 
   const status = stayStatus(segment.checkIn, segment.checkOut, today, segment.kind === 'booking' ? segment.stayState : undefined);
-  const lastName = segment.guestName.split(' ').at(-1) ?? segment.guestName;
-  const initials = segment.guestName
-    .split(' ')
-    .map((part) => part[0])
-    .join('');
   const continuesBefore = segment.kind === 'booking' && segment.continuesBefore;
   const continuesAfter = segment.kind === 'booking' && segment.continuesAfter;
 
@@ -660,7 +655,7 @@ function SegmentBar({
       {segment.kind === 'booking' && segment.moveFromRoomNumber ? (
         <ArrowLeft weight="bold" className="size-3.5 shrink-0" aria-hidden="true" />
       ) : null}
-      <span className="truncate">{segment.span >= 2 ? lastName : initials}</span>
+      <span className="truncate">{segment.guestName}</span>
     </button>
   );
 }
