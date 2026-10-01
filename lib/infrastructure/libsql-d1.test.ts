@@ -93,6 +93,60 @@ describe('libSQL as D1', () => {
     expect(afterCancel.results.every((row) => row.held === 0)).toBe(true);
   });
 
+  it('extends and shortens a confirmed stay while keeping room assignments and holds in sync', async () => {
+    const db = fresh();
+    const booking = bookingSchema.parse({
+      id: 'dates-one', reference: 'DATES1', idempotencyKey: 'dates-one', hotelId: 'hotel-1',
+      roomTypeId: 'room-1', ratePlanId: 'rate-1', checkIn: '2026-12-10', checkOut: '2026-12-12',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', phone: '123456789' },
+      addOnIds: [], unitNumber: '101', total: 200, currency: 'EUR', status: 'confirmed',
+      createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    await bookings.saveBooking(db, booking, 2);
+    const extend = {
+      bookingId: booking.id, expectedCheckIn: booking.checkIn, expectedCheckOut: booking.checkOut,
+      expectedTotal: booking.total, roomTypeId: booking.roomTypeId, roomNumber: '101',
+      newCheckIn: '2026-12-10', newCheckOut: '2026-12-14', newTotal: 400, capacity: 2,
+      addedNights: ['2026-12-12', '2026-12-13'], releasedNights: [],
+      assignments: [{ roomTypeId: 'room-1', roomNumber: '101', fromDate: '2026-12-10', toDate: '2026-12-14' }],
+    };
+    expect(await bookings.changeBookingStayDates(db, extend)).toBe(true);
+    expect(await bookings.changeBookingStayDates(db, extend)).toBe(false);
+    expect(await bookings.getBookingByReference(db, booking.reference)).toMatchObject({
+      checkOut: '2026-12-14', total: 400, roomAssignments: extend.assignments,
+    });
+
+    const shorten = {
+      ...extend, expectedCheckOut: '2026-12-14', expectedTotal: 400,
+      newCheckOut: '2026-12-11', newTotal: 100,
+      addedNights: [], releasedNights: ['2026-12-11', '2026-12-12', '2026-12-13'],
+      assignments: [{ roomTypeId: 'room-1', roomNumber: '101', fromDate: '2026-12-10', toDate: '2026-12-11' }],
+    };
+    expect(await bookings.changeBookingStayDates(db, shorten)).toBe(true);
+    expect(await bookings.getBookingByReference(db, booking.reference)).toMatchObject({
+      checkOut: '2026-12-11', total: 100, roomAssignments: shorten.assignments,
+    });
+    const holds = await db.prepare('SELECT date, held FROM inventory_holds WHERE room_type_id = ? ORDER BY date')
+      .bind('room-1').all<{ date: string; held: number }>();
+    expect(holds.results).toEqual([
+      { date: '2026-12-10', held: 1 },
+      { date: '2026-12-11', held: 0 },
+      { date: '2026-12-12', held: 0 },
+      { date: '2026-12-13', held: 0 },
+    ]);
+
+    const extendArrival = {
+      ...shorten, expectedCheckOut: '2026-12-11', expectedTotal: 100,
+      newCheckIn: '2026-12-09', newTotal: 200,
+      addedNights: ['2026-12-09'], releasedNights: [],
+      assignments: [{ roomTypeId: 'room-1', roomNumber: '101', fromDate: '2026-12-09', toDate: '2026-12-11' }],
+    };
+    expect(await bookings.changeBookingStayDates(db, extendArrival)).toBe(true);
+    expect(await bookings.getBookingByReference(db, booking.reference)).toMatchObject({
+      checkIn: '2026-12-09', total: 200, roomAssignments: extendArrival.assignments,
+    });
+  });
+
   it('bootstraps the schema and round-trips a thread through the messaging store', async () => {
     const db = fresh();
     await ensureSchema(db);

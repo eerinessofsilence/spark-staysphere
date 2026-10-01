@@ -119,6 +119,7 @@ test('the front desk lays out every room and filters by room type', async ({ pag
 });
 
 test('a room the guest chose shows on that room in the front desk', async ({ page, request }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   const { reference, room, stay } = await bookFreeDeluxeRoom(request, testInfo.project.name);
 
   await page.goto(`/admin/front-desk?from=${stay.checkIn}&type=room_deluxe-sea`);
@@ -126,6 +127,7 @@ test('a room the guest chose shows on that room in the front desk', async ({ pag
     .getByRole('group', { name: `Room ${room}` })
     .getByRole('button', { name: new RegExp(`^Booking ${reference},.*room chosen by guest$`) });
   await expect(bar).toBeVisible();
+  await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
 
   const dialog = page.getByRole('dialog', { name: `Booking ${reference}` });
   await actUntil(
@@ -189,6 +191,48 @@ test('dragging a booking to another room type reviews and saves the new price', 
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('group', { name: `Room ${targetNumber}` })
     .getByRole('button', { name: new RegExp(`^Booking ${reference},`) })).toBeVisible();
+});
+
+test('resizing a confirmed booking previews the shorter stay before the price review', async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The room board uses desktop pointer gestures.');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  const { reference, room, stay } = await bookFreeDeluxeRoom(request, `${testInfo.project.name}-resize`);
+  await page.goto(`/admin/front-desk?from=${stay.checkIn}&days=6&type=room_deluxe-sea`);
+  const row = page.getByRole('group', { name: `Room ${room}` });
+  const bar = row.getByRole('button', { name: new RegExp(`^Booking ${reference},`) });
+  await expect(bar).toBeVisible();
+  await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
+  const barBox = (await bar.boundingBox())!;
+  const secondNight = (await row.locator('[data-night-index="1"]').boundingBox())!;
+  const y = barBox.y + barBox.height / 2;
+  await page.mouse.move(barBox.x + barBox.width - 3, y);
+  await page.mouse.down();
+  await page.mouse.move(secondNight.x + secondNight.width / 2, y, { steps: 8 });
+  await expect(bar).toContainText('-1');
+  const dialog = page.getByRole('dialog', { name: 'Review date change' });
+  await expect(dialog).toBeHidden();
+  await page.mouse.up();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Previous booking price')).toBeVisible();
+  await expect(dialog.getByText('New booking price')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Confirm new dates and price' }).click();
+  await expect(dialog).toBeHidden();
+  const updatedBar = row.getByRole('button', { name: new RegExp(`^Booking ${reference},`) });
+  await expect(updatedBar).toBeVisible();
+  await expect.poll(async () => (await updatedBar.boundingBox())?.width ?? 0).toBeLessThan(barBox.width - 10);
+
+  const updatedBox = (await updatedBar.boundingBox())!;
+  const nextNight = (await row.locator('[data-night-index="1"]').boundingBox())!;
+  const updatedY = updatedBox.y + updatedBox.height / 2;
+  await page.mouse.move(updatedBox.x + 3, updatedY);
+  await page.mouse.down();
+  await page.mouse.move(nextNight.x + nextNight.width / 2, updatedY, { steps: 8 });
+  await expect(updatedBar).toContainText('-1');
+  await expect(dialog).toBeHidden();
+  await page.mouse.up();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Confirm new dates and price' }).click();
+  await expect(dialog).toBeHidden();
 });
 
 test('a guest picks a room on the floor plan, books it, and the back office sees that room', async ({

@@ -133,6 +133,8 @@ function segmentLabel(
 }
 
 export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontDeskGridProps) {
+  const [interactive, setInteractive] = React.useState(false);
+  React.useEffect(() => setInteractive(true), []);
   const t = useAdminT();
   const locale = useAdminLocale();
   const router = useRouter();
@@ -307,7 +309,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
 
   return (
     <>
-      <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
+      <div data-front-desk-interactive={interactive ? 'true' : undefined} className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
         <div style={{ minWidth }} className="text-sm">
           <div className="grid border-b border-border" style={{ gridTemplateColumns: columns }}>
             <div className="sticky left-0 z-20 flex items-end bg-card px-4 py-3 text-xs text-muted-foreground">
@@ -448,6 +450,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                   columns={columns}
                   weekends={weekends}
                   today={today}
+                  interactive={interactive}
                   t={t}
                   locale={locale}
                   onSelectSegment={(segment) => select(segment, room, group)}
@@ -714,6 +717,7 @@ function RoomRow({
   columns,
   weekends,
   today,
+  interactive,
   t,
   locale,
   onSelectSegment,
@@ -728,6 +732,7 @@ function RoomRow({
   columns: string;
   weekends: Set<number>;
   today: string;
+  interactive: boolean;
   t: AdminT;
   locale: AdminLocale;
   onSelectSegment: (segment: FrontDeskSegment) => void;
@@ -740,7 +745,7 @@ function RoomRow({
   const dragRef = React.useRef<{ pointerId: number; start: number } | null>(null);
   const [live, setLive] = React.useState<{ start: number; end: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
-  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; edge: 'start' | 'end'; startIndex: number; endIndex: number; currentStartIndex: number; currentEndIndex: number; moved: boolean; invalid: boolean } | null>(null);
+  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; edge: 'start' | 'end'; startIndex: number; endIndex: number; currentStartIndex: number; currentEndIndex: number; invalid: boolean } | null>(null);
   const [resizePreview, setResizePreview] = React.useState<{ segment: Extract<FrontDeskSegment, { kind: 'booking' }>; startIndex: number; endIndex: number } | null>(null);
 
   const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
@@ -804,7 +809,6 @@ function RoomRow({
           resize.invalid = false;
           resize.currentStartIndex = startIndex;
           resize.currentEndIndex = endIndex;
-          resize.moved ||= startIndex !== resize.startIndex || endIndex !== resize.endIndex;
           setResizePreview({ segment: resize.segment, startIndex, endIndex });
         } else {
           resize.invalid = true;
@@ -829,7 +833,8 @@ function RoomRow({
       const startIndex = resize.currentStartIndex;
       const endIndex = resize.currentEndIndex;
       setResizePreview(null);
-      if (event.type === 'pointerup' && resize.moved && !resize.invalid) {
+      if (event.type === 'pointerup' && !resize.invalid &&
+        (startIndex !== resize.startIndex || endIndex !== resize.endIndex)) {
         const newCheckIn = dates[startIndex] ?? resize.segment.checkIn;
         const newCheckOut = dates[endIndex] ?? addIsoDays(dates.at(-1)!, 1);
         onResizeBooking(resize.segment, newCheckIn, newCheckOut);
@@ -841,7 +846,7 @@ function RoomRow({
     rowRef.current?.releasePointerCapture(event.pointerId);
     const range = live;
     setLive(null);
-    if (range) onDragCreate(range.start, range.end);
+    if (event.type === 'pointerup' && range) onDragCreate(range.start, range.end);
   }
 
   function startBookingResize(event: React.PointerEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
@@ -853,13 +858,13 @@ function RoomRow({
     event.preventDefault(); event.stopPropagation();
     const startIndex = segment.start;
     const endIndex = segment.start + segment.span;
-    resizeRef.current = { pointerId: event.pointerId, segment, edge, startIndex, endIndex, currentStartIndex: startIndex, currentEndIndex: endIndex, moved: false, invalid: false };
+    resizeRef.current = { pointerId: event.pointerId, segment, edge, startIndex, endIndex, currentStartIndex: startIndex, currentEndIndex: endIndex, invalid: false };
     setResizePreview({ segment, startIndex, endIndex });
     rowRef.current?.setPointerCapture(event.pointerId);
   }
 
   function startBookingDrag(event: React.DragEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
-    if (movingReference) {
+    if (movingReference || resizeRef.current?.segment === segment) {
       event.preventDefault();
       return;
     }
@@ -950,7 +955,7 @@ function RoomRow({
           today={today}
           shownDays={dates.length}
           onSelect={() => onSelectSegment(segment)}
-          draggable={segment.kind === 'booking' && segment.status === 'confirmed' && segment.roomTo > today && movingReference === null}
+          draggable={interactive && segment.kind === 'booking' && segment.status === 'confirmed' && segment.roomTo > today && movingReference === null && resizePreview?.segment !== segment}
           dragHint={t('frontDesk.dragToMove')}
           onDragStart={segment.kind === 'booking' ? (event) => startBookingDrag(event, segment) : undefined}
           onPointerDown={segment.kind === 'booking' ? (event) => startBookingResize(event, segment) : undefined}

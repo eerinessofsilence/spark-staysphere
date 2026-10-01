@@ -170,7 +170,7 @@ export async function transferBookingRoomType(
       input.bookingId, input.expectedRoomTypeId, input.expectedTotal, input.checkOut,
       input.sourceRoomNumber, input.fromDate, input.fromDate, input.sourceRoomTypeId,
       JSON.stringify(movedNights), input.targetRoomTypeId, input.capacity,
-      input.bookingId, input.targetRoomNumber, input.checkOut, input.fromDate,
+      JSON.stringify(movedNights), input.bookingId, input.targetRoomNumber, input.checkOut, input.fromDate,
       input.targetRoomNumber, input.checkOut, input.fromDate,
     ),
     db.prepare('INSERT INTO booking_mutation_guards (id) SELECT ? WHERE changes() > 0').bind(guard),

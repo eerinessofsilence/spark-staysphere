@@ -135,6 +135,17 @@ the worker, forwards worker failures, and bounds recognition with a timeout.
 **Front-desk e2e cannot open Add booking.** The first-visit admin tour can intercept the click.
 Scanner tests mark `admin-tour.seen.v1` in their own browser context before navigation.
 
+**A front-desk drag appears to do nothing just after navigation.** The board is server-rendered before
+React attaches its pointer and drag handlers. Native `draggable` must stay disabled until the board
+sets `data-front-desk-interactive="true"`; browser tests should wait for that marker before gestures.
+When resizing a draggable booking, disable native dragging for the active pointer gesture so it
+cannot consume pointer moves intended for the resize preview.
+
+**A D1 booking mutation fails with `malformed JSON`.** Count every SQL placeholder against the
+arguments passed to `.bind()`, especially when the same `json_each(?)` input appears twice. A
+missing array argument can bind a booking ID as JSON and fail the entire batch. Exercise the real
+D1 statement through `lib/infrastructure/libsql-d1.test.ts` before relying on an in-memory mock.
+
 **Passport upload unavailable while CMS uploads work.** Identity documents use the separate
 `PRIVATE_DOCUMENTS` R2 binding (or a private Blob store on Vercel). The public MEDIA adapter is
 intentionally not a fallback. See `docs/GUEST_DOCUMENTS.md` for host configuration and retries.
