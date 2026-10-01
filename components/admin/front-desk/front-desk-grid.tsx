@@ -846,9 +846,10 @@ function RoomRow({
 
   function startBookingResize(event: React.PointerEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    if (event.button !== 0 || event.pointerType !== 'mouse' || movingReference || segment.status !== 'confirmed' || segment.roomTo <= today || segment.stayState === 'checked_out' || segment.checkIn < today) return;
+    if (event.button !== 0 || event.pointerType !== 'mouse' || movingReference || segment.status !== 'confirmed' || segment.roomTo <= today || segment.stayState === 'checked_out') return;
     const edge = event.clientX <= rect.left + 14 ? 'start' : event.clientX >= rect.right - 14 ? 'end' : null;
     if (!edge || (edge === 'start' && segment.continuesBefore) || (edge === 'end' && segment.continuesAfter)) return;
+    if (edge === 'start' && (segment.checkIn < today || segment.stayState === 'checked_in')) return;
     event.preventDefault(); event.stopPropagation();
     const startIndex = segment.start;
     const endIndex = segment.start + segment.span;

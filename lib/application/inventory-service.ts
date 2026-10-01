@@ -639,7 +639,8 @@ export class InventoryService {
     const today = new Date().toISOString().slice(0, 10);
     if (!booking || booking.status !== 'confirmed') return { ok: false, reason: 'not_found' };
     if ((newCheckIn === booking.checkIn && newCheckOut === booking.checkOut) || booking.checkOut < today ||
-      newCheckIn < today || newCheckIn >= newCheckOut) return { ok: false, reason: 'invalid_date' };
+      (newCheckIn !== booking.checkIn && newCheckIn < today) ||
+      (newCheckOut !== booking.checkOut && newCheckOut <= today) || newCheckIn >= newCheckOut) return { ok: false, reason: 'invalid_date' };
     const [rooms, physicalRooms, addOns] = await Promise.all([
       this.repository.listRooms(hotel.id), this.repository.listPhysicalRooms(hotel.id), this.repository.listAddOns(hotel.id),
     ]);
