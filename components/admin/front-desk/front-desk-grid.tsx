@@ -1068,6 +1068,7 @@ function SelectionDetail({
           canCancel={canCancel}
           cancelBlockedReason={cancelBlockedReason}
           onChanged={onStayStateChanged}
+          showLabel
         />
       ) : null}
     </div>

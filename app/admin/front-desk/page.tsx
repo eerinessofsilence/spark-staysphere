@@ -16,6 +16,7 @@ import { FrontDeskMobileFilters } from '@/components/admin/front-desk/front-desk
 import { frontDeskHref, DEFAULT_WINDOW, MAX_CUSTOM_WINDOW, WINDOW_OPTIONS } from '@/components/admin/front-desk/front-desk-shared';
 import { DateNavArrows, WindowSizePills } from '@/components/admin/operations/date-window-toolbar';
 import { RoomTypeSelect } from '@/components/admin/front-desk/room-type-select';
+import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -63,6 +64,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
         actions={
           <>
             {canAddProperty ? <AddRoomTypeButton roomTypes={roomTypes} /> : null}
+            <SampleBookingsButton />
             <AddBookingButton roomTypes={bookableRoomTypes} today={today} />
           </>
         }

@@ -30,6 +30,7 @@ export function StayStateMenu({
   cancelBlockedReason,
   onChanged,
   size = 'default',
+  showLabel = false,
 }: {
   reference: string;
   status: Booking['status'];
@@ -45,6 +46,8 @@ export function StayStateMenu({
    * a chevron the lists use.
    */
   size?: 'default' | 'large';
+  /** Use on a booking detail card, where the control should state its purpose as well as its current value. */
+  showLabel?: boolean;
 }) {
   const router = useRouter();
   const t = useAdminT();
@@ -74,8 +77,12 @@ export function StayStateMenu({
         <Menu.Trigger
           disabled={pending}
           aria-label={t('stay.change')}
-          className="inline-flex cursor-pointer items-center rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60"
+          className={cn(
+            'inline-flex cursor-pointer items-center rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60',
+            showLabel && 'gap-2 border border-border bg-card px-2.5 py-1.5 text-sm font-medium shadow-soft',
+          )}
         >
+          {showLabel ? <span>{t('stay.change')}</span> : null}
           <BookingStatusBadge
             status={status}
             stayState={stayState}
