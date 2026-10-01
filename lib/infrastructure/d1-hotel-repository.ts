@@ -15,6 +15,7 @@ import {
 } from '../domain/schemas';
 import { nightsInRange, resolveRemaining, statusForRemaining } from '../domain/availability';
 import { ensureSchema } from './d1-schema';
+import type { BookingStore } from '../domain/ports';
 
 /**
  * D1-backed reads and writes for the durable slice of demo state: bookings,
@@ -127,6 +128,82 @@ export async function saveBookingRoomAssignments(
   return (result.meta.changes ?? 0) > 0;
 }
 
+export async function transferBookingRoomType(
+  db: D1Database,
+  input: Parameters<BookingStore['transferBookingRoomType']>[0],
+): Promise<boolean> {
+  await ensureSchema(db);
+  const movedNights = Object.values(input.oldNightsByType).flat();
+  if (movedNights.length === 0) return false;
+  const guard = crypto.randomUUID();
+  const statements = [
+    db.prepare(
+      `UPDATE bookings SET room_type_id = ?, rate_plan_id = ?, total = ?
+       WHERE id = ? AND room_type_id = ? AND total = ? AND status = 'confirmed' AND check_out = ?
+       AND (NOT EXISTS (SELECT 1 FROM booking_room_assignments WHERE booking_id = bookings.id)
+         OR EXISTS (SELECT 1 FROM booking_room_assignments a, json_each(a.assignments) period
+           WHERE a.booking_id = bookings.id
+             AND json_extract(period.value, '$.roomNumber') = ?
+             AND json_extract(period.value, '$.fromDate') <= ?
+             AND json_extract(period.value, '$.toDate') > ?
+             AND COALESCE(json_extract(period.value, '$.roomTypeId'), bookings.room_type_id) = ?))
+       AND NOT EXISTS (
+         SELECT 1 FROM json_each(?) nights
+         LEFT JOIN inventory_holds h ON h.room_type_id = ? AND h.date = nights.value
+         WHERE COALESCE(h.held, 0) >= ?
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM bookings occupied
+         LEFT JOIN booking_units u ON u.booking_id = occupied.id
+         LEFT JOIN booking_room_assignments a ON a.booking_id = occupied.id
+         WHERE occupied.id <> ? AND occupied.hotel_id = bookings.hotel_id AND occupied.status = 'confirmed'
+           AND ((a.assignments IS NOT NULL AND EXISTS (
+             SELECT 1 FROM json_each(a.assignments) period
+             WHERE json_extract(period.value, '$.roomNumber') = ?
+               AND json_extract(period.value, '$.fromDate') < ?
+               AND json_extract(period.value, '$.toDate') > ?
+           )) OR (a.assignments IS NULL AND u.unit_number = ?
+             AND occupied.check_in < ? AND occupied.check_out > ?))
+       )`,
+    ).bind(
+      input.targetRoomTypeId, input.targetRatePlanId, input.newTotal,
+      input.bookingId, input.expectedRoomTypeId, input.expectedTotal, input.checkOut,
+      input.sourceRoomNumber, input.fromDate, input.fromDate, input.sourceRoomTypeId,
+      JSON.stringify(movedNights), input.targetRoomTypeId, input.capacity,
+      input.bookingId, input.targetRoomNumber, input.checkOut, input.fromDate,
+      input.targetRoomNumber, input.checkOut, input.fromDate,
+    ),
+    db.prepare('INSERT INTO booking_mutation_guards (id) SELECT ? WHERE changes() > 0').bind(guard),
+  ];
+  for (const [typeId, nights] of Object.entries(input.oldNightsByType)) {
+    statements.push(db.prepare(
+      `UPDATE inventory_holds SET held = MAX(held - 1, 0)
+       WHERE room_type_id = ? AND date IN (SELECT value FROM json_each(?))
+         AND EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)`,
+    ).bind(typeId, JSON.stringify(nights), guard));
+  }
+  statements.push(
+    db.prepare(
+      `INSERT INTO inventory_holds (room_type_id, date, held)
+       SELECT ?, value, 1 FROM json_each(?)
+       WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (room_type_id, date) DO UPDATE SET held = held + 1`,
+    ).bind(input.targetRoomTypeId, JSON.stringify(movedNights), guard),
+    db.prepare(
+      `INSERT INTO booking_units (booking_id, unit_number)
+       SELECT ?, ? WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (booking_id) DO UPDATE SET unit_number = excluded.unit_number`,
+    ).bind(input.bookingId, input.targetRoomNumber, guard),
+    db.prepare(
+      `INSERT INTO booking_room_assignments (booking_id, assignments)
+       SELECT ?, ? WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (booking_id) DO UPDATE SET assignments = excluded.assignments`,
+    ).bind(input.bookingId, JSON.stringify(input.assignments), guard),
+  );
+  const result = await db.batch(statements);
+  return (result[0]?.meta.changes ?? 0) > 0;
+}
+
 export async function findBookingByIdempotencyKey(
   db: D1Database,
   key: string,
@@ -154,11 +231,9 @@ export async function getBookingByReference(
 /**
  * Cancels a booking and credits back the nights it was holding.
  *
- * The `status <> 'cancelled'` guard on the UPDATE is what makes the credit
- * safe: two callers racing the same cancellation both read a confirmed row,
- * but only one of them changes it, and only that one touches inventory.
- * `MAX(held - 1, 0)` is the second belt — a hold row can never go negative
- * and start inventing rooms the property does not have.
+ * The update writes a unique guard only when this request changed the row.
+ * Every held room type's credit checks that guard in the same D1 batch.
+ * `MAX(held - 1, 0)` keeps a hold row nonnegative.
  */
 export async function cancelBooking(
   db: D1Database,
@@ -169,29 +244,33 @@ export async function cancelBooking(
   if (!existing) return null;
   if (existing.status === 'cancelled') return existing;
 
-  const nights = existing.status === 'confirmed' ? nightsInRange(existing.checkIn, existing.checkOut) : [];
+  const nightsByType = new Map<string, string[]>();
+  if (existing.status === 'confirmed') {
+    for (const night of nightsInRange(existing.checkIn, existing.checkOut)) {
+      const typeId = existing.roomAssignments?.find((period) => period.fromDate <= night && night < period.toDate)?.roomTypeId
+        ?? existing.roomTypeId;
+      nightsByType.set(typeId, [...(nightsByType.get(typeId) ?? []), night]);
+    }
+  }
 
-  // One batch (one implicit D1 transaction), not two round trips: a crash
-  // between "cancel the booking" and "credit back the nights" must not be
-  // possible. `changes()` reports the row count of the immediately preceding
-  // statement in this same batch/connection, so the credit only fires when
-  // *this* statement actually flipped the booking to cancelled — never when
-  // a concurrent cancel already won the race (its UPDATE affects 0 rows here)
-  // and never on an already-cancelled booking (guarded above).
+  // The guard captures the UPDATE's changes() once, then every room type's
+  // credit can check it without relying on changes() after other statements.
+  const guard = crypto.randomUUID();
   const statements = [
     db
       .prepare("UPDATE bookings SET status = 'cancelled' WHERE reference = ? AND status <> 'cancelled'")
       .bind(reference),
+    db.prepare('INSERT INTO booking_mutation_guards (id) SELECT ? WHERE changes() > 0').bind(guard),
   ];
-  if (nights.length > 0) {
-    const placeholders = nights.map(() => '(?)').join(', ');
+  for (const [typeId, nights] of nightsByType) {
     statements.push(
       db
         .prepare(
           `UPDATE inventory_holds SET held = MAX(held - 1, 0)
-           WHERE changes() > 0 AND room_type_id = ? AND date IN (SELECT column1 FROM (VALUES ${placeholders}))`,
+           WHERE room_type_id = ? AND date IN (SELECT value FROM json_each(?))
+             AND EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)`,
         )
-        .bind(existing.roomTypeId, ...nights),
+        .bind(typeId, JSON.stringify(nights), guard),
     );
   }
   await db.batch(statements);
@@ -230,14 +309,26 @@ export async function saveBooking(db: D1Database, booking: Booking, inventoryCap
 
   const nights = booking.status === 'confirmed' ? nightsInRange(booking.checkIn, booking.checkOut) : [];
   const roomUnitCollision = booking.unitNumber
-    ? `AND NOT EXISTS (SELECT 1 FROM booking_units u JOIN bookings occupied ON occupied.id = u.booking_id WHERE occupied.hotel_id = ? AND u.unit_number = ? AND occupied.status = 'confirmed' AND occupied.check_in < ? AND occupied.check_out > ?)`
+    ? `AND NOT EXISTS (
+         SELECT 1 FROM bookings occupied
+         LEFT JOIN booking_units u ON u.booking_id = occupied.id
+         LEFT JOIN booking_room_assignments a ON a.booking_id = occupied.id
+         WHERE occupied.hotel_id = ? AND occupied.status = 'confirmed'
+           AND ((a.assignments IS NOT NULL AND EXISTS (
+             SELECT 1 FROM json_each(a.assignments) period
+             WHERE json_extract(period.value, '$.roomNumber') = ?
+               AND json_extract(period.value, '$.fromDate') < ?
+               AND json_extract(period.value, '$.toDate') > ?
+           )) OR (a.assignments IS NULL AND u.unit_number = ?
+             AND occupied.check_in < ? AND occupied.check_out > ?))
+       )`
     : '';
   const insertSelect = inventoryCapacity !== undefined && nights.length
     ? `SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${nights.map(() => `(COALESCE((SELECT held FROM inventory_holds WHERE room_type_id = ? AND date = ?), 0) < ?)`).join(' AND ')} ${roomUnitCollision}`
     : `SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? ${roomUnitCollision}`;
   const insertBindings = inventoryCapacity !== undefined && nights.length
-    ? [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...nights.flatMap((night) => [booking.roomTypeId, night, Math.max(0, Math.floor(inventoryCapacity))]), ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn] : [])]
-    : [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn] : [])];
+    ? [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...nights.flatMap((night) => [booking.roomTypeId, night, Math.max(0, Math.floor(inventoryCapacity))]), ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn, booking.unitNumber, booking.checkOut, booking.checkIn] : [])]
+    : [booking.id, booking.reference, booking.idempotencyKey, booking.hotelId, booking.roomTypeId, booking.ratePlanId, booking.checkIn, booking.checkOut, booking.adults, booking.children, booking.guest.firstName, booking.guest.lastName, booking.guest.email, booking.guest.phone, JSON.stringify(booking.addOnIds), booking.total, booking.currency, booking.status, booking.createdAt, ...(booking.unitNumber ? [booking.hotelId, booking.unitNumber, booking.checkOut, booking.checkIn, booking.unitNumber, booking.checkOut, booking.checkIn] : [])];
   const statements = [
     db
       .prepare(
@@ -407,6 +498,7 @@ export async function reset(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM payment_attempts'),
     db.prepare('DELETE FROM room_status_overrides'),
     db.prepare('DELETE FROM inventory_holds'),
+    db.prepare('DELETE FROM booking_mutation_guards'),
     db.prepare('DELETE FROM booking_units'),
     db.prepare('DELETE FROM booking_room_assignments'),
     db.prepare('DELETE FROM booking_groups'),

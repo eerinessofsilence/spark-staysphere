@@ -90,8 +90,11 @@ export const mockHotelRepository: HotelRepository = {
       const conflict = nightsInRange(booking.checkIn, booking.checkOut).some((date) =>
         (demoHolds.get(`${booking.roomTypeId}|${date}`) ?? 0) >= inventoryCapacity,
       ) || Boolean(booking.unitNumber && [...bookingsByReference.values()].some((existing) =>
-        existing.status === 'confirmed' && existing.hotelId === booking.hotelId && existing.unitNumber === booking.unitNumber &&
-        existing.checkIn < booking.checkOut && existing.checkOut > booking.checkIn,
+        existing.status === 'confirmed' && existing.hotelId === booking.hotelId &&
+        (existing.roomAssignments?.length
+          ? existing.roomAssignments.some((period) => period.roomNumber === booking.unitNumber &&
+              period.fromDate < booking.checkOut && period.toDate > booking.checkIn)
+          : existing.unitNumber === booking.unitNumber && existing.checkIn < booking.checkOut && existing.checkOut > booking.checkIn),
       ));
       if (conflict) {
         const error = new Error('Room inventory changed before confirmation.');
@@ -103,7 +106,9 @@ export const mockHotelRepository: HotelRepository = {
     bookingsByReference.set(booking.reference, booking);
     if (booking.status === 'confirmed') {
       for (const date of nightsInRange(booking.checkIn, booking.checkOut)) {
-        const key = `${booking.roomTypeId}|${date}`;
+        const typeId = booking.roomAssignments?.find((period) => period.fromDate <= date && date < period.toDate)?.roomTypeId
+          ?? booking.roomTypeId;
+        const key = `${typeId}|${date}`;
         demoHolds.set(key, (demoHolds.get(key) ?? 0) + 1);
       }
     }
@@ -124,7 +129,9 @@ export const mockHotelRepository: HotelRepository = {
     // Only a confirmed booking ever took a night out of inventory.
     if (booking.status === 'confirmed') {
       for (const date of nightsInRange(booking.checkIn, booking.checkOut)) {
-        const key = `${booking.roomTypeId}|${date}`;
+        const typeId = booking.roomAssignments?.find((period) => period.fromDate <= date && date < period.toDate)?.roomTypeId
+          ?? booking.roomTypeId;
+        const key = `${typeId}|${date}`;
         demoHolds.set(key, Math.max(0, (demoHolds.get(key) ?? 0) - 1));
       }
     }
@@ -142,6 +149,47 @@ export const mockHotelRepository: HotelRepository = {
     const booking = [...bookingsByReference.values()].find((candidate) => candidate.id === bookingId);
     if (!booking) return false;
     const updated: Booking = { ...booking, roomAssignments: assignments };
+    bookingsByReference.set(updated.reference, updated);
+    bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
+    return true;
+  },
+  async transferBookingRoomType(input) {
+    const booking = [...bookingsByReference.values()].find((item) => item.id === input.bookingId);
+    if (!booking || booking.status !== 'confirmed' || booking.roomTypeId !== input.expectedRoomTypeId ||
+      booking.total !== input.expectedTotal || booking.checkOut !== input.checkOut) return false;
+    if (booking.roomAssignments?.length && !booking.roomAssignments.some((period) =>
+      period.roomNumber === input.sourceRoomNumber &&
+      (period.roomTypeId ?? booking.roomTypeId) === input.sourceRoomTypeId &&
+      period.fromDate <= input.fromDate && input.fromDate < period.toDate)) return false;
+    const movedNights = Object.values(input.oldNightsByType).flat();
+    if (movedNights.length === 0 || movedNights.some((night) =>
+      (demoHolds.get(`${input.targetRoomTypeId}|${night}`) ?? 0) >= input.capacity,
+    )) return false;
+    const occupied = [...bookingsByReference.values()].some((item) => item.id !== booking.id &&
+      item.hotelId === booking.hotelId && item.status === 'confirmed' &&
+      (item.roomAssignments?.length
+        ? item.roomAssignments.some((period) => period.roomNumber === input.targetRoomNumber &&
+            period.fromDate < input.checkOut && period.toDate > input.fromDate)
+        : item.unitNumber === input.targetRoomNumber && item.checkIn < input.checkOut && item.checkOut > input.fromDate));
+    if (occupied) return false;
+    for (const [typeId, nights] of Object.entries(input.oldNightsByType)) {
+      for (const night of nights) {
+        const key = `${typeId}|${night}`;
+        demoHolds.set(key, Math.max(0, (demoHolds.get(key) ?? 0) - 1));
+      }
+    }
+    for (const night of movedNights) {
+      const key = `${input.targetRoomTypeId}|${night}`;
+      demoHolds.set(key, (demoHolds.get(key) ?? 0) + 1);
+    }
+    const updated: Booking = {
+      ...booking,
+      roomTypeId: input.targetRoomTypeId,
+      ratePlanId: input.targetRatePlanId,
+      total: input.newTotal,
+      unitNumber: input.targetRoomNumber,
+      roomAssignments: input.assignments,
+    };
     bookingsByReference.set(updated.reference, updated);
     bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
     return true;

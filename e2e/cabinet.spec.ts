@@ -136,6 +136,60 @@ test('a room the guest chose shows on that room in the front desk', async ({ pag
   await expect(dialog.getByText('Room rate', { exact: true })).toBeVisible();
 });
 
+test('dragging a booking to another room type reviews and saves the new price', async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The room board uses native desktop drag and drop.');
+  let booked: { reference: string; room: string; stay: Stay } | null = null;
+  for (let day = offset; day < offset + 30 && !booked; day += 1) {
+    const stay = { checkIn: isoDaysFromNow(day), checkOut: isoDaysFromNow(day + 1), adults: 2, children: 0 };
+    for (const room of ['401', '402', '403', '404', '405', '406', '407', '408']) {
+      const response = await bookDeluxeRoom(request, stay, room, `type-move-${testInfo.project.name}-${Date.now()}-${room}`);
+      if (response.status() === 409) continue;
+      expect(response.status(), await response.text()).toBe(201);
+      const { booking } = await response.json();
+      booked = { reference: booking.reference as string, room, stay };
+      break;
+    }
+  }
+  expect(booked, 'A one-night Deluxe room should be available').not.toBeNull();
+  const { reference, room, stay } = booked!;
+  await page.goto(`/admin/front-desk?from=${stay.checkIn}&days=1`);
+  const source = page.getByRole('group', { name: `Room ${room}` })
+    .getByRole('button', { name: new RegExp(`^Booking ${reference},`) });
+  await expect(source).toBeVisible();
+
+  let target: Locator | null = null;
+  let targetNumber = '';
+  for (let number = 301; number <= 310; number += 1) {
+    const row = page.getByRole('group', { name: `Room ${number}` });
+    if (await row.locator('[data-night-index][title]').count() === 1) {
+      target = row;
+      targetNumber = String(number);
+      break;
+    }
+  }
+  expect(target, 'A Sea View room should be free for the whole stay').not.toBeNull();
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+  await expect(source).toHaveAttribute('draggable', 'true');
+  await expect(async () => {
+    await source.dispatchEvent('dragstart', { dataTransfer });
+    expect(await dataTransfer.evaluate((value) => (value as DataTransfer).types)).toContain('application/x-staysphere-booking-room');
+  }).toPass({ timeout: 10_000 });
+  await target!.dispatchEvent('dragover', { dataTransfer });
+  await target!.dispatchEvent('drop', { dataTransfer });
+  const dialog = page.getByRole('dialog', { name: 'Review room type move' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Previous booking price')).toBeVisible();
+  await expect(dialog.getByText('New booking price')).toBeVisible();
+  await expect(dialog.getByText('Price difference')).toBeVisible();
+  const previousPrice = await dialog.getByText('Previous booking price').locator('..').locator('strong').innerText();
+  const newPrice = await dialog.getByText('New booking price').locator('..').locator('strong').innerText();
+  expect(newPrice).not.toBe(previousPrice);
+  await dialog.getByRole('button', { name: 'Confirm move and new price' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('group', { name: `Room ${targetNumber}` })
+    .getByRole('button', { name: new RegExp(`^Booking ${reference},`) })).toBeVisible();
+});
+
 test('a guest picks a room on the floor plan, books it, and the back office sees that room', async ({
   page,
 }) => {

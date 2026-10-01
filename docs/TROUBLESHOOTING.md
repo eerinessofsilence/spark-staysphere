@@ -6,6 +6,8 @@ before you hit any of them.
 
 ## Local dev
 
+**The full e2e suite clicks “Reset seed data”.** Run it only against an isolated test server and state. Pointing `PLAYWRIGHT_PORT` at a developer's active site can change its bookings and CMS data; the suite's reset helper currently checks the button transition, not whether reset succeeded. A targeted spec that does not reset data can run against the active preview when necessary.
+
 **A running `vinext dev` keeps Vite's dependency pre-bundle.** After adding or removing an npm
 package, the server 500s on the stale entry until restarted. Restart it.
 

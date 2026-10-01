@@ -25,6 +25,7 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_payment_attempts_booking ON payment_attempts (booking_id)`,
   `CREATE TABLE IF NOT EXISTS room_status_overrides (room_type_id TEXT PRIMARY KEY, status TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS inventory_holds (room_type_id TEXT NOT NULL, date TEXT NOT NULL, held INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (room_type_id, date))`,
+  `CREATE TABLE IF NOT EXISTS booking_mutation_guards (id TEXT PRIMARY KEY)`,
   `CREATE TABLE IF NOT EXISTS catalog_entries (kind TEXT NOT NULL, id TEXT NOT NULL, hotel_id TEXT NOT NULL, data TEXT NOT NULL, version INTEGER NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (kind, id))`,
   `CREATE INDEX IF NOT EXISTS idx_catalog_entries_hotel ON catalog_entries (hotel_id, kind)`,
   `CREATE TABLE IF NOT EXISTS booking_units (booking_id TEXT PRIMARY KEY, unit_number TEXT NOT NULL)`,

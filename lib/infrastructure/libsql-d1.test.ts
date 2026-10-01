@@ -51,6 +51,48 @@ describe('libSQL as D1', () => {
     expect(outcomes.filter((item) => item.status === 'rejected')).toHaveLength(1);
   });
 
+  it('moves only remaining nights to a new room type and releases both holds on cancellation', async () => {
+    const db = fresh();
+    const booking = bookingSchema.parse({
+      id: 'move-one', reference: 'MOVE01', idempotencyKey: 'move-one', hotelId: 'hotel-1',
+      roomTypeId: 'room-old', ratePlanId: 'rate-old', checkIn: '2026-12-10', checkOut: '2026-12-13',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', phone: '123456789' },
+      addOnIds: [], unitNumber: '101', total: 300, currency: 'EUR', status: 'confirmed',
+      createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    await bookings.saveBooking(db, booking, 2);
+    const input = {
+      bookingId: booking.id, expectedRoomTypeId: booking.roomTypeId, expectedTotal: booking.total,
+      sourceRoomTypeId: 'room-old', sourceRoomNumber: '101',
+      targetRoomTypeId: 'room-new', targetRatePlanId: 'rate-new', targetRoomNumber: '201',
+      newTotal: 380, capacity: 2, fromDate: '2026-12-11', checkOut: booking.checkOut,
+      oldNightsByType: { 'room-old': ['2026-12-11', '2026-12-12'] },
+      assignments: [
+        { roomTypeId: 'room-old', roomNumber: '101', fromDate: '2026-12-10', toDate: '2026-12-11' },
+        { roomTypeId: 'room-new', roomNumber: '201', fromDate: '2026-12-11', toDate: '2026-12-13' },
+      ],
+    };
+    expect(await bookings.transferBookingRoomType(db, input)).toBe(true);
+    expect(await bookings.transferBookingRoomType(db, input)).toBe(false);
+    expect(await bookings.getBookingByReference(db, booking.reference)).toMatchObject({
+      roomTypeId: 'room-new', ratePlanId: 'rate-new', unitNumber: '201', total: 380,
+      roomAssignments: input.assignments,
+    });
+    const holds = await db.prepare('SELECT room_type_id, date, held FROM inventory_holds ORDER BY room_type_id, date').all<{ room_type_id: string; date: string; held: number }>();
+    expect(holds.results.filter((row) => row.held > 0)).toEqual([
+      { room_type_id: 'room-new', date: '2026-12-11', held: 1 },
+      { room_type_id: 'room-new', date: '2026-12-12', held: 1 },
+      { room_type_id: 'room-old', date: '2026-12-10', held: 1 },
+    ]);
+    await expect(bookings.saveBooking(db, bookingSchema.parse({
+      ...booking, id: 'other', reference: 'OTHER1', idempotencyKey: 'other',
+      checkOut: '2026-12-11', total: 100,
+    }), 2)).rejects.toMatchObject({ name: 'BookingInventoryConflictError' });
+    await bookings.cancelBooking(db, booking.reference);
+    const afterCancel = await db.prepare('SELECT held FROM inventory_holds').all<{ held: number }>();
+    expect(afterCancel.results.every((row) => row.held === 0)).toBe(true);
+  });
+
   it('bootstraps the schema and round-trips a thread through the messaging store', async () => {
     const db = fresh();
     await ensureSchema(db);

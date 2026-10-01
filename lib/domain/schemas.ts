@@ -372,6 +372,8 @@ export const stayStateSchema = z.enum(['booked', 'checked_in', 'checked_out', 'n
 /** One room assignment within a booking. Dates are hotel-local and end-exclusive. */
 export const bookingRoomAssignmentSchema = z.object({
   roomNumber: z.string().regex(ROOM_NUMBER),
+  /** Explicit for a stay that moved between room types; legacy periods use the booking's type. */
+  roomTypeId: z.string().optional(),
   fromDate: z.string().date(),
   toDate: z.string().date(),
   /** Filled on the preceding segment so the room rack can show the handover direction. */

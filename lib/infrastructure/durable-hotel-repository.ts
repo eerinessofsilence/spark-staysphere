@@ -114,6 +114,10 @@ export const durableHotelRepository: HotelRepository = {
       ? d1.saveBookingRoomAssignments(db, bookingId, assignments)
       : mockHotelRepository.saveBookingRoomAssignments(bookingId, assignments);
   },
+  transferBookingRoomType(input) {
+    const db = getDemoDatabase();
+    return db ? d1.transferBookingRoomType(db, input) : mockHotelRepository.transferBookingRoomType(input);
+  },
   getBookingByReference(reference) {
     const db = getDemoDatabase();
     return db ? d1.getBookingByReference(db, reference) : mockHotelRepository.getBookingByReference(reference);

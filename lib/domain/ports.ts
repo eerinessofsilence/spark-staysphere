@@ -70,6 +70,23 @@ export interface BookingStore {
   setBookingStayState(reference: string, state: StayState): Promise<Booking | null>;
   /** Replaces the room itinerary for a reservation while keeping its booking id and folio. */
   saveBookingRoomAssignments(bookingId: string, assignments: BookingRoomAssignment[]): Promise<boolean>;
+  /** Atomically move the remaining nights to another room type and update the quoted booking total. */
+  transferBookingRoomType(input: {
+    bookingId: string;
+    expectedRoomTypeId: string;
+    expectedTotal: number;
+    sourceRoomTypeId: string;
+    sourceRoomNumber: string;
+    targetRoomTypeId: string;
+    targetRatePlanId: string;
+    targetRoomNumber: string;
+    newTotal: number;
+    capacity: number;
+    fromDate: string;
+    checkOut: string;
+    oldNightsByType: Record<string, string[]>;
+    assignments: BookingRoomAssignment[];
+  }): Promise<boolean>;
   listBookings(options?: { hotelId?: string; limit?: number }): Promise<Booking[]>;
 }
 

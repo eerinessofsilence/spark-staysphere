@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ChevronRightIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { createFrontDeskBookingAction, moveFrontDeskBookingRoomAction, quoteFrontDeskBookingAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
+import { confirmFrontDeskRoomTypeMoveAction, createFrontDeskBookingAction, moveFrontDeskBookingPeriodAction, moveFrontDeskBookingRoomAction, quoteFrontDeskBookingAction, reviewFrontDeskRoomTypeMoveAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
 import type {
   FrontDeskDay,
   FrontDeskGroup,
   FrontDeskRoom,
   FrontDeskSegment,
+  RoomTypeMoveReview,
 } from '@/lib/application/inventory-service';
 import { addIsoDays } from '@/lib/domain/dates';
 import {
@@ -60,6 +61,23 @@ interface BookingDraft {
   checkIn: string;
   checkOut: string;
 }
+
+interface BookingRoomDrag {
+  reference: string;
+  roomTypeId: string;
+  fromRoomNumber: string;
+  fromDate: string;
+  toDate: string;
+}
+
+interface PendingTypeMove {
+  drag: BookingRoomDrag;
+  targetRoomTypeId: string;
+  targetRoomNumber: string;
+  review: RoomTypeMoveReview;
+}
+
+const BOOKING_ROOM_DRAG_TYPE = 'application/x-staysphere-booking-room';
 
 const LABEL_WIDTH = '9rem';
 const NIGHT_WIDTH = '2.75rem';
@@ -119,6 +137,10 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
   const dateFns = DATE_FNS_LOCALES[locale];
   const [selection, setSelection] = React.useState<Selection | null>(null);
   const [open, setOpen] = React.useState(false);
+  const [movingReference, setMovingReference] = React.useState<string | null>(null);
+  const [typeMove, setTypeMove] = React.useState<PendingTypeMove | null>(null);
+  const [typeMoveSaving, setTypeMoveSaving] = React.useState(false);
+  const [typeMoveError, setTypeMoveError] = React.useState<string | null>(null);
   const close = React.useCallback(() => setOpen(false), []);
   const [draft, setDraft] = React.useState<BookingDraft | null>(null);
   const [draftOpen, setDraftOpen] = React.useState(false);
@@ -170,6 +192,80 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
     setDraftOpen(false);
     toast.success(message);
     router.refresh();
+  };
+
+  const moveBookingByDrop = async (drag: BookingRoomDrag, targetRoomTypeId: string, targetRoomNumber: string) => {
+    if (drag.fromRoomNumber === targetRoomNumber && drag.roomTypeId === targetRoomTypeId) return;
+    if (drag.roomTypeId !== targetRoomTypeId) {
+      setMovingReference(drag.reference);
+      try {
+        const result = await reviewFrontDeskRoomTypeMoveAction({
+          reference: drag.reference,
+          sourceRoomTypeId: drag.roomTypeId,
+          fromRoomNumber: drag.fromRoomNumber,
+          roomTypeId: targetRoomTypeId,
+          roomNumber: targetRoomNumber,
+          fromDate: drag.fromDate,
+        });
+        if (!result.ok) { toast.error(result.message); return; }
+        setTypeMove({ drag, targetRoomTypeId, targetRoomNumber, review: result.review });
+        setTypeMoveError(null);
+      } catch { toast.error(t('frontDesk.moveFailed')); }
+      finally { setMovingReference(null); }
+      return;
+    }
+    setMovingReference(drag.reference);
+    try {
+      const result = await moveFrontDeskBookingPeriodAction({
+        reference: drag.reference,
+        fromRoomNumber: drag.fromRoomNumber,
+        roomNumber: targetRoomNumber,
+        roomTypeId: targetRoomTypeId,
+        fromDate: drag.fromDate,
+        toDate: drag.toDate,
+      });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success(t('frontDesk.moveSaved'));
+      router.refresh();
+    } catch {
+      toast.error(t('frontDesk.moveFailed'));
+    } finally {
+      setMovingReference(null);
+    }
+  };
+
+  const confirmTypeMove = async () => {
+    if (!typeMove || typeMoveSaving) return;
+    setTypeMoveSaving(true);
+    setTypeMoveError(null);
+    const input = {
+      reference: typeMove.drag.reference,
+      sourceRoomTypeId: typeMove.drag.roomTypeId,
+      fromRoomNumber: typeMove.drag.fromRoomNumber,
+      roomTypeId: typeMove.targetRoomTypeId,
+      roomNumber: typeMove.targetRoomNumber,
+      fromDate: typeMove.drag.fromDate,
+    };
+    try {
+      const result = await confirmFrontDeskRoomTypeMoveAction({
+        ...input,
+        expectedOldTotal: typeMove.review.oldTotal,
+        expectedNewTotal: typeMove.review.newTotal,
+      });
+      if (!result.ok) {
+        setTypeMoveError(result.message);
+        const fresh = await reviewFrontDeskRoomTypeMoveAction(input);
+        if (fresh.ok) setTypeMove((current) => current ? { ...current, review: fresh.review } : null);
+        return;
+      }
+      setTypeMove(null);
+      toast.success(t('frontDesk.typeMoveSaved'));
+      router.refresh();
+    } catch { setTypeMoveError(t('frontDesk.moveFailed')); }
+    finally { setTypeMoveSaving(false); }
   };
 
   // The open card holds its own copy of the segment; the board refreshes
@@ -320,6 +416,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                 <RoomRow
                   key={room.number}
                   room={room}
+                  roomTypeId={group.roomTypeId}
                   dates={dates}
                   columns={columns}
                   weekends={weekends}
@@ -328,6 +425,8 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                   locale={locale}
                   onSelectSegment={(segment) => select(segment, room, group)}
                   onDragCreate={(startIndex, endIndex) => startBooking(group, room, startIndex, endIndex)}
+                  movingReference={movingReference}
+                  onDropBooking={moveBookingByDrop}
                 />
               ))}
             </div>
@@ -364,6 +463,50 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       <Modal open={draftOpen} onClose={closeDraft} className="sm:max-w-2xl" title={t('frontDesk.newBooking')}>
         {draft ? <CreateBookingForm draft={draft} t={t} locale={locale} onCreated={bookingCreated} onCancel={closeDraft} /> : null}
       </Modal>
+      <Modal open={Boolean(typeMove)} onClose={() => { if (!typeMoveSaving) setTypeMove(null); }}
+        className="sm:max-w-lg" title={t('frontDesk.typeMoveTitle')}>
+        {typeMove ? (
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              {t('frontDesk.typeMoveBooking', { reference: typeMove.review.reference, guest: typeMove.review.guestName,
+                dates: lDateRange(typeMove.review.checkIn, typeMove.review.checkOut, locale) })}
+            </p>
+            <p className="text-sm">
+              {t('frontDesk.typeMoveRoute', { fromType: typeMove.review.fromRoomType,
+                fromRoom: lRoomNumber(typeMove.review.fromRoomNumber, locale),
+                toType: typeMove.review.targetRoomType,
+                toRoom: lRoomNumber(typeMove.review.targetRoomNumber, locale),
+                date: lDateShort(typeMove.review.fromDate, locale) })}
+            </p>
+            <div className="divide-y divide-border rounded-[18px] border border-border px-4">
+              <div className="flex items-center justify-between gap-4 py-3 text-sm">
+                <span>{t('frontDesk.typeMoveOldPrice')}</span>
+                <strong className="tabular-nums">{lMoney(typeMove.review.oldTotal, typeMove.review.currency, locale)}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3 text-sm">
+                <span>{t('frontDesk.typeMoveNewPrice')}</span>
+                <strong className="tabular-nums">{lMoney(typeMove.review.newTotal, typeMove.review.currency, locale)}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3 text-sm">
+                <span>{t('frontDesk.typeMoveDifference')}</span>
+                <strong className="tabular-nums">{typeMove.review.newTotal > typeMove.review.oldTotal ? '+' : ''}{lMoney(typeMove.review.newTotal - typeMove.review.oldTotal, typeMove.review.currency, locale)}</strong>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('frontDesk.typeMoveExplanation', {
+              nights: typeMove.review.nights,
+              oldNightly: lMoney(typeMove.review.oldNightly, typeMove.review.currency, locale),
+              newNightly: lMoney(typeMove.review.newNightly, typeMove.review.currency, locale),
+            })}</p>
+            {typeMoveError ? <p role="alert" className="text-sm text-danger">{typeMoveError}</p> : null}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" className={pill('secondary')} disabled={typeMoveSaving}
+                onClick={() => setTypeMove(null)}>{t('frontDesk.cancel')}</button>
+              <button type="button" className={pill('primary')} disabled={typeMoveSaving}
+                onClick={confirmTypeMove}>{typeMoveSaving ? t('frontDesk.moveSaving') : t('frontDesk.typeMoveConfirm')}</button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </>
   );
 }
@@ -390,6 +533,9 @@ function SegmentBar({
   today,
   shownDays,
   onSelect,
+  draggable,
+  dragHint,
+  onDragStart,
 }: {
   segment: FrontDeskSegment;
   label: string;
@@ -397,6 +543,9 @@ function SegmentBar({
   today: string;
   shownDays: number;
   onSelect: () => void;
+  draggable?: boolean;
+  dragHint?: string;
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
 }) {
   const style = segmentTapeStyle(segment, shownDays);
 
@@ -432,14 +581,17 @@ function SegmentBar({
     <button
       type="button"
       onClick={onSelect}
-      aria-label={label}
-      title={label}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      aria-label={draggable && dragHint ? `${label}. ${dragHint}` : label}
+      title={draggable && dragHint ? `${label} · ${dragHint}` : label}
       style={style}
       className={cn(
         base,
         stayStatusMeta[status].className,
         continuesBefore && 'rounded-l-none',
         continuesAfter && 'rounded-r-none',
+        draggable && 'cursor-grab active:cursor-grabbing',
       )}
     >
       {segment.kind === 'booking' && segment.chosenByGuest ? (
@@ -500,6 +652,7 @@ function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number): React.C
  */
 function RoomRow({
   room,
+  roomTypeId,
   dates,
   columns,
   weekends,
@@ -508,8 +661,11 @@ function RoomRow({
   locale,
   onSelectSegment,
   onDragCreate,
+  movingReference,
+  onDropBooking,
 }: {
   room: FrontDeskRoom;
+  roomTypeId: string;
   dates: string[];
   columns: string;
   weekends: Set<number>;
@@ -518,10 +674,13 @@ function RoomRow({
   locale: AdminLocale;
   onSelectSegment: (segment: FrontDeskSegment) => void;
   onDragCreate: (startIndex: number, endIndex: number) => void;
+  movingReference: string | null;
+  onDropBooking: (drag: BookingRoomDrag, targetRoomTypeId: string, targetRoomNumber: string) => void;
 }) {
   const rowRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ pointerId: number; start: number } | null>(null);
   const [live, setLive] = React.useState<{ start: number; end: number } | null>(null);
+  const [dragOver, setDragOver] = React.useState(false);
 
   const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
 
@@ -577,16 +736,64 @@ function RoomRow({
     if (range) onDragCreate(range.start, range.end);
   }
 
+  function startBookingDrag(event: React.DragEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
+    if (movingReference) {
+      event.preventDefault();
+      return;
+    }
+    const drag: BookingRoomDrag = {
+      reference: segment.reference,
+      roomTypeId,
+      fromRoomNumber: room.number,
+      fromDate: segment.roomFrom < today ? today : segment.roomFrom,
+      toDate: segment.roomTo,
+    };
+    if (drag.fromDate >= drag.toDate) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.setData(BOOKING_ROOM_DRAG_TYPE, JSON.stringify(drag));
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onBookingDragOver(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes(BOOKING_ROOM_DRAG_TYPE)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOver(true);
+  }
+
+  function onBookingDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    setDragOver(false);
+  }
+
+  function onBookingDrop(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes(BOOKING_ROOM_DRAG_TYPE)) return;
+    event.preventDefault();
+    setDragOver(false);
+    try {
+      const drag = JSON.parse(event.dataTransfer.getData(BOOKING_ROOM_DRAG_TYPE)) as BookingRoomDrag;
+      if (!drag.reference || !drag.fromRoomNumber || !drag.roomTypeId || !drag.fromDate || !drag.toDate) return;
+      onDropBooking(drag, roomTypeId, room.number);
+    } catch {
+      // Ignore incomplete or malformed drag payloads.
+    }
+  }
+
   return (
     <div
       ref={rowRef}
       role="group"
       aria-label={lRoomNumber(room.number, locale)}
-      className="grid min-h-14 border-b border-border"
+      className={cn('grid min-h-14 border-b border-border transition-colors', dragOver && 'bg-accent-soft/40 ring-2 ring-inset ring-accent')}
       style={{ gridTemplateColumns: columns }}
       onPointerMove={onRowPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onDragOver={onBookingDragOver}
+      onDragLeave={onBookingDragLeave}
+      onDrop={onBookingDrop}
     >
       <div className="sticky left-0 z-20 row-start-1 flex flex-col justify-center bg-card px-4 py-2" style={{ gridColumn: 1 }}>
         <span className="font-medium tabular-nums">{room.number}</span>
@@ -621,6 +828,9 @@ function RoomRow({
           today={today}
           shownDays={dates.length}
           onSelect={() => onSelectSegment(segment)}
+          draggable={segment.kind === 'booking' && segment.status === 'confirmed' && segment.roomTo > today && movingReference === null}
+          dragHint={t('frontDesk.dragToMove')}
+          onDragStart={segment.kind === 'booking' ? (event) => startBookingDrag(event, segment) : undefined}
         />
       ))}
       {live ? (
