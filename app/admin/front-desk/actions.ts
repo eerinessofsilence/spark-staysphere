@@ -11,7 +11,7 @@ import { guestSchema, paymentMethodSchema, ROOM_NUMBER, stayCriteriaFieldsSchema
 import { mapBookingError } from '@/app/api/_lib/http';
 import { bookingService, catalogService, guestDocumentService, hotelRepository, inventoryService } from '@/lib/application/container';
 import { identitySchema, identityKey, documentImageType, MAX_DOCUMENT_BYTES } from '@/lib/domain/guest-document';
-import type { RoomTypeMoveReview, RoomTypeMoveError } from '@/lib/application/inventory-service';
+import type { RoomTypeMoveReview, RoomTypeMoveError, StayExtensionError, StayExtensionReview } from '@/lib/application/inventory-service';
 
 /**
  * Turns either a drag across a room's empty nights on the front desk
@@ -89,6 +89,18 @@ const confirmRoomTypeMoveSchema = roomTypeMoveSchema.extend({
   expectedNewTotal: z.number().nonnegative(),
 });
 
+const stayExtensionSchema = z.object({
+  reference: z.string().min(1),
+  roomTypeId: z.string().min(1),
+  roomNumber: z.string().regex(ROOM_NUMBER),
+  newCheckOut: stayCriteriaFieldsSchema.shape.checkOut,
+});
+
+const confirmStayExtensionSchema = stayExtensionSchema.extend({
+  expectedOldTotal: z.number().nonnegative(),
+  expectedNewTotal: z.number().nonnegative(),
+});
+
 function roomTypeMoveMessage(reason: RoomTypeMoveError, t: Awaited<ReturnType<typeof getAdminT>>): string {
   const key = ({
     not_found: 'frontDesk.moveNotFound',
@@ -101,7 +113,43 @@ function roomTypeMoveMessage(reason: RoomTypeMoveError, t: Awaited<ReturnType<ty
   return t(key);
 }
 
+function stayExtensionMessage(reason: StayExtensionError, t: Awaited<ReturnType<typeof getAdminT>>): string {
+  return t(({
+    not_found: 'frontDesk.moveNotFound', invalid_date: 'frontDesk.dateChangeInvalid', unavailable: 'frontDesk.moveUnavailable',
+    price_changed: 'frontDesk.dateChangePriceChanged', save_failed: 'frontDesk.moveFailed',
+  } as const)[reason]);
+}
+
 export type FrontDeskTypeMoveReviewResult = { ok: true; review: RoomTypeMoveReview } | { ok: false; message: string };
+export type FrontDeskStayExtensionReviewResult = { ok: true; review: StayExtensionReview } | { ok: false; message: string };
+
+export async function reviewFrontDeskStayExtensionAction(input: unknown): Promise<FrontDeskStayExtensionReviewResult> {
+  const t = await getAdminT();
+  try { await requirePermission('team.permViewBookings'); }
+  catch (error) { if (error instanceof AdminPermissionError) return { ok: false, message: t('team.permissionDenied') }; throw error; }
+  const parsed = stayExtensionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t('frontDesk.dateChangeInvalid') };
+  try {
+    const result = await inventoryService.reviewStayExtension(await getSelectedHotelSlug(), parsed.data.reference,
+      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckOut);
+    return result.ok ? result : { ok: false, message: stayExtensionMessage(result.reason, t) };
+  } catch { return { ok: false, message: t('frontDesk.moveFailed') }; }
+}
+
+export async function confirmFrontDeskStayExtensionAction(input: unknown): Promise<FrontDeskRoomMoveResult> {
+  const t = await getAdminT();
+  try { await requirePermission('team.permViewBookings'); }
+  catch (error) { if (error instanceof AdminPermissionError) return { ok: false, message: t('team.permissionDenied') }; throw error; }
+  const parsed = confirmStayExtensionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t('frontDesk.dateChangeInvalid') };
+  try {
+    const result = await inventoryService.confirmStayExtension(await getSelectedHotelSlug(), parsed.data.reference,
+      parsed.data.roomTypeId, parsed.data.roomNumber, parsed.data.newCheckOut, parsed.data.expectedOldTotal, parsed.data.expectedNewTotal);
+    if (result !== 'ok') return { ok: false, message: stayExtensionMessage(result, t) };
+    revalidatePath('/admin/front-desk'); revalidatePath('/admin/bookings'); revalidatePath(`/admin/bookings/${parsed.data.reference}`); revalidatePath('/admin');
+    return { ok: true };
+  } catch { return { ok: false, message: t('frontDesk.moveFailed') }; }
+}
 
 export async function reviewFrontDeskRoomTypeMoveAction(input: unknown): Promise<FrontDeskTypeMoveReviewResult> {
   const t = await getAdminT();

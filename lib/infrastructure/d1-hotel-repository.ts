@@ -204,6 +204,62 @@ export async function transferBookingRoomType(
   return (result[0]?.meta.changes ?? 0) > 0;
 }
 
+export async function extendBookingStay(
+  db: D1Database,
+  input: Parameters<BookingStore['extendBookingStay']>[0],
+): Promise<boolean> {
+  await ensureSchema(db);
+  if (input.addedNights.length === 0) return false;
+  const guard = crypto.randomUUID();
+  const result = await db.batch([
+    db.prepare(
+      `UPDATE bookings SET check_out = ?, total = ?
+       WHERE id = ? AND status = 'confirmed' AND room_type_id = ? AND check_out = ? AND total = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM json_each(?) nights
+         LEFT JOIN inventory_holds h ON h.room_type_id = ? AND h.date = nights.value
+         WHERE COALESCE(h.held, 0) >= ?
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM bookings occupied
+         LEFT JOIN booking_units u ON u.booking_id = occupied.id
+         LEFT JOIN booking_room_assignments a ON a.booking_id = occupied.id
+         WHERE occupied.id <> ? AND occupied.hotel_id = bookings.hotel_id AND occupied.status = 'confirmed'
+           AND ((a.assignments IS NOT NULL AND EXISTS (
+             SELECT 1 FROM json_each(a.assignments) period
+             WHERE json_extract(period.value, '$.roomNumber') = ?
+               AND json_extract(period.value, '$.fromDate') < ?
+               AND json_extract(period.value, '$.toDate') > ?
+           )) OR (a.assignments IS NULL AND u.unit_number = ?
+             AND occupied.check_in < ? AND occupied.check_out > ?))
+       )`,
+    ).bind(
+      input.newCheckOut, input.newTotal, input.bookingId, input.roomTypeId, input.expectedCheckOut, input.expectedTotal,
+      JSON.stringify(input.addedNights), input.roomTypeId, input.capacity,
+      input.bookingId, input.roomNumber, input.newCheckOut, input.expectedCheckOut,
+      input.roomNumber, input.newCheckOut, input.expectedCheckOut,
+    ),
+    db.prepare('INSERT INTO booking_mutation_guards (id) SELECT ? WHERE changes() > 0').bind(guard),
+    db.prepare(
+      `INSERT INTO inventory_holds (room_type_id, date, held)
+       SELECT ?, value, 1 FROM json_each(?)
+       WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (room_type_id, date) DO UPDATE SET held = held + 1`,
+    ).bind(input.roomTypeId, JSON.stringify(input.addedNights), guard),
+    db.prepare(
+      `INSERT INTO booking_units (booking_id, unit_number)
+       SELECT ?, ? WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (booking_id) DO UPDATE SET unit_number = excluded.unit_number`,
+    ).bind(input.bookingId, input.roomNumber, guard),
+    db.prepare(
+      `INSERT INTO booking_room_assignments (booking_id, assignments)
+       SELECT ?, ? WHERE EXISTS (SELECT 1 FROM booking_mutation_guards WHERE id = ?)
+       ON CONFLICT (booking_id) DO UPDATE SET assignments = excluded.assignments`,
+    ).bind(input.bookingId, JSON.stringify(input.assignments), guard),
+  ]);
+  return (result[0]?.meta.changes ?? 0) > 0;
+}
+
 export async function findBookingByIdempotencyKey(
   db: D1Database,
   key: string,

@@ -87,6 +87,19 @@ export interface BookingStore {
     oldNightsByType: Record<string, string[]>;
     assignments: BookingRoomAssignment[];
   }): Promise<boolean>;
+  /** Atomically extend a confirmed stay and hold its additional nights. */
+  extendBookingStay(input: {
+    bookingId: string;
+    expectedCheckOut: string;
+    expectedTotal: number;
+    roomTypeId: string;
+    roomNumber: string;
+    newCheckOut: string;
+    newTotal: number;
+    capacity: number;
+    addedNights: string[];
+    assignments: BookingRoomAssignment[];
+  }): Promise<boolean>;
   listBookings(options?: { hotelId?: string; limit?: number }): Promise<Booking[]>;
 }
 

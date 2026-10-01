@@ -1,6 +1,6 @@
 import { demoHash, nightsInRange } from '../domain/availability';
 import { addIsoDays } from '../domain/dates';
-import { roundMoney } from '../domain/pricing';
+import { buildPriceBreakdown, roundMoney } from '../domain/pricing';
 import { LATE_CHECK_OUT_TIME, STANDARD_CHECK_IN_TIME, STANDARD_CHECK_OUT_TIME } from '../domain/stay-times';
 import type {
   AvailabilityReader,
@@ -163,7 +163,22 @@ export interface RoomTypeMoveReview {
   currency: Currency;
 }
 
+export interface StayExtensionReview {
+  reference: string;
+  guestName: string;
+  checkIn: string;
+  oldCheckOut: string;
+  newCheckOut: string;
+  roomNumber: string;
+  oldTotal: number;
+  newTotal: number;
+  oldNights: number;
+  newNights: number;
+  currency: Currency;
+}
+
 export type RoomTypeMoveError = 'not_found' | 'invalid_date' | 'same_room' | 'unavailable' | 'price_changed' | 'save_failed';
+export type StayExtensionError = 'not_found' | 'invalid_date' | 'unavailable' | 'price_changed' | 'save_failed';
 
 function byRoomNumber(a: { number: string }, b: { number: string }): number {
   return compareRoomNumbers(a.number, b.number);
@@ -172,8 +187,8 @@ function byRoomNumber(a: { number: string }, b: { number: string }): number {
 export class InventoryService {
   constructor(
     private readonly repository: AvailabilityReader &
-      Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms' | 'listRatePlans'> &
-      Pick<BookingStore, 'listBookings' | 'saveBookingRoomAssignments' | 'transferBookingRoomType'> &
+      Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms' | 'listRatePlans' | 'listAddOns'> &
+      Pick<BookingStore, 'listBookings' | 'saveBookingRoomAssignments' | 'transferBookingRoomType' | 'extendBookingStay'> &
       Pick<PaymentAttemptStore, 'listPaymentAttempts'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
@@ -609,6 +624,61 @@ export class InventoryService {
       oldNightsByType: prepared.oldNightsByType,
       assignments: prepared.assignments,
     });
+    return saved ? 'ok' : 'unavailable';
+  }
+
+  private async prepareStayExtension(
+    hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string,
+  ): Promise<
+    | { ok: false; reason: StayExtensionError }
+    | { ok: true; review: StayExtensionReview; booking: Booking; capacity: number; addedNights: string[]; assignments: BookingRoomAssignment[] }
+  > {
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    const booking = (await this.repository.listBookings({ hotelId: hotel.id })).find((item) => item.reference === reference);
+    const today = new Date().toISOString().slice(0, 10);
+    if (!booking || booking.status !== 'confirmed') return { ok: false, reason: 'not_found' };
+    if (newCheckOut <= booking.checkOut || booking.checkOut < today) return { ok: false, reason: 'invalid_date' };
+    const [rooms, physicalRooms, addOns] = await Promise.all([
+      this.repository.listRooms(hotel.id), this.repository.listPhysicalRooms(hotel.id), this.repository.listAddOns(hotel.id),
+    ]);
+    const units = buildRoomUnits(rooms, physicalRooms).filter((unit) => unit.roomTypeId === roomTypeId);
+    const activeType = booking.roomAssignments?.find((period) => period.roomNumber === roomNumber && period.toDate === booking.checkOut)?.roomTypeId
+      ?? booking.roomTypeId;
+    if (activeType !== roomTypeId || !units.some((unit) => unit.number === roomNumber)) return { ok: false, reason: 'invalid_date' };
+    const plan = (await this.repository.listRatePlans(roomTypeId)).find((item) => item.id === booking.ratePlanId);
+    if (!plan || plan.currency !== booking.currency || !(await this.isUnitFreeForStay(hotelSlug, roomTypeId, roomNumber, booking.checkOut, newCheckOut))) {
+      return { ok: false, reason: 'unavailable' };
+    }
+    const oldNights = nightsInRange(booking.checkIn, booking.checkOut).length;
+    const newNights = nightsInRange(booking.checkIn, newCheckOut).length;
+    const chosenAddOns = addOns.filter((addOn) => booking.addOnIds.includes(addOn.id));
+    const oldRate = buildPriceBreakdown({ ratePlan: plan, addOns: chosenAddOns, nights: oldNights, adults: booking.adults, children: booking.children });
+    const newRate = buildPriceBreakdown({ ratePlan: plan, addOns: chosenAddOns, nights: newNights, adults: booking.adults, children: booking.children });
+    const newTotal = roundMoney(booking.total + newRate.total - oldRate.total);
+    const baseAssignments: BookingRoomAssignment[] = booking.roomAssignments?.length
+      ? booking.roomAssignments.map((period) => ({ ...period, roomTypeId: period.roomTypeId ?? booking.roomTypeId }))
+      : [{ roomNumber, roomTypeId, fromDate: booking.checkIn, toDate: booking.checkOut }];
+    const last = baseAssignments.findIndex((period) => period.roomNumber === roomNumber && period.roomTypeId === roomTypeId && period.toDate === booking.checkOut);
+    if (last < 0) return { ok: false, reason: 'invalid_date' };
+    const assignments = baseAssignments.map((period, index) => index === last ? { ...period, toDate: newCheckOut } : period);
+    return { ok: true, booking, capacity: units.length, addedNights: nightsInRange(booking.checkOut, newCheckOut), assignments,
+      review: { reference, guestName: `${booking.guest.firstName} ${booking.guest.lastName}`, checkIn: booking.checkIn,
+        oldCheckOut: booking.checkOut, newCheckOut, roomNumber, oldTotal: booking.total, newTotal, oldNights, newNights, currency: booking.currency } };
+  }
+
+  async reviewStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string) {
+    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckOut);
+    return prepared.ok ? { ok: true as const, review: prepared.review } : prepared;
+  }
+
+  async confirmStayExtension(hotelSlug: string, reference: string, roomTypeId: string, roomNumber: string, newCheckOut: string,
+    expectedOldTotal: number, expectedNewTotal: number): Promise<'ok' | StayExtensionError> {
+    const prepared = await this.prepareStayExtension(hotelSlug, reference, roomTypeId, roomNumber, newCheckOut);
+    if (!prepared.ok) return prepared.reason;
+    if (prepared.review.oldTotal !== expectedOldTotal || prepared.review.newTotal !== expectedNewTotal) return 'price_changed';
+    const saved = await this.repository.extendBookingStay({ bookingId: prepared.booking.id, expectedCheckOut: prepared.booking.checkOut,
+      expectedTotal: prepared.booking.total, roomTypeId, roomNumber, newCheckOut, newTotal: prepared.review.newTotal,
+      capacity: prepared.capacity, addedNights: prepared.addedNights, assignments: prepared.assignments });
     return saved ? 'ok' : 'unavailable';
   }
 

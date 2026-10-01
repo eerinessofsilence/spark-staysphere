@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ChevronRightIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { confirmFrontDeskRoomTypeMoveAction, createFrontDeskBookingAction, moveFrontDeskBookingPeriodAction, moveFrontDeskBookingRoomAction, quoteFrontDeskBookingAction, reviewFrontDeskRoomTypeMoveAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
+import { confirmFrontDeskRoomTypeMoveAction, confirmFrontDeskStayExtensionAction, createFrontDeskBookingAction, moveFrontDeskBookingPeriodAction, moveFrontDeskBookingRoomAction, quoteFrontDeskBookingAction, reviewFrontDeskRoomTypeMoveAction, reviewFrontDeskStayExtensionAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
 import type {
   FrontDeskDay,
   FrontDeskGroup,
   FrontDeskRoom,
   FrontDeskSegment,
   RoomTypeMoveReview,
+  StayExtensionReview,
 } from '@/lib/application/inventory-service';
 import { addIsoDays } from '@/lib/domain/dates';
 import {
@@ -76,6 +77,7 @@ interface PendingTypeMove {
   targetRoomNumber: string;
   review: RoomTypeMoveReview;
 }
+interface PendingStayExtension { roomTypeId: string; roomNumber: string; review: StayExtensionReview; }
 
 const BOOKING_ROOM_DRAG_TYPE = 'application/x-staysphere-booking-room';
 
@@ -141,6 +143,9 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
   const [typeMove, setTypeMove] = React.useState<PendingTypeMove | null>(null);
   const [typeMoveSaving, setTypeMoveSaving] = React.useState(false);
   const [typeMoveError, setTypeMoveError] = React.useState<string | null>(null);
+  const [stayExtension, setStayExtension] = React.useState<PendingStayExtension | null>(null);
+  const [stayExtensionSaving, setStayExtensionSaving] = React.useState(false);
+  const [stayExtensionError, setStayExtensionError] = React.useState<string | null>(null);
   const close = React.useCallback(() => setOpen(false), []);
   const [draft, setDraft] = React.useState<BookingDraft | null>(null);
   const [draftOpen, setDraftOpen] = React.useState(false);
@@ -270,6 +275,24 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       router.refresh();
     } catch { setTypeMoveError(t('frontDesk.moveFailed')); }
     finally { setTypeMoveSaving(false); }
+  };
+
+  const reviewStayExtension = async (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, roomTypeId: string, roomNumber: string, newCheckOut: string) => {
+    setMovingReference(segment.reference);
+    try {
+      const result = await reviewFrontDeskStayExtensionAction({ reference: segment.reference, roomTypeId, roomNumber, newCheckOut });
+      if (!result.ok) { toast.error(result.message); return; }
+      setStayExtension({ roomTypeId, roomNumber, review: result.review }); setStayExtensionError(null);
+    } catch { toast.error(t('frontDesk.moveFailed')); } finally { setMovingReference(null); }
+  };
+  const confirmStayExtension = async () => {
+    if (!stayExtension || stayExtensionSaving) return;
+    setStayExtensionSaving(true); setStayExtensionError(null);
+    try {
+      const result = await confirmFrontDeskStayExtensionAction({ reference: stayExtension.review.reference, roomTypeId: stayExtension.roomTypeId, roomNumber: stayExtension.roomNumber, newCheckOut: stayExtension.review.newCheckOut, expectedOldTotal: stayExtension.review.oldTotal, expectedNewTotal: stayExtension.review.newTotal });
+      if (!result.ok) { setStayExtensionError(result.message); return; }
+      setStayExtension(null); toast.success(t('frontDesk.dateChangeSaved')); router.refresh();
+    } catch { setStayExtensionError(t('frontDesk.moveFailed')); } finally { setStayExtensionSaving(false); }
   };
 
   // The open card holds its own copy of the segment; the board refreshes
@@ -429,6 +452,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                   locale={locale}
                   onSelectSegment={(segment) => select(segment, room, group)}
                   onDragCreate={(startIndex, endIndex) => startBooking(group, room, startIndex, endIndex)}
+                  onResizeBooking={(segment, newCheckOut) => reviewStayExtension(segment, group.roomTypeId, room.number, newCheckOut)}
                   movingReference={movingReference}
                   onDropBooking={moveBookingByDrop}
                 />
@@ -518,6 +542,20 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
           </div>
         ) : null}
       </Modal>
+      <Modal open={Boolean(stayExtension)} onClose={() => { if (!stayExtensionSaving) setStayExtension(null); }} className="sm:max-w-lg" title={t('frontDesk.dateChangeTitle')}>
+        {stayExtension ? <div className="space-y-5">
+          <p className="text-sm text-muted-foreground">{t('frontDesk.dateChangeBooking', { reference: stayExtension.review.reference, guest: stayExtension.review.guestName })}</p>
+          <p className="text-sm">{t('frontDesk.dateChangeDates', { checkIn: lDateShort(stayExtension.review.checkIn, locale), oldCheckOut: lDateShort(stayExtension.review.oldCheckOut, locale), newCheckOut: lDateShort(stayExtension.review.newCheckOut, locale) })}</p>
+          <div className="divide-y divide-border rounded-[18px] border border-border px-4">
+            <div className="flex items-center justify-between gap-4 py-3 text-sm"><span>{t('frontDesk.dateChangeOldPrice')}</span><strong>{lMoney(stayExtension.review.oldTotal, stayExtension.review.currency, locale)}</strong></div>
+            <div className="flex items-center justify-between gap-4 py-3 text-sm"><span>{t('frontDesk.dateChangeNewPrice')}</span><strong>{lMoney(stayExtension.review.newTotal, stayExtension.review.currency, locale)}</strong></div>
+            <div className="flex items-center justify-between gap-4 py-3 text-sm"><span>{t('frontDesk.dateChangeDifference')}</span><strong>{stayExtension.review.newTotal > stayExtension.review.oldTotal ? '+' : ''}{lMoney(stayExtension.review.newTotal - stayExtension.review.oldTotal, stayExtension.review.currency, locale)}</strong></div>
+          </div>
+          <p className="text-xs text-muted-foreground">{t('frontDesk.dateChangeNights', { oldNights: stayExtension.review.oldNights, newNights: stayExtension.review.newNights, room: lRoomNumber(stayExtension.review.roomNumber, locale) })}</p>
+          {stayExtensionError ? <p role="alert" className="text-sm text-danger">{stayExtensionError}</p> : null}
+          <div className="flex justify-end gap-2"><button type="button" className={pill('secondary')} disabled={stayExtensionSaving} onClick={() => setStayExtension(null)}>{t('frontDesk.cancel')}</button><button type="button" className={pill('primary')} disabled={stayExtensionSaving} onClick={confirmStayExtension}>{stayExtensionSaving ? t('frontDesk.moveSaving') : t('frontDesk.dateChangeConfirm')}</button></div>
+        </div> : null}
+      </Modal>
     </>
   );
 }
@@ -547,6 +585,8 @@ function SegmentBar({
   draggable,
   dragHint,
   onDragStart,
+  onPointerDown,
+  resizeHint,
 }: {
   segment: FrontDeskSegment;
   label: string;
@@ -557,6 +597,8 @@ function SegmentBar({
   draggable?: boolean;
   dragHint?: string;
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  resizeHint?: string;
 }) {
   const style = segmentTapeStyle(segment, shownDays);
 
@@ -594,8 +636,9 @@ function SegmentBar({
       onClick={onSelect}
       draggable={draggable}
       onDragStart={onDragStart}
+      onPointerDown={onPointerDown}
       aria-label={label}
-      title={draggable && dragHint ? `${label} · ${dragHint}` : label}
+      title={draggable && dragHint ? `${label} · ${dragHint}${resizeHint ? ` · ${resizeHint}` : ''}` : label}
       style={style}
       className={cn(
         base,
@@ -603,6 +646,7 @@ function SegmentBar({
         continuesBefore && 'rounded-l-none',
         continuesAfter && 'rounded-r-none',
         draggable && 'cursor-grab active:cursor-grabbing',
+        onPointerDown && 'hover:cursor-ew-resize',
       )}
     >
       {segment.kind === 'booking' && segment.chosenByGuest ? (
@@ -674,6 +718,7 @@ function RoomRow({
   onDragCreate,
   movingReference,
   onDropBooking,
+  onResizeBooking,
 }: {
   room: FrontDeskRoom;
   roomTypeId: string;
@@ -687,11 +732,13 @@ function RoomRow({
   onDragCreate: (startIndex: number, endIndex: number) => void;
   movingReference: string | null;
   onDropBooking: (drag: BookingRoomDrag, targetRoomTypeId: string, targetRoomNumber: string) => void;
+  onResizeBooking: (segment: Extract<FrontDeskSegment, { kind: 'booking' }>, newCheckOut: string) => void;
 }) {
   const rowRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ pointerId: number; start: number } | null>(null);
   const [live, setLive] = React.useState<{ start: number; end: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
+  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number } | null>(null);
 
   const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
 
@@ -733,18 +780,35 @@ function RoomRow({
   }
 
   function onRowPointerMove(event: React.PointerEvent) {
+    if (resizeRef.current?.pointerId === event.pointerId) return;
     if (dragRef.current?.pointerId !== event.pointerId) return;
     const index = nightIndexAt(event.clientX, event.clientY);
     if (index !== null) extendTo(index);
   }
 
   function endDrag(event: React.PointerEvent) {
+    const resize = resizeRef.current;
+    if (resize?.pointerId === event.pointerId) {
+      resizeRef.current = null;
+      rowRef.current?.releasePointerCapture(event.pointerId);
+      const index = nightIndexAt(event.clientX, event.clientY);
+      if (index !== null && index >= resize.endIndex) onResizeBooking(resize.segment, addIsoDays(dates[index]!, 1));
+      return;
+    }
     if (dragRef.current?.pointerId !== event.pointerId) return;
     dragRef.current = null;
     rowRef.current?.releasePointerCapture(event.pointerId);
     const range = live;
     setLive(null);
     if (range) onDragCreate(range.start, range.end);
+  }
+
+  function startBookingResize(event: React.PointerEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (event.button !== 0 || event.pointerType !== 'mouse' || event.clientX < rect.right - 14 || segment.continuesAfter || movingReference) return;
+    event.preventDefault(); event.stopPropagation();
+    resizeRef.current = { pointerId: event.pointerId, segment, endIndex: segment.start + segment.span };
+    rowRef.current?.setPointerCapture(event.pointerId);
   }
 
   function startBookingDrag(event: React.DragEvent<HTMLButtonElement>, segment: Extract<FrontDeskSegment, { kind: 'booking' }>) {
@@ -842,6 +906,8 @@ function RoomRow({
           draggable={segment.kind === 'booking' && segment.status === 'confirmed' && segment.roomTo > today && movingReference === null}
           dragHint={t('frontDesk.dragToMove')}
           onDragStart={segment.kind === 'booking' ? (event) => startBookingDrag(event, segment) : undefined}
+          onPointerDown={segment.kind === 'booking' ? (event) => startBookingResize(event, segment) : undefined}
+          resizeHint={t('frontDesk.resizeHint')}
         />
       ))}
       {live ? (
