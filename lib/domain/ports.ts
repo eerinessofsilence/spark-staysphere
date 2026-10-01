@@ -2,6 +2,7 @@ import type {
   AddOn,
   Availability,
   Booking,
+  BookingRoomAssignment,
   BookingGroup,
   Currency,
   GuestProfile,
@@ -67,6 +68,8 @@ export interface BookingStore {
   cancelBooking(reference: string): Promise<Booking | null>;
   /** The desk's check-in / check-out / no-show mark. Inventory is untouched: the booking itself stays as it is. */
   setBookingStayState(reference: string, state: StayState): Promise<Booking | null>;
+  /** Replaces the room itinerary for a reservation while keeping its booking id and folio. */
+  saveBookingRoomAssignments(bookingId: string, assignments: BookingRoomAssignment[]): Promise<boolean>;
   listBookings(options?: { hotelId?: string; limit?: number }): Promise<Booking[]>;
 }
 
@@ -107,6 +110,8 @@ export interface BookingGroupStore {
  */
 export interface GuestProfileStore {
   createGuestProfile(profile: GuestProfile): Promise<GuestProfile>;
+  deleteGuestProfile(profileId: string, hotelId: string): Promise<void>;
+  anonymizeGuestBookings(hotelId: string, email: string): Promise<number>;
   saveGuestIdentity(profileId: string, hotelId: string, identity: NonNullable<GuestProfile['identity']>): Promise<void>;
   listGuestProfiles(hotelId: string): Promise<GuestProfile[]>;
 }

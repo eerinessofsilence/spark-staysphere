@@ -29,6 +29,7 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_catalog_entries_hotel ON catalog_entries (hotel_id, kind)`,
   `CREATE TABLE IF NOT EXISTS booking_units (booking_id TEXT PRIMARY KEY, unit_number TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_booking_units_unit ON booking_units (unit_number, booking_id)`,
+  `CREATE TABLE IF NOT EXISTS booking_room_assignments (booking_id TEXT PRIMARY KEY, assignments TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS booking_stay_states (booking_id TEXT PRIMARY KEY, state TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS booking_groups (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, name TEXT NOT NULL, notes TEXT, created_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_booking_groups_hotel ON booking_groups (hotel_id, created_at)`,

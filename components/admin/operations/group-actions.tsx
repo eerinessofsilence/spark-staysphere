@@ -9,6 +9,7 @@ import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchInput } from '@/components/ui/search-input';
 
@@ -117,15 +118,17 @@ export function AttachBookingForm({ groupId, options }: { groupId: string; optio
 export function RemoveFromGroupButton({ bookingId, reference }: { bookingId: string; reference: string }) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
 
   async function remove() {
     setPending(true);
-    const result = await removeBookingFromGroupAction(bookingId);
-    setPending(false);
     close();
+    const result = await deferDelete(`group-booking:${bookingId}`, reference, () => removeBookingFromGroupAction(bookingId));
+    setPending(false);
+    if (!result) return;
     if (result.ok) {
       toast.success(result.message);
       router.refresh();
@@ -138,6 +141,7 @@ export function RemoveFromGroupButton({ bookingId, reference }: { bookingId: str
     <>
       <button
         type="button"
+        disabled={pending}
         onClick={() => setOpen(true)}
         aria-label={t('groups.removeFromGroup')}
         className="relative z-10 inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
@@ -163,18 +167,22 @@ export function RemoveFromGroupButton({ bookingId, reference }: { bookingId: str
 export function DeleteGroupButton({ groupId, name }: { groupId: string; name: string }) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const close = React.useCallback(() => setOpen(false), []);
 
   async function remove() {
     setPending(true);
-    const result = await deleteGroupAction(groupId);
+    close();
+    const sourcePath = window.location.pathname;
+    const result = await deferDelete(`group:${groupId}`, name, () => deleteGroupAction(groupId));
     setPending(false);
+    if (!result) return;
     close();
     if (result.ok) {
       toast.success(result.message);
-      router.push('/admin/groups');
+      if (window.location.pathname === sourcePath) router.push('/admin/groups');
       router.refresh();
     } else {
       toast.error(result.message);
@@ -183,7 +191,7 @@ export function DeleteGroupButton({ groupId, name }: { groupId: string; name: st
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={pill('secondary')}>
+      <button type="button" disabled={pending} onClick={() => setOpen(true)} className={pill('secondary')}>
         <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
         {t('groups.delete')}
       </button>

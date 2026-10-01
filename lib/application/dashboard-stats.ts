@@ -22,6 +22,34 @@ export function inHouseOn(bookings: Booking[], day: string): Booking[] {
 
 export type ReservationBucket = 'upcoming' | 'dueIn' | 'inHouse' | 'dueOut' | 'completed' | 'other';
 
+/** Stay states provide completion; scheduled arrival/departure dates select the period.
+ * These are independent counters: a stay can both arrive and depart in one period.
+ */
+export function periodMovements(bookings: Booking[], from: string, to: string) {
+  const within = (date: string) => date >= from && date <= to;
+  const counts = { arrived: 0, departed: 0, expected: 0, departing: 0, noShow: 0, cancelled: 0 };
+  for (const booking of bookings) {
+    if (booking.status === 'cancelled') {
+      if (within(booking.checkIn)) counts.cancelled++;
+      continue;
+    }
+    if (booking.status !== 'confirmed') continue;
+    if (booking.stayState === 'no_show') {
+      if (within(booking.checkIn)) counts.noShow++;
+      continue;
+    }
+    if (within(booking.checkIn)) {
+      if (booking.stayState === 'booked') counts.expected++;
+      else counts.arrived++;
+    }
+    if (within(booking.checkOut)) {
+      if (booking.stayState === 'checked_out') counts.departed++;
+      else counts.departing++;
+    }
+  }
+  return counts;
+}
+
 /**
  * Every booking in exactly one operational bucket, as the desk thinks of them:
  * where a stay stands today, not which lifecycle status it carries. Cancelled,

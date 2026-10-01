@@ -9,7 +9,7 @@ import type { BookingErrorCode } from '@/lib/application/booking-service';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { guestSchema, paymentMethodSchema, ROOM_NUMBER, stayCriteriaFieldsSchema, type Currency } from '@/lib/domain/schemas';
 import { mapBookingError } from '@/app/api/_lib/http';
-import { bookingService, catalogService, guestDocumentService, hotelRepository } from '@/lib/application/container';
+import { bookingService, catalogService, guestDocumentService, hotelRepository, inventoryService } from '@/lib/application/container';
 import { identitySchema, identityKey, documentImageType, MAX_DOCUMENT_BYTES } from '@/lib/domain/guest-document';
 
 /**
@@ -62,6 +62,56 @@ export type FrontDeskQuoteResult =
 export type FrontDeskBookingResult =
   | { ok: true; reference: string; message: string }
   | { ok: false; code: BookingErrorCode | 'invalid_request'; message: string; fieldErrors?: Record<string, string[]>; createdReference?: string };
+
+const moveRoomSchema = z.object({
+  reference: z.string().min(1),
+  roomNumber: z.string().regex(ROOM_NUMBER),
+  effectiveDate: stayCriteriaFieldsSchema.shape.checkIn,
+  reason: z.string().trim().min(1).max(200),
+});
+
+export type FrontDeskRoomMoveResult = { ok: true } | { ok: false; message: string };
+
+export async function moveFrontDeskBookingRoomAction(input: unknown): Promise<FrontDeskRoomMoveResult> {
+  const t = await getAdminT();
+  let memberId: string;
+  try {
+    memberId = (await requirePermission('team.permViewBookings')).memberId;
+  } catch (error) {
+    if (error instanceof AdminPermissionError) return { ok: false, message: t('team.permissionDenied') };
+    throw error;
+  }
+  const parsed = moveRoomSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t('frontDesk.moveInvalid') };
+
+  try {
+    const result = await inventoryService.moveBookingRoom(
+      await getSelectedHotelSlug(),
+      parsed.data.reference,
+      parsed.data.roomNumber,
+      parsed.data.effectiveDate,
+      parsed.data.reason,
+      memberId,
+    );
+    if (result !== 'ok') {
+      const key = ({
+        not_found: 'frontDesk.moveNotFound',
+        invalid_date: 'frontDesk.moveInvalid',
+        same_room: 'frontDesk.moveSameRoom',
+        unavailable: 'frontDesk.moveUnavailable',
+        save_failed: 'frontDesk.moveFailed',
+      } as const)[result];
+      return { ok: false, message: t(key) };
+    }
+    revalidatePath('/admin/front-desk');
+    revalidatePath('/admin/bookings');
+    revalidatePath(`/admin/bookings/${parsed.data.reference}`);
+    revalidatePath('/admin');
+    return { ok: true };
+  } catch {
+    return { ok: false, message: t('frontDesk.moveFailed') };
+  }
+}
 
 /** The price line the create-booking form shows before anything is written — informational, not trusted at submit time. */
 export async function quoteFrontDeskBookingAction(input: unknown): Promise<FrontDeskQuoteResult> {

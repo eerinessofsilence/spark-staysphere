@@ -644,7 +644,7 @@ export function BookingFlow({
                   id="accept-terms"
                   checked={acceptedTerms}
                   onCheckedChange={(checked) => setAcceptedTerms(checked)}
-                  className="mt-0.5 size-5 rounded-full"
+                className="mt-0.5 size-6 rounded-full border-2 border-foreground/45 bg-card shadow-sm data-checked:border-primary data-checked:bg-primary focus-visible:ring-4 focus-visible:ring-primary/25"
                 />
                 <span>
                   {t('book.acceptTermsPrefix')} {ratePlan.cancellationPolicy.toLowerCase()}

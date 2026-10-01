@@ -69,7 +69,7 @@ export default async function GroupsPage({
           placeholder={t('groups.searchPlaceholder')}
           wrapperClassName="w-full sm:w-80"
         />
-        <button type="submit" className={pill('secondary')}>
+        <button type="submit" className={pill('primary')}>
           {t('ops.search')}
         </button>
       </form>

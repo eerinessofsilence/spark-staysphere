@@ -2,6 +2,7 @@ import type { DemoControlPort, HotelRepository } from '../domain/ports';
 import type {
   Availability,
   Booking,
+  BookingRoomAssignment,
   BookingGroup,
   GuestProfile,
   IntegrationStatus,
@@ -137,6 +138,14 @@ export const mockHotelRepository: HotelRepository = {
     bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
     return updated;
   },
+  async saveBookingRoomAssignments(bookingId, assignments: BookingRoomAssignment[]) {
+    const booking = [...bookingsByReference.values()].find((candidate) => candidate.id === bookingId);
+    if (!booking) return false;
+    const updated: Booking = { ...booking, roomAssignments: assignments };
+    bookingsByReference.set(updated.reference, updated);
+    bookingsByIdempotencyKey.set(updated.idempotencyKey, updated);
+    return true;
+  },
   async listBookings(options = {}) {
     const items = [...bookingsByReference.values()].map(withGroup)
       .filter((booking) => !options.hotelId || booking.hotelId === options.hotelId)
@@ -176,6 +185,19 @@ export const mockHotelRepository: HotelRepository = {
   async createGuestProfile(profile) {
     guestProfiles.set(profile.id, profile);
     return profile;
+  },
+  async deleteGuestProfile(profileId, hotelId) {
+    const profile = guestProfiles.get(profileId);
+    if (profile?.hotelId === hotelId) guestProfiles.delete(profileId);
+  },
+  async anonymizeGuestBookings(hotelId, email) {
+    let count = 0;
+    for (const [reference, booking] of bookingsByReference) {
+      if (booking.hotelId === hotelId && booking.guest.email.trim().toLowerCase() === email.trim().toLowerCase()) {
+        bookingsByReference.set(reference, { ...booking, guest: { ...booking.guest, firstName: 'Deleted', lastName: 'Guest', email: `deleted+${booking.id}@invalid.local`, phone: '0000000' } }); count += 1;
+      }
+    }
+    return count;
   },
   async saveGuestIdentity(profileId, hotelId, identity) {
     const profile = guestProfiles.get(profileId);

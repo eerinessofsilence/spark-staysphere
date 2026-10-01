@@ -8,11 +8,12 @@ import {
   mealsByDay,
   nextArrivals,
   nextDepartures,
-  reservationBuckets,
+  periodMovements,
   revenueKpis,
   roomTypeAvailability,
   todayMovements,
 } from '@/lib/application/dashboard-stats';
+import { parseDashboardPeriod } from '@/lib/application/dashboard-period';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import { HOUSEKEEPING_STATUSES } from '@/lib/domain/housekeeping';
@@ -27,7 +28,8 @@ import { lDateRange, lDateShort, lGuests, lMoney, lNights } from '@/lib/i18n/for
 import { INTL_TAGS, type Locale } from '@/lib/i18n/locale';
 import { pill } from '@/lib/ui';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
-import { BarList, Donut, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
+import { DashboardPeriodFilter } from '@/components/admin/operations/dashboard-period-filter';
+import { BarList, MixBar, OccupancyGauge, ValueBars, type ValueBar } from '@/components/admin/operations/kpi-charts';
 import { Metric } from '@/components/admin/operations/metric-card';
 import { OccupancyChart } from '@/components/admin/operations/occupancy-chart';
 import { cn } from '@/lib/utils';
@@ -65,10 +67,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: adminPageTitle(t, t('dashboard.title')) };
 }
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const locale = await getAdminLocale();
   const t = adminT(locale);
   const today = toIsoDate(new Date());
+  const sp = await searchParams;
+  const period = parseDashboardPeriod(sp.period, sp.from, sp.to, today);
   const hotelSlug = await getSelectedHotelSlug();
   const [board, allBookings, housekeepingRooms] = await Promise.all([
     inventoryService.getFrontDesk(hotelSlug, today, 90),
@@ -85,7 +93,6 @@ export default async function AdminOverviewPage() {
     Promise.all(rooms.map(async (room) => [room.id, await demoControl.getRoomStatusOverride(room.id)] as const)),
   ]);
 
-  const buckets = reservationBuckets(bookings, today);
   const moves = todayMovements(bookings, today);
   // An empty day still shows who is next, so the desk never looks at a blank column.
   const arrivalsShown = moves.arrivals.length > 0 ? moves.arrivals : nextArrivals(bookings, today, 6);
@@ -116,11 +123,18 @@ export default async function AdminOverviewPage() {
 
   const sorted = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const confirmed = sorted.filter((booking) => booking.status === 'confirmed');
-  const revenue = confirmed.reduce((sum, booking) => sum + booking.total, 0);
+  const periodBookings = bookings.filter((booking) => booking.checkIn >= period.from && booking.checkIn <= period.to);
+  const periodConfirmed = periodBookings.filter((booking) => booking.status === 'confirmed');
+  const movementCounts = periodMovements(bookings, period.from, period.to);
+  const movementMax = Math.max(1, ...Object.values(movementCounts));
+  const revenue = periodConfirmed.reduce((sum, booking) => sum + booking.total, 0);
   const recent = sorted.slice(0, 5);
-  const tonight = board.days[0];
   const onSite = rooms.filter((room) => !room.hidden).length;
-  const tomorrow = board.days[1];
+  const periodDays = board.days.filter((day) => day.date >= period.from && day.date <= period.to);
+  const occupiedRoomNights = periodDays.reduce((sum, day) => sum + day.occupied, 0);
+  const availableRoomNights = board.totalRooms * periodDays.length;
+  const periodArrivals = periodDays.reduce((sum, day) => sum + day.arrivals, 0);
+  const periodDepartures = periodDays.reduce((sum, day) => sum + day.departures, 0);
   const roomMix = Object.entries(
     board.groups.reduce<Record<string, number>>((mix, group) => {
       const label = t(CATEGORY_PLURAL[roomCategory({ name: group.roomName })]);
@@ -139,7 +153,7 @@ export default async function AdminOverviewPage() {
             return mix;
           }, {}),
         ).map(([label, value]) => ({ label, value }));
-  const revenueBars = revenueByQuarter(confirmed, today, hotel.currency, locale);
+  const revenueBars = revenueByPeriod(periodConfirmed, period.from, period.to, today, hotel.currency, locale);
 
   return (
     <AdminPage>
@@ -152,17 +166,23 @@ export default async function AdminOverviewPage() {
         }
       />
 
-      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <DashboardPeriodFilter period={period} today={today} />
+
+      <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
-          label={t('dashboard.occupiedTonight')}
-          value={`${tonight?.occupied ?? 0} / ${board.totalRooms}`}
-          detail={t('dashboard.occupiedDetail')}
+          label={period.days === 1 ? t('dashboard.occupiedTonight') : t('dashboard.occupancyPeriod')}
+          value={`${occupiedRoomNights} / ${availableRoomNights}`}
+          detail={
+            period.days === 1
+              ? t('dashboard.occupiedDetail')
+              : t('dashboard.occupancyPeriodDetail', { occupied: occupiedRoomNights, capacity: availableRoomNights })
+          }
           chart={
             <OccupancyGauge
-              share={board.totalRooms > 0 ? (tonight?.occupied ?? 0) / board.totalRooms : 0}
-              arrivals={tonight?.arrivals ?? 0}
-              departures={tonight?.departures ?? 0}
-              tomorrowShare={tomorrow && board.totalRooms > 0 ? tomorrow.occupied / board.totalRooms : null}
+              share={availableRoomNights > 0 ? occupiedRoomNights / availableRoomNights : 0}
+              arrivals={periodArrivals}
+              departures={periodDepartures}
+              tomorrowShare={null}
             />
           }
         />
@@ -173,27 +193,33 @@ export default async function AdminOverviewPage() {
           chart={<BarList segments={roomSplit} otherLabel={t('dashboard.mixOther')} />}
         />
         <Metric
-          label={t('dashboard.confirmedBookings')}
-          value={String(confirmed.length)}
-          detail={t('dashboard.madeInTotal', { count: sorted.length })}
+          label={t('dashboard.stayActivity')}
+          value={String(movementCounts.arrived)}
+          detail={t('dashboard.arrived')}
           chart={
-            <Donut
-              centre={String(confirmed.length)}
-              caption={t('dashboard.bookingsCaption')}
-              slices={[
-                { label: t('dashboard.bucketUpcoming'), value: buckets.upcoming + buckets.dueIn, tone: 'accent' },
-                { label: t('dashboard.bucketInHouse'), value: buckets.inHouse + buckets.dueOut, tone: 'light' },
-                { label: t('dashboard.bucketCompleted'), value: buckets.completed, tone: 'stone' },
-              ]}
-              footnote={buckets.other > 0 ? t('dashboard.bookingsOther', { count: buckets.other }) : undefined}
-            />
+            <div>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {(['arrived', 'departed', 'expected', 'departing', 'noShow', 'cancelled'] as const).map((key) => (
+                  <li key={key}>
+                    <div className="flex items-baseline justify-between gap-2 text-[13px] leading-snug">
+                      <span className="min-w-0 break-words text-muted-foreground">{t(`dashboard.${key}`)}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">{movementCounts[key]}</span>
+                    </div>
+                    <div aria-hidden="true" className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone">
+                      <div className={cn('h-full rounded-full', key === 'noShow' || key === 'cancelled' ? 'bg-danger' : key === 'arrived' || key === 'departed' ? 'bg-success' : 'bg-accent')} style={{ width: `${movementCounts[key] / movementMax * 100}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="sr-only">{t('dashboard.activityHelp')}</p>
+            </div>
           }
         />
         <Metric
           label={t('dashboard.revenue')}
           value={lMoney(revenue, hotel.currency, locale)}
-          detail={t('dashboard.revenueDetail')}
-          chart={<ValueBars bars={revenueBars} />}
+          detail={t('dashboard.revenuePeriodDetail')}
+          chart={<ValueBars bars={revenueBars} label={t('dashboard.revenuePeriodDetail')} />}
         />
       </dl>
 
@@ -316,11 +342,15 @@ export default async function AdminOverviewPage() {
           <h3 id="meals-heading" className="font-medium">{t('dashboard.meals')}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.mealsBody')}</p>
           <ValueBars
+            label={t('dashboard.meals')}
             bars={meals.map((day, index) => ({
               label: lDateShort(day.date, locale).replace(/^\S+\s/, ''),
+              axisLabel: String(Number(day.date.slice(-2))),
               value: day.breakfast,
               display: String(day.breakfast),
               current: index === 0,
+              tooltipTitle: `${t('dashboard.breakfast')} ${day.breakfast} · ${t('dashboard.dining')} ${day.dining}`,
+              tooltipBody: lDateShort(day.date, locale),
             }))}
           />
           <table className="mt-4 w-full border-collapse text-sm">
@@ -490,39 +520,35 @@ const CATEGORY_PLURAL: Record<RoomCategory, AdminTranslationKey> = {
   penthouse: 'category.penthouses',
 };
 
-/**
- * Confirmed revenue by arrival quarter, as an unbroken run of quarters so a gap
- * reads as a quarter with nothing booked rather than being skipped. Kept to the
- * last six; anything earlier folds into the first bar so the bars still add up
- * to the headline total.
- */
-function revenueByQuarter(bookings: Booking[], today: string, currency: Currency, locale: Locale): ValueBar[] {
+/** Confirmed revenue grouped into at most seven arrival-date bars for the selected period. */
+function revenueByPeriod(
+  bookings: Booking[],
+  from: string,
+  to: string,
+  today: string,
+  currency: Currency,
+  locale: Locale,
+): ValueBar[] {
   const compact = new Intl.NumberFormat(INTL_TAGS[locale], { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 });
-  const index = (iso: string) => Number(iso.slice(0, 4)) * 4 + Math.floor((Number(iso.slice(5, 7)) - 1) / 3);
-  const now = index(today);
-  if (bookings.length === 0) return [];
-  const totals = new Map<number, number>();
-  for (const booking of bookings) {
-    const key = index(booking.checkIn);
-    totals.set(key, (totals.get(key) ?? 0) + booking.total);
-  }
-  const last = Math.max(now, ...totals.keys());
-  // Start at the first quarter that earned anything (at most six back, at least four shown): leading empty bars say nothing.
-  const earliest = Math.min(...totals.keys());
-  const span = Math.max(4, Math.min(6, last - earliest + 1));
-  const first = last - span + 1;
-  return Array.from({ length: span }, (_, offset) => {
-    const key = first + offset;
-    const value =
-      offset === 0
-        ? [...totals].filter(([quarter]) => quarter <= key).reduce((sum, [, total]) => sum + total, 0)
-        : (totals.get(key) ?? 0);
-    const year = Math.floor(key / 4);
+  const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+  const bucketDays = Math.max(1, Math.ceil(days / 7));
+  const count = Math.ceil(days / bucketDays);
+  return Array.from({ length: count }, (_, offset) => {
+    const start = toIsoDate(addDays(parseISO(from), offset * bucketDays));
+    const end = [toIsoDate(addDays(parseISO(start), bucketDays - 1)), to].sort()[0]!;
+    const value = bookings
+      .filter((booking) => booking.checkIn >= start && booking.checkIn <= end)
+      .reduce((sum, booking) => sum + booking.total, 0);
+    const shortStart = lDateShort(start, locale).replace(/^\S+\s/, '');
+    const shortEnd = lDateShort(end, locale).replace(/^\S+\s/, '');
     return {
-      label: `Q${(key % 4) + 1} ${String(year).slice(2)}`,
+      label: start === end ? shortStart : `${shortStart}–${shortEnd}`,
+      axisLabel: String(Number(start.slice(-2))),
       value,
       display: compact.format(value),
-      current: key === now,
+      current: today >= start && today <= end,
+      tooltipTitle: lMoney(value, currency, locale),
+      tooltipBody: start === end ? lDateShort(start, locale) : `${lDateShort(start, locale)} – ${lDateShort(end, locale)}`,
     };
   });
 }

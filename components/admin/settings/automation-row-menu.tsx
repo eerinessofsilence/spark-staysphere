@@ -10,6 +10,7 @@ import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import type { AutomationActionResult, AutomationPreviewResult, SaveAutomationResult } from '@/app/admin/settings/automations/actions';
 import { AutomationEditorModal } from './automation-editor-button';
 import { AutomationPreviewModal } from './automation-preview-button';
@@ -39,6 +40,7 @@ export function AutomationRowMenu({
 }) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false);
@@ -46,8 +48,10 @@ export function AutomationRowMenu({
 
   async function remove() {
     setDeleting(true);
-    const result = await deleteAction(rule.id);
+    setConfirming(false);
+    const result = await deferDelete(`automation:${rule.id}`, label, () => deleteAction(rule.id));
     setDeleting(false);
+    if (!result) return;
     if (result.ok) {
       setConfirming(false);
       toast.success(result.message);
@@ -61,6 +65,7 @@ export function AutomationRowMenu({
     <>
       <Menu.Root modal={false}>
         <Menu.Trigger
+          disabled={deleting}
           openOnHover
           delay={80}
           closeDelay={150}

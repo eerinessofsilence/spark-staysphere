@@ -13,6 +13,8 @@ import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { CreateGuestButton } from '@/components/admin/operations/create-guest-button';
 import { SearchInput } from '@/components/ui/search-input';
+import { ImportGuestsButton } from '@/components/admin/operations/import-guests-button';
+import { GuestRowActions, GuestTableRow } from '@/components/admin/operations/guest-row-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +59,7 @@ export default async function GuestsPage({
 
   return (
     <AdminPage>
-      <AdminPageHeader title={t('nav.guests')} actions={<CreateGuestButton />} />
+      <AdminPageHeader title={t('nav.guests')} actions={<div className="flex flex-wrap gap-2"><ImportGuestsButton hotelSlug={hotel.slug} /><CreateGuestButton /></div>} />
 
       <form role="search" action="/admin/guests" method="get" className="mt-2 flex gap-2">
         <label htmlFor="guests-search" className="sr-only">
@@ -70,7 +72,7 @@ export default async function GuestsPage({
           placeholder={t('guests.searchPlaceholder')}
           wrapperClassName="w-full sm:w-80"
         />
-        <button type="submit" className={pill('secondary')}>
+        <button type="submit" className={pill('primary')}>
           {t('ops.search')}
         </button>
       </form>
@@ -91,11 +93,12 @@ export default async function GuestsPage({
                   <Th className="text-right">{t('guests.thSpent')}</Th>
                   <Th className="text-right">{t('guests.thNights')}</Th>
                   <Th>{t('guests.thLastStay')}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
                 {pageItems.map((guest) => (
-                  <tr key={guest.id} className="relative border-b border-border transition-colors last:border-b-0 hover:bg-stone/50">
+                  <GuestTableRow key={guest.id} id={guest.id} hotelId={hotel.id}>
                     <Td className="whitespace-nowrap">
                       {/* Stretched: the row opens the guest's own page from anywhere in it. */}
                       <Link
@@ -120,7 +123,8 @@ export default async function GuestsPage({
                     <Td className="whitespace-nowrap text-muted-foreground">
                       {guest.lastCheckIn ? lDate(guest.lastCheckIn, locale) : t('guests.neverStayed')}
                     </Td>
-                  </tr>
+                    <Td className="relative text-right"><GuestRowActions id={guest.id} hotelId={hotel.id} name={`${guest.firstName} ${guest.lastName}`} canDelete /></Td>
+                  </GuestTableRow>
                 ))}
               </tbody>
             </TableCard>

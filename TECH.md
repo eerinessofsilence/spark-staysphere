@@ -562,7 +562,8 @@ The back office has the same control (`components/admin/assistant/`, mounted onc
 `AdminShell`), for a hotel team member rather than a guest, as a chat window docked beside the page
 rather than a dialog over it — setting a hotel up is done alongside the screens it changes. "Set
 the Deluxe Sea View rate to 320", "hide Garden Studio", "mark Panorama Suite sold out", "take the
-airport transfer off sale", "create a room type and a room for it", "open room rates". The guest
+airport transfer off sale", "create a room type and a room for it", "create a rate for Deluxe Sea
+View", "create a service", "open room rates". The guest
 rule holds with one more clause — **the model interprets language; it never produces inventory,
 availability, or money, and it never writes.**
 
@@ -598,7 +599,7 @@ office is server actions only, no new API routes) that re-parses the proposal wi
 `adminProposalSchema` because it round-trips through the browser; `ask` parses the draft and the
 history the same way. The action set is deliberately the mutators that already exist — a nightly
 price, a room type's `hidden`, its availability override, an add-on's `enabled`, `createRoom`,
-`createPhysicalRoom`, and navigation — so the assistant has no write path of its own; extending it
+`createPhysicalRoom`, `createRate`, `createAddOn`, and navigation — so the assistant has no write path of its own; extending it
 is a matter of adding an action and its mapping, not a new way to write. Every sentence the panel
 shows (`formatAdminQuestion`, `formatAdminProposal`, `formatAdminAssistantReply`,
 `formatAdminApplyOutcome` in `lib/formatting.ts`) is composed from the draft's and the proposal's

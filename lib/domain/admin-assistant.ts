@@ -15,6 +15,8 @@ export const adminCommandActions = [
   'set_add_on_enabled',
   'create_room_type',
   'create_physical_room',
+  'create_rate',
+  'create_add_on',
   'navigate',
   'unknown',
 ] as const;
@@ -59,6 +61,31 @@ export const roomTypeDraftSchema = z.object({
 });
 export type RoomTypeDraft = z.infer<typeof roomTypeDraftSchema>;
 
+const rateDraftSchema = z.object({
+  roomTypeName: z.string().nullable(),
+  name: z.string().nullable(),
+  nightlyPrice: z.number().nullable(),
+  breakfastIncluded: z.boolean().nullable(),
+  cancellationPolicy: z.string().nullable(),
+});
+export type RateDraft = z.infer<typeof rateDraftSchema>;
+export const rateDraftFields = ['roomTypeName', 'name', 'nightlyPrice', 'breakfastIncluded', 'cancellationPolicy'] as const;
+export type RateDraftField = (typeof rateDraftFields)[number];
+
+const addOnDraftSchema = z.object({
+  name: z.string().nullable(),
+  description: z.string().nullable(),
+  category: z.enum(['service', 'dining']).nullable(),
+  price: z.number().nullable(),
+  pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']).nullable(),
+});
+export type AddOnDraft = z.infer<typeof addOnDraftSchema>;
+export const addOnDraftFields = ['name', 'description', 'category', 'price', 'pricingUnit'] as const;
+export type AddOnDraftField = (typeof addOnDraftFields)[number];
+
+export const emptyRateDraft: RateDraft = { roomTypeName: null, name: null, nightlyPrice: null, breakfastIncluded: null, cancellationPolicy: null };
+export const emptyAddOnDraft: AddOnDraft = { name: null, description: null, category: null, price: null, pricingUnit: null };
+
 export const emptyRoomTypeDraft: RoomTypeDraft = {
   name: null,
   description: null,
@@ -90,6 +117,8 @@ export const adminCommandWireSchema = z.object({
   roomType: roomTypeDraftSchema,
   /** For `create_physical_room`: the number as the admin said it. */
   roomNumber: z.string().nullable(),
+  rate: rateDraftSchema,
+  addOn: addOnDraftSchema,
   /** The admin asked for a room type *and* a room for it in one breath. */
   alsoRoom: z.boolean().nullable(),
   /** Phrases the model understood but the actions above cannot express. */
@@ -123,6 +152,8 @@ export const adminDraftSchema = z.discriminatedUnion('kind', [
     /** Go straight on to a room for it once it exists. */
     thenRoom: z.boolean(),
   }),
+  z.object({ kind: z.literal('create_rate'), fields: rateDraftSchema }),
+  z.object({ kind: z.literal('create_add_on'), fields: addOnDraftSchema }),
   z.object({
     kind: z.literal('create_physical_room'),
     roomTypeId: z.string().min(1),
@@ -191,6 +222,18 @@ export const adminProposalSchema = z.discriminatedUnion('kind', [
     roomTypeId: z.string().min(1),
     roomTypeName: z.string(),
     number: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('create_rate'),
+    roomTypeId: z.string().min(1),
+    roomTypeName: z.string(),
+    input: z.object({ name: z.string().min(1), nightlyPrice: z.number().positive(), breakfastIncluded: z.boolean(), cancellationPolicy: z.string().min(1) }),
+  }),
+  z.object({
+    kind: z.literal('create_add_on'),
+    input: z.object({
+      name: z.string().min(1), description: z.string().min(1), category: z.enum(['service', 'dining']), price: z.number().positive(), pricingUnit: z.enum(['per_stay', 'per_night', 'per_guest']),
+    }),
   }),
   z.object({
     kind: z.literal('navigate'),

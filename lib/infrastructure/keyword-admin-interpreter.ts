@@ -1,8 +1,14 @@
 import {
   adminPages,
+  emptyAddOnDraft,
+  emptyRateDraft,
   emptyRoomTypeDraft,
   roomTypeDraftFields,
   type AdminDraft,
+  type AddOnDraft,
+  type AddOnDraftField,
+  type RateDraft,
+  type RateDraftField,
   type AdminPage,
   type RoomTypeDraft,
   type RoomTypeDraftField,
@@ -58,6 +64,8 @@ const NUMBER = /(\d+(?:[.,]\d+)?)/;
 const CREATE = /\b(create|add|make|new|set up)\b/;
 const ROOM_TYPE = /\broom ?types?\b|\bcategory\b|\btype of room\b/;
 const ROOM = /\brooms?\b/;
+const RATE = /\b(rate|rates|rate plan|pricing plan)\b/;
+const ADD_ON = /\b(service|services|add-?on|add on|extra|extras|dish|menu item)\b/;
 const ALSO_ROOM = /\b(and|with|plus)\b[^.]*\brooms?\b/;
 const ROOM_NUMBER = /\b([a-z]?\d{2,4})\b/i;
 
@@ -124,9 +132,48 @@ function empty(): AdminCommand {
     page: null,
     roomType: { ...emptyRoomTypeDraft },
     roomNumber: null,
+    rate: { ...emptyRateDraft },
+    addOn: { ...emptyAddOnDraft },
     alsoRoom: null,
     unresolved: [],
   };
+}
+
+function extractRateDraft(text: string): AdminCommand['rate'] {
+  const price = text.match(/(?:at|for|price|rate)?\s*(\d+(?:[.,]\d+)?)\s*(?:a |per )?night/i);
+  const named = text.match(/["“]([^"”]+)["”]/) ?? text.match(/\b(?:called|named)\s+(.+?)(?=\s+(?:for|at)\b|,|$)/i);
+  return {
+    roomTypeName: null,
+    name: named?.[1]?.trim() ?? null,
+    nightlyPrice: price ? Number(price[1]!.replace(',', '.')) : null,
+    breakfastIncluded: /\b(with|including|includes) breakfast\b/i.test(text) ? true : /\bwithout breakfast\b/i.test(text) ? false : null,
+    cancellationPolicy: /\b(non[- ]refundable|flexible cancellation|free cancellation)\b/i.test(text) ? text.match(/\b(non[- ]refundable|flexible cancellation|free cancellation)\b/i)?.[1] ?? null : null,
+  };
+}
+
+function extractAddOnDraft(text: string): AdminCommand['addOn'] {
+  const named = text.match(/["“]([^"”]+)["”]/) ?? text.match(/\b(?:called|named)\s+(.+?)(?=\s+(?:for|at)\b|,|$)/i);
+  const price = text.match(/(?:at|for|price)\s*(\d+(?:[.,]\d+)?)/i);
+  return {
+    name: named?.[1]?.trim() ?? null,
+    description: null,
+    category: /\b(dining|dish|food|menu)\b/i.test(text) ? 'dining' : /\b(service|transfer|spa|parking)\b/i.test(text) ? 'service' : null,
+    price: price ? Number(price[1]!.replace(',', '.')) : null,
+    pricingUnit: /\bper guest\b/i.test(text) ? 'per_guest' : /\bper night\b/i.test(text) ? 'per_night' : /\bper stay\b/i.test(text) ? 'per_stay' : null,
+  };
+}
+
+function rateAnswer(field: RateDraftField, text: string): RateDraft[RateDraftField] {
+  if (field === 'roomTypeName' || field === 'name' || field === 'cancellationPolicy') return text.trim() || null;
+  if (field === 'nightlyPrice') return decimal(text);
+  return /\b(yes|with|include)\b/i.test(text) ? true : /\b(no|without|exclude)\b/i.test(text) ? false : null;
+}
+
+function addOnAnswer(field: AddOnDraftField, text: string): AddOnDraft[AddOnDraftField] {
+  if (field === 'name' || field === 'description') return text.trim() || null;
+  if (field === 'price') return decimal(text);
+  if (field === 'category') return /\b(dining|dish|food|menu)\b/i.test(text) ? 'dining' : /\b(service|transfer|spa|parking)\b/i.test(text) ? 'service' : null;
+  return /\bper guest\b/i.test(text) ? 'per_guest' : /\bper night\b/i.test(text) ? 'per_night' : /\bper stay\b/i.test(text) ? 'per_stay' : null;
 }
 
 function integer(text: string): number | null {
@@ -209,6 +256,20 @@ export function interpretAdminKeywords(utterance: string, vocabulary: AdminComma
     return { ...command, action: 'create_physical_room', roomNumber: roomNumberIn(text) };
   }
 
+  if (draft?.kind === 'create_rate') {
+    const field = ['roomTypeName', 'name', 'nightlyPrice', 'breakfastIncluded', 'cancellationPolicy'].find((key) => draft.fields[key as RateDraftField] === null) as RateDraftField | undefined;
+    const rate = { ...emptyRateDraft, ...extractRateDraft(text) };
+    if (field) rate[field] = rateAnswer(field, text) as never;
+    return { ...command, action: 'create_rate', rate };
+  }
+
+  if (draft?.kind === 'create_add_on') {
+    const field = ['name', 'description', 'category', 'price', 'pricingUnit'].find((key) => draft.fields[key as AddOnDraftField] === null) as AddOnDraftField | undefined;
+    const addOn = { ...emptyAddOnDraft, ...extractAddOnDraft(text) };
+    if (field) addOn[field] = addOnAnswer(field, text) as never;
+    return { ...command, action: 'create_add_on', addOn };
+  }
+
   if (NAVIGATE.test(lower)) {
     const page = findPage(lower);
     if (page) return { ...command, action: 'navigate', page };
@@ -227,6 +288,14 @@ export function interpretAdminKeywords(utterance: string, vocabulary: AdminComma
       roomType: { ...emptyRoomTypeDraft, ...extractRoomTypeFields(lower) },
       alsoRoom: ALSO_ROOM.test(lower.replace(ROOM_TYPE, ' ')),
     };
+  }
+
+  if (CREATE.test(lower) && RATE.test(lower)) {
+    return { ...command, action: 'create_rate', rate: { ...extractRateDraft(text), roomTypeName: roomTypeName ?? rest } };
+  }
+
+  if (CREATE.test(lower) && ADD_ON.test(lower)) {
+    return { ...command, action: 'create_add_on', addOn: extractAddOnDraft(text) };
   }
 
   if (CREATE.test(lower) && ROOM.test(lower)) {

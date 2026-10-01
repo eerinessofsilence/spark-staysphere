@@ -16,8 +16,10 @@ import { cn } from '@/lib/utils';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { SearchInput } from '@/components/ui/search-input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { OrderRowActions, OrderStatusMenu } from '@/components/admin/orders/order-status-menu';
 import { CreateOrderButton } from '@/components/admin/orders/create-order-button';
+import { OrderFilters } from '@/components/admin/orders/order-filters';
 import { OrderViewButton } from '@/components/admin/orders/order-view-modal';
 
 export const dynamic = 'force-dynamic';
@@ -135,6 +137,7 @@ export default async function OrdersPage({
 
   const baseFilters = { query, created, due, guest, category, service, room };
   const hasFilters = Boolean(query || created || due || guest || category || service || room);
+  const hasAdvancedFilters = Boolean(created || due || guest || category || service || room);
 
   return (
     <AdminPage>
@@ -162,39 +165,51 @@ export default async function OrdersPage({
           </nav>
         </div>
 
-        <form action="/admin/orders" method="get" className="grid gap-3 border-b border-border p-4 sm:p-6 xl:grid-cols-[minmax(18rem,1.4fr)_auto_repeat(2,minmax(9rem,1fr))_minmax(9rem,1fr)_minmax(9rem,1fr)]">
+        <form action="/admin/orders" method="get" className="border-b border-border p-4 sm:p-6">
           <input type="hidden" name="view" value={view} />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="orders-search" className="sr-only">{t('orders.search')}</label>
-            <SearchInput id="orders-search" name="q" defaultValue={query} placeholder={t('orders.search')} wrapperClassName="min-w-0 flex-1" />
+            <SearchInput id="orders-search" name="q" defaultValue={query} placeholder={t('orders.search')} wrapperClassName="min-w-0 grow basis-60 sm:max-w-md" />
             <button type="submit" className={pill('primary', 'px-4')}>{t('orders.searchButton')}</button>
-          </div>
-          <label className="sr-only" htmlFor="orders-created">{t('orders.created')}</label>
-          <input id="orders-created" name="created" type="date" defaultValue={created} aria-label={t('orders.created')} className={fieldClass} />
-          <label className="sr-only" htmlFor="orders-due">{t('orders.due')}</label>
-          <input id="orders-due" name="due" type="date" defaultValue={due} aria-label={t('orders.due')} className={fieldClass} />
-          <label className="sr-only" htmlFor="orders-guest">{t('orders.selectGuest')}</label>
-          <select id="orders-guest" name="guest" defaultValue={guest} className={fieldClass}>
-            <option value="">{t('orders.selectGuest')}</option>
-            {guests.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-          <label className="sr-only" htmlFor="orders-category">{t('orders.allCategories')}</label>
-          <select id="orders-category" name="category" defaultValue={category} className={fieldClass}>
-            <option value="">{t('orders.allCategories')}</option>
-            {categories.map((value) => <option key={value} value={value}>{t(categoryKey[value])}</option>)}
-          </select>
-          <div className="flex flex-wrap gap-2 xl:col-span-6">
-            <label className="sr-only" htmlFor="orders-service">{t('orders.allServices')}</label>
-            <select id="orders-service" name="service" defaultValue={service} className={cn(fieldClass, 'sm:w-auto sm:min-w-52')}>
-              <option value="">{t('orders.allServices')}</option>
-              {services.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
-            <label className="sr-only" htmlFor="orders-room">{t('orders.allResources')}</label>
-            <select id="orders-room" name="room" defaultValue={room} className={cn(fieldClass, 'sm:w-auto sm:min-w-44')}>
-              <option value="">{t('orders.allResources')}</option>
-              {rooms.map((number) => <option key={number} value={number}>{number}</option>)}
-            </select>
             {hasFilters ? <Link href={hrefFor({ view })} className={pill('secondary')}>{t('orders.reset')}</Link> : null}
+            <OrderFilters initiallyOpen={hasAdvancedFilters} label={t('orders.filters')}>
+              <div>
+                <label className="sr-only" htmlFor="orders-created">{t('orders.created')}</label>
+                <input id="orders-created" name="created" type="date" defaultValue={created} aria-label={t('orders.created')} className={fieldClass} />
+              </div>
+              <div>
+                <label className="sr-only" htmlFor="orders-due">{t('orders.due')}</label>
+                <input id="orders-due" name="due" type="date" defaultValue={due} aria-label={t('orders.due')} className={fieldClass} />
+              </div>
+              <div>
+                <label className="sr-only" htmlFor="orders-guest">{t('orders.selectGuest')}</label>
+                <NativeSelect id="orders-guest" name="guest" defaultValue={guest}>
+                  <option value="">{t('orders.selectGuest')}</option>
+                  {guests.map((name) => <option key={name} value={name}>{name}</option>)}
+                </NativeSelect>
+              </div>
+              <div>
+                <label className="sr-only" htmlFor="orders-category">{t('orders.allCategories')}</label>
+                <NativeSelect id="orders-category" name="category" defaultValue={category}>
+                  <option value="">{t('orders.allCategories')}</option>
+                  {categories.map((value) => <option key={value} value={value}>{t(categoryKey[value])}</option>)}
+                </NativeSelect>
+              </div>
+              <div>
+                <label className="sr-only" htmlFor="orders-service">{t('orders.allServices')}</label>
+                <NativeSelect id="orders-service" name="service" defaultValue={service}>
+                  <option value="">{t('orders.allServices')}</option>
+                  {services.map((name) => <option key={name} value={name}>{name}</option>)}
+                </NativeSelect>
+              </div>
+              <div>
+                <label className="sr-only" htmlFor="orders-room">{t('orders.allResources')}</label>
+                <NativeSelect id="orders-room" name="room" defaultValue={room}>
+                  <option value="">{t('orders.allResources')}</option>
+                  {rooms.map((number) => <option key={number} value={number}>{number}</option>)}
+                </NativeSelect>
+              </div>
+            </OrderFilters>
           </div>
         </form>
 

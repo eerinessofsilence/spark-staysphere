@@ -8,6 +8,7 @@ import { discardUnsavedChanges } from '@/components/admin/shell/unsaved-changes'
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton, pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import type { ContentFormState } from '@/app/admin/content/_lib/form-state';
 
 type DeleteAction =
@@ -56,6 +57,7 @@ export function DeleteEntityButton({
 }: DeleteEntityButtonProps) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -67,12 +69,12 @@ export function DeleteEntityButton({
   const finish = async (result: ContentFormState) => {
     if (result.status === 'success') {
       toast.success(result.message || t('form.labelRemoved', { label }));
-      if (afterDeleteHref) {
+      if (afterDeleteHref && window.location.pathname === sourcePath.current) {
         discardUnsavedChanges();
         router.replace(afterDeleteHref);
         return;
       }
-      if (redirectTo) router.push(redirectTo);
+      if (redirectTo && window.location.pathname === sourcePath.current) router.push(redirectTo);
       else router.refresh();
       onDeleted?.();
       setOpen(false);
@@ -83,10 +85,14 @@ export function DeleteEntityButton({
     setPending(false);
   };
 
+  const sourcePath = React.useRef('');
   const remove = async () => {
     setPending(true);
     setError('');
-    const result = version === undefined ? await (action as (id: string) => Promise<ContentFormState>)(id) : await action(id, version);
+    setOpen(false);
+    sourcePath.current = window.location.pathname;
+    const result = await deferDelete(`content:${id}`, label, () => version === undefined ? (action as (id: string) => Promise<ContentFormState>)(id) : action(id, version));
+    if (!result) { setPending(false); return; }
     await finish(result);
   };
 

@@ -8,6 +8,7 @@ import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
 import { Modal } from '@/components/site/modal';
+import { NativeSelect } from '@/components/ui/native-select';
 import { toast } from '@/components/admin/shell/toast';
 
 const categories: OrderCategory[] = ['dining', 'wellness', 'experience', 'transport', 'room'];
@@ -109,17 +110,17 @@ function CreateOrderForm({ guests, services, rooms, onClose }: { guests: string[
           <datalist id="order-services">{services.map((name) => <option key={name} value={name} />)}</datalist>
         </Field>
         <Field label={t('orders.fieldCategory')} htmlFor="order-category" error={errorFor('category')}>
-          <select id="order-category" value={category} onChange={(event) => setCategory(event.target.value as OrderCategory)} className={fieldClass}>
+          <NativeSelect id="order-category" value={category} onChange={(event) => setCategory(event.target.value as OrderCategory)}>
             {categories.map((value) => <option key={value} value={value}>{t(categoryKeys[value])}</option>)}
-          </select>
+          </NativeSelect>
         </Field>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('orders.fieldDelivery')} htmlFor="order-delivery" error={errorFor('delivery')}>
-          <select id="order-delivery" value={delivery} onChange={(event) => setDelivery(event.target.value as OrderDelivery)} className={fieldClass}>
+          <NativeSelect id="order-delivery" value={delivery} onChange={(event) => setDelivery(event.target.value as OrderDelivery)}>
             {deliveries.map((value) => <option key={value} value={value}>{value === 'Room delivery' ? t('orders.roomDelivery') : value === 'Hotel pickup' ? t('orders.hotelPickup') : t('orders.withoutDelivery')}</option>)}
-          </select>
+          </NativeSelect>
         </Field>
         <Field label={t('orders.fieldDue')} htmlFor="order-due" error={errorFor('dueAt')}>
           <input id="order-due" type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} required className={fieldClass} />
@@ -134,9 +135,9 @@ function CreateOrderForm({ guests, services, rooms, onClose }: { guests: string[
           <input id="order-extras" type="number" min="0" max="99" step="1" value={extras} onChange={(event) => setExtras(event.target.value)} required className={fieldClass} />
         </Field>
         <Field label={t('orders.fieldPayment')} htmlFor="order-payment" error={errorFor('paymentStatus')}>
-          <select id="order-payment" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as OrderPaymentStatus)} className={fieldClass}>
+          <NativeSelect id="order-payment" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as OrderPaymentStatus)}>
             {paymentStatuses.map((value) => <option key={value} value={value}>{value === 'paid' ? t('orders.paid') : value === 'partial' ? t('orders.partial') : t('orders.unpaid')}</option>)}
-          </select>
+          </NativeSelect>
         </Field>
       </div>
 

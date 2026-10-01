@@ -11,6 +11,7 @@ import { fieldClass, pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/site/modal';
 import { methodLabel } from '@/components/admin/operations/payment-state';
+import { PaymentMethodIcon } from './payment-method-icon';
 import { toast } from '@/components/admin/shell/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -125,12 +126,13 @@ export function AddPaymentButton({ bookings }: { bookings: UnpaidBooking[] }) {
                   type="button"
                   onClick={() => setMethod(id)}
                   className={cn(
-                    'flex min-h-10 items-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors',
+                    'flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors',
                     id === method
                       ? 'bg-primary text-primary-foreground'
                       : 'border border-border text-muted-foreground hover:bg-stone hover:text-foreground',
                   )}
                 >
+                  <PaymentMethodIcon method={id} />
                   {methodLabel(id, locale)}
                 </button>
               ))}

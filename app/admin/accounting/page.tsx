@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowCounterClockwise, CheckCircle, Clock, MinusCircle, Receipt, XCircle } from '@phosphor-icons/react/dist/ssr';
+import { ArrowCounterClockwise, CheckCircle, Clock, MinusCircle, Money, Receipt, XCircle } from '@phosphor-icons/react/dist/ssr';
 import { buildLedger, type LedgerState } from '@/lib/application/accounting';
+import { filterPaymentRows, parsePaymentFilters, resetPaymentFiltersHref } from '@/lib/application/accounting-filters';
 import { catalogService, hotelRepository } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
@@ -12,10 +13,13 @@ import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { AddPaymentButton, type UnpaidBooking } from '@/components/admin/accounting/add-payment-button';
+import { PaymentMethodIcon } from '@/components/admin/accounting/payment-method-icon';
+import { AccountingTabs } from '@/components/admin/accounting/accounting-tabs';
+import { PaymentFiltersBar } from '@/components/admin/accounting/payment-filters';
 import { Meter, Metric } from '@/components/admin/operations/metric-card';
 import { methodLabel } from '@/components/admin/operations/payment-state';
 import { SampleBookingsButton } from '@/components/admin/operations/sample-bookings-button';
-import { PAGE_SIZE, paginate, parsePage, parsePageSize, Pagination, tablePager } from '@/components/admin/operations/pagination';
+import { paginate, Pagination, tablePager } from '@/components/admin/operations/pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 
@@ -43,8 +47,9 @@ export default async function AccountingPage({
   const locale = await getAdminLocale();
   const t = adminT(locale);
   const sp = await searchParams;
-  const pageParam = parsePage(sp.page);
-  const pageSizeParam = parsePageSize(sp.pageSize);
+  const pager = tablePager(sp, '/admin/accounting');
+  const filters = parsePaymentFilters(sp);
+  const resetHref = resetPaymentFiltersHref(sp);
   const methodPager = tablePager(sp, '/admin/accounting', 'method');
   const [hotel, allBookings] = await Promise.all([
     catalogService.getHotel(await getSelectedHotelSlug()),
@@ -57,6 +62,8 @@ export default async function AccountingPage({
     bookings.map(async (booking) => ({ booking, payments: await hotelRepository.listPaymentAttempts(booking.id) })),
   );
   const ledger = buildLedger(entries);
+  const filteredRows = filterPaymentRows(ledger.rows, filters);
+  const methods = [...new Set([...ledger.rows.map((row) => row.method ?? 'none'), ...(filters.method ? [filters.method] : [])])].sort();
   const unpaidBookings: UnpaidBooking[] = ledger.rows
     .filter((row) => row.state === 'awaiting' || row.state === 'declined')
     .map((row) => ({
@@ -66,19 +73,10 @@ export default async function AccountingPage({
       amount: row.amount,
       currency: row.booking.currency,
     }));
-  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(ledger.rows, pageParam, pageSizeParam);
+  const { pageItems: pageRows, page: currentPage, totalPages } = paginate(filteredRows, pager.page, pager.pageSize);
   const { pageItems: pageMethods, page: methodPage, totalPages: methodTotalPages } = paginate(ledger.byMethod, methodPager.page, methodPager.pageSize);
   const money = (value: number) => lMoney(value, hotel.currency, locale);
   const unpaid = ledger.counts.awaiting + ledger.counts.declined;
-  const pageHref = (overrides: Partial<{ page: number; pageSize: number; methodPage: number }>) => {
-    const next = { page: currentPage, pageSize: pageSizeParam, methodPage, ...overrides };
-    const query = new URLSearchParams();
-    if (next.page > 1) query.set('page', String(next.page));
-    if (next.pageSize !== PAGE_SIZE) query.set('pageSize', String(next.pageSize));
-    if (next.methodPage > 1) query.set('methodPage', String(next.methodPage));
-    const qs = query.toString();
-    return `/admin/accounting${qs ? `?${qs}` : ''}`;
-  };
   /** "N things" with the right noun form — Russian needs one/few/many, the other two use one/many. */
   const counted = (count: number, one: AdminTranslationKey, few: AdminTranslationKey, many: AdminTranslationKey) =>
     pluralForm(locale, count, {
@@ -91,10 +89,12 @@ export default async function AccountingPage({
   return (
     <AdminPage>
       <AdminPageHeader title={t('nav.accounting')} actions={<AddPaymentButton bookings={unpaidBookings} />} />
+      <AccountingTabs current="payments" />
 
       <dl className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Metric
           label={t('accounting.collected')}
+          icon={<Money weight="fill" />}
           value={money(ledger.collected)}
           detail={counted(
             ledger.counts.collected,
@@ -106,6 +106,7 @@ export default async function AccountingPage({
         />
         <Metric
           label={t('accounting.awaitingPayment')}
+          icon={<Clock weight="fill" />}
           value={money(ledger.awaiting)}
           detail={
             ledger.rows.length === 0
@@ -117,6 +118,7 @@ export default async function AccountingPage({
         />
         <Metric
           label={t('accounting.owedBack')}
+          icon={<ArrowCounterClockwise weight="fill" />}
           value={money(ledger.owedBack)}
           detail={
             ledger.counts.owed_back === 0
@@ -126,6 +128,7 @@ export default async function AccountingPage({
         />
         <Metric
           label={t('accounting.bookedValue')}
+          icon={<Receipt weight="fill" />}
           value={money(ledger.bookedValue)}
           detail={t('accounting.shareCollected', { percent: Math.round(ledger.settledShare * 100) })}
         />
@@ -157,7 +160,10 @@ export default async function AccountingPage({
               {pageMethods.map((row) => (
                 <tr key={row.method ?? 'none'} className="border-b border-border last:border-b-0">
                   <Td className="font-medium whitespace-nowrap">
-                    {row.method ? methodLabel(row.method, locale) : t('accounting.noPaymentRecorded')}
+                    <span className="inline-flex items-center gap-2">
+                      <PaymentMethodIcon method={row.method} className="text-muted-foreground" />
+                      {row.method ? methodLabel(row.method, locale) : t('accounting.noPaymentRecorded')}
+                    </span>
                   </Td>
                   <Td className="text-right tabular-nums">{row.stays}</Td>
                   <Td className="text-right tabular-nums whitespace-nowrap">{money(row.collected)}</Td>
@@ -183,6 +189,8 @@ export default async function AccountingPage({
           {t('accounting.payments')}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('accounting.paymentsBody')}</p>
+        <PaymentFiltersBar key={JSON.stringify(filters)} filters={filters} methods={methods} resetHref={resetHref} />
+        {filters.invalidDates ? <p role="alert" className="mt-3 text-sm text-danger">{t('accounting.invalidFilterDates')}</p> : null}
         <div className="mt-5">
           {ledger.rows.length === 0 ? (
             <div className="flex flex-col items-center rounded-[18px] bg-card px-6 py-10 text-center shadow-soft">
@@ -197,6 +205,12 @@ export default async function AccountingPage({
                 </Link>
                 <SampleBookingsButton />
               </div>
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="rounded-[18px] bg-card px-6 py-10 text-center shadow-soft">
+              <p role="status" className="font-medium">{t('accounting.noMatchingPayments')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('accounting.noMatchingPaymentsBody')}</p>
+              <Link href={resetHref} scroll={false} className={pill('secondary', 'mt-4')}>{t('accounting.resetFilters')}</Link>
             </div>
           ) : (
             <div className="overflow-hidden rounded-[18px] bg-card shadow-soft">
@@ -231,7 +245,12 @@ export default async function AccountingPage({
                       <Td>
                         {booking.guest.firstName} {booking.guest.lastName}
                       </Td>
-                      <Td className="whitespace-nowrap">{method ? methodLabel(method, locale) : '—'}</Td>
+                      <Td className="whitespace-nowrap">
+                        <span className="inline-flex items-center gap-2">
+                          <PaymentMethodIcon method={method} className="text-muted-foreground" />
+                          {method ? methodLabel(method, locale) : '—'}
+                        </span>
+                      </Td>
                       <Td>
                         <span
                           className={cn('inline-flex items-center gap-1.5 font-medium whitespace-nowrap', meta.tone)}
@@ -252,10 +271,10 @@ export default async function AccountingPage({
               attached
               page={currentPage}
               totalPages={totalPages}
-              total={ledger.rows.length}
-              pageSize={pageSizeParam}
-              hrefFor={(p) => pageHref({ page: p })}
-              pageSizeHrefFor={(size) => pageHref({ pageSize: size, page: 1 })}
+              total={filteredRows.length}
+              pageSize={pager.pageSize}
+              hrefFor={pager.hrefFor}
+              pageSizeHrefFor={pager.pageSizeHrefFor}
             />
             </div>
           )}

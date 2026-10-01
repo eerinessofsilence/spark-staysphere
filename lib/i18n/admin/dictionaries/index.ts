@@ -16,6 +16,7 @@ import { shell } from './shell';
 import { spinner } from './spinner';
 import { uploads } from './uploads';
 import { users } from './users';
+import { guestImport } from './guestImport';
 
 /**
  * The back office's own words, one area file per group of screens (see
@@ -60,6 +61,7 @@ function merge<L extends AdminLocale>(locale: L) {
     ...settings[locale],
     ...uploads[locale],
     ...users[locale],
+    ...guestImport[locale],
   };
 }
 

@@ -11,8 +11,7 @@ import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { lBookingStatus, lDateRange, lGuests, lMoney, lNights, lRoomNumber } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
-import { AddBookingButton } from '@/components/admin/front-desk/add-booking-button';
-import { CreateGroupButton } from '@/components/admin/operations/create-group-button';
+import { BookingAddMenu } from '@/components/admin/operations/booking-add-menu';
 import {
   stayBucket,
   stayBucketKey,
@@ -174,12 +173,7 @@ export default async function BookingsPage({
     <AdminPage>
       <AdminPageHeader
         title={t('nav.reservations')}
-        actions={
-          <>
-            <CreateGroupButton label={t('ops.addGroupBooking')} variant="secondary" />
-            <AddBookingButton roomTypes={bookableRoomTypes} today={today} />
-          </>
-        }
+        actions={<BookingAddMenu roomTypes={bookableRoomTypes} today={today} />}
       />
 
       {/* One row of compact controls on a phone — Filters, Any dates and
@@ -218,7 +212,7 @@ export default async function BookingsPage({
             placeholder={t('ops.searchPlaceholder')}
             wrapperClassName="flex-1 lg:w-56 lg:flex-none"
           />
-          <button type="submit" className={pill('secondary')}>
+          <button type="submit" className={pill('primary')}>
             {t('ops.search')}
           </button>
         </form>

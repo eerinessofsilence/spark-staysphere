@@ -1,10 +1,18 @@
 import {
+  addOnDraftFields,
+  emptyAddOnDraft,
+  emptyRateDraft,
   emptyRoomTypeDraft,
+  rateDraftFields,
   roomTypeDraftFields,
   type AdminCommandAction,
   type AdminDraft,
   type AdminPage,
   type AdminProposal,
+  type AddOnDraft,
+  type AddOnDraftField,
+  type RateDraft,
+  type RateDraftField,
   type RoomTypeDraft,
   type RoomTypeDraftField,
 } from '../domain/admin-assistant';
@@ -61,7 +69,7 @@ export interface AdminChatInput {
 export type AdminAskOutcome =
   | { outcome: 'proposal'; proposal: AdminProposal; unresolved: string[] }
   /** Something is still needed; the draft carries what has been gathered so far. */
-  | { outcome: 'question'; draft: AdminDraft; field: RoomTypeDraftField | 'number' }
+  | { outcome: 'question'; draft: AdminDraft; field: RoomTypeDraftField | RateDraftField | AddOnDraftField | 'number' }
   | { outcome: 'cancelled' }
   /** The words matched more than one thing; the names are the catalog's, for the panel to offer. */
   | { outcome: 'ambiguous'; target: string; candidates: string[] }
@@ -179,6 +187,15 @@ function mergeRoomType(base: RoomTypeDraft, incoming: RoomTypeDraft): RoomTypeDr
   return merged;
 }
 
+function mergeDraft<T extends Record<string, string | number | boolean | null>>(base: T, incoming: T): T {
+  const merged = { ...base };
+  for (const key of Object.keys(merged)) {
+    const value = incoming[key];
+    if (value !== null && !(typeof value === 'number' && value <= 0)) (merged as Record<string, string | number | boolean | null>)[key] = value;
+  }
+  return merged;
+}
+
 export class AdminAssistantService {
   constructor(
     private readonly content: ContentService,
@@ -225,6 +242,12 @@ export class AdminAssistantService {
         unresolved: [],
       };
     }
+    if (draft?.kind === 'create_rate' && (command.action === 'create_rate' || command.action === 'unknown')) {
+      return this.rateStep(mergeDraft(draft.fields, command.rate), roomTypes);
+    }
+    if (draft?.kind === 'create_add_on' && (command.action === 'create_add_on' || command.action === 'unknown')) {
+      return this.addOnStep(mergeDraft(draft.fields, command.addOn));
+    }
 
     switch (command.action) {
       case 'navigate': {
@@ -257,6 +280,12 @@ export class AdminAssistantService {
           field: 'number',
         };
       }
+
+      case 'create_rate':
+        return this.rateStep(mergeDraft(emptyRateDraft, command.rate), roomTypes);
+
+      case 'create_add_on':
+        return this.addOnStep(mergeDraft(emptyAddOnDraft, command.addOn));
 
       case 'set_rate_price': {
         if (command.price === null || !(command.price > 0)) return { outcome: 'incomplete', action: 'set_rate_price' };
@@ -354,6 +383,34 @@ export class AdminAssistantService {
     };
   }
 
+  private rateStep(fields: RateDraft, roomTypes: Awaited<ReturnType<ContentService['listRoomsContent']>>): AdminAskOutcome {
+    const missing = rateDraftFields.find((field) => fields[field] === null);
+    if (missing) return { outcome: 'question', draft: { kind: 'create_rate', fields }, field: missing };
+    const room = this.pick('create_rate', fields.roomTypeName, roomTypes);
+    if ('outcome' in room) return room;
+    return {
+      outcome: 'proposal',
+      proposal: {
+        kind: 'create_rate', roomTypeId: room.id, roomTypeName: room.name,
+        input: { name: fields.name!.trim(), nightlyPrice: fields.nightlyPrice!, breakfastIncluded: fields.breakfastIncluded!, cancellationPolicy: fields.cancellationPolicy!.trim() },
+      },
+      unresolved: [],
+    };
+  }
+
+  private addOnStep(fields: AddOnDraft): AdminAskOutcome {
+    const missing = addOnDraftFields.find((field) => fields[field] === null);
+    if (missing) return { outcome: 'question', draft: { kind: 'create_add_on', fields }, field: missing };
+    return {
+      outcome: 'proposal',
+      proposal: {
+        kind: 'create_add_on',
+        input: { name: fields.name!.trim(), description: fields.description!.trim(), category: fields.category!, price: fields.price!, pricingUnit: fields.pricingUnit! },
+      },
+      unresolved: [],
+    };
+  }
+
   /** A named target, or the outcome that explains why there is not one. */
   private pick<T extends { name: string }>(
     action: Exclude<AdminCommandAction, 'unknown' | 'navigate' | 'create_room_type'>,
@@ -436,6 +493,16 @@ export class AdminAssistantService {
 
       case 'create_physical_room': {
         const result = await this.content.createPhysicalRoom({ roomTypeId: proposal.roomTypeId, number: proposal.number });
+        return result.ok ? { ok: true, followUp: null } : failure(result.error);
+      }
+
+      case 'create_rate': {
+        const result = await this.content.createRate(proposal.roomTypeId, { ...proposal.input, includedServices: [] });
+        return result.ok ? { ok: true, followUp: null } : failure(result.error);
+      }
+
+      case 'create_add_on': {
+        const result = await this.content.createAddOn({ ...proposal.input, enabled: true });
         return result.ok ? { ok: true, followUp: null } : failure(result.error);
       }
     }

@@ -92,7 +92,7 @@ export function GuestChat({
   }
 
   return (
-    <section aria-labelledby="guest-chat-heading" className="mt-8 overflow-hidden rounded-3xl bg-card shadow-soft">
+    <section id="guest-chat" aria-labelledby="guest-chat-heading" className="scroll-mt-28 mt-8 overflow-hidden rounded-3xl bg-card shadow-soft">
       <div className="flex items-center gap-3 border-b border-border px-5 py-4">
         <ChatCircleDots weight="fill" className="size-5 shrink-0 text-accent" aria-hidden="true" />
         <div className="min-w-0">

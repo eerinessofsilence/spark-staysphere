@@ -369,6 +369,22 @@ export type PhysicalRoom = z.infer<typeof physicalRoomSchema>;
 /** The desk's side of a confirmed stay — see `lib/domain/stay-state.ts` for the moves between them. */
 export const stayStateSchema = z.enum(['booked', 'checked_in', 'checked_out', 'no_show']);
 
+/** One room assignment within a booking. Dates are hotel-local and end-exclusive. */
+export const bookingRoomAssignmentSchema = z.object({
+  roomNumber: z.string().regex(ROOM_NUMBER),
+  fromDate: z.string().date(),
+  toDate: z.string().date(),
+  /** Filled on the preceding segment so the room rack can show the handover direction. */
+  moveToRoomNumber: z.string().regex(ROOM_NUMBER).optional(),
+  /** Filled on the new segment to preserve the move's reason and audit time. */
+  moveFromRoomNumber: z.string().regex(ROOM_NUMBER).optional(),
+  moveReason: z.string().min(1).max(200).optional(),
+  movedAt: z.string().datetime().optional(),
+  movedBy: z.string().optional(),
+});
+
+export type BookingRoomAssignment = z.infer<typeof bookingRoomAssignmentSchema>;
+
 /**
  * Where one physical room stands with housekeeping — separate from its room
  * type's sell status (`roomStatusSchema`) and from any stay in it. See
@@ -391,6 +407,8 @@ export const bookingSchema = z.object({
   guest: guestSchema,
   addOnIds: z.array(z.string()),
   unitNumber: z.string().optional(),
+  /** Room-by-room periods after a mid-stay transfer; absent for legacy, single-room bookings. */
+  roomAssignments: z.array(bookingRoomAssignmentSchema).optional(),
   total: z.number().nonnegative(),
   currency: currencySchema,
   status: z.enum(['draft', 'held', 'confirmed', 'cancelled']),

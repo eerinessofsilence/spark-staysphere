@@ -6,6 +6,7 @@ import {
   roomStatusSchema,
   type Availability,
   type Booking,
+  type BookingRoomAssignment,
   type BookingGroup,
   type GuestProfile,
   type PaymentAttempt,
@@ -49,11 +50,12 @@ interface BookingRow {
   unit_number: string | null;
   stay_state: string | null;
   group_id: string | null;
+  room_assignments: string | null;
 }
 
 // Separate tables rather than new columns: there is no migration runner to ALTER an existing one.
 const BOOKING_SELECT =
-  'SELECT b.*, u.unit_number, s.state AS stay_state, m.group_id FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id LEFT JOIN booking_stay_states s ON s.booking_id = b.id LEFT JOIN booking_group_members m ON m.booking_id = b.id';
+  'SELECT b.*, u.unit_number, s.state AS stay_state, m.group_id, a.assignments AS room_assignments FROM bookings b LEFT JOIN booking_units u ON u.booking_id = b.id LEFT JOIN booking_stay_states s ON s.booking_id = b.id LEFT JOIN booking_group_members m ON m.booking_id = b.id LEFT JOIN booking_room_assignments a ON a.booking_id = b.id';
 
 function rowToBooking(row: BookingRow): Booking {
   return bookingSchema.parse({
@@ -71,7 +73,9 @@ function rowToBooking(row: BookingRow): Booking {
       firstName: row.guest_first_name,
       lastName: row.guest_last_name,
       email: row.guest_email,
-      phone: row.guest_phone,
+      // Older anonymized rows may contain an empty phone; keep them readable
+      // while preserving the schema's minimum-length invariant.
+      phone: row.guest_phone && row.guest_phone.length >= 7 ? row.guest_phone : '0000000',
     },
     addOnIds: JSON.parse(row.add_on_ids) as string[],
     total: row.total,
@@ -80,6 +84,7 @@ function rowToBooking(row: BookingRow): Booking {
     stayState: row.stay_state ?? undefined,
     createdAt: row.created_at,
     unitNumber: row.unit_number ?? undefined,
+    roomAssignments: row.room_assignments ? JSON.parse(row.room_assignments) as BookingRoomAssignment[] : undefined,
     groupId: row.group_id ?? undefined,
   });
 }
@@ -106,6 +111,20 @@ export async function setBookingStayState(
     ]);
   } else await change.run();
   return { ...existing, stayState: state };
+}
+
+export async function saveBookingRoomAssignments(
+  db: D1Database,
+  bookingId: string,
+  assignments: BookingRoomAssignment[],
+): Promise<boolean> {
+  await ensureSchema(db);
+  const result = await db.prepare(
+    `INSERT INTO booking_room_assignments (booking_id, assignments)
+     SELECT ?, ? WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?)
+     ON CONFLICT (booking_id) DO UPDATE SET assignments = excluded.assignments`,
+  ).bind(bookingId, JSON.stringify(assignments), bookingId).run();
+  return (result.meta.changes ?? 0) > 0;
 }
 
 export async function findBookingByIdempotencyKey(
@@ -389,6 +408,7 @@ export async function reset(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM room_status_overrides'),
     db.prepare('DELETE FROM inventory_holds'),
     db.prepare('DELETE FROM booking_units'),
+    db.prepare('DELETE FROM booking_room_assignments'),
     db.prepare('DELETE FROM booking_groups'),
     db.prepare('DELETE FROM booking_group_members'),
     db.prepare('DELETE FROM guest_profiles'),
@@ -498,6 +518,20 @@ export async function createGuestProfile(db: D1Database, profile: GuestProfile):
     .bind(profile.id, profile.hotelId, profile.firstName, profile.lastName, profile.email, profile.phone, profile.createdAt)
     .run();
   return profile;
+}
+
+export async function deleteGuestProfile(db: D1Database, profileId: string, hotelId: string): Promise<void> {
+  await ensureSchema(db);
+  await db.batch([
+    db.prepare('DELETE FROM guest_profile_identities WHERE profile_id = ? AND hotel_id = ?').bind(profileId, hotelId),
+    db.prepare('DELETE FROM guest_profiles WHERE id = ? AND hotel_id = ?').bind(profileId, hotelId),
+  ]);
+}
+
+export async function anonymizeGuestBookings(db: D1Database, hotelId: string, email: string): Promise<number> {
+  await ensureSchema(db);
+  const result = await db.prepare("UPDATE bookings SET guest_first_name = 'Deleted', guest_last_name = 'Guest', guest_email = ?, guest_phone = '0000000' WHERE hotel_id = ? AND lower(guest_email) = lower(?)").bind(`deleted+${crypto.randomUUID()}@invalid.local`, hotelId, email).run();
+  return result.meta.changes ?? 0;
 }
 
 export async function listGuestProfiles(db: D1Database, hotelId: string): Promise<GuestProfile[]> {

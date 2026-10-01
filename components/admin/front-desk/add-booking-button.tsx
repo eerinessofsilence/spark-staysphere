@@ -51,11 +51,27 @@ export function AddBookingButton({ roomTypes, today }: { roomTypes: BookableRoom
         <PlusIcon className="size-4 shrink-0" aria-hidden="true" />
         {t('frontDesk.addBooking')}
       </button>
-
-      <Modal open={open} onClose={close} className="sm:max-w-2xl" title={t('frontDesk.addBooking')}>
-        {open ? <NewBookingForm roomTypes={roomTypes} today={today} onCancel={close} /> : null}
-      </Modal>
+      <AddBookingDialog roomTypes={roomTypes} today={today} open={open} onClose={close} />
     </>
+  );
+}
+
+export function AddBookingDialog({
+  roomTypes,
+  today,
+  open,
+  onClose,
+}: {
+  roomTypes: BookableRoomType[];
+  today: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const t = useAdminT();
+  return (
+    <Modal open={open} onClose={onClose} className="sm:max-w-2xl" title={t('frontDesk.addBooking')}>
+      {open ? <NewBookingForm roomTypes={roomTypes} today={today} onCancel={onClose} /> : null}
+    </Modal>
   );
 }
 

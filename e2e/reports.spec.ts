@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+});
+
 test('live reports use category tabs, periods and room data', async ({ page }) => {
   await page.goto('/admin/accounting/reports');
   await expect(page.locator('#report-result-heading')).toHaveText('Housekeeping & Meals');

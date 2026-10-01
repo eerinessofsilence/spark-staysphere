@@ -11,11 +11,11 @@ import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
 import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
 import { DATE_FNS_LOCALES } from '@/lib/i18n/format';
-import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
 import { WINDOW_OPTIONS, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
 import { DateWindowToolbar } from '@/components/admin/operations/date-window-toolbar';
 import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
+import { RatePlanOverviewRow } from '@/components/admin/rates/rate-plan-overview-row';
 import { RatesSearchBox } from '@/components/admin/rates/rates-search-box';
 import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
 import { buildDateWindow, ratesHref, roomRatesHref } from '@/components/admin/rates/rates-shared';
@@ -36,13 +36,7 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-/**
- * The overview: one grid row per room type, quota only — a glance at who's
- * sold out and when. A row is the door into that room's own rates screen
- * (`/admin/rates/[id]`), where its rate plans and their prices actually
- * live; this page never shows a price, so it stays short even with many
- * room types and many rates each.
- */
+/** Availability and each rate plan's base nightly price, aligned by date. */
 export default async function RatesPage({
   searchParams,
 }: {
@@ -66,43 +60,23 @@ export default async function RatesPage({
   const rooms = await hotelRepository.listRooms(hotel.id);
   const allRows = await Promise.all(
     rooms.map(async (room) => {
-      const [rateCount, override, availability] = await Promise.all([
-        contentService.listRatesContent(room.id).then((rates) => rates.length),
+      const [rates, override, availability] = await Promise.all([
+        contentService.listRatesContent(room.id),
         demoControl.getRoomStatusOverride(room.id),
         hotelRepository.getAvailability(room.id, from, windowEnd),
       ]);
       return {
         room,
-        rateCount,
+        rates,
         override,
         remaining: new Map(availability.map((night) => [night.date, night.remaining])),
       };
     }),
   );
   const needle = q.toLowerCase();
-  // The overview only ever names room types, so a rate's own name has to be
-  // fetched separately to still match it — content-service reads are cheap
-  // enough for a demo catalog this size, and it's the only way "garden
-  // studio breakfast" (a rate's name) can find its room from here at all.
   const rows = needle
-    ? (
-        await Promise.all(
-          allRows.map(async (row) => {
-            if (row.room.name.toLowerCase().includes(needle)) return row;
-            const rates = await contentService.listRatesContent(row.room.id);
-            return rates.some((rate) => rate.name.toLowerCase().includes(needle)) ? row : null;
-          }),
-        )
-      ).filter((row): row is (typeof allRows)[number] => row !== null)
+    ? allRows.filter((row) => row.room.name.toLowerCase().includes(needle) || row.rates.some((rate) => rate.name.toLowerCase().includes(needle)))
     : allRows;
-
-  const rateCountLabel = (count: number) =>
-    pluralForm(locale, count, {
-      one: t('rates.countOne', { count }),
-      few: t('rates.countFew', { count }),
-      many: t('rates.countMany', { count }),
-      other: t('rates.countMany', { count }),
-    });
 
   return (
     <AdminPage>
@@ -128,7 +102,9 @@ export default async function RatesPage({
         before={<RatesSearchBox query={q} />}
       />
 
-      <div className="mt-5">
+      <p className="mt-4 text-sm text-muted-foreground">{t('rates.basePriceNote', { currency: hotel.currency })}</p>
+
+      <div className="mt-4">
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-[18px] border border-dashed border-border bg-card p-10 text-center">
             <p className="font-medium">{q ? t('rates.noMatchQuery', { query: q }) : t('rates.noRate')}</p>
@@ -141,8 +117,8 @@ export default async function RatesPage({
         ) : (
           <div className="relative overflow-x-auto rounded-[18px] bg-card shadow-soft contain-inline-size">
             <div style={{ minWidth }} className="text-sm">
-              <RatesDateHeader dates={dates} columns={columns} dateFnsLocale={dateFnsLocale} t={t} />
-              {rows.map(({ room, rateCount, override, remaining }) => (
+              <RatesDateHeader dates={dates} columns={columns} dateFnsLocale={dateFnsLocale} t={t} label={t('rates.roomTypeAndRate')} />
+              {rows.map(({ room, rates, override, remaining }) => (
                 <div key={room.id} className="group">
                   <RoomQuotaRow
                     room={room}
@@ -154,9 +130,23 @@ export default async function RatesPage({
                     t={t}
                     linkTo={roomRatesHref(room.id, { from, days })}
                   />
-                  <div className="sticky left-0 z-20 w-fit border-b border-border bg-card px-4 py-1.5 text-xs text-muted-foreground">
-                    {rateCount === 0 ? t('rates.noRate') : rateCountLabel(rateCount)}
-                  </div>
+                  {rates.length === 0 ? (
+                    <div className="sticky left-0 z-20 w-fit border-b border-border bg-card px-4 py-2.5 text-xs text-muted-foreground">
+                      {t('rates.noRate')}
+                    </div>
+                  ) : (
+                    rates.map((rate) => (
+                      <RatePlanOverviewRow
+                        key={rate.id}
+                        rate={rate}
+                        dates={dates}
+                        columns={columns}
+                        href={roomRatesHref(room.id, { from, days })}
+                        locale={locale}
+                        t={t}
+                      />
+                    ))
+                  )}
                 </div>
               ))}
             </div>

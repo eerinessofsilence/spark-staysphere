@@ -23,7 +23,14 @@ import styles from './admin-assistant-panel.module.css';
 // English in every admin language: a chip is the request it sends, not a
 // label, and translating it would send a request the keyless fallback (still
 // English-only) could no longer resolve.
-const EXAMPLES = ['Create a room type and a room for it', 'Set Deluxe Sea View to 320 a night', 'Mark Panorama Suite sold out', 'Open room rates'];
+const EXAMPLES = [
+  'Create a room type and a room for it',
+  'Create a rate for Deluxe Sea View',
+  'Create a service',
+  'Set Deluxe Sea View to 320 a night',
+  'Mark Panorama Suite sold out',
+  'Open room rates',
+];
 
 /** Turns kept for the interpreter's context — the thread itself is not sent whole. */
 const HISTORY_TURNS = 10;

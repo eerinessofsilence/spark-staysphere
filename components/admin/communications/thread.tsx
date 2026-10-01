@@ -13,6 +13,7 @@ import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton, pill, tag } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import { Modal } from '@/components/site/modal';
 import { BookingStatusBadge } from '@/components/admin/operations/booking-status-badge';
 import { menuItemClass } from '@/components/admin/operations/booking-row-actions';
@@ -35,21 +36,25 @@ export interface ThreadStay {
 function ThreadActions({ conversation }: { conversation: Conversation }) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const close = React.useCallback(() => setConfirming(false), []);
 
   const remove = async () => {
     setPending(true);
-    const result = await deleteConversationAction(conversation.id);
+    close();
+    const sourcePath = window.location.pathname;
+    const result = await deferDelete(`conversation:${conversation.id}`, conversation.guestName, () => deleteConversationAction(conversation.id));
     setPending(false);
+    if (!result) return;
     if (!result.ok) {
       toast.error(result.message);
       return;
     }
     close();
     toast.success(t('comms.deleted'));
-    router.push('/admin/communications');
+    if (window.location.pathname === sourcePath) router.push('/admin/communications');
     router.refresh();
   };
 
@@ -71,7 +76,7 @@ function ThreadActions({ conversation }: { conversation: Conversation }) {
                   {t('comms.openBooking')}
                 </Menu.LinkItem>
               ) : null}
-              <Menu.Item onClick={() => setConfirming(true)} className={cn(menuItemClass, 'text-danger data-highlighted:bg-danger/10')}>
+              <Menu.Item disabled={pending} onClick={() => setConfirming(true)} className={cn(menuItemClass, 'text-danger data-highlighted:bg-danger/10')}>
                 <TrashIcon className="size-4 shrink-0" aria-hidden="true" />
                 {t('comms.deleteChat')}
               </Menu.Item>

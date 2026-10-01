@@ -21,6 +21,7 @@ import { AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { CLIENT_PAGE_SIZE, ClientPagination, paginateClient } from '@/components/admin/operations/client-pagination';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import { permissions as allPermissions, roleLabel } from './team-data';
 import { TeamTabs } from './team-tabs';
 
@@ -29,6 +30,7 @@ const menuItemClass =
 
 function RoleActions({ role }: { role: TeamRoleDefinition }) {
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const t = useAdminT();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -42,8 +44,10 @@ function RoleActions({ role }: { role: TeamRoleDefinition }) {
   const remove = async () => {
     setPending(true);
     setError('');
-    const result = await deleteRoleAction(role.id);
+    close();
+    const result = await deferDelete(`role:${role.id}`, role.name, () => deleteRoleAction(role.id));
     setPending(false);
+    if (!result) return;
     if (!result.ok) {
       setError(result.message);
       toast.error(result.message);
@@ -58,6 +62,7 @@ function RoleActions({ role }: { role: TeamRoleDefinition }) {
     <>
       <Menu.Root modal={false}>
         <Menu.Trigger
+          disabled={pending}
           openOnHover
           delay={80}
           closeDelay={150}

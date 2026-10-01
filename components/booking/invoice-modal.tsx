@@ -5,6 +5,7 @@ import { PrinterIcon } from '@heroicons/react/24/outline';
 import { Receipt } from '@phosphor-icons/react/dist/ssr';
 import type { Currency } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/locale';
 import { lDate, lDateRange, lMoney, lNights } from '@/lib/i18n/format';
 import { pill } from '@/lib/ui';
 import { Modal } from '@/components/site/modal';
@@ -44,9 +45,10 @@ export interface InvoiceData {
  * "Issue invoice" action in `BookingHeaderActions`) can open the same
  * modal from whichever control makes sense on that page.
  */
-export function InvoiceModal({ invoice, open, onClose }: { invoice: InvoiceData; open: boolean; onClose: () => void }) {
-  const t = useT();
-  const { locale } = useLocale();
+export function InvoiceModal({ invoice, open, onClose, locale: suppliedLocale }: { invoice: InvoiceData; open: boolean; onClose: () => void; locale?: Locale }) {
+  const t = useT(suppliedLocale);
+  const { locale: siteLocale } = useLocale();
+  const locale = suppliedLocale ?? siteLocale;
 
   return (
     <Modal open={open} onClose={onClose} title={t('invoice.invoice')} className="sm:max-w-xl">

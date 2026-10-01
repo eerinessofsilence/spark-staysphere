@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowRightIcon, CalendarIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { ChatCircleDots } from '@phosphor-icons/react/dist/ssr';
 import { cancelTrip, claimTrip, getDefaultTrips, loadTrips, type TripActionErrorCode } from '@/app/trips/actions';
 import type { TripSummary } from '@/lib/application/booking-service';
 import { stayBucket } from '@/lib/domain/availability';
@@ -273,6 +274,10 @@ function TripCard({ trip, onCancel }: { trip: TripSummary; onCancel: () => void 
         <div className="relative z-10 flex flex-wrap gap-2">
           <Link href={`/booking/${trip.reference}`} className={pill('secondary', 'min-h-10 px-4')}>
             {t('trips.viewBookingReceipt')}
+          </Link>
+          <Link href={`/booking/${trip.reference}#guest-chat`} className={pill('secondary', 'min-h-10 px-4')}>
+            <ChatCircleDots weight="fill" className="size-4" aria-hidden="true" />
+            {t('chat.title')}
           </Link>
           {trip.canCancel ? (
             <button type="button" onClick={onCancel} className={pill('ghost', 'min-h-10 px-4 text-danger hover:bg-danger/10')}>

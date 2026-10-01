@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { emptyRoomTypeDraft, type AdminDraft } from '../domain/admin-assistant';
+import { emptyAddOnDraft, emptyRateDraft, emptyRoomTypeDraft, type AdminDraft } from '../domain/admin-assistant';
 import { mergeCatalog } from '../domain/catalog-overlay';
 import type { AdminCommand, AdminCommandInterpreter, CatalogEntryRecord, MediaLibraryPort } from '../domain/ports';
 import type { AddOn, PhysicalRoom, RatePlan, RoomType } from '../domain/schemas';
@@ -65,6 +65,8 @@ function scripted(command: Partial<AdminCommand>): AdminCommandInterpreter {
         page: null,
         roomType: { ...emptyRoomTypeDraft },
         roomNumber: null,
+        rate: { ...emptyRateDraft },
+        addOn: { ...emptyAddOnDraft },
         alsoRoom: null,
         unresolved: [],
         ...command,
@@ -284,5 +286,38 @@ describe('AdminAssistantService', () => {
     const [room] = await content.listRoomsContent();
     const asked = await service.ask({ utterance: `add room ${room!.floor}91 to ${room!.name}`, draft: null, history: [] });
     expect(asked).toMatchObject({ outcome: 'proposal', proposal: { kind: 'create_physical_room', roomTypeId: room!.id, number: `${room!.floor}91` } });
+  });
+
+  it('creates a new rate only after all its commercial terms are confirmed', async () => {
+    const service = new AdminAssistantService(content, mockDemoControlPort, keywordAdminInterpreter);
+    const [room] = await content.listRoomsContent();
+    let draft: AdminDraft | null = null;
+    let asked = await service.ask({ utterance: 'create a rate', draft, history: [] });
+    for (const answer of [room!.name, 'Flexible direct', '275', 'yes', 'Free cancellation until 18:00']) {
+      expect(asked.outcome).toBe('question');
+      if (asked.outcome !== 'question') return;
+      draft = asked.draft;
+      asked = await service.ask({ utterance: answer, draft, history: [] });
+    }
+    expect(asked).toMatchObject({ outcome: 'proposal', proposal: { kind: 'create_rate', roomTypeId: room!.id, input: { name: 'Flexible direct', nightlyPrice: 275, breakfastIncluded: true } } });
+    if (asked.outcome !== 'proposal' || asked.proposal.kind !== 'create_rate') return;
+    expect(await service.apply(asked.proposal)).toEqual({ ok: true, followUp: null });
+    expect((await content.listRatesContent(room!.id)).some((rate) => rate.name === 'Flexible direct' && rate.nightlyPrice === 275)).toBe(true);
+  });
+
+  it('creates a service after showing its complete proposal', async () => {
+    const service = new AdminAssistantService(content, mockDemoControlPort, keywordAdminInterpreter);
+    let draft: AdminDraft | null = null;
+    let asked = await service.ask({ utterance: 'create a service', draft, history: [] });
+    for (const answer of ['Airport transfer', 'Private transfer from the airport.', 'service', '60', 'per stay']) {
+      expect(asked.outcome).toBe('question');
+      if (asked.outcome !== 'question') return;
+      draft = asked.draft;
+      asked = await service.ask({ utterance: answer, draft, history: [] });
+    }
+    expect(asked).toMatchObject({ outcome: 'proposal', proposal: { kind: 'create_add_on', input: { name: 'Airport transfer', category: 'service', price: 60, pricingUnit: 'per_stay' } } });
+    if (asked.outcome !== 'proposal' || asked.proposal.kind !== 'create_add_on') return;
+    expect(await service.apply(asked.proposal)).toEqual({ ok: true, followUp: null });
+    expect((await content.listAddOnsContent()).some((addOn) => addOn.name === 'Airport transfer' && addOn.enabled)).toBe(true);
   });
 });

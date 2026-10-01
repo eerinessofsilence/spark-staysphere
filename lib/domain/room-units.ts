@@ -1,5 +1,5 @@
 import { demoHash, nightsInRange } from './availability';
-import type { PhysicalRoom, RoomStatus, RoomType } from './schemas';
+import type { BookingRoomAssignment, PhysicalRoom, RoomStatus, RoomType } from './schemas';
 
 export type Facade = 'sea' | 'town';
 
@@ -106,7 +106,7 @@ export function buildRoomUnits(roomTypes: RoomType[], rooms: PhysicalRoom[]): Ro
 }
 
 export type NightOccupant =
-  | { kind: 'booking'; reference: string }
+  | ({ kind: 'booking'; reference: string } & Partial<BookingRoomAssignment>)
   | { kind: 'demand' }
   | { kind: 'closed' };
 
@@ -116,6 +116,7 @@ export interface AllocatableBooking {
   checkOut: string;
   createdAt: string;
   unitNumber?: string;
+  roomAssignments?: BookingRoomAssignment[];
 }
 
 export interface RoomTypeAllocation {
@@ -148,10 +149,17 @@ export function allocateRoomType(input: {
 
   const clashes = (number: string, nights: string[]) =>
     nights.filter((night) => occupancy.get(number)!.has(night)).length;
-  const place = (reference: string, number: string, nights: string[]) => {
+  const place = (
+    reference: string,
+    number: string,
+    nights: string[],
+    assignment?: BookingRoomAssignment,
+  ) => {
     const row = occupancy.get(number)!;
-    for (const night of nights) if (!row.has(night)) row.set(night, { kind: 'booking', reference });
-    assignments.set(reference, number);
+    for (const night of nights) {
+      if (!row.has(night)) row.set(night, { kind: 'booking', reference, ...assignment });
+    }
+    if (!assignments.has(reference)) assignments.set(reference, number);
   };
 
   const ordered = [...input.bookings].sort(
@@ -159,6 +167,21 @@ export function allocateRoomType(input: {
   );
 
   for (const booking of ordered) {
+    if (booking.roomAssignments?.length) {
+      const periods = booking.roomAssignments.filter((period) => occupancy.has(period.roomNumber));
+      const hasConflict = periods.some((period) =>
+        clashes(period.roomNumber, nightsInRange(period.fromDate, period.toDate)) > 0,
+      );
+      // A malformed or conflicting persisted itinerary must not silently turn
+      // into a single-room stay in the second allocation pass.
+      assignments.set(booking.reference, periods[0]?.roomNumber ?? '');
+      if (!hasConflict && periods.length === booking.roomAssignments.length) {
+        for (const period of periods) {
+          place(booking.reference, period.roomNumber, nightsInRange(period.fromDate, period.toDate), period);
+        }
+      }
+      continue;
+    }
     if (!booking.unitNumber || !occupancy.has(booking.unitNumber)) continue;
     const nights = nightsInRange(booking.checkIn, booking.checkOut);
     if (clashes(booking.unitNumber, nights) === 0) place(booking.reference, booking.unitNumber, nights);

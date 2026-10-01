@@ -67,8 +67,9 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
  * locale's dictionary, falling back to English (never to the raw key) if a
  * translation is somehow missing, and fills in any `{placeholder}`.
  */
-export function useT(): (key: TranslationKey, vars?: Record<string, string | number>) => string {
-  const { locale } = useLocale();
+export function useT(overrideLocale?: Locale): (key: TranslationKey, vars?: Record<string, string | number>) => string {
+  const { locale: contextLocale } = useLocale();
+  const locale = overrideLocale ?? contextLocale;
   return React.useCallback(
     (key: TranslationKey, vars?: Record<string, string | number>) => {
       const template = DICTIONARIES[locale][key] ?? DICTIONARIES.en[key];

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ChevronRightIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { CheckCircle, Clock, Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
-import { createFrontDeskBookingAction, quoteFrontDeskBookingAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
+import { createFrontDeskBookingAction, moveFrontDeskBookingRoomAction, quoteFrontDeskBookingAction, type FrontDeskQuoteResult } from '@/app/admin/front-desk/actions';
 import type {
   FrontDeskDay,
   FrontDeskGroup,
@@ -49,6 +49,7 @@ interface Selection {
   roomNumber: string;
   roomName: string;
   photo: FrontDeskGroup['photo'];
+  roomNumbers: string[];
 }
 
 /** A dragged range on one room's row, waiting on the create-booking form. */
@@ -103,7 +104,11 @@ function segmentLabel(
   return t('frontDesk.bookingLabel', {
     ...stay,
     reference: segment.reference,
-    assignment: segment.chosenByGuest ? t('frontDesk.assignedByGuest') : t('frontDesk.assignedAuto'),
+    assignment: segment.moveFromRoomNumber
+      ? t('frontDesk.movedFrom', { room: lRoomNumber(segment.moveFromRoomNumber, locale) })
+      : segment.moveToRoomNumber
+        ? t('frontDesk.movedTo', { room: lRoomNumber(segment.moveToRoomNumber, locale) })
+        : segment.chosenByGuest ? t('frontDesk.assignedByGuest') : t('frontDesk.assignedAuto'),
   });
 }
 
@@ -144,6 +149,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       roomNumber: room.number,
       roomName: group.roomName,
       photo: group.photo,
+      roomNumbers: group.rooms.map((item) => item.number),
     });
     setOpen(true);
   };
@@ -350,6 +356,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
             t={t}
             locale={locale}
             onStayStateChanged={stayStateChanged}
+            onRoomMoved={(message) => { setOpen(false); toast.success(message); router.refresh(); }}
           />
         ) : null}
       </Modal>
@@ -437,6 +444,12 @@ function SegmentBar({
     >
       {segment.kind === 'booking' && segment.chosenByGuest ? (
         <PushPin weight="fill" className="size-3.5 shrink-0" aria-hidden="true" />
+      ) : null}
+      {segment.kind === 'booking' && segment.moveToRoomNumber ? (
+        <ArrowRight weight="bold" className="size-3.5 shrink-0" aria-hidden="true" />
+      ) : null}
+      {segment.kind === 'booking' && segment.moveFromRoomNumber ? (
+        <ArrowLeft weight="bold" className="size-3.5 shrink-0" aria-hidden="true" />
       ) : null}
       <span className="truncate">{segment.span >= 2 ? lastName : initials}</span>
     </button>
@@ -630,6 +643,7 @@ function SelectionDetail({
   t,
   locale,
   onStayStateChanged,
+  onRoomMoved,
 }: {
   selection: Selection;
   dates: string[];
@@ -637,8 +651,15 @@ function SelectionDetail({
   t: AdminT;
   locale: AdminLocale;
   onStayStateChanged: (state: StayState) => void;
+  onRoomMoved: (message: string) => void;
 }) {
   const { segment, roomNumber, roomName, photo } = selection;
+  const [moving, setMoving] = React.useState(false);
+  const [moveRoom, setMoveRoom] = React.useState('');
+  const [moveDate, setMoveDate] = React.useState('');
+  const [moveReason, setMoveReason] = React.useState('');
+  const [movePending, setMovePending] = React.useState(false);
+  const [moveError, setMoveError] = React.useState('');
 
   if (segment.kind === 'closed') {
     const { from, to } = segmentRange(segment, dates);
@@ -718,6 +739,11 @@ function SelectionDetail({
       <Field label={t('ops.thCheckOut')} sub={segment.checkOutTime}>
         {lDateShort(segment.checkOut, locale)}
       </Field>
+      {segment.kind === 'booking' && (segment.moveFromRoomNumber || segment.moveToRoomNumber) ? (
+        <Field label={t('frontDesk.roomPeriod')}>
+          {lDateRange(segment.roomFrom, segment.roomTo, locale)}
+        </Field>
+      ) : null}
       <Field label={t('booking.duration')}>{lNights(nights, locale)}</Field>
       <Field label={t('ops.thGuests')}>{lGuests(segment.adults, segment.children, locale)}</Field>
       <Field label={t('frontDesk.roomRate')} sub={segment.breakfastIncluded ? t('frontDesk.breakfastIncluded') : undefined}>
@@ -790,6 +816,76 @@ function SelectionDetail({
       </div>
 
       {stay}
+
+      {segment.kind === 'booking' && segment.status === 'confirmed' && segment.roomTo > addIsoDays(segment.roomFrom, 1) ? (
+        <section className="mt-5 border-t border-border pt-4">
+          {segment.moveFromRoomNumber ? (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {t('frontDesk.moveHistory', {
+                from: lRoomNumber(segment.moveFromRoomNumber, locale),
+                to: lRoomNumber(roomNumber, locale),
+                date: lDateShort(segment.roomFrom, locale),
+                reason: segment.moveReason ?? t('frontDesk.moveGuestRequest'),
+              })}
+            </p>
+          ) : null}
+          {segment.moveToRoomNumber ? (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {t('frontDesk.movedTo', { room: lRoomNumber(segment.moveToRoomNumber, locale) })} · {lDateShort(segment.roomTo, locale)}
+            </p>
+          ) : null}
+          {!moving ? (
+            <button type="button" className={pill('secondary')} onClick={() => {
+              setMoveRoom(selection.roomNumbers.find((number) => number !== roomNumber) ?? '');
+              setMoveDate(addIsoDays(segment.roomFrom, 1));
+              setMoveReason(t('frontDesk.moveGuestRequest'));
+              setMoving(true);
+            }}>
+              <ArrowRight weight="bold" className="size-4" aria-hidden="true" />
+              {t('frontDesk.moveRoom')}
+            </button>
+          ) : (
+            <form className="space-y-3" onSubmit={async (event) => {
+              event.preventDefault();
+              setMovePending(true);
+              setMoveError('');
+              const result = await moveFrontDeskBookingRoomAction({
+                reference: segment.reference,
+                roomNumber: moveRoom,
+                effectiveDate: moveDate,
+                reason: moveReason,
+              });
+              setMovePending(false);
+              if (!result.ok) { setMoveError(result.message); return; }
+              onRoomMoved(t('frontDesk.moveSaved'));
+            }}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-medium">
+                  {t('frontDesk.moveToRoom')}
+                  <select required value={moveRoom} onChange={(event) => setMoveRoom(event.target.value)} className="h-11 rounded-full border border-border bg-card px-4">
+                    {selection.roomNumbers.filter((number) => number !== roomNumber).map((number) => <option key={number} value={number}>{lRoomNumber(number, locale)}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  {t('frontDesk.moveDate')}
+                  <input required type="date" min={addIsoDays(segment.roomFrom, 1)} max={addIsoDays(segment.roomTo, -1)} value={moveDate} onChange={(event) => setMoveDate(event.target.value)} className="h-11 rounded-full border border-border bg-card px-4" />
+                </label>
+              </div>
+              <label className="grid gap-1.5 text-sm font-medium">
+                {t('frontDesk.moveReason')}
+                <input required maxLength={200} value={moveReason} onChange={(event) => setMoveReason(event.target.value)} className="h-11 rounded-full border border-border bg-card px-4" />
+              </label>
+              {moveError ? <p role="alert" className="text-sm text-danger">{moveError}</p> : null}
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={pill('secondary')} onClick={() => setMoving(false)}>{t('frontDesk.cancel')}</button>
+                <button type="submit" disabled={movePending || !moveRoom || !moveDate || !moveReason.trim()} className={pill('primary')}>
+                  {movePending ? t('frontDesk.moveSaving') : t('frontDesk.confirmMove')}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      ) : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Link href={`/admin/bookings/${segment.reference}`} className={pill('primary')}>

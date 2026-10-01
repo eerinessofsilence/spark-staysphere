@@ -8,16 +8,18 @@ export function RatesDateHeader({
   columns,
   dateFnsLocale,
   t,
+  label,
 }: {
   dates: string[];
   columns: string;
   dateFnsLocale: DateFnsLocale;
   t: AdminT;
+  label?: string;
 }) {
   return (
     <div className="grid border-b border-border" style={{ gridTemplateColumns: columns }}>
       <div className="sticky left-0 z-20 flex items-end bg-card px-4 py-3 text-xs text-muted-foreground">
-        {t('rates.roomType')}
+        {label ?? t('rates.roomType')}
       </div>
       {dates.map((date) => (
         <div key={date} className="flex flex-col items-center justify-end border-l border-border py-2 text-xs">

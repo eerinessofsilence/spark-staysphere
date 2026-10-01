@@ -41,6 +41,11 @@ inside the function that needs them — never cache the result at module scope, 
 
 ## Forms and controls
 
+**A native select with `appearance-none` loses its browser arrow.** A Tailwind arbitrary
+`background-image` URL did not render the replacement chevron in the Orders filters. Use
+`NativeSelect` with a visible SVG sibling pinned inside a relative wrapper, so the control keeps
+native selection behavior and the arrow has a stable position.
+
 **A server-rendered action can look clickable before its client handler hydrates.** For critical
 dialog launchers, keep the button disabled until the mount effect runs. Otherwise an immediate
 click after navigation can be lost, even though the page and label are already visible.

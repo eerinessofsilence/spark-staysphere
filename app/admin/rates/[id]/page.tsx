@@ -44,7 +44,7 @@ const DEFAULT_WINDOW = 14;
  * plans with a real, saving price form beside a flat rate repeated across
  * the shown nights (see `RatePlanRow`'s own doc comment on why it repeats
  * rather than invents a per-night number). Opened from its row on the
- * overview (`/admin/rates`), which never shows a price itself.
+ * overview (`/admin/rates`), where the same prices are displayed read-only.
  */
 export default async function RoomRatesPage({
   params,

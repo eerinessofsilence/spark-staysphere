@@ -54,6 +54,7 @@ import { SampleBookingService } from './sample-bookings';
 import { SampleDocumentService } from './sample-documents';
 import { TeamService } from './team-service';
 import { GuestDocumentService } from './guest-document-service';
+import { GuestImportService } from './guest-import-service';
 import { guestDocumentStore } from '../infrastructure/guest-document-store';
 import { privateDocumentStorage } from '../infrastructure/private-document-storage';
 import { getCronSecret } from '../infrastructure/cloudflare-env';
@@ -69,6 +70,7 @@ import { getCronSecret } from '../infrastructure/cloudflare-env';
  * otherwise. See lib/infrastructure/durable-hotel-repository.ts.
  */
 export const hotelRepository: HotelRepository = durableHotelRepository;
+export const guestImportService = new GuestImportService(hotelRepository);
 export const demoControl: DemoControlPort = durableDemoControlPort;
 
 /** Custom roles and member role overrides — see `team-service.ts`. Its `hasPermission` is what `admin-session.ts`'s `requirePermission` actually calls. */

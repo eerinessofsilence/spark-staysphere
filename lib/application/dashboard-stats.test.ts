@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bookingSchema, type Booking } from '../domain/schemas';
-import { mealsByDay, nextArrivals, nextDepartures, reservationBuckets, revenueKpis, roomTypeAvailability, todayMovements } from './dashboard-stats';
+import { mealsByDay, nextArrivals, nextDepartures, periodMovements, reservationBuckets, revenueKpis, roomTypeAvailability, todayMovements } from './dashboard-stats';
 import type { FrontDesk } from './inventory-service';
 
 const TODAY = '2026-09-24';
@@ -25,6 +25,25 @@ function booking(overrides: Partial<Booking> & { checkIn: string; checkOut: stri
     ...overrides,
   });
 }
+
+describe('periodMovements', () => {
+  it('counts arrival and departure independently, separates no-shows, and requires explicit completion', () => {
+    const rows = [
+      booking({ checkIn: TODAY, checkOut: '2026-09-25', stayState: 'checked_out' }),
+      booking({ checkIn: '2026-09-20', checkOut: TODAY, stayState: 'checked_out' }),
+      booking({ checkIn: TODAY, checkOut: '2026-09-25', stayState: 'no_show' }),
+      booking({ checkIn: TODAY, checkOut: '2026-09-25', status: 'cancelled' }),
+      booking({ checkIn: TODAY, checkOut: '2026-09-25' }),
+      booking({ checkIn: '2026-09-01', checkOut: '2026-09-02' }),
+    ];
+    expect(periodMovements(rows, TODAY, '2026-09-25')).toEqual({
+      arrived: 1, departed: 2, expected: 1, departing: 1, noShow: 1, cancelled: 1,
+    });
+    expect(periodMovements([], TODAY, TODAY)).toEqual({
+      arrived: 0, departed: 0, expected: 0, departing: 0, noShow: 0, cancelled: 0,
+    });
+  });
+});
 
 describe('reservationBuckets', () => {
   it('puts every booking in exactly one operational bucket', () => {

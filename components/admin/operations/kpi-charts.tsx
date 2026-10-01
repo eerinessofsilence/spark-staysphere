@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import * as React from 'react';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { cn } from '@/lib/utils';
 import { ChartGradientDefs } from './chart-gradient-defs';
@@ -33,7 +33,7 @@ export function OccupancyGauge({
   const percent = Math.round(clampShare(share) * 100);
   const delta = tomorrowShare === null ? null : Math.round(clampShare(tomorrowShare) * 100) - percent;
   const t = useAdminT();
-  const gradientId = useId();
+  const gradientId = React.useId();
   return (
     <div className={styles.palette}>
       <div className="relative mx-auto w-full max-w-44">
@@ -60,10 +60,10 @@ export function OccupancyGauge({
         </svg>
         <div className="absolute inset-x-0 bottom-0 text-center">
           <span className="text-display block text-2xl leading-none tabular-nums">{percent}%</span>
-          <span className="mt-0.5 block text-[11px] text-muted-foreground">{t('kpi.occupancy')}</span>
+          <span className="mt-0.5 block text-sm text-muted-foreground">{t('kpi.occupancy')}</span>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-sm">
         <Chip tone="blue">{t('kpi.in', { count: arrivals })}</Chip>
         <Chip tone="stone">{t('kpi.out', { count: departures })}</Chip>
         {delta !== null ? (
@@ -108,7 +108,7 @@ export function MixBar({ segments }: { segments: MixSegment[] }) {
           />
         ))}
       </div>
-      <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+      <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
         {parts.map((segment, index) => (
           <li key={segment.label} className="flex min-w-0 items-center gap-1.5">
             <span
@@ -145,7 +145,7 @@ export function BarList({ segments, limit = 4, otherLabel }: { segments: MixSegm
         const share = row.value / total;
         return (
           <li key={row.label} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-2 text-xs">
+            <div className="flex items-baseline justify-between gap-2 text-[13px] leading-snug">
               <span className="truncate text-muted-foreground">{row.label}</span>
               <span className="shrink-0 tabular-nums">
                 <span className="font-semibold text-foreground">{row.value}</span>
@@ -179,7 +179,7 @@ const DONUT_DOT: Record<DonutSlice['tone'], string> = {
 
 /** Outcomes of one set, the headline share in the hole. */
 export function Donut({ slices, centre, caption, footnote }: { slices: DonutSlice[]; centre: string; caption: string; footnote?: string }) {
-  const gradientId = useId();
+  const gradientId = React.useId();
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   let offset = 0;
   return (
@@ -213,18 +213,20 @@ export function Donut({ slices, centre, caption, footnote }: { slices: DonutSlic
         </svg>
         <div className="absolute inset-0 grid place-content-center text-center">
           <span className="text-display text-xl leading-none tabular-nums">{centre}</span>
-          <span className="mt-0.5 text-[10px] text-muted-foreground">{caption}</span>
         </div>
       </div>
-      <ul className="grid min-w-0 flex-1 gap-2 text-xs">
-        {slices.filter((slice) => slice.value > 0).map((slice) => (
-          <li key={slice.label} className="flex min-w-0 items-center gap-1.5">
-            <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', DONUT_DOT[slice.tone])} />
-            <span className="leading-tight text-muted-foreground">{slice.label}</span>
-            <span className="ml-auto font-medium tabular-nums">{slice.value}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="min-w-0 flex-1">
+        <p className="mb-2 break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">{caption}</p>
+        <ul className="grid gap-2 text-xs">
+          {slices.filter((slice) => slice.value > 0).map((slice) => (
+            <li key={slice.label} className="flex min-w-0 items-center gap-1.5">
+              <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', DONUT_DOT[slice.tone])} />
+              <span className="min-w-0 break-words leading-tight text-muted-foreground [overflow-wrap:anywhere]">{slice.label}</span>
+              <span className="ml-auto shrink-0 font-medium tabular-nums">{slice.value}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
     {footnote ? <p className="mt-3 text-xs text-muted-foreground">{footnote}</p> : null}
     </div>
@@ -233,54 +235,116 @@ export function Donut({ slices, centre, caption, footnote }: { slices: DonutSlic
 
 export interface ValueBar {
   label: string;
+  /** Short mark for a narrow axis; the complete date remains in the tooltip and accessible name. */
+  axisLabel?: string;
   value: number;
   /** The figure printed on top of the bar. */
   display: string;
   current?: boolean;
+  /** Optional richer copy for the shared hover, touch and keyboard tooltip. */
+  tooltipTitle?: string;
+  tooltipBody?: string;
 }
 
 /**
  * A short trend: taller bars with rounded tops, the current period in the
  * accent. Only the current and the peak bar carry a figure — a number on
- * every bar was noise at this size.
+ * every bar was noise at this size. Every bar remains an accessible control:
+ * hover and keyboard focus show its detail, while a touch press pins the same
+ * tooltip until another bar or the space outside the chart is pressed.
  */
-export function ValueBars({ bars }: { bars: ValueBar[] }) {
+export function ValueBars({ bars, label }: { bars: ValueBar[]; label: string }) {
+  const [active, setActive] = React.useState<number | null>(null);
+  const chartRef = React.useRef<HTMLDivElement>(null);
   const max = Math.max(...bars.map((bar) => bar.value), 0);
   const peak = bars.findIndex((bar) => bar.value === max && max > 0);
+
+  React.useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && chartRef.current?.contains(event.target)) return;
+      setActive(null);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
+
+  const activeBar = active === null ? null : bars[active];
+  const activeHeight = activeBar && max > 0 ? (activeBar.value / max) * 82 : 0;
+  const tooltipOffset =
+    active === null ? '-50%' : active < 2 ? '-12%' : active > bars.length - 3 ? '-88%' : '-50%';
+
   return (
-    <div aria-hidden="true" className={styles.palette}>
-      <div className="flex h-28 items-end gap-2">
+    <div ref={chartRef} className={cn('relative', styles.palette)}>
+      <ol aria-label={label} className="flex h-28 items-end gap-2">
         {bars.map((bar, index) => {
           const height = max > 0 ? (bar.value / max) * 82 : 0;
           const labelled = bar.value > 0 && (bar.current || index === peak);
           return (
-            <div key={bar.label} className="flex h-full min-w-0 flex-1 flex-col justify-end">
+            <li key={bar.label} className="flex h-full min-w-0 flex-1 flex-col justify-end">
               <span
+                aria-hidden="true"
                 className={cn(
-                  'mb-1 -mx-2 text-center text-[10px] whitespace-nowrap tabular-nums',
+                  'mb-1 -mx-2 text-center text-xs whitespace-nowrap tabular-nums',
                   bar.current ? 'font-semibold text-foreground' : 'text-muted-foreground',
                 )}
               >
                 {labelled ? bar.display : ''}
               </span>
-              <span
-                className={cn('mx-auto block w-full max-w-10 rounded-t-lg rounded-b-sm', bar.current ? styles.bar : styles.neutralBar)}
-                style={{ height: `${Math.max(height, bar.value > 0 ? 8 : 3)}%` }}
-              />
-            </div>
+              <button
+                type="button"
+                aria-label={`${bar.tooltipTitle ?? bar.display} · ${bar.tooltipBody ?? bar.label}`}
+                onPointerDown={() => setActive(index)}
+                onPointerEnter={() => setActive(index)}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'touch') return;
+                  setActive((current) => (current === index ? null : current));
+                }}
+                onPointerCancel={() => setActive((current) => (current === index ? null : current))}
+                onFocus={() => setActive(index)}
+                onBlur={() => setActive(null)}
+                className="flex w-full flex-1 touch-pan-y cursor-default items-end justify-center rounded-t-lg outline-none focus-visible:bg-stone/60"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'mx-auto block w-full max-w-10 rounded-t-lg rounded-b-sm transition-opacity duration-150',
+                    bar.current ? styles.bar : styles.neutralBar,
+                    active !== null && active !== index && 'opacity-50',
+                  )}
+                  style={{ height: `${Math.max(height, bar.value > 0 ? 8 : 3)}%` }}
+                />
+              </button>
+            </li>
           );
         })}
-      </div>
-      <div className="mt-2 flex gap-2">
+      </ol>
+
+      {activeBar && active !== null ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none absolute z-10 rounded-2xl border border-border bg-card px-3 py-2 whitespace-nowrap shadow-soft"
+          style={{
+            left: `${((active + 0.5) / bars.length) * 100}%`,
+            bottom: `calc(${Math.min(activeHeight, 68)}% + 2.25rem)`,
+            transform: `translateX(${tooltipOffset})`,
+          }}
+        >
+          <p className="text-sm font-semibold tabular-nums">{activeBar.tooltipTitle ?? activeBar.display}</p>
+          <p className="text-sm text-muted-foreground">{activeBar.tooltipBody ?? activeBar.label}</p>
+        </div>
+      ) : null}
+
+      <div aria-hidden="true" className="mt-2 flex gap-2">
         {bars.map((bar) => (
           <span
             key={bar.label}
             className={cn(
-              'min-w-0 flex-1 text-center text-[10px] whitespace-nowrap',
+              'min-w-0 flex-1 text-center text-sm leading-tight',
               bar.current ? 'font-semibold text-foreground' : 'text-muted-foreground',
             )}
           >
-            {bar.label}
+            {bar.axisLabel ?? bar.label}
           </span>
         ))}
       </div>

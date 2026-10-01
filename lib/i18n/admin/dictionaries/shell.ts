@@ -58,6 +58,12 @@ export const shell = defineArea({
 
     'toast.region': 'Notifications',
     'toast.dismiss': 'Dismiss',
+    'toast.undo': 'Undo',
+    'toast.deleting': 'Deleting: {label}',
+    'toast.undoHint': 'You have 6 seconds to undo.',
+    'toast.finishingDelete': 'Finishing deletion…',
+    'toast.deleteCancelled': 'Deletion cancelled.',
+    'toast.deleteFailed': 'Could not delete. Please try again.',
 
     'unsaved.title': 'Leave without saving?',
     'unsaved.body': "Changes on this page haven't been saved. If you leave now, they're lost.",
@@ -124,6 +130,12 @@ export const shell = defineArea({
 
     'toast.region': 'Benachrichtigungen',
     'toast.dismiss': 'Schließen',
+    'toast.undo': 'Rückgängig',
+    'toast.deleting': 'Wird gelöscht: {label}',
+    'toast.undoHint': '6 Sekunden zum Rückgängigmachen.',
+    'toast.finishingDelete': 'Löschen wird abgeschlossen…',
+    'toast.deleteCancelled': 'Löschen abgebrochen.',
+    'toast.deleteFailed': 'Löschen fehlgeschlagen. Bitte erneut versuchen.',
 
     'unsaved.title': 'Ohne Speichern verlassen?',
     'unsaved.body': 'Die Änderungen auf dieser Seite sind nicht gespeichert. Wenn Sie jetzt gehen, gehen sie verloren.',
@@ -190,6 +202,12 @@ export const shell = defineArea({
 
     'toast.region': 'Уведомления',
     'toast.dismiss': 'Закрыть',
+    'toast.undo': 'Отменить',
+    'toast.deleting': 'Удаление: {label}',
+    'toast.undoHint': 'Можно отменить в течение 6 секунд.',
+    'toast.finishingDelete': 'Завершаем удаление…',
+    'toast.deleteCancelled': 'Удаление отменено.',
+    'toast.deleteFailed': 'Не удалось удалить. Попробуйте ещё раз.',
 
     'unsaved.title': 'Уйти без сохранения?',
     'unsaved.body': 'Изменения на этой странице не сохранены. Если уйти сейчас, они пропадут.',

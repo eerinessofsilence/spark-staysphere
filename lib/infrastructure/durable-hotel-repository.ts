@@ -108,6 +108,12 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.saveBooking(db, booking, inventoryCapacity) : mockHotelRepository.saveBooking(booking, inventoryCapacity);
   },
+  saveBookingRoomAssignments(bookingId, assignments) {
+    const db = getDemoDatabase();
+    return db
+      ? d1.saveBookingRoomAssignments(db, bookingId, assignments)
+      : mockHotelRepository.saveBookingRoomAssignments(bookingId, assignments);
+  },
   getBookingByReference(reference) {
     const db = getDemoDatabase();
     return db ? d1.getBookingByReference(db, reference) : mockHotelRepository.getBookingByReference(reference);
@@ -161,6 +167,14 @@ export const durableHotelRepository: HotelRepository = {
   createGuestProfile(profile) {
     const db = getDemoDatabase();
     return db ? d1.createGuestProfile(db, profile) : mockHotelRepository.createGuestProfile(profile);
+  },
+  deleteGuestProfile(profileId, hotelId) {
+    const db = getDemoDatabase();
+    return db ? d1.deleteGuestProfile(db, profileId, hotelId) : mockHotelRepository.deleteGuestProfile(profileId, hotelId);
+  },
+  anonymizeGuestBookings(hotelId, email) {
+    const db = getDemoDatabase();
+    return db ? d1.anonymizeGuestBookings(db, hotelId, email) : mockHotelRepository.anonymizeGuestBookings(hotelId, email);
   },
   saveGuestIdentity(profileId, hotelId, identity) {
     const db = getDemoDatabase();

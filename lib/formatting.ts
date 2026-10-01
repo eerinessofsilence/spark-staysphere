@@ -4,7 +4,7 @@ import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 // describe the same filter object with one vocabulary.
 import type { RoomFilters } from './application/catalog-service';
 import type { AdminApplyResult, AdminAskResult } from './application/admin-assistant-service';
-import type { AdminDraft, AdminPage, AdminProposal, RoomTypeDraftField } from './domain/admin-assistant';
+import type { AddOnDraftField, AdminDraft, AdminPage, AdminProposal, RateDraftField, RoomTypeDraftField } from './domain/admin-assistant';
 import type { RoomCategory } from './domain/room-attributes';
 import type { Facade } from './domain/room-units';
 import type { AddOn, Booking, Currency, PaymentMethod, RoomStatus, RoomType, StayCriteria } from './domain/schemas';
@@ -272,6 +272,10 @@ export function formatAdminProposal(proposal: AdminProposal, locale: AdminLocale
     }
     case 'create_physical_room':
       return { lead: t('assistant.proposal.createRoom.lead', { number: proposal.number, roomType: proposal.roomTypeName }), detail: null };
+    case 'create_rate':
+      return { lead: t('assistant.proposal.createRate.lead', { name: proposal.input.name, roomType: proposal.roomTypeName }), detail: t('assistant.proposal.createRate.detail', { price: proposal.input.nightlyPrice }) };
+    case 'create_add_on':
+      return { lead: t('assistant.proposal.createAddOn.lead', { name: proposal.input.name }), detail: t('assistant.proposal.createAddOn.detail', { price: proposal.input.price, unit: proposal.input.pricingUnit.replace('_', ' ') }) };
     case 'navigate':
       return { lead: t('assistant.proposal.navigate.lead', { label: navigateLabel(proposal, locale) }), detail: null };
   }
@@ -288,13 +292,15 @@ const ROOM_TYPE_QUESTION: Record<RoomTypeDraftField, AdminTranslationKey> = {
 };
 
 /** The next thing the assistant needs to know, for the draft it is holding. */
-export function formatAdminQuestion(field: RoomTypeDraftField | 'number', draft: AdminDraft, locale: AdminLocale): string {
+export function formatAdminQuestion(field: RoomTypeDraftField | RateDraftField | AddOnDraftField | 'number', draft: AdminDraft, locale: AdminLocale): string {
   if (field === 'number') {
     return draft.kind === 'create_physical_room' && draft.suggestedNumber
       ? translateAdmin(locale, 'assistant.question.numberSuggested', { roomType: draft.roomTypeName, suggested: draft.suggestedNumber })
       : translateAdmin(locale, 'assistant.question.number');
   }
-  const question = translateAdmin(locale, ROOM_TYPE_QUESTION[field]);
+  if (draft.kind === 'create_rate') return translateAdmin(locale, `assistant.question.rate.${field}` as AdminTranslationKey);
+  if (draft.kind === 'create_add_on') return translateAdmin(locale, `assistant.question.addOn.${field}` as AdminTranslationKey);
+  const question = translateAdmin(locale, ROOM_TYPE_QUESTION[field as RoomTypeDraftField]);
   const known = draft.kind === 'create_room_type' && field !== 'name' ? draft.fields.name : null;
   return known ? translateAdmin(locale, 'assistant.question.known', { name: known, question }) : question;
 }
@@ -305,6 +311,8 @@ const INCOMPLETE_REPLY: Record<AdminAskIncompleteAction, AdminTranslationKey> = 
   set_room_status: 'assistant.incomplete.setStatus',
   set_add_on_enabled: 'assistant.incomplete.setAddOn',
   create_physical_room: 'assistant.incomplete.createRoom',
+  create_rate: 'assistant.reply.unknown',
+  create_add_on: 'assistant.reply.unknown',
 };
 
 /** The reply for everything that is not a proposal. */
@@ -359,6 +367,10 @@ export function formatAdminApplyOutcome(result: AdminApplyResult, proposal: Admi
         return t('assistant.applied.createType', { name: proposal.input.name });
       case 'create_physical_room':
         return t('assistant.applied.createRoom', { number: proposal.number, roomType: proposal.roomTypeName });
+      case 'create_rate':
+        return t('assistant.applied.createRate', { name: proposal.input.name, roomType: proposal.roomTypeName });
+      case 'create_add_on':
+        return t('assistant.applied.createAddOn', { name: proposal.input.name });
       case 'navigate':
         return t('assistant.applied.navigate', { label: navigateLabel(proposal, locale) });
     }

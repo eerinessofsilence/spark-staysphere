@@ -10,6 +10,7 @@ import { Modal } from '@/components/site/modal';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';
 import { toast } from '@/components/admin/shell/toast';
+import { useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 import { cn } from '@/lib/utils';
 
 interface RowActionsProps {
@@ -38,6 +39,7 @@ const itemClass =
 export function RowActions({ id, version, label, editHref, deleteAction, confirmMessage, deleteBlockedReason }: RowActionsProps) {
   const t = useAdminT();
   const router = useRouter();
+  const deferDelete = useUndoableDelete();
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -49,8 +51,10 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
   const remove = async () => {
     setPending(true);
     setError('');
-    const result = await deleteAction(id, version);
+    setConfirming(false);
+    const result = await deferDelete(`content:${id}`, label, () => deleteAction(id, version));
     setPending(false);
+    if (!result) return;
     if (result.status === 'success') {
       setConfirming(false);
       toast.success(result.message || t('form.labelRemoved', { label }));
@@ -65,6 +69,7 @@ export function RowActions({ id, version, label, editHref, deleteAction, confirm
     <>
       <Menu.Root modal={false}>
         <Menu.Trigger
+          disabled={pending}
           openOnHover
           delay={80}
           closeDelay={150}

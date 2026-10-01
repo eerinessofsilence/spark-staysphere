@@ -26,6 +26,7 @@ import type {
   RoomType,
   StayState,
   StayCriteria,
+  BookingRoomAssignment,
 } from '../domain/schemas';
 import { defaultRoomFilters, type CatalogService, type RoomFilters } from './catalog-service';
 
@@ -87,6 +88,12 @@ export type FrontDeskSegment =
       chosenByGuest: boolean;
       continuesBefore: boolean;
       continuesAfter: boolean;
+      roomFrom: string;
+      roomTo: string;
+      moveFromRoomNumber?: string;
+      moveToRoomNumber?: string;
+      moveReason?: string;
+      movedAt?: string;
     } & FrontDeskStay)
   | ({
       kind: 'demand';
@@ -143,7 +150,7 @@ export class InventoryService {
   constructor(
     private readonly repository: AvailabilityReader &
       Pick<CatalogReader, 'listRooms' | 'listPhysicalRooms' | 'listRatePlans'> &
-      Pick<BookingStore, 'listBookings'> &
+      Pick<BookingStore, 'listBookings' | 'saveBookingRoomAssignments'> &
       Pick<PaymentAttemptStore, 'listPaymentAttempts'>,
     private readonly demoControl: DemoControlPort,
     private readonly catalog: CatalogService,
@@ -179,6 +186,7 @@ export class InventoryService {
         checkOut: booking.checkOut,
         createdAt: booking.createdAt,
         unitNumber: booking.unitNumber,
+        roomAssignments: booking.roomAssignments,
       })),
     });
   }
@@ -254,6 +262,78 @@ export class InventoryService {
     const { occupancy } = await this.allocate(room, units, bookings, stay);
     const row = occupancy.get(unitNumber)!;
     return stay.every((night) => !row.has(night));
+  }
+
+  /** Split one confirmed stay into room periods without creating a second booking or payment. */
+  async moveBookingRoom(
+    hotelSlug: string,
+    reference: string,
+    nextRoomNumber: string,
+    effectiveDate: string,
+    reason: string,
+    movedBy: string,
+  ): Promise<'ok' | 'not_found' | 'invalid_date' | 'same_room' | 'unavailable' | 'save_failed'> {
+    const booking = (await this.repository.listBookings()).find((item) => item.reference === reference);
+    if (!booking || booking.status !== 'confirmed') return 'not_found';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate) || effectiveDate <= booking.checkIn || effectiveDate >= booking.checkOut) {
+      return 'invalid_date';
+    }
+    const hotel = await this.catalog.getHotel(hotelSlug);
+    if (hotel.id !== booking.hotelId) return 'not_found';
+    const rooms = await this.repository.listRooms(hotel.id);
+    const room = rooms.find((candidate) => candidate.id === booking.roomTypeId);
+    if (!room) return 'not_found';
+    const units = buildRoomUnits(rooms, await this.repository.listPhysicalRooms(hotel.id)).filter(
+      (unit) => unit.roomTypeId === room.id,
+    );
+    if (!units.some((unit) => unit.number === nextRoomNumber)) return 'unavailable';
+
+    const currentAssignments = booking.roomAssignments?.length
+      ? [...booking.roomAssignments]
+      : [{
+          roomNumber: booking.unitNumber ?? (await this.allocate(
+            room,
+            units,
+            this.confirmedByRoomType(await this.repository.listBookings()).get(room.id) ?? [],
+            nightsInRange(booking.checkIn, booking.checkOut),
+          )).assignments.get(reference) ?? '',
+          fromDate: booking.checkIn,
+          toDate: booking.checkOut,
+        }];
+    const active = currentAssignments.find((assignment) =>
+      assignment.fromDate < effectiveDate && effectiveDate < assignment.toDate,
+    );
+    if (!active?.roomNumber) return 'invalid_date';
+    if (active.roomNumber === nextRoomNumber) return 'same_room';
+
+    const allBookings = this.confirmedByRoomType(await this.repository.listBookings()).get(room.id) ?? [];
+    const { occupancy } = await this.allocate(room, units, allBookings, nightsInRange(effectiveDate, booking.checkOut));
+    const target = occupancy.get(nextRoomNumber);
+    const bookingRef = booking.reference;
+    if (!target || nightsInRange(effectiveDate, booking.checkOut).some((night) => {
+      const occupant = target.get(night);
+      return occupant && !(occupant.kind === 'booking' && occupant.reference === bookingRef);
+    })) return 'unavailable';
+
+    const now = new Date().toISOString();
+    const reasonText = reason.trim().slice(0, 200) || 'Guest request';
+    const updated = currentAssignments.flatMap((assignment): BookingRoomAssignment[] => {
+      if (assignment !== active) return assignment.fromDate >= effectiveDate ? [] : [assignment];
+      return [
+        { ...assignment, toDate: effectiveDate, moveToRoomNumber: nextRoomNumber },
+        {
+          roomNumber: nextRoomNumber,
+          fromDate: effectiveDate,
+          toDate: booking.checkOut,
+          moveFromRoomNumber: active.roomNumber,
+          moveReason: reasonText,
+          movedAt: now,
+          movedBy,
+        },
+      ];
+    }).sort((a, b) => a.fromDate.localeCompare(b.fromDate));
+    const saved = await this.repository.saveBookingRoomAssignments(booking.id, updated);
+    return saved ? 'ok' : 'save_failed';
   }
 
   /** The PMS view: every room, including hidden room types, across a window of nights. */
@@ -351,7 +431,10 @@ export class InventoryService {
       bookings,
       nightsInRange(booking.checkIn, booking.checkOut),
     );
-    const number = assignments.get(booking.reference);
+    const today = new Date().toISOString().slice(0, 10);
+    const number = booking.roomAssignments?.find(
+      (assignment) => assignment.fromDate <= today && today < assignment.toDate,
+    )?.roomNumber ?? [...(booking.roomAssignments ?? [])].sort((a, b) => b.fromDate.localeCompare(a.fromDate))[0]?.roomNumber ?? assignments.get(booking.reference);
     return number ? { number, chosenByGuest: booking.unitNumber === number } : null;
   }
 }
@@ -381,7 +464,11 @@ function toPlanUnit(
 
 function sameOccupant(a: NightOccupant | undefined, b: NightOccupant): boolean {
   if (!a || a.kind !== b.kind) return false;
-  return a.kind !== 'booking' || a.reference === (b as { reference: string }).reference;
+  return a.kind !== 'booking' || (
+    a.reference === (b as { reference: string }).reference &&
+    a.fromDate === (b as { fromDate?: string }).fromDate &&
+    a.toDate === (b as { toDate?: string }).toDate
+  );
 }
 
 interface SegmentContext {
@@ -480,8 +567,14 @@ function toSegments(row: Map<string, NightOccupant>, unitNumber: string, context
           paid: context.paid.get(booking.reference) ?? 0,
           currency: booking.currency,
           chosenByGuest: booking.unitNumber === unitNumber,
-          continuesBefore: booking.checkIn < dates[0]!,
-          continuesAfter: booking.checkOut > windowEnd,
+          continuesBefore: booking.checkIn < dates[0]! || Boolean(occupant.moveFromRoomNumber),
+          continuesAfter: booking.checkOut > windowEnd || Boolean(occupant.moveToRoomNumber),
+          roomFrom: occupant.fromDate ?? booking.checkIn,
+          roomTo: occupant.toDate ?? booking.checkOut,
+          moveFromRoomNumber: occupant.moveFromRoomNumber,
+          moveToRoomNumber: occupant.moveToRoomNumber,
+          moveReason: occupant.moveReason,
+          movedAt: occupant.movedAt,
         });
       }
     } else if (occupant.kind === 'closed') {
