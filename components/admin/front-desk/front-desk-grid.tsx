@@ -208,7 +208,7 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
           fromDate: drag.fromDate,
         });
         if (!result.ok) { toast.error(result.message); return; }
-        setTypeMove({ drag, targetRoomTypeId, targetRoomNumber, review: result.review });
+        setTypeMove({ drag, targetRoomTypeId, targetRoomNumber: result.review.targetRoomNumber, review: result.review });
         setTypeMoveError(null);
       } catch { toast.error(t('frontDesk.moveFailed')); }
       finally { setMovingReference(null); }
@@ -258,7 +258,11 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
       if (!result.ok) {
         setTypeMoveError(result.message);
         const fresh = await reviewFrontDeskRoomTypeMoveAction(input);
-        if (fresh.ok) setTypeMove((current) => current ? { ...current, review: fresh.review } : null);
+        if (fresh.ok) setTypeMove((current) => current ? {
+          ...current,
+          targetRoomNumber: fresh.review.targetRoomNumber,
+          review: fresh.review,
+        } : null);
         return;
       }
       setTypeMove(null);
@@ -478,6 +482,13 @@ export function FrontDeskGrid({ dates, days, groups, totalRooms, today }: FrontD
                 toRoom: lRoomNumber(typeMove.review.targetRoomNumber, locale),
                 date: lDateShort(typeMove.review.fromDate, locale) })}
             </p>
+            {typeMove.review.requestedTargetRoomNumber !== typeMove.review.targetRoomNumber ? (
+              <p className="rounded-2xl bg-stone px-3 py-2 text-sm text-muted-foreground">
+                {t('frontDesk.typeMoveAlternativeRoom', {
+                  room: lRoomNumber(typeMove.review.targetRoomNumber, locale),
+                })}
+              </p>
+            ) : null}
             <div className="divide-y divide-border rounded-[18px] border border-border px-4">
               <div className="flex items-center justify-between gap-4 py-3 text-sm">
                 <span>{t('frontDesk.typeMoveOldPrice')}</span>

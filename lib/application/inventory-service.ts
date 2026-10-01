@@ -151,6 +151,8 @@ export interface RoomTypeMoveReview {
   fromDate: string;
   fromRoomNumber: string;
   targetRoomNumber: string;
+  /** The room row that received the drop; may differ when it is busy later in the stay. */
+  requestedTargetRoomNumber: string;
   fromRoomType: string;
   targetRoomType: string;
   oldTotal: number;
@@ -504,9 +506,21 @@ export class InventoryService {
       period.fromDate <= fromDate && fromDate < period.toDate,
     );
     if (!active) return { ok: false, reason: 'invalid_date' };
-    if (!(await this.isUnitFreeForStay(hotelSlug, targetRoomTypeId, targetRoomNumber, fromDate, booking.checkOut))) {
-      return { ok: false, reason: 'unavailable' };
-    }
+    // The desk may be showing only part of a stay. A row that looks empty in
+    // that window can be occupied later, so retain the requested room when it
+    // fits the full remaining stay and otherwise select a free unit in the
+    // same target type before showing the price review.
+    const targetCandidates = [
+      targetRoomNumber,
+      ...targetUnits.map((unit) => unit.number).filter((number) => number !== targetRoomNumber),
+    ];
+    const resolvedTargetRoomNumber = (await Promise.all(
+      targetCandidates.map(async (number) => ({
+        number,
+        free: await this.isUnitFreeForStay(hotelSlug, targetRoomTypeId, number, fromDate, booking.checkOut),
+      })),
+    )).find((candidate) => candidate.free)?.number;
+    if (!resolvedTargetRoomNumber) return { ok: false, reason: 'unavailable' };
 
     const nights = nightsInRange(fromDate, booking.checkOut);
     const newTotal = roundMoney(booking.total + (newPlan.nightlyPrice - oldPlan.nightlyPrice) * nights.length);
@@ -522,11 +536,11 @@ export class InventoryService {
       if (period.toDate <= fromDate) return [{ ...period, roomTypeId: period.roomTypeId ?? booking.roomTypeId }];
       if (period.fromDate >= fromDate) return [];
       return [{ ...period, roomTypeId: period.roomTypeId ?? booking.roomTypeId, toDate: fromDate,
-        moveToRoomNumber: targetRoomNumber }];
+        moveToRoomNumber: resolvedTargetRoomNumber }];
     });
     assignments.push({
       roomTypeId: targetRoomTypeId,
-      roomNumber: targetRoomNumber,
+      roomNumber: resolvedTargetRoomNumber,
       fromDate,
       toDate: booking.checkOut,
       moveFromRoomNumber: fromRoomNumber,
@@ -542,7 +556,8 @@ export class InventoryService {
         checkOut: booking.checkOut,
         fromDate,
         fromRoomNumber,
-        targetRoomNumber,
+        targetRoomNumber: resolvedTargetRoomNumber,
+        requestedTargetRoomNumber: targetRoomNumber,
         fromRoomType: source.name,
         targetRoomType: target.name,
         oldTotal: booking.total,
