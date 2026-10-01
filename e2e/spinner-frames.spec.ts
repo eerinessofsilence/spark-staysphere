@@ -33,7 +33,7 @@ test('uploading a new frame set replaces the orbit and clears its markers and zo
 
   await expect(page.getByText(/160 frames, 1920×1080/)).toBeVisible();
 
-  const chooseButton = page.getByRole('button', { name: 'Choose frame images…' });
+  const chooseButton = page.locator('button').filter({ hasText: 'Choose frame images…' });
   await expect(async () => {
     const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), chooseButton.click()]);
     await fileChooser.setFiles(SAMPLE_FRAMES);

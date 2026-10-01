@@ -44,7 +44,7 @@ export function AdminAssistantLauncher() {
           'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:right-6 lg:bottom-6',
         )}
       >
-        <AssistantLauncherVisual open={open} />
+        <AssistantLauncherVisual id="admin-assistant-orb" open={open} />
       </button>
 
       <AdminAssistantPanel open={open} onClose={close} />

@@ -26,8 +26,13 @@ test('assigned rooms, tablet access, evidence and offline sync', async ({ page }
   await page.goto('/admin/accounting');
   await expect(page).toHaveURL(/\/housekeeper$/);
 
-  await page.context().setOffline(true);
+  // Warm the server-action client while online. Its module must already be
+  // available before the browser is deliberately disconnected below.
   await assigned.getByRole('button', { name: 'Грязный' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Изменения синхронизированы.');
+
+  await page.context().setOffline(true);
+  await assigned.getByRole('button', { name: 'В процессе' }).click();
   await expect(assigned.getByText('Ожидает синхронизации')).toBeVisible();
   await page.context().setOffline(false);
   await expect(assigned.getByText('Ожидает синхронизации')).toHaveCount(0, { timeout: 20_000 });

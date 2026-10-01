@@ -12,7 +12,13 @@
  * sees a stuck state. Prefer this over `hover:` for anything whose hover
  * style could be mistaken for a *selected* state (nav rows, list rows).
  */
-@custom-variant can-hover (@media (hover: hover) and (pointer: fine) { &:hover });
+@custom-variant can-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
 
 @theme inline {
   --color-background: var(--background);

@@ -180,6 +180,7 @@ test('resetting demo state clears bookings and availability overrides', async ({
     () => expect(reset).toBeDisabled({ timeout: 2_000 }),
   );
   await expect(reset).toBeEnabled({ timeout: 15_000 });
+  await expect(page.getByRole('status')).toContainText('Seed data reset.');
 
   await page.goto('/admin');
   await expect(page.getByText('No reservations yet')).toBeVisible();
@@ -572,10 +573,9 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Payment — the terms box gates the step and no card fields exist.
-  await expect(page.getByText('Demo payment.')).toBeVisible();
-  await expect(page.locator('input[autocomplete*="cc-"]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Payment' })).toBeVisible();
+  await expect(page.getByText(/Payment is simulated/)).toBeVisible();
+  await expect(page.locator('input[autocomplete*="cc-"]')).toHaveCount(0);
 
   await toggle(page.getByRole('checkbox', { name: /I understand this is a booking at a fictional property/ }), 'true');
   await page.getByRole('button', { name: 'Continue' }).click();

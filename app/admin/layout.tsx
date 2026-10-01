@@ -51,31 +51,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     console.error('Admin shell data lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
     return <AdminServiceUnavailable locale={locale} />;
   }
-  let recentBookingsRaw;
-  let conversations;
-  let unreadMessagesCount;
-  try {
-    [recentBookingsRaw, conversations, unreadMessagesCount] = await Promise.all([
-      hotelRepository.listBookings({ hotelId: hotel.id, limit: RECENT_BOOKINGS_LIMIT }),
-      communicationsService.listConversations(selectedSlug, RECENT_BOOKINGS_LIMIT),
-      communicationsService.countUnreadConversations(selectedSlug),
-    ]);
-  } catch (error) {
-    const requestId = crypto.randomUUID();
-    console.error('Admin notification summary failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
-    return <AdminServiceUnavailable locale={locale} />;
-  }
+  // These queries only fill the shell's notification previews. Keep them out of
+  // the critical path for every admin page, and let whichever summaries load
+  // continue to work if a nonessential data source is temporarily unavailable.
+  const summaries = await Promise.allSettled([
+    hotelRepository.listBookings({ hotelId: hotel.id, limit: RECENT_BOOKINGS_LIMIT }),
+    communicationsService.listConversations(selectedSlug, RECENT_BOOKINGS_LIMIT),
+    communicationsService.countUnreadConversations(selectedSlug),
+    hotelRepository.listRooms(hotel.id),
+  ]);
+  const summaryNames = ['recent bookings', 'conversations', 'unread count', 'rooms'] as const;
+  summaries.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      const requestId = crypto.randomUUID();
+      console.error(`Admin ${summaryNames[index]} summary failed`, { route: '/admin', code: 'service_unavailable', requestId }, result.reason);
+    }
+  });
+  const recentBookingsRaw = summaries[0].status === 'fulfilled' ? summaries[0].value : [];
+  const conversations = summaries[1].status === 'fulfilled' ? summaries[1].value : [];
+  const unreadMessagesCount = summaries[2].status === 'fulfilled' ? summaries[2].value : 0;
+  const rooms = summaries[3].status === 'fulfilled' ? summaries[3].value : [];
   const unreadConversations: UnreadConversation[] = conversations
     .filter((c) => c.unread > 0)
     .map((c) => ({ id: c.id, guestName: c.guestName, lastMessage: c.lastMessage, lastMessageAt: c.lastMessageAt, unread: c.unread }));
-  let rooms;
-  try {
-    rooms = await hotelRepository.listRooms(hotel.id);
-  } catch (error) {
-    const requestId = crypto.randomUUID();
-    console.error('Admin room lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
-    return <AdminServiceUnavailable locale={locale} />;
-  }
   const roomNameById = new Map(rooms.map((room) => [room.id, room.name]));
 
   const recentBookings: RecentBooking[] = recentBookingsRaw

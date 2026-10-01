@@ -50,7 +50,7 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
           open && 'pointer-events-none scale-90 opacity-0',
         )}
       >
-        <AssistantLauncherVisual hidden={open} />
+        <AssistantLauncherVisual id="guest-assistant-orb" hidden={open} />
       </button>
 
       <AssistantPanel open={open} onClose={close} mobileOffset={mobileOffset} />

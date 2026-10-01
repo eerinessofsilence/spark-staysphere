@@ -17,6 +17,10 @@ async function actUntil(act: () => Promise<void>, effect: () => Promise<void>) {
 }
 
 test('the launcher is visible and reachable by keyboard', async ({ page }) => {
+  const hydrationWarnings: string[] = [];
+  page.on('console', (message) => {
+    if (/hydration|didn't match|server html/i.test(message.text())) hydrationWarnings.push(message.text());
+  });
   await page.goto('/');
   const launcher = page.getByRole('button', { name: LAUNCHER_LABEL });
   await expect(launcher).toBeVisible();
@@ -27,6 +31,7 @@ test('the launcher is visible and reachable by keyboard', async ({ page }) => {
     () => page.keyboard.press('Enter'),
     () => expect(page.getByRole('dialog', { name: LAUNCHER_LABEL })).toBeVisible({ timeout: 3_000 }),
   );
+  expect(hydrationWarnings).toEqual([]);
 });
 
 test('open, type, and get real results whose handoff link carries the interpreted filters', async ({ page }) => {

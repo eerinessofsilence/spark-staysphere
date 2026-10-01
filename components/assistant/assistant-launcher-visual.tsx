@@ -1,6 +1,5 @@
 'use client';
 
-import { useId } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 import styles from './assistant-launcher-visual.module.css';
@@ -44,8 +43,7 @@ const longitudeMesh = Array.from({ length: 25 }, (_, column) => {
 const shellContours = Array.from({ length: 8 }, (_, index) => contour(index * 0.64, 35.5 + index * 0.6));
 
 /** The button owns interaction; the decorative orb animates while the launcher is closed and visible. */
-export function AssistantLauncherVisual({ open = false, hidden = false }: { open?: boolean; hidden?: boolean }) {
-  const id = useId().replace(/:/g, '');
+export function AssistantLauncherVisual({ id, open = false, hidden = false }: { id: string; open?: boolean; hidden?: boolean }) {
   const paint = (name: string) => `url(#${id}-${name})`;
 
   return (
@@ -115,8 +113,7 @@ export function AssistantLauncherVisual({ open = false, hidden = false }: { open
  * ribbons' ripples travel round the edge; strokes are pinned in screen
  * pixels so the lengthwise stretch doesn't fatten them.
  */
-export function OrbitVisual({ className }: { className?: string }) {
-  const id = useId().replace(/:/g, '');
+export function OrbitVisual({ id, className }: { id: string; className?: string }) {
   const paint = (name: string) => `url(#${id}-${name})`;
 
   return (

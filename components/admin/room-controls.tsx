@@ -173,12 +173,15 @@ export function AddOnToggle({
 export function ResetDemoButton() {
   const router = useRouter();
   const t = useAdminT();
+  const [mounted, setMounted] = React.useState(false);
   const [pending, setPending] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
 
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={!mounted || pending}
       onClick={async () => {
         setPending(true);
         try {
