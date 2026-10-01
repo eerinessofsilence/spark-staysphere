@@ -583,7 +583,7 @@ function SegmentBar({
       onClick={onSelect}
       draggable={draggable}
       onDragStart={onDragStart}
-      aria-label={draggable && dragHint ? `${label}. ${dragHint}` : label}
+      aria-label={label}
       title={draggable && dragHint ? `${label} · ${dragHint}` : label}
       style={style}
       className={cn(
