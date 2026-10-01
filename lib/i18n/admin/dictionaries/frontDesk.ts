@@ -89,7 +89,7 @@ export const frontDesk = defineArea({
     'frontDesk.paidInFull': 'Paid in full',
     'frontDesk.paidPartly': '{paid} paid · {balance} due',
     'frontDesk.demandBody':
-      'Simulated occupancy so the board reads like a live hotel. Not a booking — there is nothing to open or cancel.',
+      'Simulated occupancy so the board reads like a live hotel. It is not a booking, so its stay status cannot change. Create or open a real booking to check in, check out, or mark a no-show.',
 
     'frontDesk.moveRoom': 'Move to another room',
     'frontDesk.dragToMove': 'Drag to another room or room type',
@@ -325,7 +325,7 @@ export const frontDesk = defineArea({
     'frontDesk.paidInFull': 'Vollständig bezahlt',
     'frontDesk.paidPartly': '{paid} bezahlt · {balance} offen',
     'frontDesk.demandBody':
-      'Simulierte Belegung, damit die Tafel wie ein laufendes Hotel aussieht. Keine Buchung — nichts zu öffnen oder zu stornieren.',
+      'Simulierte Belegung, damit die Tafel wie ein laufendes Hotel aussieht. Es ist keine Buchung, daher kann der Aufenthaltsstatus nicht geändert werden. Öffnen oder erstellen Sie eine echte Buchung für Check-in, Check-out oder No-Show.',
 
     'frontDesk.moveRoom': 'In ein anderes Zimmer verlegen',
     'frontDesk.dragToMove': 'In ein anderes Zimmer oder einen anderen Zimmertyp ziehen',
@@ -561,7 +561,7 @@ export const frontDesk = defineArea({
     'frontDesk.paidInFull': 'Оплачено полностью',
     'frontDesk.paidPartly': 'Оплачено {paid} · к оплате {balance}',
     'frontDesk.demandBody':
-      'Смоделированная загрузка, чтобы шахматка выглядела как у работающего отеля. Это не бронь — открывать или отменять нечего.',
+      'Смоделированная загрузка, чтобы шахматка выглядела как у работающего отеля. Это не бронь, поэтому её статус проживания менять нельзя. Откройте или создайте настоящую бронь, чтобы отметить заезд, выезд или незаезд.',
 
     'frontDesk.moveRoom': 'Переселить в другой номер',
     'frontDesk.dragToMove': 'Перетащите бронь в другой номер или тип номера',

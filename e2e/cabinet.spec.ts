@@ -136,6 +136,7 @@ test('a room the guest chose shows on that room in the front desk', async ({ pag
   );
   await expect(dialog.getByText(`Room ${room}`, { exact: true })).toBeVisible();
   await expect(dialog.getByText('Room rate', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Change the stay’s status' })).toBeVisible();
 });
 
 test('dragging a booking to another room type reviews and saves the new price', async ({ page, request }, testInfo) => {
