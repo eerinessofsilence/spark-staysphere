@@ -587,6 +587,7 @@ function SegmentBar({
   onDragStart,
   onPointerDown,
   resizeHint,
+  resizeEndIndex,
 }: {
   segment: FrontDeskSegment;
   label: string;
@@ -599,8 +600,9 @@ function SegmentBar({
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
   onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   resizeHint?: string;
+  resizeEndIndex?: number;
 }) {
-  const style = segmentTapeStyle(segment, shownDays);
+  const style = segmentTapeStyle(segment, shownDays, resizeEndIndex);
 
   const base =
     'relative z-10 mx-0.5 flex h-9 min-w-0 cursor-pointer items-center gap-1 self-center overflow-hidden rounded-full px-2.5 text-left text-xs font-medium ring-1 ring-card transition-[filter] hover:brightness-95';
@@ -670,9 +672,9 @@ function SegmentBar({
  * gap between a noon departure and a noon arrival instead of implying that a
  * room is occupied for every hour of both dates.
  */
-function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number): React.CSSProperties {
+function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number, resizeEndIndex?: number): React.CSSProperties {
   const startColumn = segment.start + 2;
-  const endColumn = Math.min(segment.start + segment.span + 1, shownDays) + 2;
+  const endColumn = Math.min(resizeEndIndex === undefined ? segment.start + segment.span + 1 : resizeEndIndex + 2, shownDays) + 2;
   const visibleDays = endColumn - startColumn;
   const continuesBefore = segment.kind === 'booking' && segment.continuesBefore;
   const continuesAfter = segment.kind === 'booking' && segment.continuesAfter;
@@ -684,7 +686,7 @@ function segmentTapeStyle(segment: FrontDeskSegment, shownDays: number): React.C
   const checkInTime = segment.kind === 'closed' ? STANDARD_CHECK_IN_TIME : segment.checkInTime;
   const checkOutTime = segment.kind === 'closed' ? STANDARD_CHECK_OUT_TIME : segment.checkOutTime;
   const arrivalTrim = continuesBefore ? 0 : dayProgress(checkInTime);
-  const departureTrim = departureIsVisible ? 1 - dayProgress(checkOutTime) : 0;
+  const departureTrim = resizeEndIndex === undefined && departureIsVisible ? 1 - dayProgress(checkOutTime) : 0;
 
   return {
     gridColumn: `${startColumn} / ${endColumn}`,
@@ -738,7 +740,8 @@ function RoomRow({
   const dragRef = React.useRef<{ pointerId: number; start: number } | null>(null);
   const [live, setLive] = React.useState<{ start: number; end: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
-  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number } | null>(null);
+  const resizeRef = React.useRef<{ pointerId: number; segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number; currentEnd: number } | null>(null);
+  const [resizePreview, setResizePreview] = React.useState<{ segment: Extract<FrontDeskSegment, { kind: 'booking' }>; endIndex: number } | null>(null);
 
   const occupiedNights = room.segments.reduce((sum, segment) => sum + segment.span, 0);
 
@@ -780,7 +783,15 @@ function RoomRow({
   }
 
   function onRowPointerMove(event: React.PointerEvent) {
-    if (resizeRef.current?.pointerId === event.pointerId) return;
+    const resize = resizeRef.current;
+    if (resize?.pointerId === event.pointerId) {
+      const index = nightIndexAt(event.clientX, event.clientY);
+      if (index !== null && index >= resize.endIndex && !room.segments.some((other) => other !== resize.segment && other.start < index + 1 && other.start + other.span > resize.endIndex)) {
+        resize.currentEnd = index;
+        setResizePreview({ segment: resize.segment, endIndex: index });
+      }
+      return;
+    }
     if (dragRef.current?.pointerId !== event.pointerId) return;
     const index = nightIndexAt(event.clientX, event.clientY);
     if (index !== null) extendTo(index);
@@ -791,8 +802,11 @@ function RoomRow({
     if (resize?.pointerId === event.pointerId) {
       resizeRef.current = null;
       rowRef.current?.releasePointerCapture(event.pointerId);
-      const index = nightIndexAt(event.clientX, event.clientY);
-      if (index !== null && index >= resize.endIndex) onResizeBooking(resize.segment, addIsoDays(dates[index]!, 1));
+      const index = nightIndexAt(event.clientX, event.clientY) ?? resize.currentEnd;
+      setResizePreview(null);
+      if (index >= resize.endIndex && !room.segments.some((other) => other !== resize.segment && other.start < index + 1 && other.start + other.span > resize.endIndex)) {
+        onResizeBooking(resize.segment, addIsoDays(dates[index]!, 1));
+      }
       return;
     }
     if (dragRef.current?.pointerId !== event.pointerId) return;
@@ -807,7 +821,9 @@ function RoomRow({
     const rect = event.currentTarget.getBoundingClientRect();
     if (event.button !== 0 || event.pointerType !== 'mouse' || event.clientX < rect.right - 14 || segment.continuesAfter || movingReference) return;
     event.preventDefault(); event.stopPropagation();
-    resizeRef.current = { pointerId: event.pointerId, segment, endIndex: segment.start + segment.span };
+    const endIndex = segment.start + segment.span;
+    resizeRef.current = { pointerId: event.pointerId, segment, endIndex, currentEnd: endIndex - 1 };
+    setResizePreview({ segment, endIndex: endIndex - 1 });
     rowRef.current?.setPointerCapture(event.pointerId);
   }
 
@@ -908,8 +924,10 @@ function RoomRow({
           onDragStart={segment.kind === 'booking' ? (event) => startBookingDrag(event, segment) : undefined}
           onPointerDown={segment.kind === 'booking' ? (event) => startBookingResize(event, segment) : undefined}
           resizeHint={t('frontDesk.resizeHint')}
+          resizeEndIndex={resizePreview?.segment === segment ? resizePreview.endIndex : undefined}
         />
       ))}
+      {resizePreview ? <div aria-hidden="true" className="pointer-events-none relative z-10 mx-0.5 flex h-9 items-center self-center overflow-hidden rounded-full border-2 border-dashed border-accent bg-accent-soft/75 px-2.5 text-xs font-medium text-accent-strong" style={{ gridColumn: `${resizePreview.segment.start + 2} / ${Math.min(resizePreview.endIndex + 2, dates.length + 1)}`, gridRow: 1 }}><span className="truncate">{t('frontDesk.resizePreview', { nights: Math.max(1, resizePreview.endIndex - (resizePreview.segment.start + resizePreview.segment.span) + 1) })}</span></div> : null}
       {live ? (
         <div
           aria-hidden="true"
