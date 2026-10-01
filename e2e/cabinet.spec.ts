@@ -138,6 +138,7 @@ test('a room the guest chose shows on that room in the front desk', async ({ pag
 
 test('dragging a booking to another room type reviews and saves the new price', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'The room board uses native desktop drag and drop.');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   let booked: { reference: string; room: string; stay: Stay } | null = null;
   for (let day = offset; day < offset + 30 && !booked; day += 1) {
     const stay = { checkIn: isoDaysFromNow(day), checkOut: isoDaysFromNow(day + 1), adults: 2, children: 0 };
