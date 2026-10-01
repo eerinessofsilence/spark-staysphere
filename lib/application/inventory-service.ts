@@ -740,6 +740,7 @@ export class InventoryService {
           defaultRatePlan: ratePlans[0] ?? null,
           capacity: room.capacity,
         };
+        const displayOccupancy = scatterOutOfOrderNights(roomUnits, occupancy, dates);
         return {
           roomTypeId: room.id,
           roomName: room.name,
@@ -751,7 +752,7 @@ export class InventoryService {
             number: unit.number,
             floor: unit.floor,
             facade: unit.facade,
-            segments: toSegments(occupancy.get(unit.number)!, unit.number, context),
+            segments: toSegments(displayOccupancy.get(unit.number)!, unit.number, context),
           })),
         };
       }),
@@ -886,6 +887,33 @@ function simulatedStay(
     currency: plan?.currency ?? 'EUR',
     channel: channel.name,
   };
+}
+
+/**
+ * A room-type sale restriction can leave every physical room unavailable for
+ * the entire window. Keep that availability intact, but avoid presenting the
+ * whole restriction as one long maintenance event in the demo room board.
+ * Two days in each four-day cycle show an out-of-order marker on one rotating
+ * room; the other unavailable nights read as simulated occupancy. The cycle
+ * uses absolute dates so navigating the board never moves a marker.
+ */
+function scatterOutOfOrderNights(
+  units: RoomUnit[],
+  occupancy: Map<string, Map<string, NightOccupant>>,
+  dates: string[],
+): Map<string, Map<string, NightOccupant>> {
+  const display = new Map([...occupancy].map(([number, row]) => [number, new Map(row)]));
+  if (units.length === 0) return display;
+  for (const date of dates) {
+    const day = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
+    const cycleDay = ((day % 4) + 4) % 4;
+    const outOfOrderRoom = cycleDay < 2 ? units[((Math.floor(day / 4) % units.length) + units.length) % units.length]!.number : null;
+    for (const unit of units) {
+      const row = display.get(unit.number)!;
+      if (row.get(date)?.kind === 'closed' && unit.number !== outOfOrderRoom) row.set(date, { kind: 'demand' });
+    }
+  }
+  return display;
 }
 
 function toSegments(row: Map<string, NightOccupant>, unitNumber: string, context: SegmentContext): FrontDeskSegment[] {

@@ -146,6 +146,12 @@ arguments passed to `.bind()`, especially when the same `json_each(?)` input app
 missing array argument can bind a booking ID as JSON and fail the entire batch. Exercise the real
 D1 statement through `lib/infrastructure/libsql-d1.test.ts` before relying on an in-memory mock.
 
+**A sold-out room type becomes a wall of full-window blocks on the front desk.** Availability
+overrides still make every affected night unavailable, but `getFrontDesk()` scatters short
+out-of-order demo markers across absolute dates and rooms when drawing the board. The other
+unavailable nights render as simulated occupancy. Keep this display step separate from the
+allocator used by quotes and room moves, so a visual change cannot make a blocked room bookable.
+
 **Passport upload unavailable while CMS uploads work.** Identity documents use the separate
 `PRIVATE_DOCUMENTS` R2 binding (or a private Blob store on Vercel). The public MEDIA adapter is
 intentionally not a fallback. See `docs/GUEST_DOCUMENTS.md` for host configuration and retries.
