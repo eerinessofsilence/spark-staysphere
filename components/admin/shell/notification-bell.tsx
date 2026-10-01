@@ -28,6 +28,8 @@ export interface UnreadConversation {
 }
 
 const STORAGE_PREFIX = 'admin-notifications.last-seen.';
+const INITIAL_VISIBLE_BOOKINGS = 5;
+const BOOKINGS_PER_PAGE = 5;
 
 // localStorage can throw: private mode, cookies blocked, a cross-origin
 // iframe. Missing "last seen" just means everything reads as new — not
@@ -68,6 +70,7 @@ export function NotificationBell({
   unreadMessagesCount?: number;
 }) {
   const [unseenBookings, setUnseenBookings] = React.useState(0);
+  const [visibleBookings, setVisibleBookings] = React.useState(INITIAL_VISIBLE_BOOKINGS);
   // Unread messages are a server-side count, so they show from the first
   // paint; the bookings half waits for localStorage below.
   const unreadMessages = unreadMessagesCount ?? conversations.reduce((sum, c) => sum + c.unread, 0);
@@ -84,7 +87,9 @@ export function NotificationBell({
   }, [hotelSlug, bookings]);
 
   function onOpenChange(open: boolean) {
-    if (!open || bookings.length === 0) return;
+    if (!open) return;
+    setVisibleBookings(INITIAL_VISIBLE_BOOKINGS);
+    if (bookings.length === 0) return;
     writeLastSeen(hotelSlug, bookings[0]!.createdAt);
     setUnseenBookings(0);
   }
@@ -108,7 +113,7 @@ export function NotificationBell({
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="start" sideOffset={8} className="z-50 outline-none">
-          <Menu.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+          <Menu.Popup className="max-h-[min(80dvh,40rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
             {conversations.length > 0 ? (
               <>
                 <p className="flex items-center justify-between px-3 py-2 text-sm font-medium">
@@ -148,7 +153,7 @@ export function NotificationBell({
             {bookings.length === 0 ? (
               <p className="px-3 pb-3 text-sm text-muted-foreground">{t('bell.empty')}</p>
             ) : (
-              bookings.map((booking) => (
+              bookings.slice(0, visibleBookings).map((booking) => (
                 <Menu.LinkItem
                   key={booking.reference}
                   render={<Link href={`/admin/bookings/${booking.reference}`} />}
@@ -170,6 +175,15 @@ export function NotificationBell({
                 </Menu.LinkItem>
               ))
             )}
+            {visibleBookings < bookings.length ? (
+              <Menu.Item
+                closeOnClick={false}
+                onClick={() => setVisibleBookings((count) => Math.min(count + BOOKINGS_PER_PAGE, bookings.length))}
+                className="mt-1 flex min-h-10 w-full items-center justify-center rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none select-none data-highlighted:bg-stone data-highlighted:text-foreground"
+              >
+                {t('bell.showMore')}
+              </Menu.Item>
+            ) : null}
             <Menu.LinkItem
               render={<Link href="/admin/bookings" />}
               closeOnClick

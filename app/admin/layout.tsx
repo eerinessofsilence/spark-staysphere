@@ -12,7 +12,7 @@ import { AdminServiceUnavailable } from '@/components/admin/shell/admin-service-
 
 export const dynamic = 'force-dynamic';
 
-const RECENT_BOOKINGS_LIMIT = 8;
+const RECENT_BOOKINGS_LIMIT = 25;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // The gate in front of every screen. The door itself (`/admin/sign-in`,
