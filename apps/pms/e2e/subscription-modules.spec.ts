@@ -1,0 +1,52 @@
+import { expect, test } from '@playwright/test';
+
+test('module preview updates the estimate, removes modules and fits the viewport', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  await page.goto('/admin/account/subscription');
+  await expect(page.locator('[data-tour="nav"] a[href="/admin"][aria-current="page"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'About module: Property management', exact: true }).click();
+  const includedDetails = page.getByRole('dialog', { name: 'Property management', exact: true });
+  await expect(includedDetails.getByRole('button', { name: 'Add module', exact: true })).toHaveCount(0);
+  await includedDetails.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await page.getByRole('button', { name: 'About module: Accounting and reporting', exact: true }).click();
+  const details = page.getByRole('dialog', { name: 'Accounting and reporting', exact: true });
+  await expect(details.getByText(/Review booking payments/)).toBeVisible();
+  await details.getByRole('button', { name: 'Add module', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Change module' });
+  await expect(page.locator('[data-subscription-total]')).toHaveText('€158.00');
+  await expect(page.getByText('Pending payment', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue to payment' }).click();
+  await expect(page).toHaveURL(/subscription\/checkout/);
+  await expect(page.getByRole('heading', { name: 'Review and pay' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm demo payment' }).click();
+  await expect(page).toHaveURL(/subscription$/);
+  await expect(page.locator('[data-subscription-total]')).toHaveText('€158.00');
+  await expect(page.getByText('Active (demo)', { exact: false })).toBeVisible();
+  const estimate = page.getByRole('complementary', { name: 'Monthly bill estimate' });
+  await estimate.getByRole('button', { name: 'Remove module: Accounting and reporting', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('[data-subscription-total]')).toHaveText('€158.00');
+  await estimate.getByRole('button', { name: 'Remove module: Accounting and reporting', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Confirm preview' }).click();
+  await expect(page.locator('[data-subscription-total]')).toHaveText('€129.00');
+  await expect(page.getByRole('button', { name: 'Continue to payment' })).toBeHidden();
+  await expect(estimate.getByText('Accounting and reporting', { exact: true })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Add module: Accounting and reporting', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Distribution', exact: true }).click();
+  await expect(page.getByText('Direct booking engine', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('mobile notifications open as a scrollable bottom sheet and close with Escape', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', 'Mobile sheet only');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  await page.goto('/admin');
+  await page.locator('button[data-tour="bell"]:visible').click();
+  const dialog = page.getByRole('dialog', { name: 'Notifications' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-notifications-scroll]')).toBeVisible();
+  const bounds = await dialog.boundingBox();
+  expect(bounds!.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});

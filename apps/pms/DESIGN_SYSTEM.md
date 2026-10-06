@@ -1,0 +1,365 @@
+# SPARK StaySphere 360 — Design System
+
+This file is the contract. It exists because the first pass of this product shipped uppercase
+eyebrows, grids of labelled stat boxes, icon-in-a-circle feature cards, procedural illustrations,
+and a neon accent — and every one of those read as generic. The rules below are what replaced
+them. When a new screen is built, it is checked against **Rules** first and against the tokens
+second.
+
+## Direction
+
+Photography-led, warm, and quiet by day; near-black with one electric lime by night — the same
+tokens under different values, `.dark` set once on `<html>` for whichever scheme applies. Light is
+the default a first-time visitor gets (`lib/theme.ts`'s `DEFAULT_THEME`); the theme toggle
+(`../guest/components/site/theme-toggle.tsx`) offers light, dark, or the visitor's own OS preference, stored
+per browser. Ink does the work by day, lime by night; large geometric display type; pill-shaped
+controls; frosted panels over photographs. The references are premium hotel and residential sites,
+not SaaS dashboards.
+
+## Rules
+
+These are enforced in review and, where possible, by lint.
+
+1. **No uppercase, letter-spaced microcopy.** No "eyebrows". A lead-in above a heading is
+   `SectionLabel` — sentence case, muted, with an accent dot — or nothing.
+2. **No grids of small labelled boxes for numbers.** "Available now / 7 of 8" tiles are banned.
+   Counts and figures read as a sentence (`7 of 8 room types are available for 16–19 Oct, from
+   €244 a night`) or as one large figure with a plain descriptor beside it, separated by
+   hairlines. A grid of cards is allowed where each card is one *thing the room has* rather than
+   a statistic about it — the amenities on a room page are a mark and a name, nothing else. The
+   moment a card grows a heading over two lines of copy it has become the banned pattern.
+3. **No icon-in-a-tinted-circle feature cards.** Value propositions are photographs with a
+   numbered list over or beside them (`01 / 02 / 03`), or plain rows. Never three cards with an
+   icon, a heading, and two lines of copy.
+4. **No schematic or procedural illustration.** Rooms and the property are shown with
+   photography only. Stock stands in for the property's own until launch; every file is local
+   (`public/images`) and credited in `public/images/CREDITS.md`. Nothing loads from an external
+   image host at runtime. The one exception is the building spinner (`BuildingSpinner`, rendered
+   from `Hotel.spinner`'s baked frames — never procedural primitive geometry, see
+   `SPINNER_SPEC.md`): a draggable turn around the property is the product's own promise. It
+   replaces the arrival stage's facade/roof/cove photo in place, not a section added below it,
+   and its hotspots link into the catalog.
+5. **Two icon sets, split by job.** *Interface* marks — calendar, guests, search, chevrons,
+   close, check, plus/minus, fullscreen, spinner — are **Heroicons outline**
+   (`@heroicons/react/24/outline`), stroked and legible down to 14px, where a filled glyph
+   collapses into a blob. *Subject* marks — a bathtub, a towel, a lotus, a bed, a ruler, a wine
+   glass, the hotspots on a photograph — are **Phosphor filled**
+   (`@phosphor-icons/react/dist/ssr`, `weight="fill"`), because Heroicons is a UI set and simply
+   has no glyph for them. The line is what the mark denotes, not where it sits: never reach for
+   Phosphor to draw a chevron, or Heroicons to draw a bathtub. `lucide-react` is lint-banned
+   outside `components/ui/` (the generated shadcn primitives), see `.oxlintrc.json`.
+6. **The accent is clay by day and lime by night, and it belongs to a few jobs.** On the light
+   scheme the accent is clay (`#B8603A`) and the primary action is an ink pill with warm-white
+   text. On the night scheme — `.dark` on `<html>`, the site's own scheme, not one screen's —
+   the accent is electric lime (`#D4FF3A`) and the primary pill is lime with the canvas as its
+   text. On both, the accent marks the section-label dot, focus rings, savings, active states,
+   the primary action, and one italic phrase per screen; prices and body copy stay in the
+   foreground colour. Status markers are the exception: cyan, teal, olive, amber, orange,
+   violet, and coral distinguish named states, with neutral label text and deeper fills only
+   where a status bar needs white text. Keep blue and purple out of decorative UI. Components
+   read `bg-primary` / `text-primary-foreground`, never `bg-ink` with a literal, so one pill
+   is correct on both schemes.
+7. **Actions are pills; facts are chips; containers are 18px.** Use `pill()`, `tag()`, and
+   `iconButton()` from `lib/ui.ts` rather than composing new button classes.
+8. **One italic phrase per screen at most**, set in the accent serif. Never body copy, never a
+   label, never a button.
+9. **Form groups are `role="group"` with a heading**, never `<fieldset>`/`<legend>` — the legend
+   renders inside the border and breaks every layout it touches.
+10. **Status is never colour alone.** A badge carries a filled icon and words, including the
+    count: "Only 3 left", "Last room", "Fully booked" — a hotel's word, never "Sold out".
+
+## Tokens
+
+CSS variables live in `app/globals.css`; components consume tokens, never near-duplicates.
+
+| Role | Value | Tailwind | Usage |
+|---|---|---|---|
+| Ink | `#161616` | `bg-ink`, `text-foreground` | Primary actions, dark bands, display text |
+| Canvas | `#F3F1EC` | `bg-canvas` | Page background |
+| Surface | `#FFFFFF` | `bg-card` | Cards, panels, inputs |
+| Stone | `#E9E5DD` | `bg-stone` | Chips, secondary surfaces, hover fills |
+| Accent | `#B8603A` | `bg-accent`, `text-accent` | Section-label dot, focus ring, active marks |
+| Accent strong | `#9A4E2C` | `text-accent-strong` | Accent text on light surfaces, savings, italic phrase |
+| Accent soft | `#F4E6DD` | `bg-accent-soft` | Accent-tinted notice backgrounds |
+| Muted text | `#66665F` | `text-muted-foreground` | Secondary copy, labels |
+| Border | `#DDD9D0` | `border-border` | Hairlines and control borders |
+| Success | `#2E7D5B` | `text-success` | Available, confirmed |
+| Warning | `#965D0D` | `text-warning` | Limited inventory, price change |
+| Danger | `#C4473A` | `text-danger` | Fully booked, failed payment |
+| Primary hover | `#2B2B2B` | `hover:bg-primary-hover` | The primary pill's hover; lime `#C2EC2E` by night |
+| Raised surface | `#FFFFFF` | `.surface-raised` | The phone stay search — the one panel that stays light (`#F4F2EC`) by night, with `--surface-raised-foreground` for its text |
+| Warm white on ink | `#F7F5F0` | `text-primary-foreground` | Text on ink pills; `#141414` on the night's lime pill |
+| Glass tint | `#F7F5F0` | `--glass-tint` | The fill of every frosted panel |
+| Glass edge | `white 70%` | `--glass-edge` | The lit hairline that makes it read as glass |
+
+The night scheme redefines the same names under `.dark` in `app/globals.css`: canvas `#141414`,
+surface `#1E1E1E`, stone `#262626`, accent `#D4FF3A`, primary `#D4FF3A` on `#141414`, border
+`white 10%`. `.dark` sits on `<html>` in the root layout, so it is the whole document, not one
+page's subtree — `Modal`, the dates panel and the guest stepper all portal to `document.body`,
+which is a descendant of `<html>` either way, so a sheet just reads the scheme, nothing carries
+it across. The one deliberate exception is `.surface-raised` (the phone search card): it
+re-points `--foreground`, `--border` and a few neighbours back to their day values inside its
+own subtree, the way the reference lifts its search out of a dark screen, and any dialog
+opened from a control that happens to sit on it still portals past that subtree to the body
+and reads the site's own night tokens, not the card's.
+
+### Flat tints
+
+Five muted surfaces, each paired with a darker ink of the same hue for the mark on it. Warm
+throughout, with one sage — no blue, no purple, no neon, so rule 6 still holds. The surfaces
+paint chips: the room's facts and what the rate includes. The amenity cards on a room page are
+white on `shadow-soft` and carry only the **mark** in the tone's ink, so a wall of them still
+groups itself by what each thing is without the whole card being coloured. They are never text
+colour, never a button, never the accent's job. The tone is chosen from what the thing is
+(`amenityTone`, `factTone`); anything unclassified stays stone, the page's own neutral.
+
+| Tone | Surface | Mark | Used for |
+|---|---|---|---|
+| Clay | `#F4E6DD` | `#9A4E2C` | The kitchen: dining, coffee, minibar |
+| Stone | `#E9E5DD` | `#5F5E58` | Water, and anything unclassified |
+| Sage | `#E2E9DE` | `#4C6A4E` | Outdoors: terraces, balconies, the view |
+| Sand | `#EFE7D3` | `#7F6A35` | Comfort and kit: Wi-Fi, climate, blinds, desk |
+| Rose | `#F1E2E0` | `#93565A` | Sleeping and lounging |
+
+## Typography
+
+One interface face for everything, plus an italic serif for a single emphasised phrase.
+Titles and body differ by size and weight, not by typeface — the way the platform does it.
+
+- **Interface — San Francisco, with Inter behind it.** The stack is
+  `-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, …`. SF is never shipped:
+  Apple's licence covers designing for their platforms, not serving the file, so the first two
+  entries hand back the device's own face on macOS and iOS. Inter (self-hosted through
+  `next/font/google`, weights 400–700) catches Windows and Android so they keep the same
+  character instead of dropping to Segoe or Roboto.
+- **Titles** use `.text-display` — the same face at weight 700, `-0.028em` tracking, 1.05
+  leading. Every `h1`–`h3`, prices, counters, and large figures. Hero names run to
+  `clamp(3.25rem, 10vw, 8rem)`.
+- **Body** is 14–15px at 1.5+ leading, weight 400, medium (500) for emphasis.
+- **Accent — Instrument Serif italic** through `.text-accent-italic`, for the one emphasised
+  phrase a screen is allowed.
+
+### Size scale (mobile first)
+
+Named tiers, not ad hoc classes — pick the row that matches the element's *role*, not the one
+that happens to look right next to it. Sizes below are the mobile (unprefixed) value; `→` gives
+the `sm:` step where one exists. A role with no `sm:` step is meant to hold its size across
+breakpoints.
+
+| Role | Mobile → `sm:` | Class | Where |
+|---|---|---|---|
+| Hero name | 36px → 48px | `text-4xl sm:text-5xl` | Arrival: the property name above the building, with its stars and location beneath |
+| Page title | 48px → 60px | `text-5xl sm:text-6xl` | Main flow pages: rooms, trips, book, admin, confirmation |
+| Page title, compact | 36px → 48px | `text-4xl sm:text-5xl` | Utility pages: error, not-found |
+| Page title, minimal | 24px → 30px | `text-2xl sm:text-3xl` | Room detail — the name sits directly above the gallery, so it doesn't compete with the photo the way a standalone page title can |
+| Section heading | 36px → 48px | `text-4xl sm:text-5xl` | Home page marketing sections (About, Rooms, Rest of the rooms) |
+| Subsection heading | 24px → 30px | `text-2xl sm:text-3xl` | In-page sections: room detail (amenities, rate, policies, add-ons), admin panels, empty states |
+| Compact heading | 24px | `text-2xl` | Dialogs, booking-flow step headers, summary-card titles (room name in a sidebar), every `/admin` page title via `AdminPageHeader` — section landing or detail alike |
+| Card title, full-width | 24px | `text-2xl` | Room name in a list row, or standalone card |
+| Card title, home rail | 20px | `text-xl` | Room name on the home page's horizontal room rail |
+| Card title, tile | 14–18px, container-scaled | `text-base @xs:text-lg` (grid) | Room name on a narrow catalog grid tile — scales with the tile, not the viewport |
+| Panel/field label | 14–15px, weight 500 | `font-sans text-sm font-medium tracking-normal` | A label that reads as a heading's job but a body's weight: filter group titles, a rate plan name under a room |
+| Summary total | 32px | `text-[2rem]` | The running total in a *mid-journey* sidebar card — room detail and checkout review share the same card, so they share this size |
+| Final total | 36px | `text-4xl` | The total on the confirmation page — the one number left to read once everything else is decided, so it gets the bigger of the two |
+| Sticky-bar total | 20px | `text-xl` | The docked mobile book bar — space is the constraint, not hierarchy |
+| Card nightly price | 18–24px, container-scaled | `text-lg @xs:text-2xl` (grid) / `text-2xl` (row) | Same container-query logic as the card title beside it |
+| Stat figure | 36px | `text-4xl` | Admin dashboard counters |
+| Body | 14–15px | `text-sm` / `text-base` | Paragraphs, captions inside cards |
+| Caption / meta | 12px | `text-xs` | Timestamps, fine print, helper text under a field |
+
+When a new number or heading doesn't fit a row above, it's a sign to name a new tier here — not to
+free-hand a `text-*xl` that happens to look right on one screen.
+
+## Shape and space
+
+- Spacing unit 4px; preferred steps 8, 12, 16, 24, 32, 48, 64, 96.
+- Controls are 44px minimum touch targets.
+- Pills for every action and chip (`rounded-full`). Inputs `rounded-2xl`. Cards, panels, and
+  photographs `rounded-[18px]`. Nothing between 8px and 16px except inputs.
+- Elevation is `.shadow-soft` or `.shadow-soft-lg`, nothing stronger. Reach for a hairline first.
+- Frosted panels over photography use `.glass` (light) or `.glass-dark`.
+
+## Layout grid
+
+Defined once in `app/globals.css` as Tailwind theme tokens. Pages compose them; they never
+free-hand a width or a column track.
+
+- **Page width.** `container-page` (1400px) for every guest page, plus the header and the footer;
+  `container-reading` (1000px) for single-column reading pages — the confirmation and trips. Both
+  carry the gutter and centre themselves, for pages with no sidebar to line up against.
+  `AdminPage` (`/admin`'s own pages) uses two admin-only containers instead —
+  `container-page-start` for its "wide" screens and `container-form` for its "narrow" editors —
+  each the same 1400px width and each left-aligned in the sidebar's content column, rather than
+  centred: an editor capped narrower than its sibling admin pages, or centred so its heading lands
+  at a different x-position than theirs, both read as a layout bug on a wide monitor rather than as
+  an intentional choice. When only the width is wanted — the full-bleed phone hero — use
+  `max-w-page`.
+- **Gutter.** `--gutter` is 16px on a phone, 24px from `sm`, 32px from `lg`. It is the side
+  margin (`px-gutter`), the bleed of an edge-to-edge rail (`-mx-gutter px-gutter
+  scroll-pl-gutter`), and the gap between a guest page's main column and its rail
+  (`gap-x-gutter`). The header pill, the page and the footer card therefore share both edges.
+- **Columns.** A page split is a named template: `grid-cols-sidebar` (content, then a 22rem rail
+  on the right — room page, booking flow, floor plan, editors), `grid-cols-sidebar-start` (a
+  22rem rail on the left — catalog filters, a list card's photo), `grid-cols-media` (a 16rem
+  photo beside its details), `grid-cols-main-aside` (8 of 12 beside 4 — the dashboard chart and
+  its list), `grid-cols-shell` (the admin sidebar). Anything that doesn't fit one of those uses
+  the twelve-column grid (`grid-cols-12` with `col-span-*`), and a collection of cards uses a
+  plain count (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). One stacked column is
+  `grid-cols-1` — it already is `minmax(0, 1fr)`.
+- **Arbitrary tracks** (`grid-cols-[…]`) are for a component's own row alignment only — a rates
+  row, the search bar's fields, a list row with a trailing button — never for a page layout. A
+  new page split is a new named template here first.
+- A loading skeleton uses exactly the container and template of the page it stands in for, so
+  nothing moves when the page arrives.
+
+## Photography
+
+- Hero areas are `HotelArea` records with a photo, a caption, and hotspots stored as fractions
+  of the photo. Hotspots are mapped through the same `object-fit: cover` maths the browser uses
+  so a marker stays on the balcony it points at.
+- Hotspots are glass lenses (`.glass-lens`): a near-clear disc with a lit rim and a sheen
+  across its upper half, so the balcony it sits on stays visible through it, carrying a filled
+  ink pin. From `sm` the label rides beside it as its own small `.glass` chip — not one pill
+  around both, which on a phone was a grey ring around an ink dot. The pressed lens fills with
+  ink. Tapping opens a frosted card with the description and one CTA.
+- Room galleries show one photograph at a time with pill tabs (thumbnail + label), paging
+  arrows, and fullscreen — no counter, the tabs already name every view. A 360° capture is one
+  more tab (a globe instead of a thumbnail), also reachable from a glass "360° view" pill on the
+  photograph itself; over the sphere the paging hides, since it would swallow the drag.
+- The building spinner and the panorama sphere (`components/view-360/`) use the same marker and
+  card language as the flat photos: lens markers, a frosted card beside the marker from `sm`, the
+  product's sheet below it, and an ink turn-control pill — never the library's own chrome.
+- Photographs always carry `width`/`height` to avoid layout shift, and `loading="lazy"` unless
+  they are the arrival hero.
+
+## Components
+
+- **Header**: frosted pill bar — mark and wordmark, text links, ink "Book a room".
+- **Search bar**: one pill on desktop with hairline dividers between fields and an ink search
+  button; stacked 18px card on mobile. It overlaps the bottom edge of the arrival scene.
+- **Dates**: never `input[type=date]` — the browser's own control looks different on every
+  platform and cannot show the range. Check-in and check-out are two triggers onto one
+  `StayDatesField` panel: two months on desktop, one in a bottom sheet on a phone, ink circles
+  at both ends of a stone band, a preview band under the cursor, sold-out days struck through,
+  and the nights read back as a sentence.
+- **Room card**: a small tile, six to a row at `xl` and two on a phone. Photograph with a
+  frosted status pill, the name, one muted line of "sleeps · view", the nightly price in display
+  type, and the direct saving. Nothing else: the description, the fact chips and what the rate
+  includes turned every row of the catalog into a wall of text while the guest was still
+  scanning, and all of it is one click away on the room page. No button — the whole tile is the
+  link — and it never opens the booking flow, only the room.
+- **Filters**: sticky card on desktop, bottom sheet on mobile. Toggle chips for categorical
+  filters (`aria-pressed`), a slider for budget, native selects for area and floor, a switch for
+  sold-out. Group headings are plain sentence-case text.
+- **Sticky summary**: dates, guests, quoted line items, total in display type, ink CTA, and the
+  demo disclaimer in small muted text.
+- **Booking stepper**: a rail, not a row of chips — a numbered mark per step with an arrow
+  between each pair, and "Step 3 of 6" above it. Done steps are a tick on the clay tint and go
+  back on click; the current one is an ink disc; ones ahead are an outlined number and inert.
+  On a phone only the current step keeps its label and the rail scrolls it into view.
+- **Overlays**: one shape. On a phone every dialog is a sheet rising from the bottom edge,
+  inset 12px, 18px radius, the height of what is on it, capped at 85% of the viewport and
+  scrolling inside past that — the shared `Modal`, the dates panel and the guest stepper all sit
+  at the same inset. A full-height sheet leaves an empty gap between short content and the button
+  pinned to the floor, so it is never the default. From `sm` the `Modal` becomes a centred card
+  and the two field panels anchor under the field they belong to. Enter and leave both play, over
+  200ms, through `useOverlayTransition`.
+- **Glass**: one class, `.glass`, and it is the only place the product blurs. It carries its own
+  fill, lit edge and blur, so a call site adds shape and nothing else — never a hand-rolled
+  `border-white/60`. Use it only over photography: over the canvas it is a grey box that costs a
+  compositor layer. The fill is the warm white of the ink pills, not plain white, which over a
+  blue sea would read as grey. The dark counterpart is the same class under `.dark`, so a panel
+  can never be frosted white on a dark page.
+- **CMS forms** (`/admin/content`, `components/admin/content/`): the one place the product has a
+  data-entry form of any size, so it gets its own small set of shared pieces rather than each page
+  composing `fieldClass` by hand. `ContentForm` is the shell — `useActionState`, the field-error
+  context every `Field` reads its own error from (by the server action's Zod key, not the DOM
+  `id`), the conflict/rule-violation banner, a `role="status"` success message, the save button's
+  own pending state, and a `beforeunload` warning once something has changed. A reorderable list
+  (`amenities`, a rate's included services, a room's photos) is rows with up/down/remove
+  `iconButton`s and one hidden JSON input, never a drag-and-drop library. The media picker is the
+  shared `Modal`, listing seed and uploaded photos with a folder filter and multi-selection.
+  Photo editors offer a drop zone, multi-file upload progress, previews, and reorder/remove
+  controls. No free-text URL field exists anywhere in the CMS. A field whose value is derived elsewhere in the product (a room's
+  catalog category from its name, an add-on's card mark from its name) shows that derived value or
+  mark right beside the field, live as it's typed, rather than leaving it invisible until the page
+  is saved and reloaded.
+- **Back office** (`/admin`, `components/admin/shell/`): the hotel's own product, so it has its own
+  shell rather than the guest header — a 18px card sidebar on a desk (brand, the property,
+  navigation grouped as Operations and Content, the guest-site link, the signed-in
+  account) and a pill top bar with the shared menu sheet on a phone. Nav items are pills and the
+  current page takes the primary fill, the way the catalog's layout segment marks its active
+  option. Group headings are small sentence-case muted text, never eyebrows. Every admin page uses
+  `AdminPage` and `AdminPageHeader`. Anything a screen shows without real data behind it carries a
+  visible demo label — a `tag()` in the page header's actions, never only a footnote.
+  - **Tables** sit in `TableCard` (`components/admin/operations/table.tsx`): a 18px card that
+    scrolls sideways inside itself, so the page never does at 390px. Columns get a `min-w-*` on the
+    table rather than squeezing. Headers are muted sentence case; the row's key (a reference, a
+    room type) is the link.
+  - **Status is an icon plus a word**, never colour alone: `BookingStatusBadge` (filled Phosphor
+    icon on a 10% tint of success, warning or stone), payment attempts, integration states. Metrics
+    on the dashboard are four cards on the same 18px surface as the chart beside them: a short
+    label, one display figure, one muted line of context. No icons, no tinted backgrounds — the
+    admin exception to rule 2, because an operator scans these in a grid, not in a sentence.
+  - **The front desk** (`components/admin/front-desk/`) is one row per door, grouped by room type,
+    one column per night. A booking is an ink `bg-primary` pill spanning its nights, with a push-pin
+    when the guest chose the room; simulated demand is a hatched stone pill; a closure is a danger
+    tint with a prohibit icon; free is the card surface. The legend names all five, and every bar is
+    a button whose label reads the whole booking.
+  - **The floor plan** (`components/rooms/floor-plan/`, guest-facing but the same model) is floors
+    × doors, sea side and town side. A cell's surface says its state for the stay being searched —
+    sage tint free, stone booked, dashed outline too small for the party, faded when a filter hides
+    it — and its label says it in words. Only a free room opens the detail panel's "Book room N".
+  - **CMS forms** (`components/admin/content/`) keep their button bar in view: an 18px-radius bar
+    that sticks to the bottom of the screen while its form is on it, holding the primary Save pill
+    and one status line — "Unsaved changes" with an accent dot, "Not saved — 1 field needs
+    attention" with a "Show me" that jumps to it, or the success message until the next edit. A flag
+    that flips one thing (hide a room, withdraw an add-on) is a switch or pill that acts at once and
+    offers Undo beside its message; it never sits inside a form that waits for Save. A delete is an
+    icon button shown only where a delete is allowed — otherwise the reason, in muted text — and it
+    asks in the product `Modal`, never the browser's `confirm`. List controls are 44px on a phone.
+    A hidden room shows a short numbered checklist of what it still needs before it can go on the
+    site.
+
+## Motion
+
+- 150–250ms transitions; respect `prefers-reduced-motion` (a global block collapses durations).
+- Photo switches crossfade over 500ms.
+- Every dialog (the shared `Modal`) fades and settles open over 200ms, and plays the same in
+  reverse on close rather than vanishing — a phone's sheet slides up off the edge it is pinned to,
+  a desk's centred card fades in a touch smaller. Named properties only (`opacity`, `transform`),
+  never `transition-all`: a panel's own class can change its width or radius at a breakpoint, and
+  that has no business animating just because the dialog opened.
+- Nothing else animates by default. A staggered fade-up on every card or section on scroll is the
+  same genre of template motion rule 3 already bans in cards — the read is identical whether the
+  cliché is a visual one or a motion one. There are three scoped, deliberate exceptions to "nothing
+  else animates", listed below; a template-motion request that doesn't match one of them should
+  still be refused on rule 3's terms.
+- **Exception one — the Guest arrival page's headings and sections** (`../guest/components/site/reveal.tsx`'s
+  `Reveal`). Unlike the banned pattern, this fires once per element, the first time it crosses into
+  view, not on every scroll pass, and the hidden state lives in CSS gated on the document being
+  scripted (a `.js` class the theme's own head script sets), so a page that cannot run the
+  `IntersectionObserver` never has its copy hidden in the first place. `prefers-reduced-motion`
+  skips straight to the shown state. Used only on `/`; a section elsewhere that wants the same
+  arrival feel reuses `Reveal` rather than hand-rolling a second observer.
+- **Exception two**: the Guest AI room finder's orbs (`../guest/components/assistant/thinking-orbs.tsx`)
+  animate continuously while listening, transcribing, or thinking. This is not decoration — it is
+  the product's only channel for a machine state that has no other visible signal, and every state
+  it represents also carries its own text in a `role="status"` region, so the animation is never
+  the only thing saying what is happening. It stays inside the assistant panel, uses only
+  `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
+  the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
+- **Exception three — the assistant launcher**: the guest and admin buttons share
+  `components/assistant/assistant-launcher-visual.tsx`, a monochrome black/graphite mesh orb,
+  with subdued neutral-grey highlights and glow in both themes, as requested for this control.
+  The orb's contour, mesh and light animate by default; hovering or keyboard focus strengthens
+  its glow. Only decorative child layers move, leaving the button's hit area and focus ring stable.
+  Motion pauses when the panel opens or the launcher is hidden, and stays static under
+  `prefers-reduced-motion`. Touch keeps the normal tap-to-open action.
+
+## Accessibility
+
+- WCAG AA contrast for text and controls. The accent is used for text only as `accent-strong`.
+- Visible accent focus ring with a 2px offset on every interactive element.
+- Semantic headings and landmarks, labels on every control, live regions for repricing and
+  hotspot panels, and no keyboard traps in galleries (arrow keys page, tabs switch).

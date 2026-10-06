@@ -1,0 +1,85 @@
+import { expect, test } from '@playwright/test';
+
+test('demo occupancy can be dragged directly to a free room and keeps its new assignment', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Native room dragging uses desktop pointer input.');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  let found = false;
+  for (let offset = 1; offset <= 10; offset += 1) {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    await page.goto(`/admin/front-desk?from=${date.toISOString().slice(0, 10)}&days=1&type=room_deluxe-sea`);
+    await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
+    const source = page.getByRole('button', { name: /simulated demand$/ }).first();
+    const freeRoom = page.getByRole('group', { name: /^Room \d+$/ }).filter({ has: page.locator('[data-night-index="0"][title]') }).first();
+    if (!(await source.count()) || !(await freeRoom.count())) continue;
+    const target = page.getByRole('group', { name: (await freeRoom.getAttribute('aria-label'))!, exact: true });
+    const guest = (await source.locator('span').first().innerText()).trim();
+    await expect(source).toHaveAttribute('draggable', 'true');
+    await source.dragTo(target.locator('[data-night-index="0"]'));
+    const moved = target.getByRole('button', { name: /^Booking FD/ });
+    await expect(moved).toBeVisible();
+    await expect(moved).toContainText(guest);
+    const label = await moved.getAttribute('aria-label');
+    await page.reload();
+    await expect(target.getByRole('button', { name: label!, exact: true })).toBeVisible();
+    const reference = /^Booking ([^,]+),/.exec(label!)![1]!;
+    const widerWindow = new URL(page.url());
+    widerWindow.searchParams.set('days', '14');
+    await page.goto(widerWindow.toString());
+    await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
+    const sameRoom = page.getByRole('group', { name: (await target.getAttribute('aria-label'))!, exact: true });
+    const reservation = sameRoom.getByRole('button', { name: new RegExp(`^Booking ${reference},`) });
+    const laterDate = sameRoom.locator('[data-night-index][title]').last();
+    await expect(laterDate).toBeVisible();
+    await reservation.scrollIntoViewIfNeeded();
+    const sourceBox = (await reservation.boundingBox())!;
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await reservation.dispatchEvent('dragstart', { dataTransfer: transfer, clientX: sourceBox.x + 3, clientY: sourceBox.y + sourceBox.height / 2 });
+    await laterDate.scrollIntoViewIfNeeded();
+    const dateBox = (await laterDate.boundingBox())!;
+    const drop = { dataTransfer: transfer, clientX: dateBox.x + dateBox.width / 2, clientY: dateBox.y + dateBox.height / 2 };
+    await laterDate.dispatchEvent('dragover', drop);
+    await laterDate.dispatchEvent('drop', drop);
+    const dateReview = page.getByRole('dialog', { name: 'Review date change', exact: true });
+    await expect(dateReview).toBeVisible();
+    await expect(dateReview.getByText('New booking price', { exact: true })).toBeVisible();
+    await dateReview.getByRole('button', { name: 'Cancel', exact: true }).click();
+    found = true;
+    break;
+  }
+  expect(found, 'A demo stay and a free Deluxe room should be available for the move').toBe(true);
+});
+
+// Converts one demo stay per project; never resets the developer's hotel data.
+test('demo occupancy opens an editable reservation with a persistent stay status', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  await page.goto('/admin/front-desk');
+  await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
+  const demand = page.getByRole('button', { name: /simulated demand$/ }).first();
+  await expect(demand).toBeVisible();
+  await demand.click();
+  const card = page.getByRole('dialog', { name: /^Booking FD/ });
+  await expect(card).toBeVisible();
+  const openReservation = card.getByRole('link', { name: 'Open reservation', exact: true });
+  const href = await openReservation.getAttribute('href');
+  expect(href).toMatch(/^\/admin\/bookings\/FD/);
+  const reference = href!.split('/').at(-1)!;
+  const status = card.getByRole('button', { name: 'Change the stay’s status', exact: true });
+  await status.click();
+  await page.getByRole('menuitem', { name: 'Check in', exact: true }).click();
+  await expect(status).toContainText('Checked in');
+  await openReservation.click();
+  await expect(page).toHaveURL(href!);
+  await expect(page.getByRole('heading', { name: 'Booking details', exact: true })).toBeVisible();
+  await page.reload();
+  const detailStatus = page.getByRole('button', { name: 'Change the stay’s status', exact: true });
+  await expect(detailStatus).toContainText('Checked in');
+  await detailStatus.click();
+  await page.getByRole('menuitem', { name: 'Back to confirmed', exact: true }).click();
+  await expect(detailStatus).toContainText('Confirmed');
+  await page.goto('/admin/front-desk');
+  await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
+  await page.getByRole('button', { name: new RegExp(`^Booking ${reference},`) }).first().click();
+  await expect(page.getByRole('dialog', { name: `Booking ${reference}`, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open reservation', exact: true })).toHaveAttribute('href', href!);
+});

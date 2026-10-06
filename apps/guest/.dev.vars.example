@@ -1,0 +1,2 @@
+# Optional local Worker variables. `.env.local` is also read by Guest server code.
+PMS_API_URL=http://localhost:3001

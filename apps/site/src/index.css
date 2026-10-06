@@ -1,0 +1,367 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Spark StaySphere — design tokens
+   Mirrors the tokens used by the StaySphere booking front end so the
+   product page reads as part of the same system.
+------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Jost";
+  src: url("/fonts/jost.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #161616;
+  --canvas: #f3f1ec;
+  --stone: #e9e5dd;
+  --tint-clay: #f4e6dd;
+  --tint-clay-ink: #9a4e2c;
+  --tint-sand: #efe7d3;
+  --tint-sand-ink: #7f6a35;
+  --tint-sage: #e2e9de;
+  --tint-sage-ink: #4c6a4e;
+  --tint-rose: #f1e2e0;
+  --tint-rose-ink: #93565a;
+  --accent: #b8603a;
+  --accent-strong: #9a4e2c;
+  --accent-soft: #f4e6dd;
+  --glass-tint: #f7f5f0;
+  --muted-text: #66665f;
+  --success: #2e7d5b;
+  --card: #ffffff;
+  --border: #ddd9d0;
+  --primary-foreground: #f7f5f0;
+  --primary-hover: #2b2b2b;
+
+  --font-ui-family: "Inter", "Inter Fallback";
+  --font-ui-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-ui-family), system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-display-stack: var(--font-ui-stack);
+  --font-body-stack: var(--font-ui-stack);
+  /* Hero wordmark: thin geometric grotesque */
+  --font-hero-family: "Jost";
+  --font-hero-stack: var(--font-hero-family), "Futura", "Avenir Next", "Century Gothic", var(--font-ui-stack);
+
+  /* Hero card: vertical inset from the viewport edges (sides use the content tier) */
+  --hero-inset: 12px;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-canvas: var(--canvas);
+  --color-stone: var(--stone);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-text);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-glass-tint: var(--glass-tint);
+  --color-success: var(--success);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-tint-clay: var(--tint-clay);
+  --color-tint-clay-ink: var(--tint-clay-ink);
+  --color-tint-sand: var(--tint-sand);
+  --color-tint-sand-ink: var(--tint-sand-ink);
+  --color-tint-sage: var(--tint-sage);
+  --color-tint-sage-ink: var(--tint-sage-ink);
+  --color-tint-rose: var(--tint-rose);
+  --color-tint-rose-ink: var(--tint-rose-ink);
+
+  --font-sans: var(--font-body-stack);
+  --font-display: var(--font-display-stack);
+  --font-hero: var(--font-hero-stack);
+
+  --shadow-soft: 0 1px 2px #1616160a, 0 12px 32px -16px #16161629;
+  --shadow-soft-lg: 0 2px 4px #1616160d, 0 28px 60px -28px #1616163d;
+  --shadow-soft-xl: 0 2px 4px #1616160d, 0 40px 90px -30px #16161652;
+
+  --radius-card: 28px;
+  --radius-tile: 20px;
+
+  --text-3xl: 1.75rem;
+  /* 1.05, not Tailwind's 2.25rem: every text-3xl/4xl use on the page pairs
+     with .text-display, whose own line-height the cascade otherwise loses to
+     this token — so the token carries the display leading directly. */
+  --text-3xl--line-height: 1.05;
+  --text-4xl: 2rem;
+  --text-4xl--line-height: 1.05;
+  --text-6xl: 3.5rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4rem;
+  --text-7xl--line-height: 1;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  html, body { overflow-x: clip; }
+  /* Anchor targets land below the floating nav (its top offset + pill height + a breath). */
+  main section[id] { scroll-margin-top: 84px; }
+  @media (width >= 40rem) { main section[id] { scroll-margin-top: 108px; } }
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body-stack);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-x: none;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display-stack);
+    letter-spacing: -0.022em;
+    font-weight: 700;
+  }
+  ::selection { background: var(--tint-sand); color: var(--ink); }
+}
+
+@utility text-display {
+  font-family: var(--font-display-stack);
+  letter-spacing: -0.028em;
+  font-weight: 700;
+  line-height: 1.05;
+}
+/* Flat padding, no max-width: the inset is the padding, full stop — no
+   hidden auto-margin from a width cap stacking on top of it. */
+@utility container-site {
+  padding-inline: 2rem;
+}
+
+/* Narrow content: same full-bleed rule, deeper inset so the measure reads
+   tighter — for text-heavy or single-column sections. */
+@utility container-narrow {
+  padding-inline: 3rem;
+}
+
+/* Scroll reveal — restrained fade/rise, respects reduced motion */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* UI shots: rendered as part of the layout, not pasted images */
+.shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft-lg);
+  background: var(--card);
+}
+.shot-tile { border-radius: var(--radius-tile); box-shadow: var(--shadow-soft); }
+.shot-flat { box-shadow: none; }
+
+/* Step numbers: filled with vertical barcode-style stripes instead of a
+   solid colour, in the product's ink. */
+.step-number { color: var(--ink); }
+/* The stripes need a stroke wide enough to hold several of them; below sm the
+   number is 32px and the texture turns the digits to mush, so it stays solid. */
+@media (width >= 40rem) {
+  .step-number {
+    /* var(--ink), not currentColor: color is transparent on this element, and
+       currentColor would resolve to that same transparent, hiding the stripes.
+       Stripe widths are in em so the texture stays proportional to the kerf. */
+    background-image: repeating-linear-gradient(90deg, var(--ink) 0 0.05em, transparent 0.05em 0.09em);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Device frame — built from the system's own rounded card language */
+.device-desktop {
+  border-radius: 22px;
+  background: var(--ink);
+  padding: 6px;
+  box-shadow: var(--shadow-soft-xl);
+  overflow: hidden;
+}
+.device-desktop > .screen { border-radius: 16px; overflow: hidden; background: var(--canvas); }
+
+/* Framer-style text appear: words rise, un-blur and fade in with a stagger */
+.split-heading .word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.split-heading .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.9em);
+  filter: blur(10px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.65, 0.2, 1),
+    transform 0.9s cubic-bezier(0.2, 0.65, 0.2, 1),
+    filter 0.8s cubic-bezier(0.2, 0.65, 0.2, 1);
+  transition-delay: var(--word-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+.split-heading.is-in .word {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .split-heading .word { opacity: 1; transform: none; filter: none; transition: none; }
+}
+
+/* ------------------------------------------------------------------
+   Hero — a centred pitch above a curved bento of the product. No card and
+   no surface; everything sits on the page canvas. The shell is an
+   inline-size container (the H1 scales in its cqw); the bento is another,
+   so its column width scales in cqw of the bento itself.
+------------------------------------------------------------------- */
+.hero-shell {
+  --hero-pad: 2rem; /* same 32px as .container-site: the hero is not its own tier */
+  /* The nav is fixed above, so the shell leaves room for it: the nav's top
+     offset (pt-3/pt-5) + its pill (h-14/h-16) + a breath. Sides sit on the
+     same 32px as every other section. */
+  --hero-top: calc(12px + 56px + 40px);
+  container-type: inline-size;
+  padding: var(--hero-top) var(--hero-pad) 0;
+  color: var(--ink);
+}
+@media (width >= 40rem) {
+  .hero-shell { --hero-top: calc(20px + 56px + 56px); }
+}
+@media (width >= 64rem) {
+  .hero-shell { --hero-top: calc(20px + 64px + 56px); }
+}
+
+.hero-copy {
+  max-width: 44rem;
+  margin-inline: auto;
+  text-align: center;
+}
+/* The one H1 on the page: Jost, the hero's own face, set as a sentence.
+   Fluid within the scale's own 32–64 bounds. */
+.hero-title {
+  margin: 0 auto;
+  max-width: 16ch;
+  font-family: var(--font-hero-stack);
+  font-size: clamp(32px, 9.5cqw, 48px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+@media (width >= 64rem) {
+  .hero-title { font-size: clamp(48px, 4.6cqw, 64px); }
+}
+
+/* The stage: a curved bento of real captures — the outer columns tall, the
+   middle one low, a shallow bowl — with a warm light that follows the
+   pointer and cards that lean towards it (HeroBento.tsx). Column width and
+   every card height derive from one --col, so the composition keeps its
+   shape at any size; where the row is wider than the page (tablet, phone)
+   it scrolls sideways under the edge fades, as the reference does. The
+   bento bleeds to the viewport edge on purpose — the fades need the full
+   width to land on. */
+.hero-bento {
+  --col: clamp(128px, 17cqw, 240px);
+  --gap: clamp(12px, 1.6cqw, 24px);
+  position: relative;
+  margin-top: 2.5rem;
+  margin-inline: calc(-1 * var(--hero-pad));
+  isolation: isolate;
+  container-type: inline-size;
+}
+@media (width >= 64rem) { .hero-bento { margin-top: 3rem; } }
+
+/* The base pool of light (always there) and the one that follows the
+   pointer (painted by motion, absent under reduced motion). */
+.hero-bento-glow,
+.hero-bento-light {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-bento-glow {
+  inset: -10% 0 -20%;
+  background: radial-gradient(55% 60% at 50% 62%, var(--stone) 0%, rgb(233 229 221 / 0.5) 42%, transparent 74%);
+}
+
+.hero-bento-scroll {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* Room above for the lean and below for the shadows, so neither clips. */
+  padding: 1.5rem var(--hero-pad) 2.5rem;
+}
+.hero-bento-scroll::-webkit-scrollbar { display: none; }
+.hero-bento-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--gap);
+  width: max-content;
+  min-width: 100%;
+  perspective: 1200px;
+}
+.hero-col {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--gap);
+  width: var(--col);
+}
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  width: var(--col);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-soft-lg);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.hero-card--tall { height: calc(var(--col) * 1.45); }
+.hero-card--mid { height: var(--col); }
+.hero-card--strip { height: calc(var(--col) * 0.42); }
+.hero-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+/* The two landscape strips keep their subject, not their top edge. */
+.hero-card--strip img { object-position: 50% 45%; }
+
+.hero-bento-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: clamp(24px, 9cqw, 128px);
+  pointer-events: none;
+}
+.hero-bento-fade--l { left: 0; background: linear-gradient(to right, var(--canvas), transparent); }
+.hero-bento-fade--r { right: 0; background: linear-gradient(to left, var(--canvas), transparent); }
+
+/* Lenis */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }

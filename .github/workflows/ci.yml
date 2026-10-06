@@ -10,10 +10,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Typecheck, unit tests, lint, build, docs
+  app-checks:
+    name: ${{ matrix.app }} checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [pms, guest]
     steps:
       - uses: actions/checkout@v4
 
@@ -25,24 +29,44 @@ jobs:
       - run: npm ci
 
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run typecheck:${{ matrix.app }}
 
-      - name: Unit tests (vitest)
-        run: npm run test
+      - name: Unit tests
+        run: npm run test:${{ matrix.app }}
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint:${{ matrix.app }}
 
       - name: Build
-        run: npm run build
+        run: npm run build:${{ matrix.app }}
 
       - name: Doc references
-        run: npm run check:docs
+        run: npm run check:docs:${{ matrix.app }}
+
+  product-site:
+    name: Product Site checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint:site
+      - run: npm run build:site
 
   e2e:
-    name: End-to-end (Playwright)
+    name: ${{ matrix.app }} end-to-end
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [pms, guest]
     steps:
       - uses: actions/checkout@v4
 
@@ -53,22 +77,18 @@ jobs:
 
       - run: npm ci
 
-      # No Cloudflare account or secrets needed: playwright.config.ts starts
-      # its own dev server, which runs against a locally emulated D1
-      # database (Miniflare) the same way `npm run dev` does — see
-      # TECH.md's Persistence section and docs/decisions/0001-d1-seed-overlay.md.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run e2e suite
-        run: npm run test:e2e
+        run: npm run test:e2e:${{ matrix.app }}
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: ${{ matrix.app }}-playwright-report
           path: |
-            playwright-report/
-            test-results/
+            apps/${{ matrix.app }}/playwright-report/
+            apps/${{ matrix.app }}/test-results/
           retention-days: 7
