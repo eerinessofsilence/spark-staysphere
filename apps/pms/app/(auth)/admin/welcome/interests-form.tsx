@@ -38,6 +38,13 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
   const t = useAdminT();
   const [picked, setPicked] = React.useState<Set<AdminInterest>>(() => new Set(initial));
 
+  function submitAsDocument(event: React.FormEvent<HTMLFormElement>) {
+    // Vinext's enhanced RSC action fetch stalls here without forwarding the
+    // session cookie; keep this mutation on React's progressive form path.
+    event.preventDefault();
+    event.currentTarget.submit();
+  }
+
   const toggle = (interest: AdminInterest) => {
     setPicked((current) => {
       const nextSet = new Set(current);
@@ -49,7 +56,7 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
 
   return (
     <>
-      <form action={saveInterestsAction}>
+      <form action={saveInterestsAction} onSubmit={submitAsDocument}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <div role="group" aria-label={t('welcome.title')} className="grid gap-3 sm:grid-cols-2">
           {ADMIN_INTERESTS.map((interest) => {
@@ -88,7 +95,7 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
         </button>
       </form>
 
-      <form action={saveInterestsAction} className="mt-2">
+      <form action={saveInterestsAction} onSubmit={submitAsDocument} className="mt-2">
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <button type="submit" className={pill('ghost', 'w-full')}>
           {t('welcome.skip')}
