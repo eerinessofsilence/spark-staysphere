@@ -35,6 +35,9 @@ export default defineConfig({
     {
       name: 'tablet',
       dependencies: ['setup'],
+      // The broader suite targets desktop and phone viewports. Keep tablet
+      // coverage to the modal audit, which explicitly exercises 820px.
+      testMatch: /mobile-modals\.spec\.ts/,
       use: { ...devices['Pixel 5'], viewport: { width: 820, height: 1180 }, storageState: ADMIN_STORAGE_STATE },
     },
   ],
