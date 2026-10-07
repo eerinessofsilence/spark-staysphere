@@ -158,15 +158,11 @@ export class TeamService {
 
   /** The actual gate: every role uses the current definition returned by `listRoles`, including stored edits to a built-in one. */
   async hasPermission(role: TeamRole, key: TeamPermissionKey): Promise<boolean> {
-    // Owner is the administrator role: it must never be possible to lock it
-    // out of a section, even if a stored role edit is stale or malformed.
-    if (role === ownerRoleId) return true;
     const roles = await this.listRoles();
     return roles.find((candidate) => candidate.id === role)?.permissions.includes(key) ?? false;
   }
 
   async permissionsForRole(role: TeamRole): Promise<TeamPermissionKey[]> {
-    if (role === ownerRoleId) return [...new Set(builtinGrants.map((grant) => grant.key))];
     return (await this.listRoles()).find((candidate) => candidate.id === role)?.permissions ?? [];
   }
 }
