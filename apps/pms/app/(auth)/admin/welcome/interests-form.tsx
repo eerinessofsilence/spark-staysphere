@@ -36,7 +36,10 @@ const ICONS: Record<AdminInterest, typeof TableCellsIcon> = {
  */
 export function InterestsForm({ initial, next }: { initial: AdminInterest[]; next: string | null }) {
   const t = useAdminT();
+  const [ready, setReady] = React.useState(false);
   const [picked, setPicked] = React.useState<Set<AdminInterest>>(() => new Set(initial));
+
+  React.useEffect(() => setReady(true), []);
 
   function submitAsDocument(event: React.FormEvent<HTMLFormElement>) {
     // Vinext's enhanced RSC action fetch stalls here without forwarding the
@@ -90,14 +93,14 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
           })}
         </div>
 
-        <button type="submit" disabled={picked.size === 0} className={pill('primary', 'mt-6 w-full')}>
+        <button type="submit" disabled={!ready || picked.size === 0} className={pill('primary', 'mt-6 w-full')}>
           {t('welcome.continue')}
         </button>
       </form>
 
       <form action={saveInterestsAction} onSubmit={submitAsDocument} className="mt-2">
         {next ? <input type="hidden" name="next" value={next} /> : null}
-        <button type="submit" className={pill('ghost', 'w-full')}>
+        <button type="submit" disabled={!ready} className={pill('ghost', 'w-full')}>
           {t('welcome.skip')}
         </button>
       </form>
