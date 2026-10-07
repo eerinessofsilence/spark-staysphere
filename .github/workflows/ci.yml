@@ -59,14 +59,42 @@ jobs:
       - run: npm run lint:site
       - run: npm run build:site
 
-  e2e:
-    name: ${{ matrix.app }} end-to-end
+  checks:
+    name: Typecheck, unit tests, lint, build, docs
+    if: always()
+    needs: [app-checks, product-site]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined app checks
+        env:
+          APP_CHECKS_RESULT: ${{ needs.app-checks.result }}
+          PRODUCT_SITE_RESULT: ${{ needs.product-site.result }}
+        run: |
+          if [ "$APP_CHECKS_RESULT" != "success" ] || [ "$PRODUCT_SITE_RESULT" != "success" ]; then
+            echo "App checks: $APP_CHECKS_RESULT; Product Site checks: $PRODUCT_SITE_RESULT"
+            exit 1
+          fi
+
+  e2e-shards:
+    name: ${{ matrix.app }} end-to-end (${{ matrix.shard }}/${{ matrix.total }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        app: [pms, guest]
+        include:
+          - { app: pms, shard: 1, total: 8 }
+          - { app: pms, shard: 2, total: 8 }
+          - { app: pms, shard: 3, total: 8 }
+          - { app: pms, shard: 4, total: 8 }
+          - { app: pms, shard: 5, total: 8 }
+          - { app: pms, shard: 6, total: 8 }
+          - { app: pms, shard: 7, total: 8 }
+          - { app: pms, shard: 8, total: 8 }
+          - { app: guest, shard: 1, total: 4 }
+          - { app: guest, shard: 2, total: 4 }
+          - { app: guest, shard: 3, total: 4 }
+          - { app: guest, shard: 4, total: 4 }
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +109,7 @@ jobs:
         run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright install --with-deps chromium
 
       - name: Run e2e suite
-        run: npm run test:e2e:${{ matrix.app }}
+        run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright test --shard=${{ matrix.shard }}/${{ matrix.total }}
 
       - name: Upload Playwright report
         if: failure()
@@ -92,3 +120,18 @@ jobs:
             apps/${{ matrix.app }}/playwright-report/
             apps/${{ matrix.app }}/test-results/
           retention-days: 7
+
+  e2e:
+    name: End-to-end (Playwright)
+    if: always()
+    needs: [e2e-shards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined Playwright result
+        env:
+          E2E_RESULT: ${{ needs.e2e-shards.result }}
+        run: |
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "Playwright shard result: $E2E_RESULT"
+            exit 1
+          fi
