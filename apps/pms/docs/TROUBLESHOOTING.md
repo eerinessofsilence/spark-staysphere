@@ -8,15 +8,15 @@ before you hit any of them.
 
 **The full e2e suite clicks “Reset seed data”.** Run it only against an isolated test server and state. Pointing `PLAYWRIGHT_PORT` at a developer's active site can change its bookings and CMS data; the suite's reset helper currently checks the button transition, not whether reset succeeded. A targeted spec that does not reset data can run against the active preview when necessary.
 
-**An isolated second `vinext dev` may refuse to start while the main preview is running.** It reports “Another vinext dev server is already running” even from a separate temporary checkout and port. Do not point write-heavy e2e tests at the active preview as a workaround; keep its D1 state intact and run them after the preview can be stopped safely.
+**An isolated second dev server may refuse to start while the main preview is running.** It can report “Another vinext dev server is already running” even from a separate temporary checkout and port. Do not point write-heavy e2e tests at the active preview as a workaround; keep its D1 state intact and run them after the preview can be stopped safely.
 
-**A running `vinext dev` keeps Vite's dependency pre-bundle.** After adding or removing an npm
+**A running Vite dev server keeps its dependency pre-bundle.** After adding or removing an npm
 package, the server 500s on the stale entry until restarted. Restart it.
 
 **The Vite overlay can show `fetch failed` from `Miniflare.dispatchFetch` while port 3000 still listens.**
 This means the local Cloudflare Worker proxy is unavailable, not that a room-rate or holiday
 request failed. Confirm `/admin` returns 500 and the stack points to `miniflare`, then restart
-`vinext dev` without deleting `.wrangler/state`. A healthy unauthenticated `/admin` redirects to
+Vite without deleting `.wrangler/state`. A healthy unauthenticated `/admin` redirects to
 `/admin/sign-in`, and that page returns 200.
 
 **e2e can't connect (`ERR_CONNECTION_REFUSED`).** The dev server from an earlier run is probably

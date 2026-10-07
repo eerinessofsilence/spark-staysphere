@@ -39,7 +39,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npx vinext dev --port ${PORT}`,
+    command: `npx vite --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -364,7 +364,7 @@ export const DEMO_ADMIN_PASSWORD = 'staysphere';
  * other binding here. `demo` is true while the shared demo password is the
  * one in force, which is the only time the sign-in page may show it. The
  * session secret's development fallback is fixed on purpose: a cookie signed
- * during one `vinext dev` run must still verify after a restart, or every
+ * during one development-server run must still verify after a restart, or every
  * restart would sign everyone out (and the e2e suite with them).
  */
 export function adminAuthConfig(): { password: string; sessionSecret: string; demo: boolean } {

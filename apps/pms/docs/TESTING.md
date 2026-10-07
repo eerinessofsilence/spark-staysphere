@@ -43,7 +43,7 @@ e2e/cms.spec.ts          — /admin/content (serial)
 e2e/inventory.spec.ts    — booking an exact room over the API
 ```
 
-Runs against a real dev server (`playwright.config.ts` starts `vinext dev` on port 3100) and real
+Runs against a real dev server (`playwright.config.ts` starts Vite on port 3100) and real
 local D1 — not a mock. Two things follow from that, both worth knowing before your first debugging
 session against a red test:
 

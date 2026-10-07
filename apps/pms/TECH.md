@@ -101,10 +101,10 @@ otherwise.
 
 D1 is enabled by setting `"d1": "DB"` in `.openai/hosting.json` (see
 `@openai/sites-vite-plugin`'s README and the `d1_databases` block in `vite.config.ts`, which was
-already scaffolded for this). `npm run dev`/`vinext dev` then run against a real, locally emulated
+already scaffolded for this). `npm run dev`/`vite` then run against a real, locally emulated
 D1 database via `@cloudflare/vite-plugin` — no Cloudflare account or `wrangler login` is needed for
-this; Miniflare persists the SQLite file under `.wrangler/state/v3` (gitignored) across `vinext
-dev` restarts, which is what makes local demo bookings survive a restart. The Site Creator
+this; Miniflare persists the SQLite file under `.wrangler/state/v3` (gitignored) across Vite
+dev-server restarts, which is what makes local demo bookings survive a restart. The Site Creator
 platform is expected to provision the real D1 database that this same binding name resolves to in
 production. R2 (`"r2": "MEDIA"` in the same file, the `r2_buckets` block in `vite.config.ts`) is
 resolved the same call-time-or-in-memory-fallback way, by `getMediaBucket()` alongside
@@ -383,7 +383,7 @@ but cannot forge — constant-time compare, expiry, member still on the team), `
 cookie itself. There are no per-member passwords because there are no per-member accounts, only
 the demo team; unset, `ADMIN_PASSWORD` is the demo password and the sign-in page prints it,
 which is the only time it does (`adminAuthConfig().demo`). The session secret's development
-fallback is fixed so a `vinext dev` restart doesn't sign everyone out. The interests picked in
+fallback is fixed so a dev-server restart doesn't sign everyone out. The interests picked in
 step two are remembered on the session, shown on `/admin/account` (with a way back to step two),
 and decide where sign-in lands; the account menu at the foot of the sidebar signs out
 (`signOutAction`: clear the cookie, back to the door). Playwright signs in once through the real

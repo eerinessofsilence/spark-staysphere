@@ -10,7 +10,7 @@
     "predev": "node scripts/prepare-document-ocr.mjs",
     "prebuild": "node scripts/prepare-document-ocr.mjs",
     "prebuild:vercel": "node scripts/prepare-document-ocr.mjs",
-    "dev": "vinext dev",
+    "dev": "vite",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "deploy": "node scripts/deploy.mjs",
