@@ -70,5 +70,9 @@
     "vitest": "^3.2.7",
     "wrangler": "4.92.0"
   },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.76.0",
+    "@rolldown/binding-linux-x64-gnu": "1.0.1"
+  },
   "type": "module"
 }

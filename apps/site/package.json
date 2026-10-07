@@ -25,5 +25,9 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.82.0",
+    "@rolldown/binding-linux-x64-gnu": "1.2.8"
   }
 }
