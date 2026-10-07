@@ -129,7 +129,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           </button>
         ) : null}
         {suggestions && open && matches.length > 0 ? (
-          <div id={listId} role="listbox" aria-label={suggestionsLabel} className="absolute top-full left-0 z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft">
+          <div id={listId} role="listbox" aria-label={suggestionsLabel} className="relative mt-1.5 max-h-72 w-full overflow-y-auto rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft">
             {matches.map((item, index) => (
               <button
                 key={`${item.value}-${index}`}
