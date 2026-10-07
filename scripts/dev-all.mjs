@@ -17,6 +17,27 @@ const apps = requestedApps.length
 const children = [];
 let stopping = false;
 
+async function waitForPms() {
+  const deadline = Date.now() + 120_000;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch('http://localhost:3001/api/public/catalog', {
+        signal: AbortSignal.timeout(2_000),
+      });
+      if (response.ok) return;
+      await response.body?.cancel();
+    } catch {
+      // PMS may still be starting its Worker and local database.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  stopAll();
+  throw new Error('PMS did not become ready at http://localhost:3001/api/public/catalog');
+}
+
 function stopAll(signal = 'SIGTERM') {
   if (stopping) return;
   stopping = true;
@@ -39,7 +60,7 @@ function stopAll(signal = 'SIGTERM') {
 process.on('SIGINT', () => stopAll('SIGINT'));
 process.on('SIGTERM', () => stopAll('SIGTERM'));
 
-for (const app of apps) {
+for (const [index, app] of apps.entries()) {
   const args = ['run', 'dev', `--workspace=${app.workspace}`];
   if (app.port) args.push('--', '--port', app.port);
 
@@ -62,4 +83,8 @@ for (const app of apps) {
     process.exitCode = code ?? 1;
     stopAll();
   });
+
+  if (app.id === 'pms' && apps[index + 1]?.id === 'guest') {
+    await waitForPms();
+  }
 }
