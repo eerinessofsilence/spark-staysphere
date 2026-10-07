@@ -60,7 +60,7 @@ export function SpinnerRoomCard({
       href={href}
       aria-live="polite"
       style={style}
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event: React.PointerEvent<HTMLAnchorElement>) => event.stopPropagation()}
       onMouseEnter={onHover}
       // No leave handler: the card opens under the pointer that summoned it, and
       // the browser answers that by sending it a leave the instant it mounts —

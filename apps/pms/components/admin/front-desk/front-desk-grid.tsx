@@ -567,7 +567,7 @@ export function FrontDeskGrid({ dates, groups, today, navigation, filterConfig, 
                   <Link
                     href={`/admin/content/rooms/${group.roomTypeId}`}
                     aria-label={t('frontDesk.editRoomType', { roomType: group.roomName })}
-                    onClick={(event) => event.stopPropagation()}
+                    onClick={(event: React.MouseEvent<HTMLAnchorElement>) => event.stopPropagation()}
                     className={pill('secondary', 'ml-auto min-h-9 gap-1.5 px-3 text-xs')}
                   >
                     <PencilSimple className="size-4" weight="fill" aria-hidden="true" />
