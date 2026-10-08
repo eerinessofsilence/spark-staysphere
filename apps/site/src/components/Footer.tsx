@@ -55,9 +55,8 @@ export function Footer() {
       <div className="rounded-card bg-ink px-6 pt-14 pb-8 text-[#F7F5F0] sm:px-10 sm:pt-20 lg:px-16 lg:pt-24">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,3fr)] lg:gap-16">
           <div>
-            <a href={sectionHref('#top')} className="inline-flex items-center gap-3" aria-label="Spark StaySphere, back to top">
-              <img src="/brand/spark-logo-footer.svg" alt="Spark" className="h-7 w-auto" />
-              <span className="text-base font-semibold tracking-tight text-white/85">StaySphere</span>
+            <a href={sectionHref('#top')} className="inline-flex items-center" aria-label="StaySphere, back to top">
+              <img src="/brand/staysphere-logo-footer.svg" alt="StaySphere" className="h-7 w-auto" />
             </a>
             <p className="mt-5 max-w-xs text-base leading-relaxed text-white/55">
               The direct-booking experience, built for independent hotels.

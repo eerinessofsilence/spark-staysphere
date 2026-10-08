@@ -8,7 +8,7 @@ import { ArrowUpRight, Button, Reveal } from './ui'
 import { FAQ } from './FAQ'
 
 const faqs = [
-  ['Can I try it for free?', 'Yes. Start with the Asteria Cove demo hotel to explore the PMS. Demo access is separate from a tailored plan or payment.'],
+  ['Can I try it for free?', 'Create your own hotel to start a 7-day trial, or sign in to the separate Asteria Cove demo.'],
   ['Is there a commission on bookings?', 'No. Every plan is a flat monthly fee. Direct bookings stay with the hotel, at the hotel’s rate.'],
   ['What does white-label mean here?', 'Your brand only. Colours, type, imagery, domain and emails are yours; StaySphere is not mentioned to guests.'],
   ['How long does setup take?', 'A single property is usually live within a week: rooms, rates, photography and policies, then a review call.'],

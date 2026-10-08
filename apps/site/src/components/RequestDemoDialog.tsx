@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { CONTACT_EMAIL } from '../lib/links'
+import { buildDemoRequestMailto } from '../lib/demo-mailto'
 import { useMenu } from '../lib/menu'
 import { ease } from './motion'
 import { ArrowUpRight } from './ui'
@@ -36,18 +36,6 @@ const COUNTRIES = [
   { code: 'ZA', name: 'South Africa', dial: '+27', flag: '🇿🇦' },
   { code: 'JP', name: 'Japan', dial: '+81', flag: '🇯🇵' },
 ] as const
-
-function buildMailto(title: string, fields: { name: string; property: string; email: string; phone: string; message: string }) {
-  const lines = [
-    fields.message.trim(),
-    fields.message.trim() ? '' : null,
-    `Name: ${fields.name}`,
-    fields.property.trim() ? `Property / portfolio: ${fields.property}` : null,
-    `Email: ${fields.email}`,
-    `Phone: ${fields.phone}`,
-  ].filter((l): l is string => l !== null)
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(lines.join('\n'))}`
-}
 
 /**
  * The one "Request a demo" / "Talk to us" form on the site, opened from any
@@ -131,7 +119,7 @@ export function RequestDemoDialog() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    window.location.href = buildMailto(demoRequest.title, { name, property, email, phone: `${country.dial} ${phone}`.trim(), message })
+    window.location.href = buildDemoRequestMailto(demoRequest.title, { name, property, email, phone: `${country.dial} ${phone}`.trim(), message })
     closeDemoRequest()
     setName('')
     setProperty('')

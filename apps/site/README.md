@@ -77,10 +77,10 @@ remain separate. Optional module costs update the estimate and order request. Th
 `/pricing/modules/` URL redirects to `/pricing/`.
 
 The hero, pricing cards and calculator summary offer a **Start free trial** button that opens
-`DemoAccessDialog.tsx`: a short sign-in guide and links to hotel admin and guest booking.
-The demo sign-in's **Forgot password?** control fills the sample credentials when demo access
-is enabled. Guest booking is also available without an admin login. This is demo access, not a new account or a checkout; the PMS owns
-its 7-day trial state. The site does not claim to create or activate a separate tenant.
+`DemoAccessDialog.tsx`. Its primary action opens PMS onboarding to create a hotel and start a
+7-day trial; `VITE_PMS_URL` sets the PMS origin (local default: `http://localhost:3001`). The
+dialog also keeps links to the separate Asteria Cove demo sign-in and guest booking. The demo
+sign-in's **Forgot password?** control fills the sample credentials when demo access is enabled.
 
 ## Structure
 

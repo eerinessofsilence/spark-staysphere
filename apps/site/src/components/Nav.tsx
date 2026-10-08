@@ -144,12 +144,8 @@ export function Nav() {
       className={`fixed inset-x-0 top-0 z-40 px-8 pt-3 sm:pt-5 ${visible ? '' : 'pointer-events-none'}`}
     >
       <div className="relative flex h-14 items-center gap-3 rounded-full border border-ink/[0.07] bg-white/85 pr-2 pl-5 text-ink shadow-soft-lg backdrop-blur-2xl backdrop-saturate-150 lg:h-16 lg:pr-2.5 lg:pl-6">
-        <motion.a href={sectionHref('#top')} className="flex shrink-0 items-center gap-3" aria-label="Spark StaySphere, back to top" whileHover={reduce ? undefined : { scale: 1.04, rotate: -2 }}>
-          <img src="/brand/spark-logo-on-light.svg" alt="Spark" className="h-6 w-auto lg:h-7" />
-          {/* The product name shows on phones/tablets and from xl; at lg the
-              centred links plus the Solutions trigger need that room. */}
-          <span aria-hidden className="hidden h-4 w-px bg-ink/15 sm:block lg:hidden xl:block" />
-          <span className="hidden text-base font-medium tracking-tight text-ink/60 sm:inline lg:hidden xl:inline">StaySphere</span>
+        <motion.a href={sectionHref('#top')} className="flex shrink-0 items-center" aria-label="StaySphere, back to top" whileHover={reduce ? undefined : { scale: 1.04, rotate: -2 }}>
+          <img src="/brand/staysphere-logo-on-light.svg" alt="StaySphere" className="h-6 w-auto lg:h-7" />
         </motion.a>
 
         <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">

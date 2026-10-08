@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { DEMO_ADMIN_URL, STAYSPHERE_URL } from '../lib/links'
+import { DEMO_ADMIN_URL, PMS_ONBOARDING_URL, STAYSPHERE_URL } from '../lib/links'
 import { useMenu } from '../lib/menu'
 import { ArrowUpRight, Button } from './ui'
 
 const steps = [
-  { title: 'Sign in to the demo', body: 'The sign-in page opens in a new tab. Choose “Forgot password?” to fill in the sample login, then select “Continue”.' },
-  { title: 'Make yourself at home', body: 'Complete the short welcome step if it appears. Explore the front desk, open bookings, view rooms and try the hotel’s day-to-day tools.' },
+  { title: 'Create your account', body: 'Choose Create account, then enter your hotel name, location, currency and time zone.' },
+  { title: 'Start your hotel trial', body: 'Your private hotel workspace and seven-day trial begin when the hotel is created. Asteria Cove remains available separately as a demo.' },
 ]
 
 /** Shared trial entry: explains the sample hotel before opening the PMS. */
@@ -81,7 +81,7 @@ export function DemoAccessDialog() {
             <svg viewBox="0 0 20 20" className="size-4" fill="none" aria-hidden><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <p id="demo-access-description" className="mt-3 text-base leading-relaxed text-muted-foreground">Explore Asteria Cove, our sample hotel, with demo rooms and bookings. No sign-up or payment card needed.</p>
+        <p id="demo-access-description" className="mt-3 text-base leading-relaxed text-muted-foreground">Create your own hotel to start a 7-day free trial, or explore Asteria Cove with demo rooms and bookings.</p>
 
         <ol className="mt-6 divide-y divide-border border-y border-border">
           {steps.map((step, index) => (
@@ -95,7 +95,8 @@ export function DemoAccessDialog() {
           ))}
         </ol>
 
-        <Button href={DEMO_ADMIN_URL} external size="lg" className="mt-6 w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Sign in to demo <ArrowUpRight /></Button>
+        <Button href={PMS_ONBOARDING_URL} external size="lg" className="mt-6 w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Create a hotel and start free trial <ArrowUpRight /></Button>
+        <Button href={DEMO_ADMIN_URL} external variant="ghost" size="lg" className="mt-2 w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Sign in to demo <ArrowUpRight /></Button>
         <Button href={STAYSPHERE_URL} external variant="ghost" size="lg" className="mt-2 w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Try guest booking <ArrowUpRight /></Button>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Guest booking needs no admin login. If the hotel admin or demo login option is unavailable, explore the guest experience instead. Use sample guest details; payments are simulated.</p>
       </div>

@@ -345,7 +345,7 @@ export function PricingCalculator() {
           <div className="mt-auto pt-8">
             {continueAction}
             <Button onClick={openDemoAccess} variant="ghost-inverse" size="lg" className="mt-3 w-full">Start free trial <ArrowUpRight /></Button>
-            <p className="mt-3 text-xs leading-relaxed text-white/55">Explore the Asteria Cove demo hotel in the PMS. Demo access is separate from this price estimate.</p>
+            <p className="mt-3 text-xs leading-relaxed text-white/55">Create your own hotel for a 7-day trial, or explore the separate Asteria Cove demo.</p>
             <p className="mt-4 text-xs leading-relaxed text-white/50">
               Sends this configuration for a final quote and payment instructions. No payment is taken on this site. Module estimates are from the PMS demo catalog; VAT is excluded.
             </p>
