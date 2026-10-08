@@ -75,19 +75,22 @@ export default async function SpinnerMarkupPage({
             <Link
               key={angle}
               href={`/admin/content/spinner/markup?frame=${angle}`}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                'relative flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border p-1.5 transition-colors',
-                active ? 'border-primary bg-tint-clay' : 'border-border hover:bg-stone',
+                'relative flex shrink-0 flex-col items-center gap-1.5 rounded-xl border p-2 transition-colors',
+                active ? 'border-primary bg-primary' : 'border-border hover:bg-stone',
               )}
             >
               {frame ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={frame.imageUrl} alt="" width={64} height={64} className="admin-grid-photo" />
+                <img src={frame.imageUrl} alt="" width={72} height={72} className="admin-grid-photo spinner-markup-frame-photo" />
               ) : (
-                <span className="admin-grid-photo bg-stone" />
+                <span className="admin-grid-photo spinner-markup-frame-photo bg-stone" />
               )}
-              <span className="text-xs font-medium text-foreground">{t('frames.frameN', { n: angle })}</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className={cn('text-xs font-medium', active ? 'text-primary-foreground' : 'text-foreground')}>
+                {t('frames.frameN', { n: angle })}
+              </span>
+              <span className={cn('text-[11px]', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                 {pluralCount(locale, zonesByFrame.get(angle) ?? 0, zoneForms)}
               </span>
               {unresolved > 0 ? (

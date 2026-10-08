@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { addBookingGuestAction } from '@/app/admin/bookings/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -111,6 +113,7 @@ export function AddBookingGuestButton({
             <button type="button" disabled={submitting} onClick={close} className={pill('secondary')}>{t('frontDesk.cancel')}</button>
             <button type="submit" disabled={submitting} className={pill('primary')}>{t('booking.addGuest')}</button>
           </div>
+          <Preloader active={submitting} label={t('page.loading')} className="mt-3" />
         </form>
       </Modal>
     </>

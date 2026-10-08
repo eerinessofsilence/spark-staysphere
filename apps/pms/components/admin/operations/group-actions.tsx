@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, PlusIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { assignBookingToGroupAction, deleteGroupAction, removeBookingFromGroupAction } from '@/app/admin/groups/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -114,6 +116,7 @@ export function AttachBookingForm({ groupId, options }: { groupId: string; optio
           {error}
         </p>
       ) : null}
+      <Preloader active={submitting} label={t('form.saving')} className="mt-3" />
     </form>
   );
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { ChevronRightIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, PencilSimple, Prohibit, PushPin } from '@phosphor-icons/react/dist/ssr';
@@ -1564,6 +1565,7 @@ function CreateBookingForm({
         <button type="submit" disabled={submitting || (!createdReference && (quoting || quote?.ok !== true))} className={pill('primary')}>
           {submitting ? t('frontDesk.creatingBooking') : createdReference ? 'Retry document upload' : t('frontDesk.createBooking')}
         </button>
+        <Preloader active={submitting || quoting} label={t('page.loading')} />
         <button type="button" onClick={onCancel} className={pill('secondary')}>
           {t('frontDesk.cancel')}
         </button>

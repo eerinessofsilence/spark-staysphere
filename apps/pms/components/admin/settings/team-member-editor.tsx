@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, EnvelopeSimple } from '@phosphor-icons/react/dist/ssr';
 import { setMemberHotelsAction, setMemberRoleAction } from '@/app/admin/settings/team/actions';
@@ -125,6 +127,7 @@ export function TeamMemberEditor({ member, roles, hotels }: { member: TeamMember
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
           <button type="button" onClick={saveHotels} disabled={savingHotels || JSON.stringify(hotelIds) === JSON.stringify(member.hotelIds ?? [])} className={pill('primary')}>{savingHotels ? 'Сохраняем…' : 'Сохранить отели'}</button>
           <p role="status" className="text-sm text-muted-foreground">{hotelMessage}</p>
+          <Preloader active={savingHotels} label={t('form.saving')} />
         </div>
       </Group> : null}
 
@@ -198,6 +201,7 @@ export function TeamMemberEditor({ member, roles, hotels }: { member: TeamMember
             {savingRole ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
             {t('team.saveRole')}
           </button>
+          <Preloader active={savingRole} label={t('form.saving')} />
           <p role="status" aria-live="polite" className={cn('text-sm font-medium', roleError ? 'text-danger' : 'text-success')}>
             {roleMessage}
           </p>

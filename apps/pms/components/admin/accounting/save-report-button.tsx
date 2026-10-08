@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { ArchiveBoxArrowDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { generateReportAction } from '@/app/admin/accounting/reports/generated/actions';
 import type { ReportType } from '@/lib/domain/ports';
@@ -18,24 +19,27 @@ export function SaveReportButton({ type, date }: { type: ReportType; date: strin
   const [pending, startTransition] = React.useTransition();
 
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          const result = await generateReportAction(type, date);
-          if (result.ok) toast.success(result.message);
-          else toast.error(result.message);
-        })
-      }
-      className={pill('secondary', 'disabled:opacity-50')}
-    >
-      {pending ? (
-        <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <ArchiveBoxArrowDownIcon className="size-4" aria-hidden="true" />
-      )}
-      {t('reports.saveToGenerated')}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await generateReportAction(type, date);
+            if (result.ok) toast.success(result.message);
+            else toast.error(result.message);
+          })
+        }
+        className={pill('secondary', 'disabled:opacity-50')}
+      >
+        {pending ? (
+          <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <ArchiveBoxArrowDownIcon className="size-4" aria-hidden="true" />
+        )}
+        {t('reports.saveToGenerated')}
+      </button>
+      <Preloader active={pending} label={t('page.loading')} />
+    </>
   );
 }

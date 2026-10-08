@@ -20,6 +20,16 @@
   object-fit: cover;
 }
 
+.spinner-markup-frame-photo {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  max-width: 72px;
+  max-height: 72px;
+  flex: 0 0 72px;
+}
+
 .admin-grid-photo > img {
   display: block;
   width: 100%;
@@ -840,18 +850,19 @@ html:has([data-admin-shell]) {
 
 /* Route fallbacks only appear when a navigation lasts beyond a brief pause. */
 @keyframes route-loading-reveal {
-  to { opacity: 1; }
+  to { opacity: 1; visibility: visible; }
 }
 
 .route-loading {
   opacity: 0;
-  animation: route-loading-reveal 180ms ease-out 250ms forwards;
+  visibility: hidden;
+  animation: route-loading-reveal 0s 250ms forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .route-loading {
-    opacity: 1;
-    animation: none;
+    animation-duration: 0.01ms !important;
+    animation-delay: 250ms !important;
   }
 }
 

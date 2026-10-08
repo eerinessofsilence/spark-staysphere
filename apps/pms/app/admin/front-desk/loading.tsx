@@ -2,15 +2,16 @@
 
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Preloader } from '@/components/ui/preloader';
 import { useAdminT } from '@/lib/i18n/admin/context';
 
 export default function FrontDeskLoading() {
   const t = useAdminT();
 
   return (
-    <div className="route-loading" role="status" aria-live="polite">
-      <span className="sr-only">{t('page.loading')}</span>
-      <AdminPage>
+    <div className="route-loading">
+      <AdminPage loading>
+        <Preloader label={t('page.loading')} size="page" delay={0} />
         <div aria-hidden="true">
           <AdminPageHeader title={t('nav.frontDesk')} />
           <div className="mt-5 flex items-center gap-3">

@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { CameraIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/site/modal';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -126,8 +127,9 @@ export function MaintenanceReport({ hotelSlug, memberKey, rooms }: {
         {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         <button type="submit" data-tour="repair-send" disabled={busy || !unitId || photos.length === 0}
           className={pill('primary', 'min-h-12 w-full justify-center disabled:opacity-50')}>
-          {t(busy ? 'maintenance.reportSending' : 'maintenance.sendReport')}
+        {t(busy ? 'maintenance.reportSending' : 'maintenance.sendReport')}
         </button>
+        <Preloader active={busy} label={t('maintenance.reportSending')} />
         {!busy && !captureOpen ? <AdminTour tourSteps={MAINTENANCE_REPORT_TOUR_STEPS} storageKey={`maintenance-report-tour.${memberKey}.seen.v1`}
           startEvent="maintenance-report-tour:start" modal /> : null}
       </form> : null}

@@ -33,6 +33,10 @@ describe('selected hotel access boundary', () => {
 
     state.slug = 'unknown-slug';
     expect(await getSelectedHotelSlug()).toBe('harbor-house');
+
+    state.slug = 'harbor-house';
+    state.member = { role: 'Hotelier', hotelIds: ['hotel_asteria'] };
+    expect(await getSelectedHotelSlug()).toBe('asteria-cove');
   });
 
   it('does not fall back to another hotel when a Hotelier has no assignments', async () => {

@@ -1,8 +1,10 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { updateRoleAction } from '@/app/admin/settings/team/actions';
 import type { TeamPermissionKey, TeamRoleDefinition } from '@/lib/domain/schemas';
@@ -113,6 +115,7 @@ export function RoleEditor({ role }: { role: TeamRoleDefinition }) {
           {t('team.cancel')}
         </Link>
       </div>
+      <Preloader active={submitting} label={t('form.saving')} className="mt-3" />
     </form>
   );
 }

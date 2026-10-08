@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { recordRefundAction } from '@/app/admin/accounting/actions';
 import type { Currency } from '@/lib/domain/schemas';
@@ -46,6 +48,7 @@ export function RefundButton({ booking }: { booking: RefundableBooking }) {
         <label className="grid gap-1.5 text-sm"><span className="text-muted-foreground">{t('accounting.comment')}</span><textarea className={cn(fieldClass, 'min-h-20 resize-y')} maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} /></label>
         {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         <div className="flex flex-wrap gap-3"><button type="submit" disabled={pending || (scope === 'items' && selected.length === 0)} className={pill('primary')}>{pending ? <ArrowPathIcon className="size-4 animate-spin" /> : null}{t('accounting.recordRefund')}</button><button type="button" onClick={() => setOpen(false)} className={pill('secondary')}>{t('frontDesk.cancel')}</button></div>
+        <Preloader active={pending} label={t('page.loading')} className="mt-3" />
       </form>
     </Modal>
   </>;

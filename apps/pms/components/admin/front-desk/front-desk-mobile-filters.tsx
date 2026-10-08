@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import { AdjustmentsHorizontalIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { addIsoDays } from '@/lib/domain/dates';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';

@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
 import { signInAction, type SignInState } from '../actions';
 
 const initial: SignInState = { error: null };
 
-export function SignInForm({ demo }: { demo: { email: string; password: string } | null }) {
+export function SignInForm({ demo, next }: { demo: { email: string; password: string } | null; next?: string }) {
   const t = useAdminT();
   const [state, action, pending] = React.useActionState(signInAction, initial);
   const emailRef = React.useRef<HTMLInputElement>(null);
@@ -28,6 +29,7 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
 
   return (
     <form action={action} className="grid gap-4">
+      {next === 'select-hotel' || next === 'create-hotel' ? <input type="hidden" name="next" value={next} /> : null}
       <div>
         <label htmlFor="sign-in-email" className="mb-1.5 block text-sm text-muted-foreground">
           {t('account.email')}
@@ -67,6 +69,7 @@ export function SignInForm({ demo }: { demo: { email: string; password: string }
       <button type="submit" disabled={pending} className={pill('primary', 'mt-2 w-full')}>
         {pending ? t('signIn.signingIn') : t('signIn.continue')}
       </button>
+      <Preloader active={pending} label={t('signIn.signingIn')} />
     </form>
   );
 }

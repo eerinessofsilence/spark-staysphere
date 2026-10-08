@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { createGuestAction } from '@/app/admin/guests/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -40,8 +41,7 @@ export function CreateGuestButton() {
     setSubmitting(true);
     setError('');
     setFieldErrors({});
-    const result = await createGuestAction({ firstName, lastName, email, phone });
-    setSubmitting(false);
+    const result = await createGuestAction({ firstName, lastName, email, phone }).finally(() => setSubmitting(false));
     if (!result.ok) {
       setError(result.message);
       setFieldErrors(result.fieldErrors ?? {});
@@ -108,6 +108,7 @@ export function CreateGuestButton() {
               {submitting ? t('groups.creating') : t('guests.create')}
             </button>
           </div>
+          <Preloader active={submitting} label={t('groups.creating')} className="mt-3" />
         </form>
       </Modal>
     </>

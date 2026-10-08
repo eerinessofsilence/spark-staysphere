@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import {
   ArrowPathRoundedSquareIcon,
   BanknotesIcon,
@@ -93,7 +94,8 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
         <button type="submit" disabled={!ready || pending || picked.size === 0} className={pill('primary', 'mt-6 w-full')}>
           {t('welcome.continue')}
         </button>
-      </form>
+      <Preloader active={pending} label={t('page.loading')} />
+    </form>
 
       <form action={action} className="mt-2">
         {next ? <input type="hidden" name="next" value={next} /> : null}

@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { AdjustmentsHorizontalIcon, ArrowPathIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import { format, parseISO } from 'date-fns';

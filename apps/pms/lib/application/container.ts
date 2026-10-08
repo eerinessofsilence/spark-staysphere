@@ -67,6 +67,8 @@ import { privateDocumentStorage } from '../infrastructure/private-document-stora
 import { durableMaintenanceIssueStore } from '../infrastructure/durable-maintenance-issue-store';
 import { MaintenanceIssueService } from './maintenance-issue-service';
 import { getCronSecret } from '../infrastructure/cloudflare-env';
+import { durableTenantStore } from '../infrastructure/durable-tenant-store';
+import { createTenantService } from './tenant-service';
 
 /**
  * Composition root. This is the only module allowed to import `lib/infrastructure`.
@@ -86,6 +88,7 @@ export const demoControl: DemoControlPort = durableDemoControlPort;
 
 /** Custom roles and member role overrides — see `team-service.ts`. Its `hasPermission` is what `admin-session.ts`'s `requirePermission` actually calls. */
 export const teamService = new TeamService(durableRoleStore);
+export const tenantService = createTenantService(durableTenantStore);
 
 /** The demo tenant. A white-label deployment resolves this per host or per route. */
 export const DEMO_HOTEL_SLUG = 'asteria-cove';

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { Switch } from '@/components/ui/switch';

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { assignHousekeepingRoomAction } from '@/app/admin/housekeeping/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';

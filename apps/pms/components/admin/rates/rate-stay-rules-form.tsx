@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { useActionState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { MAX_STAY_NIGHTS, type RatePlan } from '@/lib/domain/schemas';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { toast } from '@/components/admin/shell/toast';
@@ -64,7 +65,8 @@ export function RateStayRulesForm({ rate, action }: { rate: RatePlan & { version
         <p className="mt-2 text-xs text-muted-foreground">{t('rates.rulesHint')}</p>
         {state.status === 'error' ? <p role="alert" className="mt-3 text-sm text-danger">{state.message}</p> : null}
         <button type="submit" disabled={pending} className={pill('primary', 'mt-4')}>{t('ops.save')}</button>
-      </form>
+      <Preloader active={pending} label={t('form.saving')} className="mt-3" />
+    </form>
     </section>
   );
 }

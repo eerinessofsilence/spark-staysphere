@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useActionState } from 'react';
 import { Warning } from '@phosphor-icons/react/dist/ssr';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { Preloader } from '@/components/ui/preloader';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { pluralForm } from '@/lib/i18n/plural';
 import { pill } from '@/lib/ui';
@@ -295,7 +295,7 @@ export function ContentForm({
   return (
     <UploadBusyContext.Provider value={setUploadBusy}>
     <FieldErrorsContext.Provider value={state.fieldErrors ?? {}}>
-      <form ref={formRef} onSubmit={onSubmit} noValidate>
+      <form ref={formRef} onSubmit={onSubmit} aria-busy={isPending} noValidate>
         {state.status === 'error' ? (
           <div
             ref={bannerRef}
@@ -363,11 +363,10 @@ export function ContentForm({
                     gap, but stays mounted so the live region still announces. */}
                 <div className="glass-bar pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-full p-1.5 [&>[role=status]]:pr-3 [&>[role=status]]:pl-1 [&>[role=status]:empty]:-ml-2 [&>[role=status]:empty]:p-0">
                   <button type="submit" disabled={isPending || !ready || uploads.size > 0} className={pill('primary')}>
-                    {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                     {buttonLabel}
                   </button>
                   {extraActions}
-                  {statusParagraph}
+                  {isPending ? <Preloader active={isPending} label={t('form.saving')} className="px-2" /> : statusParagraph}
                 </div>
               </div>
             </>
@@ -384,11 +383,10 @@ export function ContentForm({
               )}
             >
               <button type="submit" disabled={isPending || !ready || uploads.size > 0} className={pill('primary')}>
-                {isPending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
                 {buttonLabel}
               </button>
               {extraActions}
-              {statusParagraph}
+              {isPending ? <Preloader active={isPending} label={t('form.saving')} /> : statusParagraph}
             </div>
           );
         })()}

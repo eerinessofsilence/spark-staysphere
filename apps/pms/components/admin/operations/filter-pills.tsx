@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { pill } from '@/lib/ui';

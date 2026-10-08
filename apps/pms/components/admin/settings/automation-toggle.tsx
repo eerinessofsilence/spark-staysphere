@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/admin/shell/toast';
 import type { AutomationActionResult } from '@/app/admin/settings/automations/actions';

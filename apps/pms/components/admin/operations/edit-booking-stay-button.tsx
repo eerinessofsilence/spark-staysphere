@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { reviewFrontDeskStayExtensionAction, confirmFrontDeskStayExtensionAction } from '@/app/admin/front-desk/actions';
 import { changeBookingTimesAction } from '@/app/admin/bookings/actions';
@@ -118,6 +120,7 @@ export function EditBookingStayButton({ reference, checkIn, checkOut, checkInTim
             </button>
           </div>
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+          <Preloader active={busy} label={t('booking.saving')} />
         </div>
       </Modal>
     </>

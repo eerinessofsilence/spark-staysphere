@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { toast } from '@/components/admin/shell/toast';
 import { useAdminT } from '@/lib/i18n/admin/context';

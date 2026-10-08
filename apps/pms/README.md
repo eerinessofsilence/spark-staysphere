@@ -30,6 +30,12 @@ The admin sign-in is at `/admin/sign-in`. The local demo password is `staysphere
 assistant, `OPENAI_API_KEY` is optional; without it, the deterministic command interpreter is used.
 See `TECH.md` for hosting, persistence, and sign-in details.
 
+`/admin/onboarding` offers the separate individual-account flow: register, create a private hotel,
+and receive a seven-day trial stored with that hotel in D1. Durable D1 storage is required for new
+account registration and hotel creation; legacy demo accounts continue to use the shared password
+and seeded hotel access. See [ONBOARDING.md](docs/ONBOARDING.md) for the difference between those
+two paths.
+
 ## What PMS serves
 
 The `/admin` application provides the hotel overview, front desk, bookings, rates, accounting,

@@ -18,11 +18,11 @@ Everything past this point can wait until you need it.
 
 ## The product, in one paragraph
 
-SPARK StaySphere 360 is a demo hotel booking site for a fictional property, Asteria Cove. A guest
-arrives, turns the building, searches rooms, picks one (down to the exact physical room, if they
-want), adds services, and completes a **demo** booking — no real payment, no real inventory. A
-hotel team manages that demo inventory and edits the property's own copy from `/admin`, without a
-deploy. Read CLAUDE.md for the fuller version and the roadmap.
+SPARK StaySphere 360 includes a public demo hotel booking site for the fictional Asteria Cove and
+an admin onboarding flow for creating an individual account and a private hotel workspace. Demo
+accounts keep their seeded hotel access and shared legacy sign-in. A new account creates its own
+hotel with a seven-day trial; that draft workspace is isolated from the public guest catalogue and
+the seeded demo data. Read CLAUDE.md for the fuller product description and roadmap.
 
 ## The one idea worth understanding before you touch code
 

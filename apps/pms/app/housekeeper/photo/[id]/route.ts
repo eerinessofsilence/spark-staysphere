@@ -4,6 +4,7 @@ import { availableHotels, housekeepingService, teamService } from '@/lib/applica
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session) return new Response(null, { status: 401 });
+  if (session.tenantAccount) return new Response(null, { status: 403 });
   const member = await teamService.findMemberById(session.memberId);
   if (!member || (member.role !== 'Housekeeper' && !(await teamService.hasPermission(member.role, 'team.permHousekeeping')))) return new Response(null, { status: 403 });
   const id = (await params).id;

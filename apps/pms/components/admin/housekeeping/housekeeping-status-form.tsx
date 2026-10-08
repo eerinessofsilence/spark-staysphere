@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { setHousekeepingStatusAction } from '@/app/admin/housekeeping/actions';
 import { HOUSEKEEPING_STATUSES } from '@/lib/domain/housekeeping';
@@ -142,6 +143,7 @@ export function HousekeepingStatusForm({
           {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
           {t('housekeeping.save')}
         </button>
+        <Preloader active={pending} label={t('form.saving')} />
         <p className="text-sm text-muted-foreground">
           {updatedAt
             ? mounted

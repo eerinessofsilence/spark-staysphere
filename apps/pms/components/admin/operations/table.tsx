@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import { ArrowsUpDownIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 

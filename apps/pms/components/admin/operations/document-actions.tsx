@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Menu } from '@base-ui/react/menu';
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 import type { GuestDocument, GuestIdentity } from '@/lib/domain/guest-document';

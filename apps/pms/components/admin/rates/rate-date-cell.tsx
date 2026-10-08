@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { useActionState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
 import { toast } from '@/components/admin/shell/toast';
 import { ratePreviewHref } from '@/components/admin/rates/rates-shared';
@@ -131,6 +132,7 @@ export function RateDateCell({
           <button type="button" onClick={close} disabled={pending} className={pill('secondary')}>{t('rates.cancelDateEdit')}</button>
           <button type="submit" disabled={pending} className={pill('primary')}>{t('ops.save')}</button>
         </div>
+        <Preloader active={pending} label={t('form.saving')} className="mt-3" />
       </form>
     </Modal>
     </>

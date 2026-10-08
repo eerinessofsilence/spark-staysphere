@@ -6,14 +6,18 @@ import { ArrowLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
+import { NavigationPreloader } from '@/components/ui/preloader-navigation';
 
 export function AdminPage({
   width = 'wide',
+  loading = false,
   children,
 }: {
   width?: 'wide' | 'narrow';
+  loading?: boolean;
   children: ReactNode;
 }) {
+  const t = useAdminT();
   return (
     <main
       id="main"
@@ -24,6 +28,7 @@ export function AdminPage({
         'box-border min-w-0 max-w-full overflow-x-clip pt-4 pb-28 lg:pt-10',
       )}
     >
+      {loading ? null : <NavigationPreloader label={t('page.loading')} className="mb-4" />}
       {children}
     </main>
   );

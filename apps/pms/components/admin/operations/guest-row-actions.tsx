@@ -6,7 +6,7 @@ import { Menu } from '@base-ui/react/menu';
 import { EllipsisHorizontalIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { menuItemClass } from './booking-row-actions';
 import { deleteGuestProfileAction } from '@/app/admin/guests/delete-action';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { toast } from '@/components/admin/shell/toast';
 import { usePendingDeletions, useUndoableDelete } from '@/components/admin/shell/undoable-delete';
 

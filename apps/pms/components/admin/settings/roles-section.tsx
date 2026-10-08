@@ -1,8 +1,10 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Menu } from '@base-ui/react/menu';
 import {
   ArrowPathIcon,
@@ -303,6 +305,7 @@ export function RolesSection({ roles, membersCount }: { roles: TeamRoleDefinitio
               {t('team.cancel')}
             </button>
           </div>
+          <Preloader active={submitting} label={t('form.saving')} className="mt-3" />
         </form>
       </Modal>
       </section>

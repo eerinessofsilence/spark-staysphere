@@ -1,5 +1,7 @@
 "use client";
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from "react";
 import { UserPlus } from "@phosphor-icons/react/dist/ssr";
 import { createMemberAction } from "@/app/admin/settings/team/actions";
@@ -155,6 +157,7 @@ export function CreateUser({
               {t("team.cancel")}
             </button>
           </div>
+          <Preloader active={busy} label={t('team.userCreating')} className="mt-3" />
         </form>
       </Modal>
     </>

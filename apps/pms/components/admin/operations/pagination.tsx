@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { iconButton } from '@/lib/ui';

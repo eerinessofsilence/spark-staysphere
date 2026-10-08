@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { iconButton } from '@/lib/ui';

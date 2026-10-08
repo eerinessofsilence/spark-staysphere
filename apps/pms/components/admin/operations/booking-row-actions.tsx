@@ -1,8 +1,10 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Menu } from '@base-ui/react/menu';
 import { ArrowPathIcon, EllipsisHorizontalIcon, PencilSquareIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { cancelBookingAction } from '@/app/admin/bookings/actions';
@@ -70,6 +72,7 @@ export function CancelBookingDialog({ reference, open, onClose }: { reference: s
           {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
           {t('ops.cancelConfirmYes')}
         </button>
+          <Preloader active={pending} label={t('page.loading')} />
         <button type="button" onClick={close} className={pill('secondary')}>
           {t('ops.keepBooking')}
         </button>

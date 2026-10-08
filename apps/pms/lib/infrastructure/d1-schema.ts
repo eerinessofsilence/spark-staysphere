@@ -16,6 +16,9 @@
  * statement per entry sidesteps that entirely.
  */
 const STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS admin_accounts (member_id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, onboarded INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS draft_hotels (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, location TEXT NOT NULL, currency TEXT NOT NULL, timezone TEXT NOT NULL, owner_id TEXT NOT NULL, submission_key TEXT NOT NULL, created_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL, UNIQUE (owner_id, submission_key))`,
+  `CREATE INDEX IF NOT EXISTS idx_draft_hotels_owner ON draft_hotels (owner_id, created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS subscription_accounts (member_id TEXT PRIMARY KEY, trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL, demo_ends_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS guest_profile_identities (profile_id TEXT NOT NULL, hotel_id TEXT NOT NULL, identity_json TEXT NOT NULL, PRIMARY KEY (hotel_id, profile_id))`,
   `CREATE TABLE IF NOT EXISTS guest_documents (id TEXT NOT NULL, hotel_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (hotel_id, id))`,

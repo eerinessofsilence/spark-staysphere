@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { recordPaymentAction } from '@/app/admin/accounting/actions';
 import type { Currency } from '@/lib/domain/schemas';
@@ -67,8 +68,7 @@ export function AddPaymentButton({ bookings }: { bookings: UnpaidBooking[] }) {
     if (!booking) return;
     setSubmitting(true);
     setError('');
-    const result = await recordPaymentAction(booking.reference, method, Number(amount));
-    setSubmitting(false);
+    const result = await recordPaymentAction(booking.reference, method, Number(amount)).finally(() => setSubmitting(false));
     if (result.ok) {
       close();
       toast.success(result.message);
@@ -170,6 +170,7 @@ export function AddPaymentButton({ bookings }: { bookings: UnpaidBooking[] }) {
               {t('frontDesk.cancel')}
             </button>
           </div>
+          <Preloader active={submitting} label={t('accounting.recordPayment')} className="mt-3" />
         </form>
       </Modal>
     </>

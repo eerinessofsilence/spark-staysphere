@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { useActionState } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
@@ -117,6 +118,7 @@ export function RatePriceForm({
           {formError}
         </p>
       ) : null}
+      <Preloader active={pending} label={t('form.saving')} className="mt-3" />
     </form>
   );
 }

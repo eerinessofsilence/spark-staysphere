@@ -24,6 +24,7 @@ function setup(options: {
   provider?: PaymentProvider;
   failAfterCommit?: boolean;
   afterConfirm?: (booking: Booking) => Promise<void>;
+  afterRefundRecorded?: (booking: Booking, attempt: PaymentAttempt) => Promise<void>;
 } = {}) {
   const bookings = new Map<string, Booking>();
   const attempts = new Map<string, PaymentAttempt[]>();
@@ -87,6 +88,10 @@ function setup(options: {
     clock,
     undefined,
     options.afterConfirm,
+    undefined,
+    undefined,
+    undefined,
+    options.afterRefundRecorded,
   );
   return { service, repository, bookingEngine, paymentProvider, bookings, attempts, holds };
 }
@@ -145,6 +150,31 @@ describe('BookingService.confirm', () => {
     expect(state.attempts.get(first.id)).toHaveLength(1);
   });
 
+  it('keeps concurrent idempotent confirmation writes to one booking and one payment row', async () => {
+    const state = setup();
+    const outcomes = await Promise.all([
+      state.service.confirm(request('concurrent-replay-key')),
+      state.service.confirm(request('concurrent-replay-key')),
+    ]);
+    expect(outcomes[0]!.id).toBe(outcomes[1]!.id);
+    expect(state.bookings.size).toBe(1);
+    expect(state.attempts.get(outcomes[0]!.id)).toHaveLength(1);
+  });
+
+  it('lets only one different request take the last available room', async () => {
+    const state = setup();
+    const outcomes = await Promise.allSettled([
+      state.service.confirm(request('last-room-one')),
+      state.service.confirm(request('last-room-two')),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome.status === 'rejected')).toHaveLength(1);
+    const rejection = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(rejection).toMatchObject({ status: 'rejected', reason: { code: 'unavailable' } });
+    expect(state.bookings.size).toBe(1);
+    expect([...state.attempts.values()].flat()).toHaveLength(1);
+  });
+
   it('recovers a lost commit acknowledgement on retry without duplicating the hold or payment', async () => {
     const state = setup({ failAfterCommit: true });
     await expect(state.service.confirm(request('lost-ack-booking-key'))).rejects.toThrow('Acknowledgement lost');
@@ -176,6 +206,24 @@ describe('BookingService.recordManualPayment and recordRefund', () => {
       await expect(state.service.recordRefund(state.booking.reference, 'cash', amount, 0, '', 'full', [], '')).resolves.toMatchObject({ outcome: 'invalid_amount' });
     }
     expect(state.attempts.get(state.booking.id)).toHaveLength(1);
+    await expect(state.service.recordRefund('MISSING', 'cash', 10, 0, '', 'full', [], '')).resolves.toMatchObject({ outcome: 'not_found' });
+    await expect(state.service.recordManualPayment('MISSING', 'cash', 10)).resolves.toMatchObject({ outcome: 'not_found' });
+    await expect(state.service.recordRefund(state.booking.reference, 'cash', 10, 101, '', 'full', [], '')).resolves.toMatchObject({ outcome: 'invalid_amount' });
+  });
+
+  it('records a rounded manual payment with its currency and operator, and rejects cancelled bookings', async () => {
+    const state = await confirmedState();
+    await expect(state.service.recordManualPayment(state.booking.reference, 'cash', 12.345, { id: 'desk-1', name: 'Front Desk' }))
+      .resolves.toMatchObject({ outcome: 'recorded' });
+    expect(state.attempts.get(state.booking.id)?.at(-1)).toMatchObject({
+      provider: 'cash', status: 'authorized', amount: 12.35, currency: 'EUR', operatorId: 'desk-1', operatorName: 'Front Desk',
+    });
+
+    const cancelled = { ...state.booking, status: 'cancelled' as const };
+    state.repository.getBookingByReference = async () => cancelled;
+    const countBefore = state.attempts.get(state.booking.id)!.length;
+    await expect(state.service.recordManualPayment(state.booking.reference, 'cash', 10)).resolves.toMatchObject({ outcome: 'cancelled' });
+    expect(state.attempts.get(state.booking.id)).toHaveLength(countBefore);
   });
 
   it('records partial and full refunds within the same-currency authorized balance', async () => {
@@ -183,6 +231,7 @@ describe('BookingService.recordManualPayment and recordRefund', () => {
     await state.repository.savePaymentAttempt({ id: 'manual-payment', bookingId: state.booking.id, provider: 'cash', status: 'authorized', amount: 100, currency: 'EUR' });
     await state.repository.savePaymentAttempt({ id: 'pending-payment', bookingId: state.booking.id, provider: 'bank_transfer', status: 'demo_pending', amount: 500, currency: 'EUR' });
     await state.repository.savePaymentAttempt({ id: 'foreign-payment', bookingId: state.booking.id, provider: 'card', status: 'authorized', amount: 800, currency: 'USD' });
+    await state.repository.savePaymentAttempt({ id: 'failed-payment', bookingId: state.booking.id, provider: 'card', status: 'failed', amount: 900, currency: 'EUR' });
 
     await expect(state.service.recordRefund(state.booking.reference, 'cash', 40, 13, ' service ', 'items', ['order:1'], ' guest request ', { id: 'owner', name: 'Owner' }))
       .resolves.toMatchObject({ outcome: 'recorded' });
@@ -194,6 +243,15 @@ describe('BookingService.recordManualPayment and recordRefund', () => {
       .resolves.toMatchObject({ outcome: 'recorded' });
     await expect(state.service.recordRefund(state.booking.reference, 'cash', 0.01, 0, '', 'full', [], ''))
       .resolves.toMatchObject({ outcome: 'exceeds_paid' });
+  });
+
+  it('keeps a committed refund when its follow-up notification fails', async () => {
+    const serviceWithFailedNotice = setup({ afterRefundRecorded: async () => { throw new Error('notification offline'); } });
+    const booked = await serviceWithFailedNotice.service.confirm(request('refund-notice-failure-key', 'pay_at_hotel'));
+    await serviceWithFailedNotice.repository.savePaymentAttempt({ id: 'refund-notice-cash', bookingId: booked.id, provider: 'cash', status: 'authorized', amount: 50, currency: 'EUR' });
+    await expect(serviceWithFailedNotice.service.recordRefund(booked.reference, 'cash', 25, 0, '', 'full', [], 'test'))
+      .resolves.toMatchObject({ outcome: 'recorded' });
+    expect(serviceWithFailedNotice.attempts.get(booked.id)?.filter((attempt) => attempt.status === 'refunded')).toHaveLength(1);
   });
 
   it('limits concurrent refunds to the remaining authorized balance', async () => {

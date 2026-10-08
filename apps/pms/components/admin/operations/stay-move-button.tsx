@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowLongRightIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Bed, SignIn, SignOut, Users } from '@phosphor-icons/react/dist/ssr';
 import { setStayStateAction } from '@/app/admin/bookings/actions';
@@ -144,6 +146,7 @@ export function StayMoveButton({
             )}
             {verb}
           </button>
+            <Preloader active={pending} label={t('page.loading')} />
         </div>
       </Modal>
     </>

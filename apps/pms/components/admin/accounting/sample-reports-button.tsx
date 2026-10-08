@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addSampleReportsAction } from '@/app/admin/accounting/reports/generated/actions';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
@@ -20,30 +21,33 @@ export function SampleReportsButton() {
   const t = useAdminT();
 
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          const { created } = await addSampleReportsAction();
-          if (created > 0) {
-            toast.success(
-              pluralForm(locale, created, {
-                one: t('reports.sampleAddedOne', { count: created }),
-                few: t('reports.sampleAddedFew', { count: created }),
-                many: t('reports.sampleAddedMany', { count: created }),
-                other: t('reports.sampleAddedMany', { count: created }),
-              }),
-            );
-          } else {
-            toast.error(t('reports.sampleNothingAdded'));
-          }
-        })
-      }
-      className={pill('secondary')}
-    >
-      {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-      {pending ? t('reports.addingSample') : t('reports.addSample')}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const { created } = await addSampleReportsAction();
+            if (created > 0) {
+              toast.success(
+                pluralForm(locale, created, {
+                  one: t('reports.sampleAddedOne', { count: created }),
+                  few: t('reports.sampleAddedFew', { count: created }),
+                  many: t('reports.sampleAddedMany', { count: created }),
+                  other: t('reports.sampleAddedMany', { count: created }),
+                }),
+              );
+            } else {
+              toast.error(t('reports.sampleNothingAdded'));
+            }
+          })
+        }
+        className={pill('secondary')}
+      >
+        {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+        {pending ? t('reports.addingSample') : t('reports.addSample')}
+      </button>
+      <Preloader active={pending} label={t('page.loading')} />
+    </>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Menu } from '@base-ui/react/menu';
 import { ArrowPathIcon, ChevronDownIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { setStayStateAction } from '@/app/admin/bookings/actions';

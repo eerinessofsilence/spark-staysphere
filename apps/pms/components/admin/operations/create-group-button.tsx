@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { createGroupAction } from '@/app/admin/groups/actions';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -51,8 +52,7 @@ export function CreateGroupDialog({ open, onClose, label }: { open: boolean; onC
     event.preventDefault();
     setSubmitting(true);
     setError('');
-    const result = await createGroupAction({ name, notes: notes || undefined });
-    setSubmitting(false);
+    const result = await createGroupAction({ name, notes: notes || undefined }).finally(() => setSubmitting(false));
     if (!result.ok) {
       setError(result.message);
       return;
@@ -108,6 +108,7 @@ export function CreateGroupDialog({ open, onClose, label }: { open: boolean; onC
               {submitting ? t('groups.creating') : t('groups.create')}
             </button>
           </div>
+          <Preloader active={submitting} label={t('groups.creating')} className="mt-3" />
         </form>
       ) : null}
     </Modal>

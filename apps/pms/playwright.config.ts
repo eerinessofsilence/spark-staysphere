@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
@@ -46,9 +47,9 @@ export default defineConfig({
     url: baseURL,
     env: {
       ...process.env,
-      STAYSPHERE_LOCAL_STATE_PATH: process.env.STAYSPHERE_LOCAL_STATE_PATH ?? `/tmp/staysphere-pms-e2e-${process.pid}`,
+      STAYSPHERE_LOCAL_STATE_PATH: process.env.STAYSPHERE_LOCAL_STATE_PATH ?? `/tmp/staysphere-pms-e2e-${randomUUID()}`,
     },
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

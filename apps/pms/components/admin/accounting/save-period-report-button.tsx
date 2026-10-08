@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { ArchiveBoxArrowDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { generatePeriodReportAction } from '@/app/admin/accounting/reports/generated/actions';
 import type { ReportPeriodView } from '@/lib/domain/ports';
@@ -18,24 +19,27 @@ export function SavePeriodReportButton({ view, from, to }: { view: ReportPeriodV
   const [pending, startTransition] = React.useTransition();
 
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          const result = await generatePeriodReportAction(view, from, to);
-          if (result.ok) toast.success(result.message);
-          else toast.error(result.message);
-        })
-      }
-      className={pill('primary', 'min-h-10 px-4 text-sm')}
-    >
-      {pending ? (
-        <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <ArchiveBoxArrowDownIcon className="size-4" aria-hidden="true" />
-      )}
-      {t('reports.generate')}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await generatePeriodReportAction(view, from, to);
+            if (result.ok) toast.success(result.message);
+            else toast.error(result.message);
+          })
+        }
+        className={pill('primary', 'min-h-10 px-4 text-sm')}
+      >
+        {pending ? (
+          <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <ArchiveBoxArrowDownIcon className="size-4" aria-hidden="true" />
+        )}
+        {t('reports.generate')}
+      </button>
+      <Preloader active={pending} label={t('page.loading')} />
+    </>
   );
 }

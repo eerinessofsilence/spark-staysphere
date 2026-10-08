@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { approveMaintenanceReplacementAction, markMaintenanceIssueReadAction, requestMaintenanceReplacementAction, updateMaintenanceIssueStatusAction } from '@/app/admin/maintenance/actions';
 import type { MaintenanceIssueStatus, MaintenanceReplacement } from '@/lib/domain/maintenance-issue';
 import { fieldClass, pill } from '@/lib/ui';

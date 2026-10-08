@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/site/modal';
 import { discardUnsavedChanges } from '@/components/admin/shell/unsaved-changes';

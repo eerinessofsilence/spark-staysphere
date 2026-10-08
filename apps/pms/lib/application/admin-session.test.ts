@@ -38,6 +38,16 @@ describe('signed admin and booking tokens', () => {
     expect(await decodeSession(await encodeSession({ ...session, exp: Math.floor(Date.now() / 1000) - 1 }))).toBeNull();
     expect(await decodeSession(valid)).toMatchObject({ memberId: 'member-1' });
 
+    const boundaryExpiry = Math.floor(Date.now() / 1000) + 10;
+    const boundaryToken = await encodeSession({ ...session, exp: boundaryExpiry });
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(boundaryExpiry * 1000);
+      expect(await decodeSession(boundaryToken)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+
     members.delete('member-1');
     expect(await decodeSession(valid)).toBeNull();
   });

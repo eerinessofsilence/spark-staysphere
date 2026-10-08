@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { Preloader } from '@/components/ui/preloader';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import { format, parseISO } from 'date-fns';
 import { PlusIcon } from '@heroicons/react/24/outline';
@@ -234,6 +235,7 @@ function NewBookingForm({ roomTypes, today, onCancel }: { roomTypes: BookableRoo
           {t('frontDesk.cancel')}
         </button>
       </div>
+      <Preloader active={submitting || quoting} label={t('frontDesk.creatingBooking')} className="mt-3" />
     </form>
   );
 }

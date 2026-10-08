@@ -31,9 +31,9 @@ test("uploads multiple hotel photos and saves their order", async ({
       .getByRole("button", { name: `Show photo ${original.length + 2} earlier`, exact: true })
       .click();
     await expect.poll(async () => (await urls()).at(-2)).toBe(added[1]);
+    saved = true;
     await save.click();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-    saved = true;
     await page.reload();
     await expect(save).toBeEnabled();
     expect((await urls()).slice(-2)).toEqual([added[1], added[0]]);
@@ -56,7 +56,8 @@ test("uploads multiple hotel photos and saves their order", async ({
     if (saved) {
       await page.goto("/admin/content/hotel");
       await expect(save).toBeEnabled();
-      for (let n = original.length + 2; n > original.length; n -= 1) {
+      const currentLength = (await urls()).length;
+      for (let n = currentLength; n > original.length; n -= 1) {
         await page.getByRole("button", { name: `Remove photo ${n}`, exact: true }).click();
       }
       await save.click();

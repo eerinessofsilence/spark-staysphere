@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass } from '@/lib/ui';
 import { cn } from '@/lib/utils';

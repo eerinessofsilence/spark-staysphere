@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Menu } from '@base-ui/react/menu';
 import { ArrowPathIcon, ChevronDownIcon, EllipsisHorizontalIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, Clock, Package, SpinnerGap, XCircle } from '@phosphor-icons/react/dist/ssr';

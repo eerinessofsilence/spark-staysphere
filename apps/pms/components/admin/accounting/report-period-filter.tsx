@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import type { ReportPeriod } from '@/lib/application/report-period';
 import type { ReportPeriodView } from '@/lib/domain/ports';
 import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';

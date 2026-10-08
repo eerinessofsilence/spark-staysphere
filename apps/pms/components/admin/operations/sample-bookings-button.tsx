@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addSampleBookings } from '@/app/admin/actions';
 import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
@@ -46,6 +47,7 @@ export function SampleBookingsButton({ variant = 'secondary' }: { variant?: 'pri
         {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
         {pending ? t('ops.addingSample') : t('ops.addSample')}
       </button>
+      <Preloader active={pending} label={t('ops.addingSample')} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { ArrowPathIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { AUTOMATION_TRIGGER_KINDS, type AutomationTrigger, type AutomationTriggerKind, type EmailAutomationRule } from '@/lib/domain/ports';
 import { isTimeBasedTrigger, TRIGGER_KIND_OPTION_LABEL_KEY } from '@/lib/i18n/admin/automation-trigger';

@@ -1,7 +1,8 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getAdminSession } from '@/lib/application/admin-session';
-import { availableHotels, catalogService, communicationsService, DEMO_HOTEL_SLUG, hotelRepository, listRateChanges, subscriptionService, teamService } from '@/lib/application/container';
-import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
+import { availableHotels, catalogService, communicationsService, DEMO_HOTEL_SLUG, hotelRepository, listRateChanges, subscriptionService, teamService, tenantService } from '@/lib/application/container';
+import { getSelectedHotelSlug, SELECTED_HOTEL_COOKIE } from '@/lib/application/hotel-context';
 import { roleLabel } from '@/components/admin/settings/team-data';
 import { AdminLocaleProvider } from '@/lib/i18n/admin/context';
 import { getAdminLocale } from '@/lib/i18n/admin/server';
@@ -10,6 +11,7 @@ import { AdminShell } from '@/components/admin/shell/admin-shell';
 import type { RecentBooking, UnreadConversation } from '@/components/admin/shell/notification-bell';
 import { AdminServiceUnavailable } from '@/components/admin/shell/admin-service-unavailable';
 import { signOutAction } from '@/app/(auth)/admin/actions';
+import type { DraftHotel } from '@/lib/domain/tenant';
 import { pill } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
@@ -41,10 +43,44 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   if (!member) redirect('/admin/sign-in');
   if (member.role === 'Housekeeper') redirect('/housekeeper');
+  const locale = await getAdminLocale();
+  if (session.tenantAccount) {
+    let tenantHotels: DraftHotel[];
+    let selectedSlug: string | undefined;
+    try {
+      tenantHotels = await tenantService.listHotels(session.memberId);
+      selectedSlug = (await cookies()).get(SELECTED_HOTEL_COOKIE)?.value;
+    } catch (error) {
+      const requestId = crypto.randomUUID();
+      console.error('Tenant workspace lookup failed', { route: '/admin', code: 'service_unavailable', requestId }, error);
+      return <AdminServiceUnavailable locale={locale} />;
+    }
+    if (!tenantHotels.length) redirect('/admin/onboarding/create-hotel');
+    const selected = tenantHotels.find((candidate) => candidate.slug === selectedSlug);
+    if (!selected) redirect('/admin/onboarding/select-hotel');
+    const trialDate = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(new Date(selected.trialEndsAt));
+    const title = locale === 'ru' ? 'Ваш отель готов к настройке' : locale === 'de' ? 'Ihr Hotel ist bereit' : 'Your hotel is ready to set up';
+    const body = locale === 'ru' ? 'Это пустой кабинет. Добавьте номера и фотографии, когда будете готовы.' : locale === 'de' ? 'Dies ist ein leerer Arbeitsbereich. Zimmer und Fotos können Sie später hinzufügen.' : 'This is an empty workspace. Add rooms and photos when you are ready.';
+    const trial = locale === 'ru' ? `Пробный период до ${trialDate}` : locale === 'de' ? `Testphase bis ${trialDate}` : `Free trial until ${trialDate}`;
+    const switchLabel = locale === 'ru' ? 'Выбрать другой отель' : locale === 'de' ? 'Anderes Hotel wählen' : 'Choose another hotel';
+    return <AdminLocaleProvider locale={locale}>
+      <main className="mx-auto grid min-h-dvh max-w-3xl content-center gap-5 px-5 py-12" lang={locale}>
+        <p className="text-sm font-medium text-accent-strong">{selected.name}{selected.location ? ` · ${selected.location}` : ''}</p>
+        <h1 className="text-display text-4xl sm:text-5xl">{title}</h1>
+        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{body}</p>
+        <p className="text-sm font-medium">{trial}</p>
+        <div className="flex flex-wrap gap-3">
+          {tenantHotels.length > 1 && <a href="/admin/onboarding/select-hotel" className={pill('secondary')}>{switchLabel}</a>}
+          <a href="/admin/onboarding/create-hotel" className={pill('secondary')}>{adminT(locale)('onboarding.createAnotherHotel')}</a>
+          <form action={signOutAction}><button type="submit" className={pill('secondary')}>{adminT(locale)('session.signOut')}</button></form>
+        </div>
+      </main>
+    </AdminLocaleProvider>;
+  }
   if (!session.onboarded && member.role !== 'Hotelier') redirect('/admin/welcome');
 
-  const [requestedSlug, locale, permissions] = await Promise.all([
-    getSelectedHotelSlug(), getAdminLocale(), teamService.permissionsForRole(member.role),
+  const [requestedSlug, permissions] = await Promise.all([
+    getSelectedHotelSlug(), teamService.permissionsForRole(member.role),
   ]);
   const isHotelier = member.role === 'Hotelier';
   const hotelierHotels = availableHotels.filter((hotelOption) => member.hotelIds?.includes(hotelOption.id));

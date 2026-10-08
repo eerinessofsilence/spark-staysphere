@@ -1,7 +1,9 @@
 'use client';
 
+import { Preloader } from '@/components/ui/preloader';
+
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import type { RatePlan } from '@/lib/domain/schemas';
 import type { AdminLocale } from '@/lib/i18n/admin/locale';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -233,6 +235,7 @@ export function RatePriceRangeRow({ rate, dates, columns, label, updateDateActio
                 <button type="submit" disabled={pending} className={pill('primary', 'min-h-11 px-6')}>{pending ? t('rates.rangeSaving') : t('ops.save')}</button>
               )}
             </div>
+            <Preloader active={pending} label={t('rates.rangeSaving')} className="mt-3" />
           </form>
         ) : null}
       </Modal>

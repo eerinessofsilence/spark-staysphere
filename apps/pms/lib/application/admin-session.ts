@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { adminAuthConfig, teamService } from './container';
+import { adminAuthConfig, teamService, tenantService } from './container';
 import { isAdminInterest, type AdminInterest } from './admin-interests';
 import type { TeamMember, TeamPermissionKey } from './team-directory';
 
@@ -33,6 +33,8 @@ export interface AdminSession {
   /** Empty until the second sign-in step is done — or skipped, which also counts as done. */
   interests: AdminInterest[];
   onboarded: boolean;
+  /** New individual accounts use the isolated draft-hotel workspace. */
+  tenantAccount?: boolean;
   /** Unix seconds. */
   exp: number;
 }
@@ -111,7 +113,7 @@ export async function decodeSession(token: string | undefined): Promise<AdminSes
     return null;
   }
   if (typeof parsed.memberId !== 'string' || typeof parsed.exp !== 'number') return null;
-  if (parsed.exp * 1000 < Date.now()) return null;
+  if (parsed.exp * 1000 <= Date.now()) return null;
   // A repository failure is an infrastructure error, not proof that this
   // otherwise valid session is invalid. Let the route surface a retryable 503.
   if (!(await teamService.findMemberById(parsed.memberId))) return null;
@@ -119,6 +121,7 @@ export async function decodeSession(token: string | undefined): Promise<AdminSes
     memberId: parsed.memberId,
     interests: Array.isArray(parsed.interests) ? parsed.interests.filter(isAdminInterest) : [],
     onboarded: parsed.onboarded === true,
+    tenantAccount: parsed.tenantAccount === true,
     exp: parsed.exp,
   };
 }
@@ -189,6 +192,7 @@ export async function getAdminMember(): Promise<TeamMember | null> {
 export async function requireAdminSession(): Promise<AdminSession> {
   const session = await getAdminSession();
   if (!session) throw new AdminAuthError();
+  if (session.tenantAccount) throw new AdminPermissionError();
   return session;
 }
 
@@ -231,20 +235,26 @@ export async function clearAdminSession(): Promise<void> {
 
 /**
  * Step one of sign-in. A wrong address and a wrong password fail
- * identically, so the form cannot be used to find out which addresses are
- * on the team. The password is the one shared back-office password
- * (`ADMIN_PASSWORD`, or the demo one) — there are no per-member passwords
- * in this demo. The roster includes seeded members and accounts created by
- * the administrator; production still needs a per-user identity provider.
+ * identically. Seeded legacy members use the shared demo password; new
+ * individual accounts always authenticate with their own stored password hash.
  */
 export async function signIn(email: string, password: string): Promise<AdminSession | null> {
   const member = await teamService.findMemberByEmail(email);
+  if (!member) return null;
+  // Seeded demo users remain available when durable account storage is not configured.
+  const registered = member.id.startsWith('member-') ? await tenantService.findAccount(email) : null;
   const config = adminAuthConfig();
-  if (!member || !sameString(password, config.password)) return null;
+  let onboarded = false;
+  if (registered) {
+    const account = await tenantService.authenticate(email, password);
+    if (!account) return null;
+    onboarded = account.onboarded;
+  } else if (!sameString(password, config.password)) return null;
   const session: AdminSession = {
     memberId: member.id,
     interests: [],
-    onboarded: member.role === 'Housekeeper' || member.role === 'Hotelier',
+    onboarded: member.role === 'Housekeeper' || member.role === 'Hotelier' || onboarded,
+    ...(registered ? { tenantAccount: true } : {}),
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
   await writeAdminSession(session);
