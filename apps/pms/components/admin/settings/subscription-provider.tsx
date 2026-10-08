@@ -30,14 +30,22 @@ export function SubscriptionProvider({ account: initial, now: initialNow, childr
 export function SubscriptionNotice() {
   const { status } = useSubscription();
   const c = subscriptionTrialCopy(useAdminLocale());
-  if (status?.state === 'demo-active') return null;
+  const t = useAdminT();
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const noticeKey = status ? `${status.state}:${status.endsAt}` : 'unavailable';
+  if (status?.state === 'demo-active' || dismissed === noticeKey) return null;
   return <div data-subscription-notice className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground dark:bg-accent/10 sm:mx-6 lg:mt-6">
     <p className="min-w-0"><strong>{!status ? c.unavailable : status.state === 'trial' ? c.trial : c.expired}</strong>{status ? <span className="ml-2">{status.state === 'trial' ? c.remaining(status.daysLeft) : c.ended}</span> : null}</p>
-    <Link href="/admin/account/subscription" className={pill('primary')}>{c.update}</Link>
+    <div className="ml-auto flex shrink-0 items-center gap-2">
+      <Link href="/admin/account/subscription" className={pill('primary')}>{c.update}</Link>
+      <button type="button" aria-label={t('toast.dismiss')} onClick={() => setDismissed(noticeKey)} className={iconButton('light')}>
+        <XMarkIcon className="size-5" aria-hidden="true" />
+      </button>
+    </div>
   </div>;
 }
 
-/** Persistent until dismissed. The status strip keeps the purchase action visible afterward. */
+/** Persistent until dismissed; subscription settings remain available from the account menu. */
 export function SubscriptionExpiryToast() {
   const { status } = useSubscription();
   const c = subscriptionTrialCopy(useAdminLocale());
