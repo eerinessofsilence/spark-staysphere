@@ -582,8 +582,17 @@ test('the appearance choice survives a reload, with no flash of the other theme'
   await expect(html).not.toHaveClass(/dark/);
 });
 
-test('a guest cancels a stay, and the room goes back on sale', async ({ page }) => {
+test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps it occupied', async ({ page, request }, testInfo) => {
   const reference = await bookAStay(page);
+  const originalResponse = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`);
+  expect(originalResponse.ok()).toBeTruthy();
+  const originalBooking = (await originalResponse.json()).booking;
+  expect(originalBooking.unitNumber).toBeTruthy();
+  const roomSlug = String(originalBooking.roomTypeId).replace(/^room_/, '');
+  const exactAvailability = async () => request.post('/api/public/catalog', { data: {
+    operation: 'unit-availability', hotelSlug: 'asteria-cove', roomTypeId: originalBooking.roomTypeId,
+    unitNumber: originalBooking.unitNumber, checkIn: originalBooking.checkIn, checkOut: originalBooking.checkOut,
+  } });
 
   await page.goto('/trips');
   await expect(page.getByRole('tab', { name: /Upcoming/ })).toBeVisible();
@@ -607,5 +616,25 @@ test('a guest cancels a stay, and the room goes back on sale', async ({ page }) 
   // it specifically, not that the tab's count hit zero.
   await page.getByRole('tab', { name: /Upcoming/ }).click();
   await expect(page.getByText(reference, { exact: true })).toHaveCount(0);
+  const cancelledRead = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`);
+  expect((await cancelledRead.json()).booking.status).toBe('cancelled');
+  expect((await (await exactAvailability()).json()).available).toBe(true);
 
+  const quoteResponse = await request.post('/api/quotes', { data: {
+    roomSlug, checkIn: originalBooking.checkIn, checkOut: originalBooking.checkOut, adults: originalBooking.adults,
+    children: originalBooking.children, addOnIds: originalBooking.addOnIds,
+  } });
+  expect(quoteResponse.ok()).toBeTruthy();
+  const quote = (await quoteResponse.json()).quote;
+  const rebookKey = `cancel-rebook-${testInfo.project.name}-${Date.now()}`;
+  const rebook = await request.post('/api/bookings', { headers: { 'Idempotency-Key': rebookKey }, data: {
+    roomSlug, checkIn: originalBooking.checkIn, checkOut: originalBooking.checkOut, adults: originalBooking.adults,
+    children: originalBooking.children, addOnIds: originalBooking.addOnIds, unitNumber: originalBooking.unitNumber,
+    guest: { firstName: 'Ada', lastName: 'Lindqvist', email: 'ada@example.com', phone: '91 555 0117' },
+    expectedTotal: quote.price.total,
+  } });
+  expect(rebook.status(), await rebook.text()).toBe(201);
+  const repeatCancel = await request.post('/api/public/trips', { data: { operation: 'cancel', reference, email: 'ada@example.com' } });
+  expect(repeatCancel.ok()).toBeTruthy();
+  expect((await (await exactAvailability()).json()).available).toBe(false);
 });

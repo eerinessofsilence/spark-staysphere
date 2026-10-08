@@ -39,6 +39,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (response.ok && !payload) {
+    throw new PmsApiError('The hotel service returned an invalid response.', 502, 'invalid_response');
+  }
   if (!response.ok) {
     throw new PmsApiError(
       typeof payload?.message === 'string' ? payload.message : 'The hotel service is temporarily unavailable.',
