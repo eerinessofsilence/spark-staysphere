@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const pmsPort = process.env.PMS_PORT ?? '3001';
 const availableApps = [
-  { id: 'pms', name: 'PMS', workspace: '@staysphere/pms', port: '3001' },
+  { id: 'pms', name: 'PMS', workspace: '@staysphere/pms', port: pmsPort },
   { id: 'guest', name: 'Guest', workspace: '@staysphere/guest', port: '3000' },
   { id: 'site', name: 'Site', workspace: '@staysphere/site', port: null },
 ];
@@ -19,10 +20,14 @@ let stopping = false;
 
 async function waitForPms() {
   const deadline = Date.now() + 120_000;
+  const pmsUrl = `http://localhost:${pmsPort}/api/public/catalog`;
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch('http://localhost:3001/api/public/catalog', {
+      const response = await fetch(pmsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'hotel', hotelSlug: 'asteria-cove' }),
         signal: AbortSignal.timeout(2_000),
       });
       if (response.ok) return;
@@ -35,7 +40,7 @@ async function waitForPms() {
   }
 
   stopAll();
-  throw new Error('PMS did not become ready at http://localhost:3001/api/public/catalog');
+  throw new Error(`PMS did not become ready at ${pmsUrl}`);
 }
 
 function stopAll(signal = 'SIGTERM') {

@@ -11,11 +11,13 @@
     "apps/guest"
   ],
   "scripts": {
+    "dev": "node scripts/dev-all.mjs",
     "dev:site": "npm run dev --workspace=@staysphere/site",
     "dev:pms": "npm run dev --workspace=@staysphere/pms -- --port 3001",
     "dev:guest": "npm run dev --workspace=@staysphere/guest -- --port 3000",
     "dev:all": "node scripts/dev-all.mjs",
     "dev:pms-guest": "node scripts/dev-all.mjs pms guest",
+    "dev:pms-guest-test": "node scripts/dev-pms-guest-test.mjs",
     "build:site": "npm run build --workspace=@staysphere/site",
     "build:pms": "npm run build --workspace=@staysphere/pms",
     "build:guest": "npm run build --workspace=@staysphere/guest",
@@ -23,12 +25,14 @@
     "typecheck:guest": "npm run typecheck --workspace=@staysphere/guest",
     "test:pms": "npm run test --workspace=@staysphere/pms",
     "test:guest": "npm run test --workspace=@staysphere/guest",
+    "test:site": "npm run test --workspace=@staysphere/site",
     "lint:site": "npm run lint --workspace=@staysphere/site",
     "lint:pms": "npm run lint --workspace=@staysphere/pms",
     "lint:guest": "npm run lint --workspace=@staysphere/guest",
     "check:docs:pms": "npm run check:docs --workspace=@staysphere/pms",
     "check:docs:guest": "npm run check:docs --workspace=@staysphere/guest",
     "test:e2e:pms": "npm run test:e2e --workspace=@staysphere/pms",
-    "test:e2e:guest": "npm run test:e2e --workspace=@staysphere/guest"
+    "test:e2e:guest": "npm run test:e2e --workspace=@staysphere/guest",
+    "test:e2e:site": "npm run test:e2e --workspace=@staysphere/site"
   }
 }

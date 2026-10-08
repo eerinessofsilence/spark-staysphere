@@ -56,6 +56,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Unit tests
+        run: npm run test --workspace=@staysphere/site
       - run: npm run lint:site
       - run: npm run build:site
 
@@ -95,6 +97,7 @@ jobs:
           - { app: guest, shard: 2, total: 4 }
           - { app: guest, shard: 3, total: 4 }
           - { app: guest, shard: 4, total: 4 }
+          - { app: site, shard: 1, total: 1 }
     steps:
       - uses: actions/checkout@v4
 
@@ -107,6 +110,10 @@ jobs:
 
       - name: Install Chromium
         run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright install --with-deps chromium
+
+      - name: Build Product Site for preview
+        if: matrix.app == 'site'
+        run: npm run build:site
 
       - name: Run e2e suite
         run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright test --shard=${{ matrix.shard }}/${{ matrix.total }}

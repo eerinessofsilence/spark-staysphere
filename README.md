@@ -6,7 +6,7 @@ Three applications share one repository:
 - apps/pms — hotel back office, CMS, and PMS APIs.
 - apps/guest — guest-facing hotel discovery and booking experience.
 
-Install dependencies from this directory with npm install. Run one app with npm run dev:site, npm run dev:pms, or npm run dev:guest. npm run dev:all starts all three on ports 5173, 3001, and 3000. npm run dev:pms-guest starts PMS and Guest on ports 3001 and 3000 with separate local Worker state; Guest talks to PMS over PMS_API_URL.
+Install dependencies from this directory with npm install. Run all three apps with npm run dev (or npm run dev:all); Site, PMS, and Guest use ports 5173, 3001, and 3000. Run one app with npm run dev:site, npm run dev:pms, or npm run dev:guest. npm run dev:pms-guest starts PMS and Guest on ports 3001 and 3000 with separate local Worker state; Guest talks to PMS over PMS_API_URL.
 
 Each app keeps its own build and lint commands: npm run build:<app> and npm run lint:<app>. Workspace checks are namespaced at the root.
 
