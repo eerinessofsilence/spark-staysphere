@@ -2,8 +2,8 @@
 
 import type * as React from 'react';
 import Link from 'next/link';
-import { ArrowRightIcon, UsersIcon } from '@heroicons/react/24/outline';
-import { Bed, Ruler } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { Bed, Ruler, UsersThree } from '@phosphor-icons/react/dist/ssr';
 import { RoomFactTags, type RoomFacts } from '@/components/rooms/room-facts';
 import type { RoomStatus, SpinnerHotspot } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
@@ -75,7 +75,12 @@ export function SpinnerRoomCard({
       <div className="p-4">
         {facts?.status ? <Availability status={facts.status} remaining={facts.remaining} /> : null}
         <p className="mt-2 font-medium">
-          {facts ? `${facts.name} — ${lMoney(facts.nightlyPrice, facts.currency, locale)}` : hotspot.label}
+          {facts ? (
+            <>
+              {facts.name} -{' '}
+              <span className="font-semibold">{lMoney(facts.nightlyPrice, facts.currency, locale)}</span>
+            </>
+          ) : hotspot.label}
           {facts ? <span className="text-sm font-normal text-muted-foreground"> {t('rooms.aNight')}</span> : null}
         </p>
         {facts ? (
@@ -89,7 +94,7 @@ export function SpinnerRoomCard({
               {lBed(facts.bedType, locale)}
             </li>
             <li className="flex items-center gap-2">
-              <UsersIcon className="size-4" aria-hidden="true" />
+              <UsersThree weight="fill" className="size-4" aria-hidden="true" />
               {t('rooms.sleepsCount', { n: String(facts.capacity) })}
             </li>
           </ul>

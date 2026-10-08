@@ -9,7 +9,6 @@ import {
   BriefcaseIcon,
   Squares2X2Icon,
   ArrowRightEndOnRectangleIcon,
-  UserIcon,
   UserPlusIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -119,7 +118,7 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         style={
           anchor
             ? ({
-                '--panel-top': `${anchor.bottom + 8}px`,
+                '--panel-top': `${anchor.bottom + 16}px`,
                 '--panel-right': `${Math.min(
                   Math.max(VIEWPORT_MARGIN, window.innerWidth - anchor.right),
                   Math.max(VIEWPORT_MARGIN, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
@@ -181,13 +180,10 @@ export function SiteMenu({ stayQuery }: SiteMenuProps) {
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={t('nav.menuAndAccount')}
-        className="inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-full border border-border bg-card py-1 pr-1 pl-3.5 transition-colors hover:shadow-soft"
+        aria-label={t('nav.menu')}
+        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card transition-colors hover:shadow-soft sm:size-12"
       >
         <Bars3Icon className="size-5" aria-hidden="true" />
-        <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
-          <UserIcon className="size-4" />
-        </span>
       </button>
 
       {mounted && rendered ? createPortal(panel, document.body) : null}

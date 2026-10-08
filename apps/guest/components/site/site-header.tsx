@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useT } from '@/lib/i18n/context';
 import { LanguagePicker } from '@/components/site/language-picker';
 import { SiteMenu } from '@/components/site/site-menu';
+import { StaySphereLogo } from '@/components/site/staysphere-logo';
 import { cn } from '@/lib/utils';
 
 interface SiteHeaderProps {
@@ -29,43 +30,30 @@ export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
 
   return (
     <header className={cn('container-page sticky top-0 z-40 pt-3 sm:pt-4', className)}>
-      <div className="glass flex h-14 items-center gap-2 rounded-full pr-2 pl-4 shadow-soft sm:h-16 sm:pl-6">
-        <Link href={`/${suffix}`} className="flex min-h-11 items-center gap-2 rounded-full">
-          {/* Two artworks rather than one recoloured: the mark is white by
-              night and ink by day, and swapping them in CSS keeps the right
-              one painted from the first frame, before any script runs. */}
-          <img
-            src="/brand/staysphere-logo-on-light.svg"
-            alt="StaySphere"
-            className="h-6 w-auto sm:h-7 dark:hidden"
-          />
-          <img
-            src="/brand/staysphere-logo.svg"
-            alt=""
-            aria-hidden="true"
-            className="hidden h-6 w-auto sm:h-7 dark:block"
-          />
-        </Link>
+      <div className="glass flex h-14 items-center gap-2 rounded-full pr-2 pl-4 shadow-soft sm:h-16 sm:pl-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-2">
+          <StaySphereLogo href={`/${suffix}`} className="h-6 sm:h-7" />
 
-        {/* From `lg` there is room beside the search for the two links a
-            returning guest actually goes looking for; everything else
-            (sign in, hotel admin) stays behind the menu, where a first-time
-            visitor never needs to see it. Below `lg` all of it lives there
-            together, so a phone has exactly one nav to open. */}
-        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
-          <Link href={`/rooms${suffix}`} className={navLinkClass}>
-            {t('nav.allRooms')}
-          </Link>
-          <Link href={`/trips${suffix}`} className={navLinkClass}>
-            {t('nav.myTrips')}
-          </Link>
-        </nav>
+          {/* From `lg` there is room beside the search for the two links a
+              returning guest actually goes looking for; everything else
+              (sign in, hotel admin) stays behind the menu, where a first-time
+              visitor never needs to see it. Below `lg` all of it lives there
+              together, so a phone has exactly one nav to open. */}
+          <nav aria-label="Primary" className="hidden shrink-0 items-center gap-1 lg:flex">
+            <Link href={`/rooms${suffix}`} className={navLinkClass}>
+              {t('nav.allRooms')}
+            </Link>
+            <Link href={`/trips${suffix}`} className={navLinkClass}>
+              {t('nav.myTrips')}
+            </Link>
+          </nav>
+        </div>
 
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 justify-center lg:flex-none">
           {search ? <div className="hidden lg:block">{search}</div> : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 lg:justify-self-end">
           <LanguagePicker />
           <SiteMenu stayQuery={stayQuery} />
         </div>

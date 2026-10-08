@@ -24,9 +24,6 @@ export const pl: Record<TranslationKey, string> = {
   'auth.demoSignInNotice': "To logowanie nie tworzy kont, nie wymaga hasła, a wpisany adres nigdzie nie jest wysyłany.",
 
   'footer.tagline': 'Platforma rezerwacji bezpośrednich white-label dla niezależnych hoteli.',
-  'footer.disclosurePre':
-    'Asteria Cove to fikcyjny obiekt. Ceny, dostępność, ceny porównawcze i płatności są symulowane — nie zbieramy danych kart, a nigdzie nie powstaje prawdziwa rezerwacja. Zdjęcia i ujęcia 360° to licencjonowane materiały zastępcze zamiast własnych zdjęć obiektu, z podanym źródłem w',
-  'footer.disclosurePost': '.',
   'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Język i region',
@@ -41,8 +38,6 @@ export const pl: Record<TranslationKey, string> = {
   'search.childrenHint': 'Od 2 do 12 lat',
   'search.done': 'Gotowe',
   'search.clearDates': 'Wyczyść daty',
-  'search.pickCheckOut': 'Wybierz datę wyjazdu.',
-  'search.pickCheckIn': 'Wybierz datę przyjazdu.',
   'search.searchRooms': 'Szukaj pokoi',
   'search.searching': 'Szukanie…',
   'search.updateStay': 'Zaktualizuj pobyt',
@@ -370,7 +365,7 @@ export const pl: Record<TranslationKey, string> = {
   'trips.stayAlreadyBegunError': 'Ten pobyt już się rozpoczął — zmiany obsługuje teraz recepcja.',
   'trips.notMatchCancelError': 'Ten numer i e-mail nie pasują do żadnej rezerwacji, którą można odwołać.',
 
-  'assistant.title': 'Asystent AI do wyszukiwania pokoi',
+  'assistant.title': 'Wyszukiwarka pokoi',
   'assistant.ariaLabel': 'Znajdź pokój głosem lub opisem',
   'assistant.idle': 'Powiedz mi, czego szukasz, lub użyj mikrofonu.',
   'assistant.listening': 'Słucham — dotknij mikrofonu ponownie, aby zatrzymać.',

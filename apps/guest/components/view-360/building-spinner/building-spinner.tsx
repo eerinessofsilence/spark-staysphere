@@ -111,11 +111,14 @@ export function BuildingSpinner({
   );
   const visible = React.useMemo(
     () =>
-      tracks.flatMap(({ hotspot, track }) => {
-        const position = hotspotPosition(track, frameIndex, frameCount);
-        return position ? [{ hotspot, position }] : [];
-      }),
-    [tracks, frameIndex, frameCount],
+      // Frame 140 is the first markup migration; keep every other angle's pins.
+      frameIndex === 140 && zones?.some((zone) => zone.frameIndex === frameIndex)
+        ? []
+        : tracks.flatMap(({ hotspot, track }) => {
+            const position = hotspotPosition(track, frameIndex, frameCount);
+            return position ? [{ hotspot, position }] : [];
+          }),
+    [tracks, frameIndex, frameCount, zones],
   );
 
   // A zone only ever carries a polygon on the key-angle frame it was drawn

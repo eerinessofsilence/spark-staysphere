@@ -24,9 +24,6 @@ export const ru: Record<TranslationKey, string> = {
   'auth.demoSignInNotice': "Этот вход не создаёт аккаунты, не запрашивает пароль, а введённый адрес никуда не отправляется.",
 
   'footer.tagline': 'White-label платформа прямого бронирования для независимых отелей.',
-  'footer.disclosurePre':
-    'Asteria Cove — вымышленный отель. Тарифы, наличие номеров, сравнительные цены и платежи имитируются — данные карт не собираются, и бронирование нигде не создаётся по-настоящему. Фотографии и 360°-съёмки — лицензированные заглушки вместо собственных фото отеля, указаны в',
-  'footer.disclosurePost': '.',
   'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Язык и регион',
@@ -41,8 +38,6 @@ export const ru: Record<TranslationKey, string> = {
   'search.childrenHint': 'От 2 до 12 лет',
   'search.done': 'Готово',
   'search.clearDates': 'Очистить даты',
-  'search.pickCheckOut': 'Выберите дату выезда.',
-  'search.pickCheckIn': 'Выберите дату заезда.',
   'search.searchRooms': 'Найти номера',
   'search.searching': 'Поиск…',
   'search.updateStay': 'Обновить даты',
@@ -368,7 +363,7 @@ export const ru: Record<TranslationKey, string> = {
   'trips.stayAlreadyBegunError': 'Это проживание уже началось — изменения теперь оформляются на стойке регистрации.',
   'trips.notMatchCancelError': 'Этот номер брони и email не соответствуют брони, которую можно отменить.',
 
-  'assistant.title': 'ИИ-подбор номера',
+  'assistant.title': 'Поиск номера',
   'assistant.ariaLabel': 'Найти номер голосом или описанием',
   'assistant.idle': 'Опишите, что вы ищете, или воспользуйтесь микрофоном.',
   'assistant.listening': 'Слушаю — нажмите на микрофон ещё раз, чтобы остановить.',

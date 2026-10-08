@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
+import { Preloader } from '@/components/ui/preloader';
 import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { GuestsField } from '@/components/search/guests-field';
 import { StayDatesField } from '@/components/search/stay-dates-field';
@@ -21,6 +22,7 @@ interface StaySearchBarProps {
   submitLabel?: string;
   /** `compact` is the one-line pill that rides in the site header. */
   size?: 'default' | 'compact';
+  showPreloader?: boolean;
 }
 
 export function StaySearchBar({
@@ -30,6 +32,7 @@ export function StaySearchBar({
   className,
   submitLabel,
   size = 'default',
+  showPreloader = true,
 }: StaySearchBarProps) {
   const t = useT();
   const label = submitLabel ?? t('search.searchRooms');
@@ -56,7 +59,8 @@ export function StaySearchBar({
     return (
       <form
         onSubmit={onSubmit}
-        className={cn('flex items-center gap-1 rounded-full border border-border bg-card p-1 shadow-soft', className)}
+        aria-busy={isPending}
+        className={cn('relative flex items-center gap-1 rounded-full border border-border bg-card p-1 shadow-soft', className)}
       >
         <div className="flex items-center divide-x divide-border">
           <StayDatesField
@@ -87,6 +91,7 @@ export function StaySearchBar({
             <MagnifyingGlassIcon className="size-4" aria-hidden="true" />
           )}
         </button>
+        {showPreloader ? <Preloader active={isPending} label={t('search.searching')} className="absolute top-full left-0 mt-2 rounded-2xl bg-card p-3 shadow-soft" /> : null}
       </form>
     );
   }
@@ -94,6 +99,7 @@ export function StaySearchBar({
   return (
     <form
       onSubmit={onSubmit}
+      aria-busy={isPending}
       className={cn(
         // On a phone the two dates share a row with a rule between them, and
         // guests take the row under it — one form, the shape of the stay,
@@ -132,6 +138,7 @@ export function StaySearchBar({
           {isPending ? t('search.searching') : label}
         </button>
       </div>
+      {showPreloader ? <Preloader active={isPending} label={t('search.searching')} className="col-span-2 px-3 pt-2 lg:col-span-4" /> : null}
     </form>
   );
 }

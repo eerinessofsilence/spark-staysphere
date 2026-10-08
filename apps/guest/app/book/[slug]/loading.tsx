@@ -2,16 +2,14 @@
 
 import { useT } from '@/lib/i18n/context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Preloader } from '@/components/ui/preloader';
+import { GuestLoadingFrame } from '@/components/site/guest-loading-frame';
 
 export default function BookLoading() {
   const t = useT();
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="container-page py-8 lg:py-12"
-    >
-      <span className="sr-only">{t('book.preparingBooking')}</span>
+    <GuestLoadingFrame>
+      <Preloader label={t('book.preparingBooking')} size="page" delay={0} />
       <Skeleton className="h-4 w-44" />
       <Skeleton className="mt-6 h-12 w-96 max-w-full" />
       <div className="mt-8 grid gap-8 lg:grid-cols-sidebar lg:gap-10">
@@ -25,6 +23,6 @@ export default function BookLoading() {
         </div>
         <Skeleton className="h-80 rounded-[18px]" />
       </div>
-    </div>
+    </GuestLoadingFrame>
   );
 }

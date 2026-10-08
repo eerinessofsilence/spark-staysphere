@@ -78,7 +78,7 @@ export function MobileBookBar({ roomSlug, criteria, roomsHref }: MobileBookBarPr
                     : t('room.taxesIncluded', { nights: lNights(price.nights, locale) })}
               </span>
             </span>
-            <ChevronUpIcon className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden="true" />
+            <ChevronUpIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </button>
           {action}
         </div>

@@ -130,7 +130,7 @@ export function GuestsField({
           anchor
             ? {
                 // Overridden below `sm` by the inset classes above.
-                '--panel-top': `${anchor.bottom + 8}px`,
+                '--panel-top': `${anchor.bottom + 20}px`,
                 '--panel-left': `${Math.min(
                   Math.max(VIEWPORT_MARGIN, anchor.left),
                   Math.max(VIEWPORT_MARGIN, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
@@ -219,7 +219,7 @@ export function GuestsField({
 
   if (size === 'compact') {
     return (
-      <div className="relative flex items-center">
+      <div className="relative flex items-center border-r border-border pr-1">
         <button
           ref={triggerRef}
           id={id}
@@ -292,7 +292,7 @@ function Stepper({
           aria-label={`− ${label}`}
           className={iconButton('light', 'size-9')}
         >
-          <MinusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+          <MinusIcon className="size-3.5" aria-hidden="true" />
         </button>
         <span className="w-4 text-center text-sm font-medium tabular-nums" aria-live="polite">
           {value}
@@ -304,7 +304,7 @@ function Stepper({
           aria-label={`+ ${label}`}
           className={iconButton('light', 'size-9')}
         >
-          <PlusIcon className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+          <PlusIcon className="size-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

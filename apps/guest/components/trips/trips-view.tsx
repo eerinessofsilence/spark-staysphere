@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
 import Link from 'next/link';
 import { ArrowRightIcon, CalendarIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { cancelTrip, claimTrip, getDefaultTrips, loadTrips, type TripActionErrorCode } from '@/app/trips/actions';
@@ -50,6 +51,7 @@ function bucketOf(trip: TripSummary, today: string): Tab {
 export function TripsView({ stayQuery }: { stayQuery: string }) {
   const t = useT();
   const [trips, setTrips] = React.useState<TripSummary[] | null>(null);
+  const [loadFailed, setLoadFailed] = React.useState(false);
   const [tab, setTab] = React.useState<Tab>('upcoming');
   const [cancelling, setCancelling] = React.useState<TripSummary | null>(null);
 
@@ -71,6 +73,8 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
       const newDefaults = defaults.filter((trip) => !known.has(trip.reference));
       newDefaults.forEach((trip) => rememberTrip(trip.reference));
       setTrips([...mine, ...newDefaults]);
+    }).catch(() => {
+      if (live) setLoadFailed(true);
     });
     return () => {
       live = false;
@@ -89,12 +93,12 @@ export function TripsView({ stayQuery }: { stayQuery: string }) {
     upsert(trip);
   };
 
+  if (loadFailed) {
+    return <p role="alert" className="mt-10 text-sm text-danger">{t('book.errorGeneric')}</p>;
+  }
+
   if (trips === null) {
-    return (
-      <p className="mt-10 text-sm text-muted-foreground" role="status">
-        {t('trips.looking')}
-      </p>
-    );
+    return <Preloader label={t('trips.looking')} size="page" className="mt-10" />;
   }
 
   const today = todayIso();
@@ -315,11 +319,15 @@ function CancelDialog({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!trip) return;
+    if (!trip || pending) return;
     setPending(true);
     setError(null);
-    const result = await cancelTrip({ reference: trip.reference, email });
+    const result = await cancelTrip({ reference: trip.reference, email }).catch(() => null);
     setPending(false);
+    if (!result) {
+      setError(t('book.errorGeneric'));
+      return;
+    }
     if (!result.ok) {
       setError(t(TRIP_ERROR_KEYS[result.code]));
       return;
@@ -376,6 +384,7 @@ function CancelDialog({
             >
               {pending ? t('trips.cancelling') : t('trips.cancelBooking')}
             </button>
+            <Preloader active={pending} label={t('trips.cancelling')} />
           </div>
         </form>
       ) : null}
@@ -399,11 +408,16 @@ function ClaimForm({
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
     setNotice(null);
-    const result = await claimTrip({ reference, email });
+    const result = await claimTrip({ reference, email }).catch(() => null);
     setPending(false);
+    if (!result) {
+      setError(t('book.errorGeneric'));
+      return;
+    }
     if (!result.ok) {
       setError(t(TRIP_ERROR_KEYS[result.code]));
       return;
@@ -458,6 +472,7 @@ function ClaimForm({
         <button type="submit" disabled={pending} className={pill('primary', 'min-h-11')}>
           {pending ? t('trips.looking') : t('trips.findBooking')}
         </button>
+        <Preloader active={pending} label={t('trips.looking')} className="sm:col-span-3" />
       </form>
 
       {error ? (

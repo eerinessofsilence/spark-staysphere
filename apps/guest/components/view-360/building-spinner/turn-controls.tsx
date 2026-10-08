@@ -19,9 +19,9 @@ export function TurnControls({ onTurn }: { onTurn: (direction: 1 | -1) => void }
         onClick={() => onTurn(-1)}
         className={buttonClass}
       >
-        <ChevronLeftIcon className="size-5" aria-hidden="true" />
+        <ChevronLeftIcon className="size-5 text-white" aria-hidden="true" />
       </button>
-      <span className="px-1 text-sm font-medium text-[#F7F5F0]">360°</span>
+      <span className="px-1 text-sm font-semibold text-[#F7F5F0]">360°</span>
       <button
         type="button"
         aria-label={t('home.turnRight')}
@@ -29,7 +29,7 @@ export function TurnControls({ onTurn }: { onTurn: (direction: 1 | -1) => void }
         onClick={() => onTurn(1)}
         className={buttonClass}
       >
-        <ChevronRightIcon className="size-5" aria-hidden="true" />
+        <ChevronRightIcon className="size-5 text-white" aria-hidden="true" />
       </button>
     </div>
   );

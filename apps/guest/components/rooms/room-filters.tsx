@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { AdjustmentsHorizontalIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CatalogFacets, RoomFilters as Filters } from '@/lib/application/guest-contracts';
 import { defaultRoomFilters } from '@/lib/application/guest-contracts';
@@ -141,7 +141,7 @@ function FilterControls({
           onClick={() => apply({ ...defaultRoomFilters, sort: filters.sort })}
           className={pill('ghost', 'h-8 px-3 text-accent-strong disabled:text-muted-foreground')}
         >
-          <XMarkIcon className="size-4" strokeWidth={2.4} aria-hidden="true" />
+          <XMarkIcon className="size-4" aria-hidden="true" />
           {t('rooms.reset')}
         </button>
       </div>

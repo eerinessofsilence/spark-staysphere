@@ -24,9 +24,6 @@ export const hr: Record<TranslationKey, string> = {
   'auth.demoSignInNotice': "Ova prijava ne otvara račune, ne traži lozinku, a unesena adresa nikamo se ne šalje.",
 
   'footer.tagline': 'White-label platforma za izravne rezervacije za neovisne hotele.',
-  'footer.disclosurePre':
-    'Asteria Cove je izmišljeni objekt. Cijene, dostupnost, usporedne cijene i plaćanja su simulirani — ne prikupljaju se podaci kartice i nigdje se ne stvara stvarna rezervacija. Fotografije i 360° snimke licencirane su zamjene za vlastite fotografije objekta, s izvorima navedenima u',
-  'footer.disclosurePost': '.',
   'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Jezik i regija',
@@ -41,8 +38,6 @@ export const hr: Record<TranslationKey, string> = {
   'search.childrenHint': 'Od 2 do 12 godina',
   'search.done': 'Gotovo',
   'search.clearDates': 'Obriši datume',
-  'search.pickCheckOut': 'Odaberite datum odlaska.',
-  'search.pickCheckIn': 'Odaberite datum dolaska.',
   'search.searchRooms': 'Pretraži sobe',
   'search.searching': 'Pretraživanje…',
   'search.updateStay': 'Ažuriraj boravak',
@@ -370,7 +365,7 @@ export const hr: Record<TranslationKey, string> = {
   'trips.stayAlreadyBegunError': 'Ovaj boravak je već počeo — promjene sada obrađuje recepcija.',
   'trips.notMatchCancelError': 'Ta referenca i e-pošta ne odgovaraju nijednoj rezervaciji koju je moguće otkazati.',
 
-  'assistant.title': 'AI pronalazač soba',
+  'assistant.title': 'Pronalazač soba',
   'assistant.ariaLabel': 'Pronađi sobu glasom ili opisom',
   'assistant.idle': 'Recite mi što tražite ili upotrijebite mikrofon.',
   'assistant.listening': 'Slušam — ponovno dodirnite mikrofon za zaustavljanje.',

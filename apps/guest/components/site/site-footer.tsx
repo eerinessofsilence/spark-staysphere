@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { EnvelopeIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { useT } from '@/lib/i18n/context';
+import { StaySphereLogo } from '@/components/site/staysphere-logo';
 import { cn } from '@/lib/utils';
 
 /**
@@ -41,7 +42,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
       <div className="rounded-[18px] bg-ink px-6 py-10 text-[#F7F5F0] sm:px-10 sm:py-12 dark:border dark:border-border dark:bg-card">
         <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-8">
           <div>
-            <img src="/brand/staysphere-logo-footer.svg" alt="StaySphere" className="h-7 w-auto" />
+            <StaySphereLogo href={`/${suffix}`} footer />
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/60">{t('footer.tagline')}</p>
           </div>
 
@@ -75,14 +76,7 @@ export function SiteFooter({ stayQuery, clearsFloatingBar }: SiteFooterProps) {
         </div>
 
         <div className="mt-10 border-t border-white/15 pt-6">
-          {/* /45 and /35 measured under 4.5:1 against this band's near-black
-              fill in both schemes (3.25:1 for the copyright line) — under
-              WCAG AA for 12px text. /50 on both clears it with room. */}
-          <p className="max-w-4xl text-xs leading-relaxed text-white/50">
-            {t('footer.disclosurePre')} <code className="text-white/60">public/images/CREDITS.md</code>
-            {t('footer.disclosurePost')}
-          </p>
-          <p className="mt-4 text-xs text-white/50">{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+          <p className="text-xs text-white/50">{t('footer.copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>
     </footer>

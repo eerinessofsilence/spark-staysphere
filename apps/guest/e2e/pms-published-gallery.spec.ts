@@ -28,9 +28,9 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
     await expect.poll(async () => JSON.parse(await input.inputValue()).length).toBe(original.length + 2);
     photoUrls = (JSON.parse(await input.inputValue()) as string[]).slice(-2);
     await adminPage.getByRole('button', { name: `Show photo ${original.length + 2} earlier`, exact: true }).click();
+    saved = true;
     await save.click();
     await expect(adminPage.getByText('Saved', { exact: true })).toBeVisible();
-    saved = true;
 
     const guestContext = await browser.newContext();
     try {
@@ -53,7 +53,8 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
       await adminPage.goto('http://localhost:3001/admin/content/hotel');
       const save = adminPage.getByRole('button', { name: 'Save hotel details', exact: true });
       await expect(save).toBeEnabled();
-      for (let index = original.length + 2; index > original.length; index -= 1) {
+      const currentLength = JSON.parse(await adminPage.locator('input[name="aboutPhotos"]').inputValue()).length as number;
+      for (let index = currentLength; index > original.length; index -= 1) {
         await adminPage.getByRole('button', { name: `Remove photo ${index}` }).click();
       }
       await save.click();

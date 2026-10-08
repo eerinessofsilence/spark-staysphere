@@ -348,9 +348,12 @@ free-hand a width or a column track.
   animate continuously while listening, transcribing, or thinking. This is not decoration — it is
   the product's only channel for a machine state that has no other visible signal, and every state
   it represents also carries its own text in a `role="status"` region, so the animation is never
-  the only thing saying what is happening. It stays inside the assistant panel, uses only
-  `transform`/`opacity` through one shared `requestAnimationFrame` loop that is cancelled the moment
-  the panel closes or hides, and holds still (cross-fading only) under `prefers-reduced-motion`.
+  the only thing saying what is happening. The panel uses the same monochrome mesh as the launcher,
+  with CSS `transform`/`opacity` animations that pause when the panel closes or the document hides,
+  and stay still under `prefers-reduced-motion`.
+  The AI launcher's monochrome mesh (`components/assistant/assistant-launcher-visual.tsx`)
+  also animates while its button is visible, matching the PMS assistant control. Its CSS layers
+  pause when the panel opens or the document hides, and stay still under `prefers-reduced-motion`.
 
 ## Accessibility
 

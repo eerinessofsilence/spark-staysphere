@@ -2,16 +2,14 @@
 
 import { useT } from '@/lib/i18n/context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Preloader } from '@/components/ui/preloader';
+import { GuestLoadingFrame } from '@/components/site/guest-loading-frame';
 
 export default function RoomsLoading() {
   const t = useT();
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="container-page py-8 lg:py-12"
-    >
-      <span className="sr-only">{t('rooms.loadingRooms')}</span>
+    <GuestLoadingFrame>
+      <Preloader label={t('rooms.loadingRooms')} size="page" delay={0} />
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-6 h-12 w-72" />
       <Skeleton className="mt-4 h-4 w-96 max-w-full" />
@@ -24,6 +22,6 @@ export default function RoomsLoading() {
           ))}
         </div>
       </div>
-    </div>
+    </GuestLoadingFrame>
   );
 }

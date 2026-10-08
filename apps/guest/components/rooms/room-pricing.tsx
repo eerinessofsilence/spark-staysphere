@@ -82,6 +82,8 @@ export function RoomPricing({ roomSlug, criteria, quote: serverQuote, children }
         // A refused quote leaves the last good one on screen; the selection
         // the guest made is what the next attempt re-sends.
         if (result.ok) setQuote(result.quote);
+      }).catch(() => {
+        if (request === latestRequest.current) setRepricing(false);
       });
     },
     [criteria, roomSlug],

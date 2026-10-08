@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import type { RoomFilters, SortOrder } from '@/lib/application/guest-contracts';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
 import type { StayCriteria } from '@/lib/domain/schemas';

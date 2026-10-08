@@ -28,9 +28,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev:pms-guest --prefix ../..',
+    command: 'npm run dev:pms-guest-test --prefix ../..',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

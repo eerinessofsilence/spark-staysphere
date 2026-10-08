@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Preloader } from '@/components/ui/preloader';
 import type { AddOn } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
 import { lMoney, lNights } from '@/lib/i18n/format';
@@ -31,12 +32,7 @@ export function AddOnPicker({ addOns }: AddOnPickerProps) {
   return (
     <div className={cn('grid gap-3', isPending && 'opacity-70')} aria-busy={isPending}>
       <AddOnCatalog addOns={addOns} selected={selected} onChange={change} />
-      {isPending ? (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
-          {t('room.repricingYourStay')}
-        </p>
-      ) : null}
+      <Preloader active={isPending} label={t('room.repricingYourStay')} />
     </div>
   );
 }

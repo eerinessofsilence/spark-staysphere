@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
 import { Bars3Icon, BuildingOffice2Icon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import type { RoomFilters } from '@/lib/application/guest-contracts';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';

@@ -22,7 +22,7 @@ export class PmsApiError extends Error {
 function apiUrl(path: string): string {
   const binding = (env as Cloudflare.Env & { PMS_API_URL?: string }).PMS_API_URL;
   const configured = binding ?? process.env.PMS_API_URL;
-  if (!configured && process.env.NODE_ENV === 'production') {
+  if (!configured && import.meta.env.PROD) {
     throw new Error('PMS_API_URL must be configured for deployed Guest environments.');
   }
   const base = (configured ?? 'http://localhost:3001').replace(/\/+$/, '');

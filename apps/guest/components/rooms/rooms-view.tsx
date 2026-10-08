@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { PreloaderLink as Link } from '@/components/ui/preloader-navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { defaultRoomFilters, type CatalogFacets, type RoomFilters } from '@/lib/application/guest-contracts';
 import { buildQuery, type CatalogLayout } from '@/lib/application/search-params';
@@ -18,6 +18,7 @@ import { SortSelect } from '@/components/rooms/sort-select';
 import { StaySearchBar } from '@/components/search/stay-search-bar';
 import { SiteFooter } from '@/components/site/site-footer';
 import { SiteHeader } from '@/components/site/site-header';
+import { NavigationPreloader } from '@/components/ui/preloader-navigation';
 
 interface RoomsViewProps {
   criteria: StayCriteria;
@@ -59,6 +60,7 @@ export function RoomsView({
             minDate={today}
             submitLabel={t('search.updateStay')}
             size="compact"
+            showPreloader={false}
           />
         }
       />
@@ -77,7 +79,7 @@ export function RoomsView({
         {/* From `lg` the same search rides in the header instead. */}
         <div className="mt-8 lg:hidden">
           <h2 className="sr-only">{t('search.changeYourStay')}</h2>
-          <StaySearchBar criteria={criteria} filters={filters} minDate={today} submitLabel={t('search.updateStay')} />
+          <StaySearchBar criteria={criteria} filters={filters} minDate={today} submitLabel={t('search.updateStay')} showPreloader={false} />
         </div>
 
         <div className="mt-8 grid gap-y-6 gap-x-gutter lg:grid-cols-sidebar-start">
@@ -90,6 +92,7 @@ export function RoomsView({
           />
 
           <section aria-label="Search results">
+            <NavigationPreloader label={t('rooms.loadingRooms')} className="mb-4" />
             <div className="flex flex-wrap items-center justify-end gap-2 pb-5">
               {plan ? (
                 <p className="mr-auto text-sm text-muted-foreground">

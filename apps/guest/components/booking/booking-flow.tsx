@@ -32,6 +32,7 @@ import {
   lView,
 } from '@/lib/i18n/format';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Preloader } from '@/components/ui/preloader';
 import { coverPhoto } from '@/lib/domain/room-attributes';
 import { facadeOf } from '@/lib/domain/room-units';
 import { AddOnCatalog } from '@/components/rooms/add-on-catalog';
@@ -184,7 +185,7 @@ export function BookingFlow({
         adults: nextCriteria.adults,
         children: nextCriteria.children,
         addOnIds: nextAddOnIds,
-      });
+      }).catch(() => ({ ok: false as const, message: t('book.errorGeneric') }));
       setRepricing(false);
       if (result.ok) {
         setQuote(result.quote);
@@ -193,7 +194,7 @@ export function BookingFlow({
         setFlowError({ code: 'quote_failed', message: result.message });
       }
     },
-    [room.slug],
+    [room.slug, t],
   );
 
   const updateCriteria = (patch: Partial<StayCriteria>) => {
@@ -248,6 +249,7 @@ export function BookingFlow({
   const goBack = () => setStepIndex((index) => Math.max(0, index - 1));
 
   const submit = async () => {
+    if (submitting) return;
     if (!validateGuest()) {
       setStepIndex(steps.findIndex((entry) => entry.id === 'guest'));
       return;
@@ -268,7 +270,13 @@ export function BookingFlow({
       paymentMethod,
       unitNumber: roomNumber ?? undefined,
       idempotencyKey: idempotencyKey.current,
-    });
+    }).catch(() => null);
+
+    if (!result) {
+      setSubmitting(false);
+      setFlowError({ code: 'request_failed', message: t('book.errorGeneric') });
+      return;
+    }
 
     if (result.ok) {
       router.push(`/booking/${result.reference}`);
@@ -301,7 +309,7 @@ export function BookingFlow({
       setStepIndex(steps.findIndex((entry) => entry.id === 'guest'));
     }
     // A changed price invalidates the attempt; the next try needs a fresh key.
-    if (result.code === 'price_changed' || result.code === 'unavailable') {
+    if (result.code === 'price_changed') {
       idempotencyKey.current = null;
       await reprice(criteria, addOnIds);
     }
@@ -627,7 +635,7 @@ export function BookingFlow({
                             aria-hidden="true"
                             className="absolute top-3 right-3 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground"
                           >
-                            <CheckIcon className="size-3.5 stroke-[2.5]" />
+                            <CheckIcon className="size-3.5" />
                           </span>
                         ) : null}
                       </label>
@@ -735,6 +743,7 @@ export function BookingFlow({
               </button>
             )}
           </div>
+          <Preloader active={submitting} label={t('book.confirming')} className="mt-3" />
         </section>
       </div>
 
@@ -820,12 +829,7 @@ export function BookingFlow({
                 {lMoney(quote.price.total, quote.price.currency, locale)}
               </span>
             </div>
-            {repricing ? (
-              <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
-                {t('room.repricingYourStay')}
-              </p>
-            ) : null}
+            <Preloader active={repricing} label={t('room.repricingYourStay')} className="mt-2" />
           </div>
 
           <p className="mt-4 rounded-2xl bg-stone/60 p-3 text-xs leading-relaxed text-muted-foreground">

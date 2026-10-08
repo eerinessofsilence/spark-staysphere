@@ -107,8 +107,8 @@ export const CALENDAR_CLASS_NAMES = {
   week: 'flex w-full',
   // The circles already fade; without this the band behind them snaps.
   day: 'relative flex-1 p-0 text-center transition-colors',
-  range_start: 'rounded-l-full bg-stone',
-  range_end: 'rounded-r-full bg-stone',
+  range_start: 'rounded-l bg-stone',
+  range_end: 'rounded-r bg-stone',
   range_middle: 'bg-stone',
   disabled: 'text-muted-foreground/45',
   hidden: 'invisible',
@@ -249,9 +249,11 @@ export function StayDatesField({
   const nights = draft.from && draft.to ? differenceInCalendarDays(draft.to, draft.from) : 0;
   const rangeSummary =
     draft.from && draft.to
-      ? `${lDateShort(format(draft.from, ISO_FORMAT), locale)} → ${lDateShort(format(draft.to, ISO_FORMAT), locale)}`
+      ? {
+          checkIn: lDateShort(format(draft.from, ISO_FORMAT), locale),
+          checkOut: lDateShort(format(draft.to, ISO_FORMAT), locale),
+        }
       : null;
-  const prompt = draft.from ? t('search.pickCheckOut') : t('search.pickCheckIn');
 
   const panel = (
     <div
@@ -278,7 +280,7 @@ export function StayDatesField({
         anchor
           ? {
               // Overridden below `sm` by the inset classes above.
-              '--panel-top': `${anchor.bottom + 10}px`,
+              '--panel-top': `${anchor.bottom + 20}px`,
               '--panel-left': `${Math.min(
                 Math.max(VIEWPORT_MARGIN, anchor.left),
                 Math.max(VIEWPORT_MARGIN, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
@@ -303,33 +305,32 @@ export function StayDatesField({
         modifiers={{ preview_middle: previewMiddle, preview_end: previewEnd }}
         modifiersClassNames={{
           preview_middle: 'bg-stone/55',
-          preview_end: 'rounded-r-full bg-stone/55',
+          preview_end: 'rounded-r bg-stone/55',
         }}
         classNames={CALENDAR_CLASS_NAMES}
         components={CALENDAR_COMPONENTS}
         locale={DATE_FNS_LOCALES[locale]}
       />
 
-      <div className="mt-4 border-t border-border pt-4">
+      <div className="mt-3 border-t border-border pt-2">
         {/* The dates are what this whole panel is for — the same emphasis
             the stay summary gets everywhere else it appears, not a caption
             sharing a row with the buttons. */}
-        <div role="status" className="text-center">
-          {rangeSummary ? (
-            <>
-              <p className="text-display text-xl sm:text-2xl">{rangeSummary}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{lNights(nights, locale)}</p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{prompt}</p>
-          )}
-        </div>
+        {rangeSummary ? (
+          <div role="status" className="text-center">
+            <p className="text-display text-base sm:text-lg">
+              {t('search.checkIn')} · {rangeSummary.checkIn} {' → '}
+              {t('search.checkOut')} · {rangeSummary.checkOut}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{lNights(nights, locale)}</p>
+          </div>
+        ) : null}
 
-        <div className="mt-4 flex justify-center gap-2">
-          <button type="button" onClick={clear} className={pill('ghost', 'min-h-10 px-4')}>
+        <div className="mt-2 flex justify-center gap-2">
+          <button type="button" onClick={clear} className={pill('ghost', 'h-10 w-32 justify-center px-0')}>
             {t('search.clearDates')}
           </button>
-          <button type="button" onClick={close} className={pill('primary', 'min-h-10 px-5')}>
+          <button type="button" onClick={close} className={pill('primary', 'h-10 w-32 justify-center px-0')}>
             {t('search.done')}
           </button>
         </div>

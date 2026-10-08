@@ -79,7 +79,10 @@ async function toggle(box: Locator, expected: 'true' | 'false') {
  * sold-out-hidden catalog is used because demo inventory is finite — a
  * hard-coded room runs out as the suite is re-run against one server.
  */
-async function bookAStay(page: Page): Promise<string> {
+async function bookAStay(
+  page: Page,
+  injectedFailure?: { arm: () => Promise<void>; assertFailure: () => Promise<void>; retry?: boolean },
+): Promise<string> {
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
   const card = page.getByRole('region', { name: 'Search results' }).locator('article').first();
   const roomName = (await card.getByRole('heading').innerText()).trim();
@@ -102,11 +105,53 @@ async function bookAStay(page: Page): Promise<string> {
 
   await toggle(page.getByRole('checkbox', { name: /I understand this is a booking at a fictional property/ }), 'true');
   await page.getByRole('button', { name: 'Continue' }).click();
+  if (injectedFailure) await injectedFailure.arm();
   await page.getByRole('button', { name: 'Confirm booking' }).click();
+  if (injectedFailure) {
+    await injectedFailure.assertFailure();
+    if (injectedFailure.retry === false) return '';
+    await page.getByRole('button', { name: 'Confirm booking' }).click();
+  }
   await expect(page).toHaveURL(/\/booking\/[A-Z0-9]{6}$/, { timeout: 20_000 });
 
   return (await page.getByText(/^[A-Z0-9]{6}$/).first().innerText()).trim();
 }
+
+test('a lost PMS response can be retried once with the same idempotency key', async ({ page, request }) => {
+  await bookAStay(page, {
+    arm: async () => {
+      await request.post('http://127.0.0.1:3101/fault', { data: { mode: 'lose-response' } });
+    },
+    assertFailure: async () => {
+      await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
+      await expect(page.getByRole('button', { name: 'Confirm booking' })).toBeEnabled();
+    },
+  });
+  const stats = await (await request.get('http://127.0.0.1:3101/stats')).json();
+  expect(stats.bookingKeys).toHaveLength(2);
+  expect(stats.bookingKeys[0]).toBeTruthy();
+  expect(stats.bookingKeys[1]).toBe(stats.bookingKeys[0]);
+});
+
+test('a changed price is shown before the guest confirms the new amount', async ({ page, request }) => {
+  const changedTotal = 999;
+  await bookAStay(page, {
+    arm: async () => {
+      await request.post('http://127.0.0.1:3101/fault', { data: {
+        mode: 'status', status: 409, body: { error: 'price_changed', message: 'The price changed.', currentTotal: changedTotal },
+      } });
+    },
+    assertFailure: async () => {
+      await expect(page.getByRole('alert')).toContainText('price changed');
+      await expect(page.getByRole('alert')).toContainText('€999');
+      await expect(page.getByRole('complementary', { name: 'Your stay' }).locator('.text-display').last()).toContainText('999');
+      await expect(page.getByRole('button', { name: 'Confirm booking' })).toBeEnabled();
+    },
+    retry: false,
+  });
+  const stats = await (await request.get('http://127.0.0.1:3101/stats')).json();
+  expect(stats.bookingKeys).toHaveLength(1);
+});
 
 /** The header menu is a hydrated island: a click before React attaches is lost. */
 async function openMenu(page: Page) {

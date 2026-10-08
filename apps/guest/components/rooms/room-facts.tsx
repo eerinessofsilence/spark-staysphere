@@ -1,7 +1,6 @@
 'use client';
 
-import { UsersIcon } from '@heroicons/react/24/outline';
-import { Bed, Ruler } from '@phosphor-icons/react/dist/ssr';
+import { Bed, Ruler, UsersThree } from '@phosphor-icons/react/dist/ssr';
 import { factTone, tintInk, tintSurface } from '@/components/rooms/feature-icon';
 import type { Currency, RoomStatus, RoomType } from '@/lib/domain/schemas';
 import { useLocale, useT } from '@/lib/i18n/context';
@@ -43,7 +42,7 @@ export function RoomFactTags({ facts, className }: { facts: RoomFacts; className
         {lBed(facts.bedType, locale)}
       </li>
       <li className={tag(tintSurface[factTone.capacity])}>
-        <UsersIcon className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
+        <UsersThree weight="fill" className={cn('size-3.5', tintInk[factTone.capacity])} aria-hidden="true" />
         {t('rooms.sleepsCount', { n: String(facts.capacity) })}
       </li>
     </ul>

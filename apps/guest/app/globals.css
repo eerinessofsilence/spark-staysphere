@@ -4,6 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+svg[data-slot='icon'] {
+  stroke-width: 2.0;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -666,6 +670,16 @@ html:has([data-admin-shell]) {
   pointer-events: none;
 }
 
+@keyframes route-loading-reveal {
+  to { opacity: 1; visibility: visible; }
+}
+
+.route-loading {
+  opacity: 0;
+  visibility: hidden;
+  animation: route-loading-reveal 0s 250ms forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -674,6 +688,10 @@ html:has([data-admin-shell]) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .route-loading {
+    animation-duration: 0.01ms !important;
+    animation-delay: 250ms !important;
   }
 }
 

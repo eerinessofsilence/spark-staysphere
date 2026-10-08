@@ -1,0 +1,56 @@
+.staysphere-logo-link {
+  --logo-mark: #161616;
+  --logo-wordmark: #161616;
+  --logo-sheen: #d4ff3a;
+}
+
+.dark .staysphere-logo-link {
+  --logo-mark: #fff;
+  --logo-wordmark: #d4ff3a;
+  --logo-sheen: #f0ffb3;
+}
+
+.staysphere-logo-link.staysphere-logo-footer {
+  --logo-mark: #d8d8d8;
+  --logo-wordmark: #d8d8d8;
+  --logo-sheen: #d4ff3a;
+}
+
+.staysphere-logo {
+  display: block;
+  overflow: visible;
+}
+
+.staysphere-logo-hover,
+.staysphere-logo-pulse {
+  transform-origin: 62.5px 62.5px;
+}
+
+.staysphere-logo-hover,
+.staysphere-logo-pulse,
+.staysphere-logo [data-logo-stripe] {
+  transform-box: view-box;
+}
+
+.staysphere-logo-sheen {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .staysphere-logo-hover {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .staysphere-logo-sheen {
+    transition: opacity 220ms ease-out;
+  }
+
+  .staysphere-logo-link[data-logo-highlighted='true'] .staysphere-logo-hover {
+    transform: scale(1.035);
+    transition-duration: 750ms;
+  }
+
+  .staysphere-logo-link[data-logo-highlighted='true'] .staysphere-logo-sheen {
+    opacity: 1;
+  }
+}

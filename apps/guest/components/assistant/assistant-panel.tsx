@@ -339,18 +339,18 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
           // Tall enough that a full result — the answer, chips, three tiles and
           // the handoff link — lands without an inner scroll, and still bounded
           // by the window so a short desktop one does not push the CTA off.
-          'max-h-[85dvh] sm:max-h-[min(42rem,85dvh)] sm:max-w-3xl',
+          'max-h-[80dvh] sm:max-h-[min(38rem,80dvh)] sm:max-w-3xl',
           mobileOffset === 'above-book-bar' ? 'sm:mb-[9.5rem] lg:mb-10' : 'sm:mb-10',
           visible
             ? 'translate-y-0 opacity-100 sm:scale-100'
             : 'translate-y-4 opacity-0 sm:translate-y-0 sm:scale-[0.98]',
         )}
       >
-        <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-          <div className="size-16 shrink-0 rounded-full bg-stone">
-            <ThinkingOrbs phase={phase} getAmplitude={voice.getAmplitude} />
+        <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2">
+          <div className="size-14 shrink-0 rounded-full">
+            <ThinkingOrbs phase={phase} hidden={!visible} />
           </div>
-          <p className="flex-1 text-base font-medium">{t('assistant.title')}</p>
+          <p className="flex-1 text-xl font-semibold">{t('assistant.title')}</p>
           <button type="button" onClick={onClose} aria-label={t('assistant.close')} className={iconButton('light', 'size-9')}>
             <XMarkIcon className="size-4" aria-hidden="true" />
           </button>
@@ -484,7 +484,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
                   }
                 }}
                 aria-label={voice.status === 'listening' ? t('assistant.stopRecording') : t('assistant.speakSearch')}
-                className={iconButton(voice.status === 'listening' ? 'dark' : 'light')}
+                className={iconButton(voice.status === 'listening' ? 'dark' : 'light', 'size-14')}
               >
                 {voice.status === 'listening' ? (
                   <StopCircleIcon className="size-5" aria-hidden="true" />
@@ -501,7 +501,7 @@ export function AssistantPanel({ open, onClose, mobileOffset = 'default' }: Assi
               disabled={
                 showingResults || !inputValue.trim() || phase === 'listening' || phase === 'transcribing' || phase === 'thinking'
               }
-              className={iconButton('dark')}
+              className={iconButton('dark', 'size-14')}
             >
               <PaperAirplaneIcon className="size-4" aria-hidden="true" />
             </button>

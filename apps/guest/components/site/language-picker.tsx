@@ -1,30 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { GlobeAltIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useLocale, useT } from '@/lib/i18n/context';
 import { LOCALES, type Locale } from '@/lib/i18n/locale';
-import { Modal } from '@/components/site/modal';
 import { cn } from '@/lib/utils';
-
-/**
- * Language and region, picked the way the large travel sites do it: a globe in
- * the header opening a grid of languages with their region underneath.
- *
- * Picking one actually switches the interface — `LocaleProvider` (see
- * `lib/i18n/context.tsx`) holds the choice and every guest page reads it.
- */
-
-const REGION: Record<Locale, string> = {
-  en: 'United Kingdom',
-  ru: '',
-  hr: 'Hrvatska',
-  de: 'Deutschland',
-  fr: 'France',
-  it: 'Italia',
-  es: 'España',
-  pl: 'Polska',
-};
 
 const LANGUAGE_NAME: Record<Locale, string> = {
   en: 'English',
@@ -41,53 +21,73 @@ export function LanguagePicker() {
   const [open, setOpen] = React.useState(false);
   const { locale, setLocale } = useLocale();
   const t = useT();
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   const choose = (next: Locale) => {
     setLocale(next);
     setOpen(false);
+    triggerRef.current?.focus();
   };
 
   return (
-    <>
+    <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${t('language.title')}: ${LANGUAGE_NAME[locale]}`}
-        // A bare 16px glyph on a phone read as decoration, not a button. It
-        // gets the frame every other icon control in the product has, and a
-        // mark big enough to recognise.
-        className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-stone sm:px-3.5"
+        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-stone sm:size-12"
       >
         <GlobeAltIcon className="size-5" aria-hidden="true" />
-        <span className="hidden sm:inline">{locale.toUpperCase()}</span>
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={t('language.title')}>
-        <div className="grid gap-2 sm:grid-cols-2">
+      {open ? (
+        <div
+          role="group"
+          aria-label={t('language.title')}
+          className="absolute right-0 top-full z-50 mt-4 max-h-[196px] w-52 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-3xl border border-border bg-card p-2 shadow-soft-lg"
+        >
           {LOCALES.map((code) => {
             const selected = code === locale;
             return (
               <button
                 key={code}
                 type="button"
-                onClick={() => choose(code)}
                 aria-pressed={selected}
+                onClick={() => choose(code)}
                 className={cn(
-                  'cursor-pointer rounded-2xl border p-3 text-left transition-colors',
-                  selected ? 'border-primary bg-stone' : 'border-transparent hover:bg-stone',
+                  'flex min-h-11 w-full cursor-pointer items-center justify-between rounded-full px-3 text-left text-sm transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  selected ? 'font-medium text-foreground' : 'text-muted-foreground',
                 )}
               >
-                <span className="block text-sm font-medium">{LANGUAGE_NAME[code]}</span>
-                <span className="block text-xs text-muted-foreground">{REGION[code]}</span>
+                {LANGUAGE_NAME[code]}
+                {selected ? <CheckIcon className="size-4" aria-hidden="true" /> : null}
               </button>
             );
           })}
         </div>
-
-        <p className="mt-5 text-xs leading-relaxed text-muted-foreground">{t('language.note')}</p>
-      </Modal>
-    </>
+      ) : null}
+    </div>
   );
 }

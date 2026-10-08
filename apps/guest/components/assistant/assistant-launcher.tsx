@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Sparkle } from '@phosphor-icons/react/dist/ssr';
 import { useT } from '@/lib/i18n/context';
 import { cn } from '@/lib/utils';
 import { AssistantPanel } from './assistant-panel';
+import { AssistantLauncherVisual } from './assistant-launcher-visual';
 
 interface AssistantLauncherProps {
   /**
@@ -27,7 +27,15 @@ interface AssistantLauncherProps {
 export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLauncherProps) {
   const t = useT();
   const [open, setOpen] = React.useState(false);
+  const [hidden, setHidden] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    const updateVisibility = () => setHidden(document.hidden);
+    updateVisibility();
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
 
   const close = React.useCallback(() => {
     setOpen(false);
@@ -44,26 +52,14 @@ export function AssistantLauncher({ mobileOffset = 'default' }: AssistantLaunche
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          'bg-primary fixed right-3 z-40 flex size-20 scale-100 items-center justify-center rounded-full p-2 shadow-soft-lg outline-none transition-[opacity,scale] duration-200 ease-out hover:scale-105 hover:bg-primary-hover active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          'fixed right-3 z-40 flex size-20 scale-100 cursor-pointer items-center justify-center rounded-full bg-transparent p-2 outline-none transition-[opacity,scale] duration-200 ease-out active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
           mobileOffset === 'above-book-bar'
             ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 lg:bottom-6'
             : 'bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6',
           open && 'pointer-events-none scale-90 opacity-0',
         )}
       >
-        {/* A sparkle, not the orbs: at rest the orbs read as a globe or a
-            loading spinner, and a guest had no way to know this was the
-            assistant. The sparkle is what "AI" looks like now; the orbs stay
-            for the panel's own listening/thinking states, which is the only
-            place the motion exception covers.
-
-            A filled primary disc rather than the frosted glass every other
-            floating control uses: glass over the light canvas read as just
-            another pale circle, and the mark on it barely showed. Reads
-            `text-primary-foreground`, not a literal white, so it stays
-            legible whatever `--primary` resolves to (ink by day, lime by
-            night). */}
-        <Sparkle weight="fill" className="text-primary-foreground size-8" aria-hidden="true" />
+        <AssistantLauncherVisual id="guest-assistant-orb" hidden={hidden || open} />
       </button>
 
       <AssistantPanel open={open} onClose={close} mobileOffset={mobileOffset} />

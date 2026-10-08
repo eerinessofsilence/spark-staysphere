@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
 import { LocaleProvider } from '@/lib/i18n/context';
 import { THEME_BOOTSTRAP } from '@/lib/theme';
+import { PreloaderNavigationProvider } from '@/components/ui/preloader-navigation';
 import './globals.css';
 
 /**
@@ -27,6 +28,7 @@ const accent = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'SPARK StaySphere 360 — Asteria Cove',
   description: 'See the stay. Book the room. A white-label 3D hotel booking experience for Asteria Cove.',
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({
@@ -47,7 +49,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className={`${body.variable} ${accent.variable} bg-background text-foreground antialiased`}>
-        <LocaleProvider>{children}</LocaleProvider>
+        <LocaleProvider><PreloaderNavigationProvider>{children}</PreloaderNavigationProvider></LocaleProvider>
       </body>
     </html>
   );

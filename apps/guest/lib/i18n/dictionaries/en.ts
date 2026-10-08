@@ -35,9 +35,6 @@ export const en = {
   'auth.demoSignInNotice': "This sign-in doesn't create accounts, ask for a password, or send the address you type anywhere.",
 
   'footer.tagline': 'A white-label direct-booking front end for independent hotels.',
-  'footer.disclosurePre':
-    'Asteria Cove is a fictional property. Rates, availability, comparison prices, and payments are simulated — no card data is collected and no reservation is made anywhere. Photographs and 360° captures are licensed stand-ins for the property’s own, credited in',
-  'footer.disclosurePost': '.',
   'footer.copyright': '© {year} Spark StaySphere.',
 
   'language.title': 'Language and region',
@@ -53,8 +50,6 @@ export const en = {
   'search.childrenHint': 'Ages 2–12',
   'search.done': 'Done',
   'search.clearDates': 'Clear dates',
-  'search.pickCheckOut': 'Pick your check-out date.',
-  'search.pickCheckIn': 'Pick your check-in date.',
   'search.searchRooms': 'Search rooms',
   'search.searching': 'Searching…',
   'search.updateStay': 'Update stay',
@@ -388,7 +383,7 @@ export const en = {
   'trips.notMatchCancelError': 'That reference and email do not match a booking we can cancel.',
 
   // AI assistant
-  'assistant.title': 'AI room finder',
+  'assistant.title': 'Room finder',
   'assistant.ariaLabel': 'Find a room by voice or description',
   'assistant.idle': 'Tell me what you are looking for, or use the mic.',
   'assistant.listening': 'Listening — tap the mic again to stop.',

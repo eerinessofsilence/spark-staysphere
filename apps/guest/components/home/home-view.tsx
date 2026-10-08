@@ -224,7 +224,7 @@ export function HomeView({
                   className="text-display max-w-2xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl"
                 >
                   {t('home.closingHeadingStart')}{' '}
-                  <span className="text-accent-italic sm:whitespace-nowrap">{t('home.closingHeadingEnd')}</span>
+                  <span className="text-accent-strong sm:whitespace-nowrap">{t('home.closingHeadingEnd')}</span>
                 </h2>
               </Reveal>
               <p className="max-w-md text-[15px] leading-relaxed text-white/85">{t('home.closingBody')}</p>
