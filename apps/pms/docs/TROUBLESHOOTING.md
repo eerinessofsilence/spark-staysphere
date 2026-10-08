@@ -51,6 +51,12 @@ inside the function that needs them — never cache the result at module scope, 
 
 ## Forms and controls
 
+**The welcome step throws "A React form was unexpectedly submitted".** Do not call
+`form.submit()` from an `onSubmit` handler on a React action form: React replaces its action
+with a guarded URL after hydration. Keep the submission on `useActionState`, as on Sign In.
+The Continue and Skip forms share the action but keep separate fields, so Skip does not send
+the selected interests. Disable both buttons while the action is pending.
+
 **Order-detail hydration differed across time zones.** Do not format timestamps with the host's implicit time zone in an SSR client component. The order page serializes its display labels on the server in the demo property's Europe/Nicosia time zone. Its regression test uses America/New_York in the browser. Order rows and ID links use native document navigation to avoid the vinext superseded-navigation abort path; repeated row clicks are guarded.
 
 **Printing a portalled invoice with `visibility: hidden` leaves the page's layout intact.** The fixed modal, its transforms, and scroll containers can push the invoice down and split it across blank pages. Invoice print CSS removes unrelated elements with `display: none`, flattens ancestors into normal flow, and removes height limits and transforms. Check print media at A4 size as well as the screen preview.
@@ -106,6 +112,56 @@ the immutable item id and date instead; the front-desk allocator uses `demoHash`
 simulated demand and closed-to-sale rooms without changing their nightly totals.
 
 ## Access control
+
+**Hotelier navigation needs hotel IDs as well as slugs.** Keep `availableHotels`'s `id` when
+building property options: role assignments store hotel IDs, while routes and the selection
+cookie use slugs. Resolve the selected property against the member's assigned hotels and send
+Hotelier sign-ins to `/admin/maintenance`; the default Dashboard requires booking permission.
+Maintenance is also available to Owner for all properties. Keep menu visibility separate from
+Hotelier notification subscriptions. Check role, active membership, Hotelier hotel assignment,
+and housekeeping permission again in server actions and protected photo handlers.
+
+**Housekeeper hints belong to the tablet screen.** Housekeeper sign-in opens `/housekeeper`,
+outside the admin shell. Reuse the guided tour with separate steps, replay event, and a
+member-scoped completion key; seeing the admin tour must not suppress staff instructions.
+The repair form and Maintenance list/detail have their own first-use tours. Their headers
+show operational actions, not replay buttons; replay remains available through a direct link.
+Opening a tour screen with `?tour=1` replays its hints even after completion; the parameter is
+removed when the tour starts, so closing a repair form does not restart the room tour.
+Keep the shell tour hidden on Maintenance to avoid overlapping hints. The repair-form tour
+uses a modal popover so the underlying sheet leaves keyboard handling to the hints.
+Set `aria-modal` on that popover and cycle Tab between the hint buttons: Base UI's focus guards
+alone can leave focus on a guard inside the custom sheet. Handle the popover's Escape close
+request explicitly; ignore outside-click close requests so the replay button's click does
+not immediately dismiss a newly opened tour.
+Repair status is read separately from cleaning status and is scoped to the reporter's currently
+assigned rooms. If polling fails, keep the last result with a stale-status message.
+
+**An issue-save error can arrive after the database committed.** Maintenance saves use a
+reporter-and-hotel-scoped idempotency key. Look up that key before deleting uploaded evidence;
+keep it if the database outcome cannot be established. An in-memory fallback cannot stand in
+for durable issue and notification storage.
+
+**Maintenance demo rows are separate from reports.** Development adds labelled examples through
+the process-local mock store. Their status edits reset when the server restarts; their generated,
+labelled sample photos use separate public demo URLs, with no real evidence or notifications.
+Real reports still use durable issue storage and private
+photo storage, and a failed durable read must remain an error rather than a demo fallback.
+
+**Adding maintenance photos must preserve existing evidence.** Use the shared upload dropzone
+with private issue storage, not the public CMS media library. Attachment IDs stay stable for
+an upload retry, while each attempt uses its own object keys so concurrent retries cannot
+overwrite the saved photo. The D1 batch checks capacity before inserting the first attachment;
+never exceed five uploaded photos. On an uncertain commit, read back references before cleaning
+up objects, and retain them if that read fails. Grid thumbnails are fixed circles; detail
+evidence is displayed uncropped in a rectangular frame.
+
+**Replacement approval is separate from fixing an issue.** Persist the request and its Hotelier
+notifications in one D1 batch. A request ID guards notice insertion when submissions race;
+reading the notification does not approve it. Only an active Hotelier assigned to that hotel,
+with housekeeping permission, can approve. Both the service and the D1 status update prevent
+marking an issue fixed while replacement approval is pending. Demo examples retain process-local
+approval state and never send real notifications.
 
 **An editable administrator role must retain the permission that repairs role grants.** If the
 owner can remove `team.permTeamRoles` from itself, the save succeeds and every later role mutation

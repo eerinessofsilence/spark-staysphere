@@ -17,6 +17,7 @@ export function UploadDropzone({
   progress,
   message = "",
   errors = [],
+  compactMobile = false,
 }: {
   onFiles: (files: File[]) => void;
   onLibrary?: () => void;
@@ -27,6 +28,7 @@ export function UploadDropzone({
   progress?: { done: number; total: number } | null;
   message?: string;
   errors?: string[];
+  compactMobile?: boolean;
 }) {
   const t = useAdminT();
   const input = React.useRef<HTMLInputElement>(null);
@@ -36,7 +38,8 @@ export function UploadDropzone({
     <div className="grid min-w-0 gap-3" data-testid="upload-dropzone">
       <div
         className={cn(
-          "rounded-[18px] border-2 border-dashed p-6 text-center transition-colors",
+          "rounded-[18px] border-2 border-dashed text-center transition-colors",
+          compactMobile ? 'p-3 sm:p-6' : 'p-6',
           dragging ? "border-accent bg-accent-soft" : "border-border bg-canvas/40",
         )}
         aria-busy={Boolean(progress)}
@@ -59,10 +62,10 @@ export function UploadDropzone({
       >
         <UploadSimple
           weight="fill"
-          className="mx-auto mb-3 size-7 text-muted-foreground"
+          className={cn('mx-auto mb-3 size-7 text-muted-foreground', compactMobile && 'hidden sm:block')}
           aria-hidden="true"
         />
-        <p className="font-medium">{t("upload.drop")}</p>
+        <p className={cn('font-medium', compactMobile && 'hidden sm:block')}>{t("upload.drop")}</p>
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
         <input
           ref={input}

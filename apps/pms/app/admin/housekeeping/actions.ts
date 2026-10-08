@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { AdminPermissionError, requirePermission } from '@/lib/application/admin-session';
-import { availableHotels, housekeepingService, teamService } from '@/lib/application/container';
+import { availableHotels, catalogService, housekeepingService, maintenanceIssueService, teamService } from '@/lib/application/container';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
 import type { HousekeepingStatus } from '@/lib/domain/schemas';
@@ -37,8 +37,16 @@ export async function setHousekeepingStatusAction(
     throw error;
   }
   const member = await teamService.findMemberById(session.memberId);
-  const selectedSlug = member?.role === 'Housekeeper' && hotelSlug && availableHotels.some((hotel) => hotel.slug === hotelSlug)
-    ? hotelSlug : await getSelectedHotelSlug();
+  let selectedSlug = await getSelectedHotelSlug();
+  if (member?.role === 'Hotelier' && !hotelSlug) return { ok: false, message: t('team.permissionDenied') };
+  if (hotelSlug) {
+    if (!availableHotels.some((hotel) => hotel.slug === hotelSlug)) return { ok: false, message: t('team.permissionDenied') };
+    if (member?.role === 'Hotelier') {
+      const hotel = await catalogService.getHotel(hotelSlug);
+      if (!(await maintenanceIssueService.canManageHotel(member, hotel.id))) return { ok: false, message: t('team.permissionDenied') };
+      selectedSlug = hotelSlug;
+    } else if (member?.role === 'Housekeeper') selectedSlug = hotelSlug;
+  }
   const result = await housekeepingService.setStatus(
     selectedSlug,
     unitId,

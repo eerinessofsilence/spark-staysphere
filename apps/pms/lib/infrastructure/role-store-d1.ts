@@ -15,6 +15,27 @@ export async function createMember(db: D1Database, member: StoredTeamMember): Pr
   return result.meta.changes === 1;
 }
 
+export async function listMemberHotelIds(db: D1Database, memberId: string): Promise<string[]> {
+  await ensureSchema(db);
+  const { results } = await db.prepare('SELECT hotel_id FROM team_member_hotels WHERE member_id = ? ORDER BY hotel_id')
+    .bind(memberId).all<{ hotel_id: string }>();
+  return results.map((row) => row.hotel_id);
+}
+
+export async function hasMemberHotelScope(db: D1Database, memberId: string): Promise<boolean> {
+  await ensureSchema(db);
+  return Boolean(await db.prepare('SELECT member_id FROM team_member_hotel_scopes WHERE member_id = ?').bind(memberId).first());
+}
+
+export async function setMemberHotelIds(db: D1Database, memberId: string, hotelIds: string[]): Promise<void> {
+  await ensureSchema(db);
+  await db.batch([
+    db.prepare('DELETE FROM team_member_hotels WHERE member_id = ?').bind(memberId),
+    db.prepare('INSERT OR IGNORE INTO team_member_hotel_scopes (member_id) VALUES (?)').bind(memberId),
+    ...hotelIds.map((hotelId) => db.prepare('INSERT OR IGNORE INTO team_member_hotels (member_id, hotel_id) VALUES (?, ?)').bind(memberId, hotelId)),
+  ]);
+}
+
 /**
  * D1-backed half of `RoleStore` — custom role definitions, built-in role
  * edits, and member role overrides. Own tables, not columns on an existing one: there is no

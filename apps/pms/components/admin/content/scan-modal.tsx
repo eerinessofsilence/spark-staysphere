@@ -111,6 +111,9 @@ export function ScanModal<TDraft>({
   title,
   intro,
   tour = false,
+  initialMode = 'photo',
+  onCapture,
+  confirmLabel,
   recognize,
   children,
 }: {
@@ -120,12 +123,15 @@ export function ScanModal<TDraft>({
   intro: string;
   /** Offer the 360° tour mode beside the single photo. */
   tour?: boolean;
-  recognize: (file: File, panorama: File | null) => Promise<ScanRecognizeResult<TDraft> & { panoramaUrl?: string | null }>;
-  children: (draft: TDraft, photoUrl: string, retake: () => void, panoramaUrl: string | null) => React.ReactNode;
+  initialMode?: 'photo' | 'tour';
+  onCapture?: (file: File, panorama: File | null) => void;
+  confirmLabel?: string;
+  recognize?: (file: File, panorama: File | null) => Promise<ScanRecognizeResult<TDraft> & { panoramaUrl?: string | null }>;
+  children?: (draft: TDraft, photoUrl: string, retake: () => void, panoramaUrl: string | null) => React.ReactNode;
 }) {
   const t = useAdminT();
   const [step, setStep] = React.useState<Step<TDraft>>({ kind: 'capture' });
-  const [mode, setMode] = React.useState<'photo' | 'tour'>('photo');
+  const [mode, setMode] = React.useState<'photo' | 'tour'>(initialMode);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = React.useState<boolean | null>(null);
@@ -152,6 +158,7 @@ export function ScanModal<TDraft>({
     }
     let cancelled = false;
     setCameraReady(null);
+    if (!navigator.mediaDevices?.getUserMedia) { setCameraReady(false); return; }
     navigator.mediaDevices
       ?.getUserMedia({ video: { facingMode: facing }, audio: false })
       .then((stream) => {
@@ -193,9 +200,9 @@ export function ScanModal<TDraft>({
       if ('panorama' in current && current.panorama) URL.revokeObjectURL(current.panorama.url);
       return { kind: 'capture' };
     });
-    setMode('photo');
+    setMode(initialMode);
     resetTour();
-  }, [open, resetTour]);
+  }, [open, resetTour, initialMode]);
 
   const retake = React.useCallback(() => {
     setStep((current) => {
@@ -376,6 +383,8 @@ export function ScanModal<TDraft>({
   async function runRecognize() {
     if (step.kind !== 'preview') return;
     const { file, url, panorama } = step;
+    if (onCapture) { onCapture(file, panorama?.file ?? null); return; }
+    if (!recognize) return;
     setStep({ kind: 'recognizing', file, url, panorama });
     const result = await recognize(file, panorama?.file ?? null);
     if (!result.ok) {
@@ -418,10 +427,10 @@ export function ScanModal<TDraft>({
           {/* A phone's sheet is short: the intro would push the viewfinder and
               its buttons off the bottom, so there the frame speaks for itself
               and the sentence waits for a tablet with a tall enough screen. */}
-          <p className="hidden text-sm text-muted-foreground sm:block [@media(max-height:520px)]:hidden">
-            {tourActive ? t('scan.tourIntro') : intro}
+          <p className={cn('text-sm text-muted-foreground', !onCapture && 'hidden sm:block [@media(max-height:520px)]:hidden')}>
+            {onCapture ? intro : tourActive ? t('scan.tourIntro') : intro}
           </p>
-          <div className="relative h-[48svh] w-full overflow-hidden rounded-[18px] bg-ink sm:aspect-[4/3] sm:h-auto sm:max-h-[44svh]">
+          <div className={cn('relative w-full overflow-hidden bg-ink sm:aspect-[4/3] sm:h-auto sm:max-h-[44svh]', onCapture ? 'h-[30svh]' : 'h-[48svh] rounded-[18px]')}>
             <video ref={videoRef} autoPlay playsInline muted className={cn('size-full object-cover', facing === 'user' && '-scale-x-100')} />
             {cameraReady === false ? (
               <p className="absolute inset-0 grid place-content-center p-6 text-center text-sm text-white/80">{t('scan.noCamera')}</p>
@@ -456,9 +465,9 @@ export function ScanModal<TDraft>({
           {tourActive ? (
             /* Eight slots, filled left to right as the turn goes round: what is
                in the can and what is still to come, at a glance. */
-            <ol className="grid grid-cols-8 gap-1.5" aria-label={t('scan.tourFrames')}>
+            <ol className="flex flex-wrap gap-1.5" aria-label={t('scan.tourFrames')}>
               {Array.from({ length: TOUR_FRAMES }, (_, index) => (
-                <li key={index} className={cn('aspect-[4/3] overflow-hidden rounded-lg', thumbs[index] ? 'bg-ink' : 'border border-dashed border-border bg-stone/60')}>
+                <li key={index} className={cn('admin-grid-photo', thumbs[index] ? 'bg-ink' : 'border border-dashed border-border bg-stone/60')}>
                   {thumbs[index] ? <img src={thumbs[index]} alt="" className="size-full object-cover" /> : null}
                 </li>
               ))}
@@ -533,16 +542,16 @@ export function ScanModal<TDraft>({
               {/* Draggable, not a flat strip: a 2:1 panorama laid out straight is
                   a ribbon nobody can judge — the desk needs to actually look
                   around it before trusting it into a room's gallery. */}
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[18px] bg-ink sm:aspect-video">
+              <div className="relative aspect-video w-full overflow-hidden bg-ink">
                 <PanoramaViewer key={step.panorama.url} src={step.panorama.url} title={t('scan.tourPreviewTitle')} className="absolute inset-0 size-full" />
               </div>
               <div className="flex items-center gap-3">
-                <img src={step.url} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
+                <img src={step.url} alt="" className="admin-grid-photo" />
                 <p className="text-sm text-muted-foreground">{t('scan.tourReady')}</p>
               </div>
             </>
           ) : (
-            <img src={step.url} alt="" className="h-[48svh] w-full rounded-[18px] object-cover sm:aspect-[4/3] sm:h-auto sm:max-h-[44svh]" />
+            <img src={step.url} alt="" className="aspect-video w-full object-contain sm:max-h-[44svh]" />
           )}
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" disabled={step.kind === 'recognizing'} onClick={retake} className={pill('secondary')}>
@@ -550,13 +559,13 @@ export function ScanModal<TDraft>({
             </button>
             <button type="button" disabled={step.kind === 'recognizing'} onClick={runRecognize} className={pill('primary')}>
               {step.kind === 'recognizing' ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
-              {step.kind === 'recognizing' ? t('scan.recognizing') : t('scan.recognize')}
+              {step.kind === 'recognizing' ? t('scan.recognizing') : confirmLabel ?? t('scan.recognize')}
             </button>
           </div>
         </div>
       ) : null}
 
-      {step.kind === 'draft' ? children(step.draft, step.url, retake, step.panoramaUrl) : null}
+      {step.kind === 'draft' ? children?.(step.draft, step.url, retake, step.panoramaUrl) : null}
     </Modal>
   );
 }

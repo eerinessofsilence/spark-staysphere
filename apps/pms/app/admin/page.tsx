@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { addDays, parseISO } from 'date-fns';
 import { CalendarBlank } from '@phosphor-icons/react/dist/ssr';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
@@ -43,7 +44,7 @@ import { StayMoveButton } from '@/components/admin/operations/stay-move-button';
 import { TodaySearch } from '@/components/admin/operations/today-search';
 import { TableCard, Td, Th } from '@/components/admin/operations/table';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
-import { requirePermission } from '@/lib/application/admin-session';
+import { getAdminMember, requirePermission } from '@/lib/application/admin-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,7 @@ export default async function AdminOverviewPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if ((await getAdminMember())?.role === 'Hotelier') redirect('/admin/maintenance');
   await requirePermission('team.permViewBookings');
   const locale = await getAdminLocale();
   const t = adminT(locale);

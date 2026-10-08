@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { teamService } from '@/lib/application/container';
+import { availableHotels, teamService } from '@/lib/application/container';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { adminPageTitle } from '@/lib/i18n/admin/translate';
 import { AdminPage } from '@/components/admin/shell/admin-page';
@@ -19,7 +19,7 @@ export default async function TeamPage() {
   const canManage = Boolean(actor && await teamService.hasPermission(actor.role, 'team.permTeamRoles'));
   return (
     <AdminPage>
-      <TeamMembers initialMembers={members} roles={roles} canManage={canManage} />
+      <TeamMembers initialMembers={members} roles={roles} hotels={availableHotels.map(({ id, name }) => ({ id, name }))} canManage={canManage} />
     </AdminPage>
   );
 }

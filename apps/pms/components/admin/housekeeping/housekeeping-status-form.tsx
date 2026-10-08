@@ -33,11 +33,13 @@ export function HousekeepingStatusForm({
   status,
   note,
   updatedAt,
+  hotelSlug,
 }: {
   unitId: string;
   status: HousekeepingStatus;
   note: string | null;
   updatedAt: string | null;
+  hotelSlug?: string;
 }) {
   const router = useRouter();
   const t = useAdminT();
@@ -60,7 +62,7 @@ export function HousekeepingStatusForm({
     setPending(true);
     try {
       const photoData = photo ? await prepareHousekeepingPhoto(photo) : null;
-      const result = await setHousekeepingStatusAction(unitId, selected, draftNote, photoData);
+      const result = await setHousekeepingStatusAction(unitId, selected, draftNote, photoData, crypto.randomUUID(), hotelSlug);
       if (result.ok) { toast.success(result.message); router.refresh(); }
       else toast.error(result.message);
     } catch (error) {

@@ -44,6 +44,10 @@ export default defineConfig({
   webServer: {
     command: `npx vite --port ${PORT}`,
     url: baseURL,
+    env: {
+      ...process.env,
+      STAYSPHERE_LOCAL_STATE_PATH: process.env.STAYSPHERE_LOCAL_STATE_PATH ?? `/tmp/staysphere-pms-e2e-${process.pid}`,
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

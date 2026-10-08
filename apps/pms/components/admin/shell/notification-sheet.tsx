@@ -8,9 +8,11 @@ import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
 import { lDateRange, lRelativeTime } from '@/lib/i18n/format';
 import { iconButton, pill } from '@/lib/ui';
 import type { RecentBooking, UnreadConversation } from './notification-bell';
+import type { MaintenanceIssueNotice } from './notification-bell';
 
-export function NotificationSheet({ open, onClose, bookings, rateChanges, conversations, unreadCount }: {
-  open: boolean; onClose: () => void; bookings: RecentBooking[]; rateChanges: RateChangeEvent[]; conversations: UnreadConversation[]; unreadCount: number;
+export function NotificationSheet({ open, onClose, bookings, rateChanges, conversations, unreadCount, maintenanceNotifications, maintenanceEnabled, bookingNotificationsEnabled }: {
+  open: boolean; onClose: () => void; bookings: RecentBooking[]; rateChanges: RateChangeEvent[]; conversations: UnreadConversation[]; unreadCount: number; maintenanceNotifications: MaintenanceIssueNotice[];
+  maintenanceEnabled: boolean; bookingNotificationsEnabled: boolean;
 }) {
   const t = useAdminT();
   const locale = useAdminLocale();
@@ -32,7 +34,8 @@ export function NotificationSheet({ open, onClose, bookings, rateChanges, conver
           </Link>
         </li>)}</ul>
       </section> : null}
-      <section aria-label={t('bell.title')}>
+      {maintenanceNotifications.length > 0 ? <section aria-label={t('nav.maintenance')} className="mb-5"><h3 className="mb-2 px-3 text-sm font-semibold">{t('nav.maintenance')}</h3><ul className="grid gap-1">{maintenanceNotifications.map((notice) => <li key={notice.id}><Link href={notice.href} onClick={onClose} className={rowClass}><BellIcon className="mt-1 size-5 shrink-0 text-accent" aria-hidden="true" /><span className="min-w-0 flex-1"><span className="flex items-baseline justify-between gap-2"><span className="truncate text-sm font-semibold">{notice.title}</span><span className="shrink-0 text-xs text-muted-foreground">{lRelativeTime(notice.createdAt, locale)}</span></span><span className="mt-1 block text-sm text-muted-foreground">{notice.message}</span></span></Link></li>)}</ul></section> : null}
+      {bookingNotificationsEnabled ? <section aria-label={t('bell.title')}>
         <h3 className="mb-2 px-3 text-sm font-semibold">{t('bell.title')}</h3>
         {bookings.length === 0 ? <p className="px-3 py-4 text-sm text-muted-foreground">{t('bell.empty')}</p> : <ul className="grid gap-1">{bookings.map((booking) => <li key={booking.reference}>
           <Link href={`/admin/bookings/${booking.reference}`} onClick={onClose} className={rowClass}>
@@ -40,10 +43,11 @@ export function NotificationSheet({ open, onClose, bookings, rateChanges, conver
             <span className="min-w-0 flex-1"><span className="flex items-baseline justify-between gap-2"><span className="truncate text-sm font-semibold">{booking.guestName}</span><span className="shrink-0 text-xs text-muted-foreground">{lRelativeTime(booking.createdAt, locale)}</span></span><span className="mt-1 block text-sm text-muted-foreground">{booking.roomName}</span><span className="mt-1 block text-xs text-muted-foreground">{lDateRange(booking.checkIn, booking.checkOut, locale)}</span></span>
           </Link>
         </li>)}</ul>}
-      </section>
+      </section> : null}
     </div>
     <footer className="flex shrink-0 flex-wrap gap-2 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <Link href="/admin/bookings" onClick={onClose} className={pill('primary', 'flex-1 text-center')}>{t('bell.seeAll')}</Link>
+      {maintenanceEnabled ? <Link href="/admin/maintenance" onClick={onClose} className={pill('primary', 'flex-1 text-center')}>{t('maintenance.showAll')}</Link> : null}
+      {bookingNotificationsEnabled ? <Link href="/admin/bookings" onClick={onClose} className={pill(maintenanceEnabled ? 'secondary' : 'primary', 'flex-1 text-center')}>{t('bell.seeAll')}</Link> : null}
       {conversations.length > 0 ? <Link href="/admin/communications" onClick={onClose} className={pill('secondary', 'flex-1 text-center')}>{t('bell.seeAllMessages')}</Link> : null}
     </footer>
   </Modal>;

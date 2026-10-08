@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PencilSquareIcon, TableCellsIcon } from '@heroicons/react/24/outline';
-import { housekeepingService } from '@/lib/application/container';
+import { availableHotels, catalogService, housekeepingService, maintenanceIssueService } from '@/lib/application/container';
+import { getAdminMember } from '@/lib/application/admin-session';
 import { findMemberById } from '@/lib/application/team-directory';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
@@ -18,13 +19,28 @@ import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page'
 
 export const dynamic = 'force-dynamic';
 
-async function loadRoom(id: string) {
-  return housekeepingService.getRoom(await getSelectedHotelSlug(), decodeURIComponent(id), toIsoDate(new Date()));
+async function loadRoom(id: string, requestedSlug?: string) {
+  let slug = await getSelectedHotelSlug();
+  const member = await getAdminMember();
+  if (member?.role === 'Hotelier') {
+    const desiredSlug = requestedSlug ?? slug;
+    const option = desiredSlug
+      ? availableHotels.find((hotel) => hotel.slug === desiredSlug && member.hotelIds?.includes(hotel.id))
+      : availableHotels.find((hotel) => member.hotelIds?.includes(hotel.id));
+    const assignedOption = option ?? availableHotels.find((hotel) => member.hotelIds?.includes(hotel.id));
+    if (!assignedOption) return { room: null, slug };
+    const hotel = await catalogService.getHotel(assignedOption.slug);
+    if (!(await maintenanceIssueService.canManageHotel(member, hotel.id))) return { room: null, slug: assignedOption.slug };
+    slug = assignedOption.slug;
+  } else if (requestedSlug && availableHotels.some((hotel) => hotel.slug === requestedSlug) && (member?.role === 'Housekeeper' || member?.role === 'Owner')) {
+    slug = requestedSlug;
+  }
+  return { room: await housekeepingService.getRoom(slug, decodeURIComponent(id), toIsoDate(new Date())), slug };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const [{ id }, locale] = await Promise.all([params, getAdminLocale()]);
-  const room = await loadRoom(id);
+  const { room } = await loadRoom(id);
   return { title: adminPageTitle(adminT(locale), room ? lRoomNumber(room.unit.number, locale) : id) };
 }
 
@@ -43,9 +59,10 @@ export default async function HousekeepingRoomPage({
 }) {
   const [{ id }, locale, sp] = await Promise.all([params, getAdminLocale(), searchParams]);
   const t = adminT(locale);
-  const room = await loadRoom(id);
+  const requestedSlug = first(sp.hotel);
+  const { room, slug } = await loadRoom(id, requestedSlug);
   if (!room) notFound();
-  const allEvents = await housekeepingService.listEvents(await getSelectedHotelSlug(), room.unit.id);
+  const allEvents = await housekeepingService.listEvents(slug, room.unit.id);
 
   const memberFilter = first(sp.member) ?? null;
   const rawFrom = first(sp.from);
@@ -72,6 +89,7 @@ export default async function HousekeepingRoomPage({
   const basePath = `/admin/housekeeping/${id}`;
   function hrefFor(page?: number, pageSize?: number): string {
     const urlParams = new URLSearchParams();
+    urlParams.set('hotel', slug);
     if (memberFilter) urlParams.set('member', memberFilter);
     if (from) { urlParams.set('from', from); urlParams.set('to', to ?? from); }
     if (page && page > 1) urlParams.set('page', String(page));
@@ -94,6 +112,7 @@ export default async function HousekeepingRoomPage({
           status={room.status}
           note={room.note}
           updatedAt={room.updatedAt}
+          hotelSlug={slug}
         />
 
         <div className="rounded-[18px] bg-card p-5 shadow-soft sm:p-6">

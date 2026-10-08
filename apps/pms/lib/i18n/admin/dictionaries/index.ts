@@ -8,6 +8,7 @@ import { content } from './content';
 import { dashboard } from './dashboard';
 import { frontDesk } from './frontDesk';
 import { housekeeping } from './housekeeping';
+import { maintenance } from './maintenance';
 import { onboarding } from './onboarding';
 import { operations } from './operations';
 import { orders } from './orders';
@@ -31,6 +32,7 @@ import { guestImport } from './guestImport';
  *   and `components/admin/channel-manager`
  * - `communications` — the guest inbox (`/admin/communications`) and `components/admin/communications`
  * - `housekeeping` — the cleaning board and each room's own page, with `components/admin/housekeeping`
+ * - `maintenance` — Hotelier issue lists, details, status actions, and hotel access messages
  * - `content` — the CMS's rooms and physical rooms, and the form components every CMS editor
  *   shares (`content-form`, `fields`, `delete-entity-button`, `row-actions`, media and photo editors)
  * - `catalog` — the CMS's add-ons, rate form and hotel settings
@@ -52,6 +54,7 @@ function merge<L extends AdminLocale>(locale: L) {
     ...orders[locale],
     ...frontDesk[locale],
     ...housekeeping[locale],
+    ...maintenance[locale],
     ...communications[locale],
     ...content[locale],
     ...catalog[locale],

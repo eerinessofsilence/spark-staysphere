@@ -6,6 +6,8 @@ import type { StoredTeamMember } from '../domain/team-member';
 
 const roleDefinitions = new Map<string, TeamRoleDefinition>();
 const memberRoleOverrides = new Map<string, string>();
+const memberHotelIds = new Map<string, string[]>();
+const memberHotelScopes = new Set<string>();
 const members = new Map<string, StoredTeamMember>();
 
 const roleStore: RoleStore = {
@@ -15,6 +17,9 @@ const roleStore: RoleStore = {
     members.set(member.id, member);
     return true;
   },
+  async listMemberHotelIds(memberId) { return memberHotelIds.get(memberId) ?? []; },
+  async hasMemberHotelScope(memberId) { return memberHotelScopes.has(memberId); },
+  async setMemberHotelIds(memberId, hotelIds) { memberHotelScopes.add(memberId); memberHotelIds.set(memberId, [...hotelIds]); },
   async listRoleDefinitions() {
     return [...roleDefinitions.values()];
   },
@@ -49,6 +54,8 @@ describe('TeamService custom roles', () => {
     members.clear();
     roleDefinitions.clear();
     memberRoleOverrides.clear();
+    memberHotelIds.clear();
+    memberHotelScopes.clear();
   });
 
   it('creates a durable active member and resolves sign-in email and role overrides', async () => {
@@ -58,9 +65,17 @@ describe('TeamService custom roles', () => {
     if (!result.ok) return;
     const reloaded = new TeamService(roleStore);
     expect(await reloaded.findMemberByEmail('NEW@example.com')).toMatchObject({ name: 'New User', status: 'active' });
-    expect(await reloaded.listMembers()).toHaveLength(7);
+    expect(await reloaded.listMembers()).toHaveLength(8);
     await reloaded.setMemberRole(result.member.id, 'Content editor');
     expect(await reloaded.findMemberById(result.member.id)).toMatchObject({ role: 'Content editor' });
+  });
+
+  it('persists hotel-scoped membership for a Hotelier', async () => {
+    const service = new TeamService(roleStore);
+    const result = await service.createMember({ name: 'Hotelier', email: 'hotel@example.com', role: 'Hotelier', hotelIds: ['hotel-1'] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(await service.findMemberById(result.member.id)).toMatchObject({ role: 'Hotelier', hotelIds: ['hotel-1'] });
   });
 
   it('validates user input and refuses seed, stored and concurrent duplicate emails', async () => {

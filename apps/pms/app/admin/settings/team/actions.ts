@@ -5,6 +5,7 @@ import { AdminPermissionError, requirePermission } from '@/lib/application/admin
 import { teamService } from '@/lib/application/container';
 import { teamPermissionKeySchema, type TeamPermissionKey, type TeamRoleDefinition } from '@/lib/domain/schemas';
 import { getAdminT } from '@/lib/i18n/admin/server';
+import { availableHotels } from '@/lib/application/container';
 
 export interface TeamActionResult {
   ok: boolean;
@@ -16,11 +17,14 @@ export interface CreateRoleResult extends TeamActionResult {
   role?: TeamRoleDefinition;
 }
 
-export async function createMemberAction(input: { name: string; email: string; role: string }) {
+export async function createMemberAction(input: { name: string; email: string; role: string; hotelIds?: string[] }) {
   const t = await getAdminT();
   const denied = await requireRolePermission();
   if (denied) return { ...denied, member: undefined };
-  const result = await teamService.createMember(input);
+  const hotelIds = [...new Set(input.hotelIds ?? [])];
+  if (hotelIds.some((id) => !availableHotels.some((hotel) => hotel.id === id))) return { ok: false, message: 'Invalid hotel assignment.', member: undefined };
+  if (input.role === 'Hotelier' && hotelIds.length === 0) return { ok: false, message: 'Назначьте Hotelier хотя бы одному отелю.', member: undefined };
+  const result = await teamService.createMember({ ...input, hotelIds: input.role === 'Hotelier' ? hotelIds : [] });
   if (!result.ok) {
     const keys = { nameRequired: 'team.userNameRequired', emailInvalid: 'team.emailInvalid', duplicate: 'team.alreadyOnTeam', roleNotFound: 'team.roleNotFound' } as const;
     return { ok: false, message: t(keys[result.error]), member: undefined };
@@ -125,4 +129,16 @@ export async function setMemberRoleAction(memberId: string, roleId: string): Pro
   revalidatePath('/admin/settings/team');
   revalidatePath('/admin/settings/team/[id]', 'page');
   return { ok: true, message: t('team.roleUpdated') };
+}
+
+export async function setMemberHotelsAction(memberId: string, hotelIds: string[]): Promise<TeamActionResult> {
+  const t = await getAdminT();
+  const denied = await requireRolePermission();
+  if (denied) return denied;
+  const selected = [...new Set(hotelIds)];
+  if (selected.some((id) => !availableHotels.some((hotel) => hotel.id === id))) return { ok: false, message: 'Invalid hotel assignment.' };
+  if (!(await teamService.setMemberHotels(memberId, selected))) return { ok: false, message: t('team.memberNotFound') };
+  revalidatePath('/admin/settings/team');
+  revalidatePath('/admin/settings/team/[id]', 'page');
+  return { ok: true, message: 'Hotel access updated.' };
 }

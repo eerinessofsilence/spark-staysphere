@@ -1,6 +1,6 @@
 'use server';
 
-import { requireBackOfficeSession, requirePermission } from '@/lib/application/admin-session';
+import { getAdminMember, requireBackOfficeSession, requirePermission } from '@/lib/application/admin-session';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { availableHotels, contentService, DEMO_HOTEL_SLUG, demoControl, sampleBookingService, sampleDocumentService } from '@/lib/application/container';
@@ -85,7 +85,10 @@ export async function resetDemoState(): Promise<void> {
 /** Switches which seed hotel `/admin` reads and writes through — see `hotel-context.ts`. */
 export async function setSelectedHotelAction(slug: string): Promise<void> {
   await requireBackOfficeSession();
-  if (!availableHotels.some((hotel) => hotel.slug === slug)) return;
+  const hotel = availableHotels.find((hotel) => hotel.slug === slug);
+  if (!hotel) return;
+  const member = await getAdminMember();
+  if (member?.role === 'Hotelier' && !member.hotelIds?.includes(hotel.id)) return;
   const store = await cookies();
   store.set(SELECTED_HOTEL_COOKIE, slug, { path: '/admin', maxAge: 60 * 60 * 24 * 365 });
   // The sidebar's own hotel name/location come from app/admin/layout.tsx, which

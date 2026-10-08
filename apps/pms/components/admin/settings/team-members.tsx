@@ -16,7 +16,7 @@ import { TeamTabs } from './team-tabs';
 import { CreateUser } from './create-user';
 import { initialsOf, roleLabel, type TeamMember, type TeamRole } from './team-data';
 
-export function TeamMembers({ initialMembers, roles, canManage }: { initialMembers: TeamMember[]; roles: TeamRoleDefinition[]; canManage: boolean }) {
+export function TeamMembers({ initialMembers, roles, hotels, canManage }: { initialMembers: TeamMember[]; roles: TeamRoleDefinition[]; hotels: Array<{ id: string; name: string }>; canManage: boolean }) {
   const t = useAdminT();
   const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
   const [page, setPage] = React.useState(1);
@@ -69,7 +69,7 @@ export function TeamMembers({ initialMembers, roles, canManage }: { initialMembe
             <PlusIcon className="size-4" aria-hidden="true" />
             {t('team.invite')}
           </button>
-          <CreateUser roles={roles} onCreated={(member, message) => {
+          <CreateUser roles={roles} hotels={hotels} onCreated={(member, message) => {
             setMembers((current) => [member, ...current.filter((existing) => existing.email !== member.email)]);
             setPage(1);
             setStatus(message);

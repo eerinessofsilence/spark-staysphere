@@ -18,9 +18,11 @@ import { roleLabel, type TeamMember } from "./team-data";
 
 export function CreateUser({
   roles,
+  hotels,
   onCreated,
 }: {
   roles: TeamRoleDefinition[];
+  hotels: Array<{ id: string; name: string }>;
   onCreated: (member: TeamMember, message: string) => void;
 }) {
   const t = useAdminT();
@@ -30,6 +32,7 @@ export function CreateUser({
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState("Front desk");
+  const [hotelIds, setHotelIds] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
   const lock = React.useRef(false);
   const [error, setError] = React.useState("");
@@ -44,7 +47,7 @@ export function CreateUser({
     setBusy(true);
     setError("");
     try {
-      const result = await createMemberAction({ name, email, role });
+      const result = await createMemberAction({ name, email, role, hotelIds });
       if (!result.ok || !result.member) {
         setError(result.message);
         return;
@@ -54,6 +57,7 @@ export function CreateUser({
       setName("");
       setEmail("");
       setRole("Front desk");
+      setHotelIds([]);
     } catch {
       setError(t("team.userFailed"));
     } finally {
@@ -131,6 +135,13 @@ export function CreateUser({
               </SelectContent>
             </Select>
           </div>
+          {role === 'Hotelier' ? <fieldset className="grid gap-2">
+            <legend className="text-sm font-medium">Доступ к отелям</legend>
+            {hotels.map((hotel) => <label key={hotel.id} className="flex min-h-10 items-center gap-3 text-sm">
+              <input type="checkbox" checked={hotelIds.includes(hotel.id)} disabled={busy} onChange={(event) => setHotelIds((current) => event.target.checked ? [...current, hotel.id] : current.filter((id) => id !== hotel.id))} />
+              {hotel.name}
+            </label>)}
+          </fieldset> : null}
           {error ? (
             <p role="alert" className="text-sm text-danger">
               {error}

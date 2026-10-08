@@ -3,7 +3,7 @@ import type { TeamPermissionKey } from '../domain/schemas';
 export type { TeamPermissionKey };
 
 /**
- * Who can sign in to the back office. Demo data, the same five people the
+ * Who can sign in to the back office. Demo data, the same team members the
  * team screen lists (`components/admin/settings/team-data.ts` re-exports
  * this) — a real deployment replaces it with an identity provider behind
  * the same two calls, `findMemberByEmail` and `findMemberById`, which is
@@ -12,8 +12,8 @@ export type { TeamPermissionKey };
  * `team-service.ts`).
  */
 
-/** The five seeded role ids. Their default names and permissions live here, while `TeamService` overlays edits saved from `/admin/settings/team`. */
-export const teamRoles = ['Owner', 'General manager', 'Revenue manager', 'Front desk', 'Content editor', 'Housekeeper'] as const;
+/** The seeded role ids. Their default names and permissions live here, while `TeamService` overlays edits saved from `/admin/settings/team`. */
+export const teamRoles = ['Owner', 'General manager', 'Revenue manager', 'Front desk', 'Content editor', 'Housekeeper', 'Hotelier'] as const;
 
 export type BuiltinTeamRole = (typeof teamRoles)[number];
 
@@ -37,6 +37,8 @@ export interface TeamMember {
   lastActive: TeamLastActiveKey;
   /** Added from the invite dialog in this browser; never sent anywhere. */
   demoInvite?: boolean;
+  /** Properties this member is explicitly assigned to for hotel-scoped workflows. */
+  hotelIds?: string[];
 }
 
 export const demoMembers: TeamMember[] = [
@@ -88,6 +90,15 @@ export const demoMembers: TeamMember[] = [
     status: 'active',
     lastActive: 'team.notSignedIn',
   },
+  {
+    id: 'hotelier-demo',
+    name: 'Alexia Georgiou',
+    email: 'hotelier@asteriacove.example',
+    role: 'Hotelier',
+    status: 'active',
+    lastActive: 'team.notSignedIn',
+    hotelIds: ['hotel_asteria'],
+  },
 ];
 
 /** Case and surrounding whitespace never decide whether an address is on the team. */
@@ -125,7 +136,7 @@ export const permissions: { key: TeamPermissionKey; allowed: BuiltinTeamRole[] }
   { key: 'team.permBrandDomain', allowed: ['Owner', 'General manager'] },
   { key: 'team.permTeamRoles', allowed: ['Owner'] },
   { key: 'team.permIntegrations', allowed: ['Owner', 'General manager'] },
-  { key: 'team.permHousekeeping', allowed: ['Owner', 'General manager', 'Front desk', 'Housekeeper'] },
+  { key: 'team.permHousekeeping', allowed: ['Owner', 'General manager', 'Front desk', 'Housekeeper', 'Hotelier'] },
 ];
 
 /** Built-in roles only — a custom role's own `permissions` array answers this directly, see `TeamService.hasPermission`. */
@@ -133,7 +144,7 @@ export function hasBuiltinPermission(role: BuiltinTeamRole, key: TeamPermissionK
   return permissions.find((permission) => permission.key === key)?.allowed.includes(role) ?? false;
 }
 
-/** The dictionary key for one of the five seeded roles — `null` for a custom role, which shows its own name instead. */
+/** The dictionary key for a translated built-in role — `null` when it displays its stored name. */
 export function builtinRoleKey(role: TeamRole): `role.${'owner' | 'generalManager' | 'revenueManager' | 'frontDesk' | 'contentEditor'}` | null {
   switch (role as BuiltinTeamRole) {
     case 'Owner':

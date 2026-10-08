@@ -17,6 +17,18 @@ export const durableRoleStore: RoleStore = {
     const db = getDemoDatabase();
     return db ? d1.createMember(db, member) : mockRoleStore.createMember(member);
   },
+  listMemberHotelIds(memberId) {
+    const db = getDemoDatabase();
+    return db ? d1.listMemberHotelIds(db, memberId) : mockRoleStore.listMemberHotelIds(memberId);
+  },
+  hasMemberHotelScope(memberId) {
+    const db = getDemoDatabase();
+    return db ? d1.hasMemberHotelScope(db, memberId) : mockRoleStore.hasMemberHotelScope(memberId);
+  },
+  setMemberHotelIds(memberId, hotelIds) {
+    const db = getDemoDatabase();
+    return db ? d1.setMemberHotelIds(db, memberId, hotelIds) : mockRoleStore.setMemberHotelIds(memberId, hotelIds);
+  },
   listRoleDefinitions() {
     const db = getDemoDatabase();
     return db ? d1.listRoleDefinitions(db) : mockRoleStore.listRoleDefinitions();

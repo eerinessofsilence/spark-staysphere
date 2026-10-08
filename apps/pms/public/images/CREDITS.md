@@ -1,6 +1,6 @@
 # Photo credits
 
-Every photograph in this directory is from [Unsplash](https://unsplash.com) under the
+Catalog photographs in this directory are from [Unsplash](https://unsplash.com) under the
 [Unsplash License](https://unsplash.com/license) (free for commercial use, no attribution
 required — credited here anyway). Files are stored locally so the product never depends on an
 external image host at runtime. Asteria Cove is fictional; these are photographs of other places
@@ -64,6 +64,34 @@ used as demo stand-ins and must be replaced with the real property's photography
 `lib/infrastructure/mock-data.ts`); they are dishes cooked elsewhere, standing in until the
 property photographs its own. None shows a legible commercial label, so no real producer is
 presented as the hotel's own.
+
+## Maintenance demo attachments
+
+`/images/maintenance/air-conditioning-demo.png` was generated with OpenAI's built-in imagegen
+tool on 8 October 2026. Prompt: a natural smartphone photograph of a malfunctioning hotel-room
+split air conditioner with a broken lower louver and condensation leaking down the wall, no
+people, brands, hotel identifiers or added text. It is an explicitly labelled illustration for
+the first demo maintenance issue, not evidence of a real incident or an uploaded staff photo.
+
+The remaining demo issues also have their own locally stored PNG images generated with the
+built-in imagegen tool on 8 October 2026. Shared prompt: one square, natural smartphone photo
+of the specified hotel maintenance item, practical housekeeping-report framing, ordinary pale
+hotel interior and daylight, no people, hotel names, brands, watermarks or added annotations.
+Resolved examples show the serviced item. All are labelled demo illustrations, not real evidence.
+
+| File under `/images/maintenance/` | Subject in the generation prompt |
+|---|---|
+| `sink-leak-demo.png` | Sink drain pipe leaking at a loose joint inside an open cabinet |
+| `reading-light-demo.png` | Unlit worn bedside reading lamp, switch and mounting plate visible |
+| `wardrobe-hinge-demo.png` | Loose wardrobe hinge with a backed-out screw and sagging door |
+| `shower-drain-demo.png` | Blocked shower drain with standing water on the tiled floor |
+| `tv-signal-demo.png` | Hotel television showing a no-signal symbol |
+| `balcony-handle-demo.png` | Misaligned balcony-door handle with a loose mounting plate |
+| `ac-filter-demo.png` | Clean air-conditioner filter under its opened cover after servicing |
+| `shower-hose-demo.png` | Newly fitted shower hose with dry, secure connections |
+| `socket-demo.png` | Loose cracked desk socket faceplate with an unplugged charger nearby |
+| `luggage-rack-demo.png` | Unstable luggage rack with a loose hinge and hanging strap |
+| `wifi-access-point-demo.png` | Newly fitted Wi-Fi access point with a green status LED |
 
 ## 360° panoramas
 

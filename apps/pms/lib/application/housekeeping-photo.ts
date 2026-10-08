@@ -8,18 +8,41 @@ export class HousekeepingPhotoError extends Error {
 }
 
 /** Downsize camera images before upload or offline storage; D1 keeps a compact evidence copy. */
-export async function prepareHousekeepingPhoto(file: File): Promise<string> {
+export async function prepareHousekeepingPhoto(file: File, maxDimension = 1200): Promise<string> {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new HousekeepingPhotoError('invalid_type');
-  const image = await createImageBitmap(file).catch(() => { throw new HousekeepingPhotoError('decode_failed'); });
-  const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
+  let source: CanvasImageSource;
+  let width: number;
+  let height: number;
+  let close: () => void;
+  try {
+    const bitmap = await createImageBitmap(file);
+    source = bitmap; width = bitmap.width; height = bitmap.height; close = () => bitmap.close();
+  } catch {
+    // Use the same platform-decoder fallback as the room photo uploader on iOS.
+    const url = URL.createObjectURL(file);
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new HousekeepingPhotoError('decode_failed'));
+        element.src = url;
+      });
+      source = image; width = image.naturalWidth; height = image.naturalHeight; close = () => URL.revokeObjectURL(url);
+    } catch (error) { URL.revokeObjectURL(url); throw error; }
+  }
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * scale);
-  canvas.height = Math.round(image.height * scale);
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
   const context = canvas.getContext('2d');
-  if (!context) { image.close(); throw new HousekeepingPhotoError('processing_failed'); }
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  image.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.7));
+  if (!context) { close(); throw new HousekeepingPhotoError('processing_failed'); }
+  try { context.drawImage(source, 0, 0, canvas.width, canvas.height); }
+  finally { close(); }
+  let blob: Blob | null = null;
+  for (const quality of [0.7, 0.55, 0.4]) {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob && blob.size <= 700_000) break;
+  }
   if (!blob || blob.size > 700_000) throw new HousekeepingPhotoError('too_large');
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Broom } from '@phosphor-icons/react/dist/ssr';
-import { housekeepingService, teamService } from '@/lib/application/container';
+import { availableHotels, catalogService, housekeepingService, maintenanceIssueService, teamService } from '@/lib/application/container';
 import { getAdminMember } from '@/lib/application/admin-session';
 import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
 import { toIsoDate } from '@/lib/application/search-params';
@@ -64,12 +64,20 @@ export default async function HousekeepingPage({
   const pageSize = parsePageSize(params.pageSize);
   const today = toIsoDate(new Date());
 
-  const hotelSlug = await getSelectedHotelSlug();
-  const [rooms, assignments, staff, currentMember] = await Promise.all([
+  const [currentMember, requestedSlug] = await Promise.all([getAdminMember(), getSelectedHotelSlug()]);
+  let hotelSlug = requestedSlug;
+  if (currentMember?.role === 'Hotelier') {
+    const option = availableHotels.find((hotel) => hotel.slug === requestedSlug && currentMember.hotelIds?.includes(hotel.id))
+      ?? availableHotels.find((hotel) => currentMember.hotelIds?.includes(hotel.id));
+    if (!option) return <AdminPage><p className="mt-8 text-sm text-muted-foreground">No hotel is assigned to this account.</p></AdminPage>;
+    const hotel = await catalogService.getHotel(option.slug);
+    if (!(await maintenanceIssueService.canManageHotel(currentMember, hotel.id))) return <AdminPage><p className="mt-8 text-sm text-muted-foreground">No hotel is assigned to this account.</p></AdminPage>;
+    hotelSlug = option.slug;
+  }
+  const [rooms, assignments, staff] = await Promise.all([
     housekeepingService.listRooms(hotelSlug, today),
     housekeepingService.listAssignments(hotelSlug),
     teamService.listMembers(),
-    getAdminMember(),
   ]);
   const canAssign = currentMember ? await teamService.hasPermission(currentMember.role, 'team.permTeamRoles') : false;
   const assignedByUnit = new Map(assignments.map((assignment) => [assignment.unitId, assignment.memberId]));
@@ -166,7 +174,7 @@ export default async function HousekeepingPage({
                       ) : null}
                     </Td>
                     <Td className="relative z-10">
-                      <HousekeepingStatusMenu unitId={room.unit.id} status={room.status} note={room.note} />
+                      <HousekeepingStatusMenu unitId={room.unit.id} status={room.status} note={room.note} hotelSlug={hotelSlug} />
                       {room.note ? <span className="mt-1 block max-w-64 truncate text-xs text-muted-foreground">{room.note}</span> : null}
                     </Td>
                     <Td>

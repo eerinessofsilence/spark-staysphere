@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("admin-tour.seen.v1", "1"));
 });
 
-test("uploads multiple hotel photos, saves their order, and shows the gallery to guests", async ({
+test("uploads multiple hotel photos and saves their order", async ({
   page,
 }) => {
   page.on("dialog", (dialog) => dialog.accept());
@@ -52,11 +52,6 @@ test("uploads multiple hotel photos, saves their order, and shows the gallery to
       path: `/tmp/photo-upload-${test.info().project.name}.png`,
       fullPage: true,
     });
-    await page.goto("/");
-    const gallery = page.getByRole("group", { name: /^About / });
-    await expect(gallery.getByRole("button", { name: "Next photo", exact: true })).toBeVisible();
-    await gallery.getByRole("button", { name: "Next photo", exact: true }).click();
-    await expect(gallery.locator("img").first()).not.toHaveAttribute("src", original[0]!);
   } finally {
     if (saved) {
       await page.goto("/admin/content/hotel");

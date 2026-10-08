@@ -25,6 +25,7 @@ import { durableDemoControlPort, durableHotelRepository } from '../infrastructur
 import { durableHousekeepingStore } from '../infrastructure/durable-housekeeping-store';
 import { durableMessagingStore } from '../infrastructure/durable-messaging-store';
 import { mockOrderStore } from '../infrastructure/orders-store-mock';
+import { mockMaintenanceIssueStore } from '../infrastructure/maintenance-issue-store-mock';
 import { loggingOutboundMessenger } from '../infrastructure/logging-outbound-messenger';
 import { createResendOutboundMessenger } from '../infrastructure/resend-outbound-messenger';
 import { durableRoleStore } from '../infrastructure/durable-role-store';
@@ -63,6 +64,8 @@ import { GuestDocumentService } from './guest-document-service';
 import { GuestImportService } from './guest-import-service';
 import { guestDocumentStore } from '../infrastructure/guest-document-store';
 import { privateDocumentStorage } from '../infrastructure/private-document-storage';
+import { durableMaintenanceIssueStore } from '../infrastructure/durable-maintenance-issue-store';
+import { MaintenanceIssueService } from './maintenance-issue-service';
 import { getCronSecret } from '../infrastructure/cloudflare-env';
 
 /**
@@ -93,7 +96,8 @@ export const DEMO_HOTEL_SLUG = 'asteria-cove';
  * show. The guest site stays pinned to `DEMO_HOTEL_SLUG`; only `/admin`
  * reads the switcher's current pick (see `hotel-context.ts`).
  */
-export const availableHotels: Array<Pick<Hotel, 'slug' | 'name' | 'location'>> = demoHotels.map((hotel) => ({
+export const availableHotels: Array<Pick<Hotel, 'id' | 'slug' | 'name' | 'location'>> = demoHotels.map((hotel) => ({
+  id: hotel.id,
   slug: hotel.slug,
   name: hotel.name,
   location: hotel.location,
@@ -125,6 +129,17 @@ export const housekeepingService = new HousekeepingService(
   catalogService,
   inventoryService,
   systemClock,
+);
+
+export const maintenanceIssueService = new MaintenanceIssueService(
+  durableMaintenanceIssueStore,
+  privateDocumentStorage,
+  catalogService,
+  hotelRepository,
+  housekeepingService,
+  teamService,
+  systemClock,
+  () => process.env.NODE_ENV !== 'production' ? mockMaintenanceIssueStore : null,
 );
 
 /** Arrivals/departures/in-house reports, and the frozen ones the "Generated" tab lists — see `reports-service.ts`. */

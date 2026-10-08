@@ -22,11 +22,12 @@ import {
   UserCircleIcon,
   RectangleGroupIcon,
   UserGroupIcon,
-  PuzzlePieceIcon,
+  ShareIcon,
   ShoppingBagIcon,
   TableCellsIcon,
   TagIcon,
   XMarkIcon,
+  WrenchScrewdriverIcon,
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { Menu } from '@base-ui/react/menu';
@@ -55,6 +56,7 @@ interface NavItem {
   label: AdminTranslationKey;
   icon: typeof HomeIcon;
   permission: TeamPermissionKey;
+  maintenanceOnly?: boolean;
 }
 
 interface NavGroup {
@@ -75,6 +77,7 @@ const groups: NavGroup[] = [
       { href: '/admin/groups', label: 'nav.groups', icon: RectangleGroupIcon, permission: 'team.permViewBookings' },
       { href: '/admin/communications', label: 'nav.communications', icon: ChatBubbleLeftRightIcon, permission: 'team.permViewBookings' },
       { href: '/admin/housekeeping', label: 'nav.housekeeping', icon: CheckBadgeIcon, permission: 'team.permHousekeeping' },
+      { href: '/admin/maintenance', label: 'nav.maintenance', icon: WrenchScrewdriverIcon, permission: 'team.permHousekeeping', maintenanceOnly: true },
     ],
   },
   {
@@ -83,7 +86,7 @@ const groups: NavGroup[] = [
       { href: '/admin/content', label: 'nav.rooms', icon: DocumentTextIcon, permission: 'team.permEditContent' },
       { href: '/admin/content/add-ons', label: 'nav.services', icon: ShoppingBagIcon, permission: 'team.permEditContent' },
       { href: '/admin/rates', label: 'nav.roomRates', icon: TagIcon, permission: 'team.permEditRates' },
-      { href: '/admin/channel-manager', label: 'nav.channelManager', icon: PuzzlePieceIcon, permission: 'team.permIntegrations' },
+      { href: '/admin/channel-manager', label: 'nav.channelManager', icon: ShareIcon, permission: 'team.permIntegrations' },
       { href: '/admin/content/hotel', label: 'nav.hotelSettings', icon: BuildingOffice2Icon, permission: 'team.permBrandDomain' },
     ],
   },
@@ -126,11 +129,11 @@ function activeHref(pathname: string): string | null {
   return best;
 }
 
-export function AdminNav({ onNavigate, permissions }: { onNavigate?: () => void; permissions: TeamPermissionKey[] }) {
+export function AdminNav({ onNavigate, permissions, maintenanceEnabled = false }: { onNavigate?: () => void; permissions: TeamPermissionKey[]; maintenanceEnabled?: boolean }) {
   const active = activeHref(usePathname() ?? '');
   const t = useAdminT();
   const badges = useAdminBadges();
-  const visibleGroups = groups.map((group) => ({ ...group, items: group.items.filter((item) => permissions.includes(item.permission)) })).filter((group) => group.items.length > 0);
+  const visibleGroups = groups.map((group) => ({ ...group, items: group.items.filter((item) => permissions.includes(item.permission) && (!item.maintenanceOnly || maintenanceEnabled)) })).filter((group) => group.items.length > 0);
 
   return (
     <nav data-tour="nav" aria-label={t('nav.admin')} className="grid gap-0.5">
@@ -370,6 +373,7 @@ export function AccountMenu({ member, onNavigate }: { member: AccountMember; onN
 export function AdminMobileMenu({
   member,
   permissions,
+  maintenanceEnabled = false,
   hotelName,
   location,
   hotels,
@@ -377,6 +381,7 @@ export function AdminMobileMenu({
 }: {
   member: AccountMember;
   permissions: TeamPermissionKey[];
+  maintenanceEnabled?: boolean;
   hotelName: string;
   location: string;
   hotels: HotelOption[];
@@ -430,7 +435,7 @@ export function AdminMobileMenu({
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
           <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           <div className="mt-4">
-            <AdminNav onNavigate={navigate} permissions={permissions} />
+            <AdminNav onNavigate={navigate} permissions={permissions} maintenanceEnabled={maintenanceEnabled} />
           </div>
         </div>
 

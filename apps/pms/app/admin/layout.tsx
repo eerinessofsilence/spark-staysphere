@@ -9,6 +9,8 @@ import { adminT } from '@/lib/i18n/admin/translate';
 import { AdminShell } from '@/components/admin/shell/admin-shell';
 import type { RecentBooking, UnreadConversation } from '@/components/admin/shell/notification-bell';
 import { AdminServiceUnavailable } from '@/components/admin/shell/admin-service-unavailable';
+import { signOutAction } from '@/app/(auth)/admin/actions';
+import { pill } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +31,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <AdminServiceUnavailable locale={await getAdminLocale()} />;
   }
   if (!session) redirect('/admin/sign-in');
-  if (!session.onboarded) redirect('/admin/welcome');
   let member;
   try {
     member = await teamService.findMemberById(session.memberId);
@@ -40,10 +41,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   if (!member) redirect('/admin/sign-in');
   if (member.role === 'Housekeeper') redirect('/housekeeper');
+  if (!session.onboarded && member.role !== 'Hotelier') redirect('/admin/welcome');
 
-  const [selectedSlug, locale, permissions] = await Promise.all([
+  const [requestedSlug, locale, permissions] = await Promise.all([
     getSelectedHotelSlug(), getAdminLocale(), teamService.permissionsForRole(member.role),
   ]);
+  const isHotelier = member.role === 'Hotelier';
+  const hotelierHotels = availableHotels.filter((hotelOption) => member.hotelIds?.includes(hotelOption.id));
+  if (isHotelier && hotelierHotels.length === 0) {
+    const t = adminT(locale);
+    return <AdminLocaleProvider locale={locale}>
+      <main className="mx-auto grid min-h-[70dvh] max-w-xl content-center gap-3 px-5" lang={locale}>
+        <h1 className="text-2xl font-semibold">{t('maintenance.hotelRequired')}</h1>
+        <p className="text-muted-foreground">{t('maintenance.hotelRequiredBody')}</p>
+        <form action={signOutAction}><button type="submit" className={pill('secondary')}>{t('session.signOut')}</button></form>
+      </main>
+    </AdminLocaleProvider>;
+  }
+  const selectedSlug = isHotelier
+    ? (hotelierHotels.find((hotelOption) => hotelOption.slug === requestedSlug)?.slug ?? hotelierHotels[0]!.slug)
+    : requestedSlug;
   let hotel;
   let roles;
   try {
@@ -57,10 +74,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // the critical path for every admin page, and let whichever summaries load
   // continue to work if a nonessential data source is temporarily unavailable.
   const summaries = await Promise.allSettled([
-    hotelRepository.listBookings({ hotelId: hotel.id, limit: RECENT_BOOKINGS_LIMIT }),
-    communicationsService.listConversations(selectedSlug, RECENT_BOOKINGS_LIMIT),
-    communicationsService.countUnreadConversations(selectedSlug),
-    hotelRepository.listRooms(hotel.id),
+    permissions.includes('team.permViewBookings') ? hotelRepository.listBookings({ hotelId: hotel.id, limit: RECENT_BOOKINGS_LIMIT }) : Promise.resolve([]),
+    permissions.includes('team.permViewBookings') ? communicationsService.listConversations(selectedSlug, RECENT_BOOKINGS_LIMIT) : Promise.resolve([]),
+    permissions.includes('team.permViewBookings') ? communicationsService.countUnreadConversations(selectedSlug) : Promise.resolve(0),
+    permissions.includes('team.permViewBookings') ? hotelRepository.listRooms(hotel.id) : Promise.resolve([]),
     subscriptionService.getAccount(session.memberId),
   ]);
   const summaryNames = ['recent bookings', 'conversations', 'unread count', 'rooms', 'subscription'] as const;
@@ -75,7 +92,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const messageHotelSlugs = [...new Set([selectedSlug, DEMO_HOTEL_SLUG])];
   const messageFeeds = [{ hotelSlug: selectedSlug, conversations }];
   let unreadMessagesCount = summaries[2].status === 'fulfilled' ? summaries[2].value : 0;
-  if (selectedSlug !== DEMO_HOTEL_SLUG) {
+  if (permissions.includes('team.permViewBookings') && selectedSlug !== DEMO_HOTEL_SLUG) {
     try {
       const guestSiteConversations = await communicationsService.listConversations(DEMO_HOTEL_SLUG, RECENT_BOOKINGS_LIMIT);
       messageFeeds.push({ hotelSlug: DEMO_HOTEL_SLUG, conversations: guestSiteConversations });
@@ -109,10 +126,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         subscriptionNow={Date.now()}
         locale={locale}
         member={{ name: member.name, roleLabel: roleLabel(member.role, roles, adminT(locale)) }}
+        maintenanceEnabled={member.role === 'Owner' || member.role === 'Hotelier'}
+        maintenanceNotificationsEnabled={member.role === 'Hotelier'}
         permissions={permissions}
         hotelName={hotel.name}
         location={hotel.location}
-        hotels={availableHotels}
+        hotels={isHotelier ? hotelierHotels.map((option) => ({ ...option, location: availableHotels.find((hotelOption) => hotelOption.id === option.id)?.location ?? '' })) : availableHotels}
         selectedSlug={selectedSlug}
         messageHotelSlugs={messageHotelSlugs}
         recentBookings={recentBookings}

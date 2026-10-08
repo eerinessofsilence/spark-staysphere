@@ -10,6 +10,8 @@ import type { StoredTeamMember } from '../domain/team-member';
 const roleDefinitions = new Map<string, TeamRoleDefinition>();
 const memberRoleOverrides = new Map<string, string>();
 const members = new Map<string, StoredTeamMember>();
+const memberHotels = new Map<string, string[]>();
+const memberHotelScopes = new Set<string>();
 
 export const mockRoleStore: RoleStore = {
   async listMembers() { return [...members.values()]; },
@@ -18,6 +20,9 @@ export const mockRoleStore: RoleStore = {
     members.set(member.id, member);
     return true;
   },
+  async listMemberHotelIds(memberId) { return memberHotels.get(memberId) ?? []; },
+  async hasMemberHotelScope(memberId) { return memberHotelScopes.has(memberId); },
+  async setMemberHotelIds(memberId, hotelIds) { memberHotelScopes.add(memberId); memberHotels.set(memberId, [...hotelIds]); },
   async listRoleDefinitions() {
     return [...roleDefinitions.values()];
   },

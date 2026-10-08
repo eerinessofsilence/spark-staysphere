@@ -18,6 +18,7 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
   const member = await teamService.findMemberById(session.memberId);
   if (!member) redirect('/admin/sign-in');
   if (member.role === 'Housekeeper') redirect('/housekeeper');
+  if (member.role === 'Hotelier') redirect('/admin/maintenance');
 
   const t = await getAdminT();
   const rawNext = (await searchParams).next;

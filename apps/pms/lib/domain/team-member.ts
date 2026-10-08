@@ -4,4 +4,5 @@ export interface StoredTeamMember {
   name: string;
   email: string;
   role: string;
+  hotelIds?: string[];
 }

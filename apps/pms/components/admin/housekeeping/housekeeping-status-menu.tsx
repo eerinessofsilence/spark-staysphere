@@ -23,10 +23,12 @@ export function HousekeepingStatusMenu({
   unitId,
   status,
   note,
+  hotelSlug,
 }: {
   unitId: string;
   status: HousekeepingStatus;
   note: string | null;
+  hotelSlug?: string;
 }) {
   const router = useRouter();
   const t = useAdminT();
@@ -34,7 +36,7 @@ export function HousekeepingStatusMenu({
 
   const move = async (next: HousekeepingStatus) => {
     setPending(true);
-    const result = await setHousekeepingStatusAction(unitId, next, note ?? '');
+    const result = await setHousekeepingStatusAction(unitId, next, note ?? '', null, crypto.randomUUID(), hotelSlug);
     setPending(false);
     if (result.ok) {
       toast.success(result.message);

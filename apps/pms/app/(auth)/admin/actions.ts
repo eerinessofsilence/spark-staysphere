@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   clearAdminSession,
   getAdminSession,
+  getAdminMember,
   INTEREST_ROUTES,
   isAdminInterest,
   signIn,
@@ -53,7 +54,10 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
       return { error: 'unavailable' };
     }
     if (!session) return { error: 'failed' };
-    if (session.onboarded) redirect('/housekeeper');
+    if (session.onboarded) {
+      const member = await getAdminMember();
+      redirect(member?.role === 'Hotelier' ? '/admin/maintenance' : '/housekeeper');
+    }
   } finally {
     endRequest(clientKey);
   }
@@ -74,6 +78,12 @@ function safeNext(value: FormDataEntryValue | null): string | null {
 export async function saveInterestsAction(formData: FormData): Promise<void> {
   const session = await getAdminSession();
   if (!session) redirect('/admin/sign-in');
+
+  const member = await getAdminMember();
+  if (member?.role === 'Hotelier') {
+    await writeAdminSession({ ...session, interests: [], onboarded: true });
+    redirect('/admin/maintenance');
+  }
 
   const picked = formData.getAll('interests').filter(isAdminInterest);
   // Same order as the picker, whatever order the boxes were ticked in.

@@ -11,7 +11,7 @@ import {
   type AccountMember,
 } from './admin-nav';
 import { AdminAssistantLauncher } from '../assistant/admin-assistant-launcher';
-import { AdminTour } from '../onboarding/admin-tour';
+import { AdminShellTour } from '../onboarding/admin-tour';
 import { NotificationBell, type RecentBooking, type UnreadConversation } from './notification-bell';
 import { AdminThemeToggle } from './admin-theme-toggle';
 import { AdminBadgesProvider } from './admin-badges';
@@ -31,6 +31,8 @@ interface AdminShellProps {
   locale: AdminLocale;
   /** Who is signed in — the account row at the foot of the sidebar, and the menu that signs them out. */
   member: AccountMember;
+  maintenanceEnabled: boolean;
+  maintenanceNotificationsEnabled: boolean;
   permissions: TeamPermissionKey[];
   hotelName: string;
   location: string;
@@ -45,7 +47,7 @@ interface AdminShellProps {
   children: ReactNode;
 }
 
-export function AdminShell({ subscriptionAccount, subscriptionNow, locale, member, permissions, hotelName, location, hotels, selectedSlug, messageHotelSlugs, recentBookings, rateChanges, unreadConversations, unreadMessagesCount, children }: AdminShellProps) {
+export function AdminShell({ subscriptionAccount, subscriptionNow, locale, member, maintenanceEnabled, maintenanceNotificationsEnabled, permissions, hotelName, location, hotels, selectedSlug, messageHotelSlugs, recentBookings, rateChanges, unreadConversations, unreadMessagesCount, children }: AdminShellProps) {
   const unreadMessages = unreadMessagesCount;
   return (
     <SubscriptionProvider account={subscriptionAccount} now={subscriptionNow}>
@@ -57,14 +59,14 @@ export function AdminShell({ subscriptionAccount, subscriptionNow, locale, membe
             <AdminBrand />
             <div className="flex items-center gap-1">
               <AdminThemeToggle />
-              <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} rateChanges={rateChanges} rateNotificationsEnabled={permissions.includes('team.permEditRates')} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
+              <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} bookingNotificationsEnabled={permissions.includes('team.permViewBookings')} rateChanges={rateChanges} rateNotificationsEnabled={permissions.includes('team.permEditRates')} maintenanceNotificationsEnabled={maintenanceNotificationsEnabled} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
             </div>
           </div>
           <div className="mt-3">
             <PropertyCard hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           </div>
           <div className="no-scrollbar mt-5 min-h-0 flex-1 overflow-y-auto">
-            <AdminNav permissions={permissions} />
+            <AdminNav permissions={permissions} maintenanceEnabled={maintenanceEnabled} />
           </div>
           <div className="mt-3 shrink-0">
             <AdminFeaturedNav permissions={permissions} />
@@ -80,8 +82,8 @@ export function AdminShell({ subscriptionAccount, subscriptionNow, locale, membe
           <div className="flex h-14 items-center gap-2 rounded-full bg-card pr-2 pl-3 shadow-soft">
             <AdminBrand />
             <div className="min-w-0 flex-1" />
-            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} rateChanges={rateChanges} rateNotificationsEnabled={permissions.includes('team.permEditRates')} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
-            <AdminMobileMenu member={member} permissions={permissions} hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
+            <NotificationBell hotelSlug={selectedSlug} bookings={recentBookings} bookingNotificationsEnabled={permissions.includes('team.permViewBookings')} rateChanges={rateChanges} rateNotificationsEnabled={permissions.includes('team.permEditRates')} maintenanceNotificationsEnabled={maintenanceNotificationsEnabled} conversations={unreadConversations} unreadMessagesCount={unreadMessagesCount} />
+            <AdminMobileMenu member={member} permissions={permissions} maintenanceEnabled={maintenanceEnabled} hotelName={hotelName} location={location} hotels={hotels} selectedSlug={selectedSlug} />
           </div>
         </div>
         <SubscriptionNotice />
@@ -89,9 +91,11 @@ export function AdminShell({ subscriptionAccount, subscriptionNow, locale, membe
       </div>
       <UnsavedChangesGuard />
       <AdminAssistantLauncher />
-      <AdminTour />
-      <NewBookingNotifier hotelSlug={selectedSlug} initialReferences={recentBookings.map((booking) => booking.reference)} />
-      <NewMessageNotifier hotelSlugs={messageHotelSlugs} initialConversations={unreadConversations} />
+      <AdminShellTour />
+      {permissions.includes('team.permViewBookings') ? <>
+        <NewBookingNotifier hotelSlug={selectedSlug} initialReferences={recentBookings.map((booking) => booking.reference)} />
+        <NewMessageNotifier hotelSlugs={messageHotelSlugs} initialConversations={unreadConversations} />
+      </> : null}
       <Toaster />
     </div>
     </AdminBadgesProvider>

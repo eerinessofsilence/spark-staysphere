@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { usePathname } from 'next/navigation';
 import { Popover } from '@base-ui/react/popover';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useAdminT } from '@/lib/i18n/admin/context';
@@ -16,17 +17,17 @@ const START_DELAY = 700;
 // localStorage can throw — private window, blocked site data, a cross-origin
 // iframe. A tour that cannot remember it was seen should play again, not
 // crash the back office. Same rationale as `notification-bell.tsx`.
-function alreadySeen(): boolean {
+function alreadySeen(storageKey: string): boolean {
   try {
-    return window.localStorage.getItem(TOUR_STORAGE_KEY) === '1';
+    return window.localStorage.getItem(storageKey) === '1';
   } catch {
     return false;
   }
 }
 
-function remember(): void {
+function remember(storageKey: string): void {
   try {
-    window.localStorage.setItem(TOUR_STORAGE_KEY, '1');
+    window.localStorage.setItem(storageKey, '1');
   } catch {
     // Not remembered — it plays again next time, which is the harmless way to fail.
   }
@@ -80,14 +81,13 @@ function cutout(rect: DOMRect, radius: number, pad: number): string {
  * card at a time, pointing at the thing it describes, with everything else
  * dimmed — the shape every product tour has settled on.
  *
- * Mounted once in `AdminShell`, so the steps can point at the shell's own
- * furniture from whichever screen the admin happened to land on. Which steps
- * play is decided from what is actually on screen (see `tour-steps.ts`), and
- * "seen" is remembered in this browser rather than server side, because
- * there is no per-user session yet — the same documented gap the
- * notification bell lives with (CLAUDE.md: auth is future work).
+ * Each screen can supply its own targets and a member-specific storage key.
+ * The shell keeps the original default steps and storage key. Only targets
+ * present in the current layout play, so the same tour works on a phone.
  */
-export function AdminTour() {
+export function AdminTour({ tourSteps = TOUR_STEPS, storageKey = TOUR_STORAGE_KEY, startEvent = TOUR_START_EVENT, modal = false }: {
+  tourSteps?: TourStep[]; storageKey?: string; startEvent?: string; modal?: boolean;
+} = {}) {
   const t = useAdminT();
   const [mounted, setMounted] = React.useState(false);
   const [steps, setSteps] = React.useState<TourStep[]>([]);
@@ -98,27 +98,35 @@ export function AdminTour() {
   React.useEffect(() => setMounted(true), []);
 
   const start = React.useCallback(() => {
-    const playable = TOUR_STEPS.filter((step) => targetOf(step) !== null);
-    if (playable.length === 0) return;
+    const playable = tourSteps.filter((step) => targetOf(step) !== null);
+    if (playable.length === 0) return false;
     setIndex(0);
     setSteps(playable);
-  }, []);
+    return true;
+  }, [tourSteps]);
 
   const finish = React.useCallback(() => {
     setSteps([]);
     setIndex(0);
-    remember();
-  }, []);
+    remember(storageKey);
+  }, [storageKey]);
 
   // First run, plus the replay from `/admin/account` — one listener either way.
   React.useEffect(() => {
-    window.addEventListener(TOUR_START_EVENT, start);
-    const timer = alreadySeen() ? null : window.setTimeout(start, START_DELAY);
+    window.addEventListener(startEvent, start);
+    const replayUrl = new URL(window.location.href);
+    const replay = replayUrl.searchParams.get('tour') === '1';
+    const timer = !replay && alreadySeen(storageKey) ? null : window.setTimeout(() => {
+      if (start() && replay) {
+        replayUrl.searchParams.delete('tour');
+        window.history.replaceState(window.history.state, '', replayUrl);
+      }
+    }, START_DELAY);
     return () => {
-      window.removeEventListener(TOUR_START_EVENT, start);
+      window.removeEventListener(startEvent, start);
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [start]);
+  }, [start, startEvent, storageKey]);
 
   const step = steps[index] ?? null;
 
@@ -196,7 +204,9 @@ export function AdminTour() {
         document.body,
       )}
 
-      <Popover.Root open modal={false}>
+      <Popover.Root open modal={modal} onOpenChange={(open, details) => {
+        if (!open && details.reason === 'escape-key') finish();
+      }}>
         <Popover.Portal>
           <Popover.Positioner
             anchor={anchor}
@@ -206,7 +216,17 @@ export function AdminTour() {
             collisionPadding={16}
             className="z-[80] outline-none"
           >
-            <Popover.Popup className="w-[min(21rem,calc(100vw-2rem))] rounded-[18px] border border-border bg-card p-5 text-foreground shadow-soft-lg outline-none">
+            <Popover.Popup aria-modal={modal || undefined} onKeyDown={(event) => {
+              if (!modal || event.key !== 'Tab') return;
+              const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+              const first = buttons[0];
+              const last = buttons[buttons.length - 1];
+              if (!first || !last) return;
+              if (event.shiftKey ? document.activeElement === first : document.activeElement === last) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+              }
+            }} className="w-[min(21rem,calc(100vw-2rem))] rounded-[18px] border border-border bg-card p-5 text-foreground shadow-soft-lg outline-none">
               <div className="flex items-start justify-between gap-3">
                 <Popover.Title className="text-display text-lg">{t(step.title)}</Popover.Title>
                 <button
@@ -252,4 +272,9 @@ export function AdminTour() {
       </Popover.Root>
     </>
   );
+}
+
+export function AdminShellTour() {
+  const pathname = usePathname() ?? '';
+  return pathname.startsWith('/admin/maintenance') ? null : <AdminTour />;
 }

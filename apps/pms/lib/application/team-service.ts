@@ -55,7 +55,7 @@ export type SetMemberRoleError = 'memberNotFound' | 'roleNotFound';
 export class TeamService {
   constructor(private readonly roles: RoleStore) {}
 
-  async createMember(input: { name: string; email: string; role: string }): Promise<
+  async createMember(input: { name: string; email: string; role: string; hotelIds?: string[] }): Promise<
     { ok: true; member: TeamMember } | { ok: false; error: 'nameRequired' | 'emailInvalid' | 'duplicate' | 'roleNotFound' }
   > {
     const name = input.name.trim();
@@ -64,8 +64,10 @@ export class TeamService {
     if (!z.email().max(254).safeParse(email).success) return { ok: false, error: 'emailInvalid' };
     if (!(await this.listRoles()).some((role) => role.id === input.role)) return { ok: false, error: 'roleNotFound' };
     if (await this.findMemberByEmail(email)) return { ok: false, error: 'duplicate' };
-    const member: TeamMember = { id: `member-${crypto.randomUUID()}`, name, email, role: input.role, status: 'active', lastActive: 'team.notSignedIn' };
+    const hotelIds = [...new Set(input.hotelIds ?? [])];
+    const member: TeamMember = { id: `member-${crypto.randomUUID()}`, name, email, role: input.role, status: 'active', lastActive: 'team.notSignedIn', hotelIds };
     if (!(await this.roles.createMember({ id: member.id, name, email, role: member.role }))) return { ok: false, error: 'duplicate' };
+    if (hotelIds.length) await this.roles.setMemberHotelIds(member.id, hotelIds);
     return { ok: true, member };
   }
 
@@ -127,17 +129,23 @@ export class TeamService {
     const stored = (await this.roles.listMembers()).find((candidate) => candidate.id === id);
     const member: TeamMember | null = findBuiltinMemberById(id) ?? (stored ? { ...stored, status: 'active', lastActive: 'team.notSignedIn' } : null);
     if (!member) return null;
-    const override = await this.roles.getMemberRoleOverride(id);
-    return override ? { ...member, role: override } : member;
+    const [override, storedHotelIds, hasHotelScope] = await Promise.all([this.roles.getMemberRoleOverride(id), this.roles.listMemberHotelIds(id), this.roles.hasMemberHotelScope(id)]);
+    return { ...member, ...(override ? { role: override } : {}), hotelIds: hasHotelScope ? storedHotelIds : (member.hotelIds ?? []) };
   }
 
   /** Seeded and created accounts, with their current role overrides applied. */
   async listMembers(): Promise<TeamMember[]> {
     const created: TeamMember[] = (await this.roles.listMembers()).map((member) => ({ ...member, status: 'active', lastActive: 'team.notSignedIn' }));
     return Promise.all([...demoMembers, ...created].map(async (member) => {
-      const role = await this.roles.getMemberRoleOverride(member.id);
-      return role ? { ...member, role } : member;
+      const [role, hotelIds, hasHotelScope] = await Promise.all([this.roles.getMemberRoleOverride(member.id), this.roles.listMemberHotelIds(member.id), this.roles.hasMemberHotelScope(member.id)]);
+      return { ...member, ...(role ? { role } : {}), hotelIds: hasHotelScope ? hotelIds : (member.hotelIds ?? []) };
     }));
+  }
+
+  async setMemberHotels(memberId: string, hotelIds: string[]): Promise<boolean> {
+    if (!(await this.findMemberById(memberId))) return false;
+    await this.roles.setMemberHotelIds(memberId, [...new Set(hotelIds)]);
+    return true;
   }
 
   async findMemberByEmail(email: string): Promise<TeamMember | null> {

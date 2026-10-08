@@ -244,7 +244,7 @@ export async function signIn(email: string, password: string): Promise<AdminSess
   const session: AdminSession = {
     memberId: member.id,
     interests: [],
-    onboarded: member.role === 'Housekeeper',
+    onboarded: member.role === 'Housekeeper' || member.role === 'Hotelier',
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
   await writeAdminSession(session);

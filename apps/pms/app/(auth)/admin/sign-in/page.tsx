@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getAdminSession } from '@/lib/application/admin-session';
+import { getAdminMember, getAdminSession } from '@/lib/application/admin-session';
 import { adminAuthConfig } from '@/lib/application/container';
 import { demoMembers } from '@/lib/application/team-directory';
 import { getAdminT } from '@/lib/i18n/admin/server';
@@ -16,7 +16,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SignInPage() {
   // Already in: straight on to wherever they were headed, never a second door.
   const session = await getAdminSession();
-  if (session) redirect(session.onboarded ? '/admin' : '/admin/welcome');
+  if (session) {
+    const member = await getAdminMember();
+    if (member?.role === 'Housekeeper') redirect('/housekeeper');
+    if (member?.role === 'Hotelier') redirect('/admin/maintenance');
+    redirect(session.onboarded ? '/admin' : '/admin/welcome');
+  }
 
   const t = await getAdminT();
   const { demo, password } = adminAuthConfig();

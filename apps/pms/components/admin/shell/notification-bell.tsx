@@ -11,6 +11,16 @@ import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 import { NotificationSheet } from './notification-sheet';
 
+export interface MaintenanceIssueNotice {
+  id: string;
+  issueId: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  href: string;
+}
+
 export interface RecentBooking {
   reference: string;
   guestName: string;
@@ -68,6 +78,8 @@ export function NotificationBell({
   rateNotificationsEnabled = false,
   conversations = [],
   unreadMessagesCount,
+  maintenanceNotificationsEnabled = false,
+  bookingNotificationsEnabled = true,
 }: {
   hotelSlug: string;
   bookings: RecentBooking[];
@@ -75,6 +87,8 @@ export function NotificationBell({
   rateNotificationsEnabled?: boolean;
   conversations?: UnreadConversation[];
   unreadMessagesCount?: number;
+  maintenanceNotificationsEnabled?: boolean;
+  bookingNotificationsEnabled?: boolean;
 }) {
   const [unseenBookings, setUnseenBookings] = React.useState(0);
   const [unseenRates, setUnseenRates] = React.useState(0);
@@ -85,8 +99,10 @@ export function NotificationBell({
   const [visibleBookings, setVisibleBookings] = React.useState(INITIAL_VISIBLE_BOOKINGS);
   const [liveConversations, setLiveConversations] = React.useState(conversations);
   const [liveUnreadCount, setLiveUnreadCount] = React.useState(unreadMessagesCount ?? conversations.reduce((sum, c) => sum + c.unread, 0));
+  const [maintenanceNotifications, setMaintenanceNotifications] = React.useState<MaintenanceIssueNotice[]>([]);
+  const unseenMaintenance = maintenanceNotifications.filter((item) => !item.readAt).length;
   const unreadMessages = liveUnreadCount;
-  const unseenCount = unseenBookings + unseenRates + unreadMessages;
+  const unseenCount = unseenBookings + unseenRates + unreadMessages + unseenMaintenance;
   const locale = useAdminLocale();
   const t = useAdminT();
 
@@ -121,6 +137,22 @@ export function NotificationBell({
   }, [hotelSlug, rateNotificationsEnabled]);
 
   React.useEffect(() => {
+    if (!maintenanceNotificationsEnabled) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/admin/maintenance-notifications?hotel=all', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json() as { notifications: MaintenanceIssueNotice[] };
+        if (active) setMaintenanceNotifications(data.notifications);
+      } catch { /* Retain persistent notices already loaded. */ }
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 15_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [maintenanceNotificationsEnabled]);
+
+  React.useEffect(() => {
     setLiveConversations(conversations);
     setLiveUnreadCount(unreadMessagesCount ?? conversations.reduce((sum, conversation) => sum + conversation.unread, 0));
   }, [conversations, unreadMessagesCount]);
@@ -151,11 +183,11 @@ export function NotificationBell({
       <BellIcon className="size-5" aria-hidden="true" />
       {unseenCount > 0 ? <span aria-hidden="true" className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">{unseenCount > 9 ? '9+' : unseenCount}</span> : null}
     </button>
-    <NotificationSheet open={mobileOpen} onClose={() => setMobileOpen(false)} bookings={bookings} rateChanges={liveRateChanges} conversations={liveConversations} unreadCount={unreadMessages} />
+    <NotificationSheet open={mobileOpen} onClose={() => setMobileOpen(false)} bookings={bookings} rateChanges={liveRateChanges} conversations={liveConversations} unreadCount={unreadMessages} maintenanceNotifications={maintenanceNotifications} maintenanceEnabled={maintenanceNotificationsEnabled} bookingNotificationsEnabled={bookingNotificationsEnabled} />
     <Menu.Root modal={false} onOpenChange={onOpenChange}>
       <Menu.Trigger
         data-tour="bell"
-        aria-label={unseenCount > 0 ? t('bell.newTotal', { count: unseenCount }) : t('bell.reservations')}
+        aria-label={unseenCount > 0 ? t('bell.newTotal', { count: unseenCount }) : t('bell.notifications')}
         className={cn(iconButton('light'), 'relative hidden lg:inline-flex')}
       >
         <BellIcon className="size-5" aria-hidden="true" />
@@ -170,7 +202,15 @@ export function NotificationBell({
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="start" sideOffset={8} className="z-50 outline-none">
-          <Menu.Popup className="max-h-[min(80dvh,40rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+        <Menu.Popup className="max-h-[min(80dvh,40rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-soft outline-none">
+            {maintenanceNotifications.length > 0 ? <>
+              <p className="px-3 py-2 text-sm font-medium">{t('nav.maintenance')}</p>
+              {maintenanceNotifications.slice(0, 5).map((notice) => <Menu.LinkItem key={notice.id} render={<Link href={notice.href} />} closeOnClick className="flex min-h-11 w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left outline-none select-none data-highlighted:bg-stone">
+                <span className="flex items-baseline justify-between gap-2 text-sm font-medium"><span className="truncate">{notice.title}</span><span className="shrink-0 text-xs font-normal text-muted-foreground">{lRelativeTime(notice.createdAt, locale)}</span></span>
+                <span className="truncate text-xs text-muted-foreground">{notice.message}</span>
+              </Menu.LinkItem>)}
+              <div className="my-1.5 border-t border-border" role="separator" />
+            </> : null}
             {liveRateChanges.length > 0 ? <>
               <p className="px-3 py-2 text-sm font-medium">Rate changes</p>
               {liveRateChanges.slice(0, 5).map((change) => <Menu.LinkItem key={change.id} render={<Link href="/admin/rates" />} closeOnClick className="flex min-h-11 w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left outline-none select-none data-highlighted:bg-stone">
@@ -214,6 +254,11 @@ export function NotificationBell({
                 <div className="my-1.5 border-t border-border" role="separator" />
               </>
             ) : null}
+            {maintenanceNotificationsEnabled ? <Menu.LinkItem render={<Link href="/admin/maintenance" />} closeOnClick
+              className="mt-1 flex min-h-10 w-full items-center justify-center rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none select-none data-highlighted:bg-stone data-highlighted:text-foreground">
+              {t('maintenance.showAll')}
+            </Menu.LinkItem> : null}
+            {bookingNotificationsEnabled ? <>
             <p className="px-3 py-2 text-sm font-medium">{t('bell.title')}</p>
             {bookings.length === 0 ? (
               <p className="px-3 pb-3 text-sm text-muted-foreground">{t('bell.empty')}</p>
@@ -256,6 +301,7 @@ export function NotificationBell({
             >
               {t('bell.seeAll')}
             </Menu.LinkItem>
+            </> : null}
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

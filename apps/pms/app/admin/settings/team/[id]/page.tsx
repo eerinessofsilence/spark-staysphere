@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { teamService } from '@/lib/application/container';
+import { availableHotels, teamService } from '@/lib/application/container';
 import { getAdminT } from '@/lib/i18n/admin/server';
 import { adminPageTitle } from '@/lib/i18n/admin/translate';
 import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
@@ -32,7 +32,7 @@ export default async function TeamMemberPage({ params }: { params: Promise<{ id:
         description={member.email}
       />
       <div className="mt-8">
-        <TeamMemberEditor member={member} roles={roles} />
+        <TeamMemberEditor member={member} roles={roles} hotels={availableHotels.map(({ id, name }) => ({ id, name }))} />
       </div>
     </AdminPage>
   );

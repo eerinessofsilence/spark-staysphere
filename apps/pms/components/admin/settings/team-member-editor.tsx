@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { CheckCircle, EnvelopeSimple } from '@phosphor-icons/react/dist/ssr';
-import { setMemberRoleAction } from '@/app/admin/settings/team/actions';
+import { setMemberHotelsAction, setMemberRoleAction } from '@/app/admin/settings/team/actions';
 import type { TeamRoleDefinition } from '@/lib/domain/schemas';
 import { useAdminT } from '@/lib/i18n/admin/context';
 import { fieldClass, pill } from '@/lib/ui';
@@ -22,7 +22,7 @@ import { initialsOf, roleLabel, type TeamMember, type TeamRole } from './team-da
  * so it gets its own "Save role" and its own outcome, not folded into the
  * profile's demo-only note.
  */
-export function TeamMemberEditor({ member, roles }: { member: TeamMember; roles: TeamRoleDefinition[] }) {
+export function TeamMemberEditor({ member, roles, hotels }: { member: TeamMember; roles: TeamRoleDefinition[]; hotels: Array<{ id: string; name: string }> }) {
   const router = useRouter();
   const t = useAdminT();
   const [memberFirstName, memberLastName] = member.name.split(' ');
@@ -35,6 +35,9 @@ export function TeamMemberEditor({ member, roles }: { member: TeamMember; roles:
   const [savingRole, setSavingRole] = React.useState(false);
   const [roleMessage, setRoleMessage] = React.useState('');
   const [roleError, setRoleError] = React.useState(false);
+  const [hotelIds, setHotelIds] = React.useState<string[]>(member.hotelIds ?? []);
+  const [savingHotels, setSavingHotels] = React.useState(false);
+  const [hotelMessage, setHotelMessage] = React.useState('');
 
   const initials = initialsOf(`${firstName} ${lastName}`.trim() || member.name);
   const dirty = (setter: React.Dispatch<React.SetStateAction<string>>) => (value: string) => {
@@ -49,6 +52,15 @@ export function TeamMemberEditor({ member, roles }: { member: TeamMember; roles:
     setSavingRole(false);
     setRoleError(!result.ok);
     setRoleMessage(result.message);
+    if (result.ok) router.refresh();
+  }
+
+  async function saveHotels() {
+    setSavingHotels(true);
+    setHotelMessage('');
+    const result = await setMemberHotelsAction(member.id, hotelIds);
+    setSavingHotels(false);
+    setHotelMessage(result.message);
     if (result.ok) router.refresh();
   }
 
@@ -105,6 +117,16 @@ export function TeamMemberEditor({ member, roles }: { member: TeamMember; roles:
           </div>
         </div>
       </Group>
+      {role === 'Hotelier' ? <Group title="Доступ к отелям" description="Hotelier увидит только отчёты и уведомления назначенных отелей.">
+        {hotels.map((hotel) => <label key={hotel.id} className="flex min-h-10 items-center gap-3 text-sm">
+          <input type="checkbox" checked={hotelIds.includes(hotel.id)} onChange={(event) => setHotelIds((current) => event.target.checked ? [...current, hotel.id] : current.filter((id) => id !== hotel.id))} />
+          {hotel.name}
+        </label>)}
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <button type="button" onClick={saveHotels} disabled={savingHotels || JSON.stringify(hotelIds) === JSON.stringify(member.hotelIds ?? [])} className={pill('primary')}>{savingHotels ? 'Сохраняем…' : 'Сохранить отели'}</button>
+          <p role="status" className="text-sm text-muted-foreground">{hotelMessage}</p>
+        </div>
+      </Group> : null}
 
       <Group title={t('account.contact')}>
         <div>

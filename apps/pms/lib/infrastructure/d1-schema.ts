@@ -48,6 +48,9 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS team_roles (id TEXT PRIMARY KEY, name TEXT NOT NULL, permissions TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS member_role_overrides (member_id TEXT PRIMARY KEY, role_id TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS team_members (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE COLLATE NOCASE, role TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS team_member_hotels (member_id TEXT NOT NULL, hotel_id TEXT NOT NULL, PRIMARY KEY (member_id, hotel_id))`,
+  `CREATE TABLE IF NOT EXISTS team_member_hotel_scopes (member_id TEXT PRIMARY KEY)`,
+  `CREATE INDEX IF NOT EXISTS idx_team_member_hotels_hotel ON team_member_hotels (hotel_id, member_id)`,
   `CREATE TABLE IF NOT EXISTS housekeeping_states (unit_id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT, updated_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_housekeeping_states_hotel ON housekeeping_states (hotel_id)`,
   `CREATE TABLE IF NOT EXISTS housekeeping_assignments (hotel_id TEXT NOT NULL, unit_id TEXT NOT NULL, member_id TEXT NOT NULL, PRIMARY KEY (hotel_id, unit_id))`,
@@ -55,6 +58,14 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS housekeeping_demo_seed (hotel_id TEXT PRIMARY KEY)`,
   `CREATE TABLE IF NOT EXISTS housekeeping_events (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, unit_id TEXT NOT NULL, room_number TEXT NOT NULL, member_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT, occurred_at TEXT NOT NULL, photo_data TEXT)`,
   `CREATE INDEX IF NOT EXISTS idx_housekeeping_events_room ON housekeeping_events (hotel_id, unit_id, occurred_at)`,
+  `CREATE TABLE IF NOT EXISTS maintenance_issues (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, unit_id TEXT NOT NULL, room_number TEXT NOT NULL, category TEXT NOT NULL, description TEXT, reporter_id TEXT NOT NULL, reporter_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL CHECK (status IN ('Open', 'In Progress', 'Resolved')), idempotency_key TEXT NOT NULL, UNIQUE (hotel_id, reporter_id, idempotency_key))`,
+  `CREATE INDEX IF NOT EXISTS idx_maintenance_issues_hotel_created ON maintenance_issues (hotel_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS maintenance_issue_photos (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, issue_id TEXT NOT NULL, object_key TEXT NOT NULL UNIQUE, content_type TEXT NOT NULL, view_type TEXT NOT NULL DEFAULT 'photo')`,
+  `CREATE INDEX IF NOT EXISTS idx_maintenance_issue_photos_issue ON maintenance_issue_photos (hotel_id, issue_id)`,
+  `CREATE TABLE IF NOT EXISTS maintenance_issue_notifications (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, recipient_id TEXT NOT NULL, issue_id TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_maintenance_notifications_recipient ON maintenance_issue_notifications (hotel_id, recipient_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS maintenance_issue_replacements (issue_id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, id TEXT NOT NULL UNIQUE, status TEXT NOT NULL CHECK (status IN ('Pending', 'Approved')), reason TEXT NOT NULL, requested_by_id TEXT NOT NULL, requested_by_name TEXT NOT NULL, requested_at TEXT NOT NULL, approved_by_id TEXT, approved_by_name TEXT, approved_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_maintenance_replacements_hotel ON maintenance_issue_replacements (hotel_id, issue_id)`,
   `CREATE TABLE IF NOT EXISTS spinner_zones (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, frame_index INTEGER NOT NULL, polygon TEXT NOT NULL, target TEXT, updated_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_spinner_zones_hotel ON spinner_zones (hotel_id, frame_index)`,
   `CREATE TABLE IF NOT EXISTS generated_reports (id TEXT PRIMARY KEY, hotel_id TEXT NOT NULL, type TEXT NOT NULL, date TEXT NOT NULL, generated_at TEXT NOT NULL, generated_by TEXT NOT NULL, rows TEXT NOT NULL)`,
@@ -109,6 +120,11 @@ export function ensureSchema(db: D1Database): Promise<void> {
         ] as const) {
           if (paymentNames.has(name)) continue;
           try { await db.prepare(sql).run(); }
+          catch (error) { if (!(error instanceof Error) || !error.message.includes('duplicate column name')) throw error; }
+        }
+        const photoColumns = await db.prepare('PRAGMA table_info(maintenance_issue_photos)').all<{ name: string }>();
+        if (!photoColumns.results.some((column) => column.name === 'view_type')) {
+          try { await db.prepare("ALTER TABLE maintenance_issue_photos ADD COLUMN view_type TEXT NOT NULL DEFAULT 'photo'").run(); }
           catch (error) { if (!(error instanceof Error) || !error.message.includes('duplicate column name')) throw error; }
         }
       })
