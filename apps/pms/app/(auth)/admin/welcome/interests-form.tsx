@@ -6,7 +6,7 @@ import {
   BanknotesIcon,
   CalendarDaysIcon,
   DocumentTextIcon,
-  PuzzlePieceIcon,
+  ShareIcon,
   TableCellsIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
@@ -24,7 +24,7 @@ const ICONS: Record<AdminInterest, typeof TableCellsIcon> = {
   content: DocumentTextIcon,
   orbit: ArrowPathRoundedSquareIcon,
   accounting: BanknotesIcon,
-  channels: PuzzlePieceIcon,
+  channels: ShareIcon,
 };
 
 /**
@@ -38,15 +38,12 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
   const t = useAdminT();
   const [ready, setReady] = React.useState(false);
   const [picked, setPicked] = React.useState<Set<AdminInterest>>(() => new Set(initial));
+  const [, action, pending] = React.useActionState(async (_previous: null, formData: FormData) => {
+    await saveInterestsAction(formData);
+    return null;
+  }, null);
 
   React.useEffect(() => setReady(true), []);
-
-  function submitAsDocument(event: React.FormEvent<HTMLFormElement>) {
-    // Vinext's enhanced RSC action fetch stalls here without forwarding the
-    // session cookie; keep this mutation on React's progressive form path.
-    event.preventDefault();
-    event.currentTarget.submit();
-  }
 
   const toggle = (interest: AdminInterest) => {
     setPicked((current) => {
@@ -59,7 +56,7 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
 
   return (
     <>
-      <form action={saveInterestsAction} onSubmit={submitAsDocument}>
+      <form action={action}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <div role="group" aria-label={t('welcome.title')} className="grid gap-3 sm:grid-cols-2">
           {ADMIN_INTERESTS.map((interest) => {
@@ -93,14 +90,14 @@ export function InterestsForm({ initial, next }: { initial: AdminInterest[]; nex
           })}
         </div>
 
-        <button type="submit" disabled={!ready || picked.size === 0} className={pill('primary', 'mt-6 w-full')}>
+        <button type="submit" disabled={!ready || pending || picked.size === 0} className={pill('primary', 'mt-6 w-full')}>
           {t('welcome.continue')}
         </button>
       </form>
 
-      <form action={saveInterestsAction} onSubmit={submitAsDocument} className="mt-2">
+      <form action={action} className="mt-2">
         {next ? <input type="hidden" name="next" value={next} /> : null}
-        <button type="submit" disabled={!ready} className={pill('ghost', 'w-full')}>
+        <button type="submit" disabled={!ready || pending} className={pill('ghost', 'w-full')}>
           {t('welcome.skip')}
         </button>
       </form>
