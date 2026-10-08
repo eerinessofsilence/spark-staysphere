@@ -264,4 +264,57 @@ describe('libSQL as D1', () => {
     expect(await db.prepare('SELECT n FROM t WHERE id = ?').bind('a').first<number>('n')).toBe(12);
     expect(await db.prepare('SELECT n FROM t WHERE id = ?').bind('zz').first()).toBeNull();
   });
+
+  it('commits a confirmation payment with inventory, or rolls all three back together', async () => {
+    const booking = (id: string) => bookingSchema.parse({
+      id, reference: id.toUpperCase(), idempotencyKey: `atomic-${id}`, hotelId: 'hotel-1',
+      roomTypeId: 'room-1', ratePlanId: 'rate-1', checkIn: '2035-02-01', checkOut: '2035-02-03',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: `${id}@example.com`, phone: '123456789' },
+      addOnIds: [], total: 200, currency: 'EUR', status: 'confirmed', createdAt: '2035-01-01T12:00:00.000Z',
+    });
+    const attempt = (bookingId: string) => ({
+      id: `pay_${bookingId}`, bookingId, provider: 'card', status: 'authorized' as const,
+      amount: 200, currency: 'EUR' as const, createdAt: '2035-01-01T12:00:00.000Z',
+    });
+
+    const db = fresh();
+    const saved = await bookings.saveBooking(db, booking('success'), 1, attempt('success'));
+    expect(saved.id).toBe('success');
+    expect(await bookings.listPaymentAttempts(db, 'success')).toMatchObject([{ id: 'pay_success', status: 'authorized' }]);
+    expect((await db.prepare('SELECT held FROM inventory_holds WHERE room_type_id = ?').bind('room-1').all<{ held: number }>()).results)
+      .toMatchObject([{ held: 1 }, { held: 1 }]);
+
+    const failingDb = fresh();
+    await ensureSchema(failingDb);
+    await failingDb.prepare(`CREATE TRIGGER fail_initial_payment BEFORE INSERT ON payment_attempts
+      WHEN NEW.id = 'pay_rollback' BEGIN SELECT RAISE(ABORT, 'test payment failure'); END`).run();
+    await expect(bookings.saveBooking(failingDb, booking('rollback'), 1, attempt('rollback'))).rejects.toThrow();
+    expect(await bookings.findBookingByIdempotencyKey(failingDb, 'atomic-rollback')).toBeNull();
+    expect((await failingDb.prepare('SELECT * FROM inventory_holds').all()).results).toEqual([]);
+    expect((await failingDb.prepare('SELECT * FROM payment_attempts').all()).results).toEqual([]);
+  });
+
+  it('keeps concurrent refunds within the same-currency authorized balance', async () => {
+    const db = fresh();
+    const booking = bookingSchema.parse({
+      id: 'refund-booking', reference: 'REFUND1', idempotencyKey: 'refund-booking-key', hotelId: 'hotel-1',
+      roomTypeId: 'room-1', ratePlanId: 'rate-1', checkIn: '2035-02-01', checkOut: '2035-02-03',
+      adults: 1, children: 0, guest: { firstName: 'Ada', lastName: 'Lovelace', email: 'refund@example.com', phone: '123456789' },
+      addOnIds: [], total: 100, currency: 'EUR', status: 'confirmed', createdAt: '2035-01-01T12:00:00.000Z',
+    });
+    await bookings.saveBooking(db, booking, 1);
+    await bookings.savePaymentAttempt(db, { id: 'paid-eur', bookingId: booking.id, provider: 'cash', status: 'authorized', amount: 100, currency: 'EUR' });
+    await bookings.savePaymentAttempt(db, { id: 'paid-usd', bookingId: booking.id, provider: 'card', status: 'authorized', amount: 900, currency: 'USD' });
+    await bookings.savePaymentAttempt(db, { id: 'pending-eur', bookingId: booking.id, provider: 'bank_transfer', status: 'demo_pending', amount: 700, currency: 'EUR' });
+    const refund = (id: string) => ({ id, bookingId: booking.id, provider: 'cash', status: 'refunded' as const, amount: 70, currency: 'EUR' as const });
+
+    const outcomes = await Promise.all([
+      bookings.saveRefundWithinBalance(db, refund('refund-one')),
+      bookings.saveRefundWithinBalance(db, refund('refund-two')),
+    ]);
+    expect(outcomes.filter(Boolean)).toHaveLength(1);
+    const savedRefunds = (await bookings.listPaymentAttempts(db, booking.id)).filter((attempt) => attempt.status === 'refunded');
+    expect(savedRefunds.reduce((sum, attempt) => sum + attempt.amount, 0)).toBe(70);
+    expect(await bookings.saveRefundWithinBalance(db, { ...refund('refund-too-large'), amount: 30.01 })).toBe(false);
+  });
 });

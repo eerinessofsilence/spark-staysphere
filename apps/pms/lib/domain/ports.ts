@@ -59,7 +59,8 @@ export interface AvailabilityReader {
 
 export interface BookingStore {
   findBookingByIdempotencyKey(key: string): Promise<Booking | null>;
-  saveBooking(booking: Booking, inventoryCapacity?: number): Promise<Booking>;
+  /** Saves a confirmed booking, its inventory and its first payment in one transaction. */
+  saveBooking(booking: Booking, inventoryCapacity?: number, initialPayment?: PaymentAttempt): Promise<Booking>;
   getBookingByReference(reference: string): Promise<Booking | null>;
   /**
    * Marks a booking cancelled and gives back the nights it was holding, so
@@ -130,6 +131,8 @@ export interface BookingGuestStore {
 
 export interface PaymentAttemptStore {
   savePaymentAttempt(attempt: PaymentAttempt): Promise<PaymentAttempt>;
+  /** Atomically records a refund only if the authorized, same-currency balance covers it. */
+  saveRefundWithinBalance(attempt: PaymentAttempt): Promise<boolean>;
   listPaymentAttempts(bookingId: string): Promise<PaymentAttempt[]>;
 }
 
@@ -208,6 +211,9 @@ export interface RoleStore {
   listMembers(): Promise<StoredTeamMember[]>;
   /** Atomically reject an existing email, including concurrent submissions. */
   createMember(member: StoredTeamMember): Promise<boolean>;
+  listMemberHotelIds(memberId: string): Promise<string[]>;
+  hasMemberHotelScope(memberId: string): Promise<boolean>;
+  setMemberHotelIds(memberId: string, hotelIds: string[]): Promise<void>;
   listRoleDefinitions(): Promise<TeamRoleDefinition[]>;
   createRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;
   upsertRoleDefinition(role: TeamRoleDefinition): Promise<TeamRoleDefinition>;

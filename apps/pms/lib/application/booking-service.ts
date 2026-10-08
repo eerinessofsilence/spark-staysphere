@@ -276,7 +276,9 @@ export class BookingService {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
     if (booking.status === 'cancelled') return { outcome: 'cancelled', booking };
-    if (!Number.isFinite(amount) || amount <= 0) return { outcome: 'invalid_amount', booking };
+    if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount * 100) <= 0) {
+      return { outcome: 'invalid_amount', booking };
+    }
     const now = this.clock.now().toISOString();
     const id = `pay_${crypto.randomUUID()}`;
     const attempt: PaymentAttempt = {
@@ -299,10 +301,12 @@ export class BookingService {
   async recordRefund(reference: string, provider: string, amount: number, vatRate: number, comment: string, scope: 'full' | 'items', itemIds: string[], reason: string, operator?: { id: string; name: string }): Promise<{ outcome: 'recorded' | 'not_found' | 'invalid_amount' | 'exceeds_paid'; booking?: Booking }> {
     const booking = await this.repository.getBookingByReference(normalizeReference(reference));
     if (!booking) return { outcome: 'not_found' };
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100) return { outcome: 'invalid_amount', booking };
+    if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount * 100) <= 0 || !Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100) {
+      return { outcome: 'invalid_amount', booking };
+    }
     const payments = await this.repository.listPaymentAttempts(booking.id);
-    const paid = payments.filter((item) => item.status === 'authorized').reduce((sum, item) => sum + item.amount, 0);
-    const refunded = payments.filter((item) => item.status === 'refunded').reduce((sum, item) => sum + item.amount, 0);
+    const paid = payments.filter((item) => item.status === 'authorized' && item.currency === booking.currency).reduce((sum, item) => sum + item.amount, 0);
+    const refunded = payments.filter((item) => item.status === 'refunded' && item.currency === booking.currency).reduce((sum, item) => sum + item.amount, 0);
     const rounded = Math.round(amount * 100) / 100;
     if (rounded > Math.round((paid - refunded) * 100) / 100) return { outcome: 'exceeds_paid', booking };
     const now = this.clock.now().toISOString();
@@ -313,7 +317,9 @@ export class BookingService {
       refundScope: scope, refundItemIds: scope === 'items' ? itemIds : [], refundReason: reason.trim() || undefined,
       receiptNumber: receiptNumber('REF', id, now), operatorId: operator?.id ?? 'system', operatorName: operator?.name ?? 'System',
     };
-    await this.repository.savePaymentAttempt(attempt);
+    if (!(await this.repository.saveRefundWithinBalance(attempt))) {
+      return { outcome: 'exceeds_paid', booking };
+    }
     try { await this.afterRefundRecorded?.(booking, attempt); } catch { /* The refund record remains valid if notifications fail. */ }
     return { outcome: 'recorded', booking };
   }
@@ -472,14 +478,24 @@ export class BookingService {
       currency: quote.price.currency,
       status: 'confirmed',
       stayState: 'booked',
-      createdAt: new Date().toISOString(),
+      createdAt: this.clock.now().toISOString(),
     } satisfies Booking);
 
     let saved: Booking;
     try {
       const units = await this.repository.listPhysicalRooms(input.hotelId);
       const inventoryCapacity = units.filter((unit) => unit.roomTypeId === input.roomTypeId).length;
-      saved = await this.repository.saveBooking(booking, inventoryCapacity);
+      const persistedAttemptId = `pay_${booking.id}`;
+      const persistedAttempt: PaymentAttempt = {
+        ...attempt,
+        id: persistedAttemptId,
+        bookingId: booking.id,
+        createdAt: booking.createdAt,
+        receiptNumber: receiptNumber('PAY', persistedAttemptId, booking.createdAt),
+        operatorId: 'guest_checkout',
+        operatorName: 'Guest checkout',
+      };
+      saved = await this.repository.saveBooking(booking, inventoryCapacity, persistedAttempt);
     } catch (error) {
       if (error instanceof Error && error.name === 'BookingInventoryConflictError') {
         throw new BookingError(
@@ -489,18 +505,6 @@ export class BookingService {
       }
       throw error;
     }
-    // Only persist the attempt after the booking won its idempotency race.
-    // The deterministic id makes concurrent replays one ledger row.
-    const persistedAttemptId = `pay_${saved.id}`;
-    await this.repository.savePaymentAttempt({
-      ...attempt,
-      id: persistedAttemptId,
-      bookingId: saved.id,
-      createdAt: saved.createdAt,
-      receiptNumber: receiptNumber('PAY', persistedAttemptId, saved.createdAt),
-      operatorId: 'guest_checkout',
-      operatorName: 'Guest checkout',
-    });
     await this.notifyDownstream(saved);
     try { await this.afterConfirm?.(saved); } catch { /* Best-effort, same as notifyDownstream. */ }
     return saved;

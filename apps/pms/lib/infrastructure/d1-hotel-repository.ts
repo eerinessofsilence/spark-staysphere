@@ -449,8 +449,16 @@ export async function listBookings(db: D1Database, options: { hotelId?: string; 
  * exist. Re-reads by idempotency key afterward so a genuinely concurrent
  * duplicate returns whichever row actually won, not necessarily this one.
  */
-export async function saveBooking(db: D1Database, booking: Booking, inventoryCapacity?: number): Promise<Booking> {
+export async function saveBooking(
+  db: D1Database,
+  booking: Booking,
+  inventoryCapacity?: number,
+  initialPayment?: PaymentAttempt,
+): Promise<Booking> {
   await ensureSchema(db);
+  if (initialPayment && (booking.status !== 'confirmed' || initialPayment.bookingId !== booking.id)) {
+    throw new Error('The initial payment must belong to a confirmed booking.');
+  }
 
   const nights = booking.status === 'confirmed' ? nightsInRange(booking.checkIn, booking.checkOut) : [];
   const roomUnitCollision = booking.unitNumber
@@ -515,6 +523,27 @@ export async function saveBooking(db: D1Database, booking: Booking, inventoryCap
     );
   }
 
+  if (initialPayment) {
+    statements.push(
+      db.prepare(
+        `INSERT INTO payment_attempts (
+          id, booking_id, provider, status, amount, currency, vat_rate, comment,
+          created_at, refund_scope, refund_item_ids, refund_reason, receipt_number,
+          operator_id, operator_name
+        ) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+          WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?)
+        ON CONFLICT (id) DO NOTHING`,
+      ).bind(
+        initialPayment.id, initialPayment.bookingId, initialPayment.provider, initialPayment.status,
+        initialPayment.amount, initialPayment.currency, initialPayment.vatRate ?? null,
+        initialPayment.comment ?? null, initialPayment.createdAt ?? null,
+        initialPayment.refundScope ?? null, initialPayment.refundItemIds ? JSON.stringify(initialPayment.refundItemIds) : null,
+        initialPayment.refundReason ?? null, initialPayment.receiptNumber ?? null,
+        initialPayment.operatorId ?? null, initialPayment.operatorName ?? null, booking.id,
+      ),
+    );
+  }
+
   await db.batch(statements);
 
   const saved = await findBookingByIdempotencyKey(db, booking.idempotencyKey);
@@ -559,6 +588,38 @@ export async function savePaymentAttempt(
     .bind(attempt.id, attempt.bookingId, attempt.provider, attempt.status, attempt.amount, attempt.currency, attempt.vatRate ?? null, attempt.comment ?? null, attempt.createdAt ?? null, attempt.refundScope ?? null, attempt.refundItemIds ? JSON.stringify(attempt.refundItemIds) : null, attempt.refundReason ?? null, attempt.receiptNumber ?? null, attempt.operatorId ?? null, attempt.operatorName ?? null)
     .run();
   return attempt;
+}
+
+/** One conditional insert makes the balance check and refund record atomic under concurrency. */
+export async function saveRefundWithinBalance(
+  db: D1Database,
+  attempt: PaymentAttempt,
+): Promise<boolean> {
+  await ensureSchema(db);
+  const result = await db.prepare(
+    `INSERT INTO payment_attempts (
+      id, booking_id, provider, status, amount, currency, vat_rate, comment,
+      created_at, refund_scope, refund_item_ids, refund_reason, receipt_number,
+      operator_id, operator_name
+    ) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+    WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?)
+      AND ? <= COALESCE((
+        SELECT SUM(amount) FROM payment_attempts
+        WHERE booking_id = ? AND currency = ? AND status = 'authorized'
+      ), 0) - COALESCE((
+        SELECT SUM(amount) FROM payment_attempts
+        WHERE booking_id = ? AND currency = ? AND status = 'refunded'
+      ), 0)
+    ON CONFLICT (id) DO NOTHING`,
+  ).bind(
+    attempt.id, attempt.bookingId, attempt.provider, attempt.status, attempt.amount,
+    attempt.currency, attempt.vatRate ?? null, attempt.comment ?? null, attempt.createdAt ?? null,
+    attempt.refundScope ?? null, attempt.refundItemIds ? JSON.stringify(attempt.refundItemIds) : null,
+    attempt.refundReason ?? null, attempt.receiptNumber ?? null, attempt.operatorId ?? null,
+    attempt.operatorName ?? null, attempt.bookingId, attempt.amount, attempt.bookingId,
+    attempt.currency, attempt.bookingId, attempt.currency,
+  ).run();
+  return result.meta.changes === 1;
 }
 
 export async function listPaymentAttempts(

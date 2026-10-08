@@ -85,7 +85,7 @@ export const mockHotelRepository: HotelRepository = {
   async findBookingByIdempotencyKey(key) {
     return bookingsByIdempotencyKey.get(key) ?? null;
   },
-  async saveBooking(booking, inventoryCapacity) {
+  async saveBooking(booking, inventoryCapacity, initialPayment) {
     const replay = bookingsByIdempotencyKey.get(booking.idempotencyKey);
     if (replay) return replay;
     if (booking.status === 'confirmed' && inventoryCapacity !== undefined) {
@@ -112,6 +112,12 @@ export const mockHotelRepository: HotelRepository = {
           ?? booking.roomTypeId;
         const key = `${typeId}|${date}`;
         demoHolds.set(key, (demoHolds.get(key) ?? 0) + 1);
+      }
+    }
+    if (initialPayment) {
+      const attempts = paymentAttempts.get(booking.id) ?? [];
+      if (!attempts.some((item) => item.id === initialPayment.id)) {
+        paymentAttempts.set(booking.id, [...attempts, initialPayment]);
       }
     }
     return booking;
@@ -311,6 +317,19 @@ export const mockHotelRepository: HotelRepository = {
     const existing = paymentAttempts.get(attempt.bookingId) ?? [];
     if (!existing.some((item) => item.id === attempt.id)) paymentAttempts.set(attempt.bookingId, [...existing, attempt]);
     return attempt;
+  },
+  async saveRefundWithinBalance(attempt) {
+    const booking = [...bookingsByReference.values()].find((item) => item.id === attempt.bookingId);
+    const payments = paymentAttempts.get(attempt.bookingId) ?? [];
+    const paid = payments
+      .filter((item) => item.status === 'authorized' && item.currency === attempt.currency)
+      .reduce((sum, item) => sum + item.amount, 0);
+    const refunded = payments
+      .filter((item) => item.status === 'refunded' && item.currency === attempt.currency)
+      .reduce((sum, item) => sum + item.amount, 0);
+    if (!booking || Math.round(attempt.amount * 100) > Math.round((paid - refunded) * 100)) return false;
+    if (!payments.some((item) => item.id === attempt.id)) paymentAttempts.set(attempt.bookingId, [...payments, attempt]);
+    return true;
   },
   async listPaymentAttempts(bookingId) {
     return paymentAttempts.get(bookingId) ?? [];

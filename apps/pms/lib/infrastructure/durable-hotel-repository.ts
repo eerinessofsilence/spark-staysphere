@@ -104,9 +104,11 @@ export const durableHotelRepository: HotelRepository = {
     const db = getDemoDatabase();
     return db ? d1.findBookingByIdempotencyKey(db, key) : mockHotelRepository.findBookingByIdempotencyKey(key);
   },
-  saveBooking(booking, inventoryCapacity) {
+  saveBooking(booking, inventoryCapacity, initialPayment) {
     const db = getDemoDatabase();
-    return db ? d1.saveBooking(db, booking, inventoryCapacity) : mockHotelRepository.saveBooking(booking, inventoryCapacity);
+    return db
+      ? d1.saveBooking(db, booking, inventoryCapacity, initialPayment)
+      : mockHotelRepository.saveBooking(booking, inventoryCapacity, initialPayment);
   },
   saveBookingRoomAssignments(bookingId, assignments) {
     const db = getDemoDatabase();
@@ -155,6 +157,12 @@ export const durableHotelRepository: HotelRepository = {
   savePaymentAttempt(attempt) {
     const db = getDemoDatabase();
     return db ? d1.savePaymentAttempt(db, attempt) : mockHotelRepository.savePaymentAttempt(attempt);
+  },
+  saveRefundWithinBalance(attempt) {
+    const db = getDemoDatabase();
+    return db
+      ? d1.saveRefundWithinBalance(db, attempt)
+      : mockHotelRepository.saveRefundWithinBalance(attempt);
   },
   listPaymentAttempts(bookingId) {
     const db = getDemoDatabase();
