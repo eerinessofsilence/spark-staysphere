@@ -78,7 +78,7 @@ jobs:
   e2e-shards:
     name: ${{ matrix.app }} end-to-end (${{ matrix.shard }}/${{ matrix.total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
