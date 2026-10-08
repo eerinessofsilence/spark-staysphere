@@ -88,7 +88,7 @@ export function MediaListEditor({
                       type="button"
                       onClick={() => setTourUrl(item.url)}
                       aria-label={t('media.open360', { title })}
-                      className="relative block size-16 shrink-0 overflow-hidden rounded-[18px] bg-ink"
+                      className="admin-grid-photo bg-ink"
                     >
                       <img src={item.url} alt="" className="size-full object-cover opacity-70" />
                       <span className="absolute inset-0 grid place-items-center text-white">
@@ -96,7 +96,7 @@ export function MediaListEditor({
                       </span>
                     </button>
                   ) : (
-                  <span className="block size-16 shrink-0 overflow-hidden rounded-[18px] bg-stone">
+                  <span className="admin-grid-photo bg-stone">
                     {asset ? (
                       // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
                       <img src={asset.url} alt="" className="size-full object-cover" />
@@ -188,7 +188,7 @@ export function MediaListEditor({
         fullScreen
         className="sm:max-w-4xl"
       >
-        <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[18px] bg-ink sm:aspect-video sm:h-auto">
+        <div className="relative h-full min-h-0 w-full overflow-hidden bg-ink sm:aspect-video sm:h-auto">
           {tourUrl ? <PanoramaViewer key={tourUrl} src={tourUrl} title={t('media.view360')} className="absolute inset-0 size-full" /> : null}
         </div>
       </Modal>

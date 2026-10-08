@@ -632,9 +632,9 @@ function HistoryRow({
       <Td>
         <span className="flex items-center gap-3">
           {cover ? (
-            <img src={cover.url} alt="" className="size-14 shrink-0 rounded-[18px] bg-stone object-cover" />
+            <img src={cover.url} alt="" className="admin-grid-photo bg-stone" />
           ) : (
-            <span aria-hidden="true" className="size-14 shrink-0 rounded-[18px] bg-stone" />
+            <span aria-hidden="true" className="admin-grid-photo bg-stone" />
           )}
           <span className="min-w-0">
             <span className="block font-medium">{roomType?.name ?? booking.roomTypeId}</span>

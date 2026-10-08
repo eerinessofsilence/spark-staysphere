@@ -137,7 +137,7 @@ export function MenuPdfButton({
                     onChange={() => setSelected((current) => checked ? current.filter((id) => id !== item.id) : [...current, item.id])}
                   />
                   {item.photo ? (
-                    <img src={item.photo} alt="" width={72} height={72} className="size-16 shrink-0 rounded-xl object-cover" />
+                    <img src={item.photo} alt="" width={64} height={64} className="admin-grid-photo" />
                   ) : null}
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{item.name}</span>

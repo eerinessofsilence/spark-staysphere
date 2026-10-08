@@ -286,12 +286,12 @@ export function FrameManager({
                   type="button"
                   onClick={() => toggleKeyAngle(frame.index)}
                   className={cn(
-                    'block overflow-hidden rounded-2xl border-2 transition-colors',
+                    'admin-grid-photo border-2 transition-colors',
                     isKey ? 'border-primary' : 'border-transparent hover:border-border',
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={frame.imageUrl} alt="" width={96} height={54} className="h-14 w-24 bg-stone object-cover" />
+                  <img src={frame.imageUrl} alt="" width={64} height={64} className="bg-stone" />
                 </button>
                 <span className="mt-1 block text-center text-[11px] text-muted-foreground">
                   {t('frames.frameN', { n: frame.index })}

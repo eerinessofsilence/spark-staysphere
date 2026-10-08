@@ -67,12 +67,12 @@ export function SpinnerRoomCard({
       // which shut the topmost storey's card again before it could be read. The
       // stage resolves the hover on every move anyway, and clears it on the way
       // out, so there is nothing here left to close.
-      className="glass absolute z-30 block w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-3xl text-foreground shadow-soft-lg"
+      className="glass absolute z-30 block w-[min(20rem,calc(100%-2rem))] rounded-[18px] p-4 text-foreground shadow-soft-lg"
     >
       {facts?.photo ? (
-        <img src={facts.photo.url} alt="" width={640} height={360} decoding="async" className="h-36 w-full object-cover" />
+        <img src={facts.photo.url} alt="" width={640} height={360} decoding="async" className="aspect-video w-full object-cover" />
       ) : null}
-      <div className="p-4">
+      <div className={facts?.photo ? 'pt-4' : undefined}>
         {facts?.status ? <Availability status={facts.status} remaining={facts.remaining} /> : null}
         <p className="mt-2 font-medium">
           {facts ? `${facts.name} — ${lMoney(facts.nightlyPrice, facts.currency, locale)}` : hotspot.label}
@@ -121,7 +121,7 @@ export function SpinnerRoomSheetBody({ hotspot, facts, href }: HotspotContentPro
           alt=""
           width={facts.photo.width}
           height={facts.photo.height}
-          className="aspect-[3/2] w-full rounded-[14px] object-cover"
+          className="aspect-video w-full object-cover"
         />
       ) : null}
 

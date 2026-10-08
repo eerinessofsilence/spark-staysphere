@@ -71,7 +71,7 @@ export function OrderDetails({ order, service, booking, createdLabel, dueLabel }
         <section className="mt-6 grid gap-6 rounded-[18px] bg-card p-5 shadow-soft sm:p-8" aria-label={t('orders.orderDetails')}>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div>
-              {service?.photos?.[0] ? <img src={service.photos[0].url} alt={order.serviceName} className="aspect-[16/9] w-full rounded-[18px] object-cover" /> : <p className="flex min-h-32 items-center rounded-[18px] bg-stone p-6 text-sm text-muted-foreground">{copy.photo}</p>}
+              {service?.photos?.[0] ? <img src={service.photos[0].url} alt={order.serviceName} className="aspect-[16/9] w-full object-cover" /> : <p className="flex min-h-32 items-center bg-stone p-6 text-sm text-muted-foreground">{copy.photo}</p>}
               {service?.description ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{service.description}</p> : null}
             </div>
             <div className="min-w-0 self-center">

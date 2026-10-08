@@ -33,7 +33,7 @@ export function PhotoField({
       <input type="hidden" name={name} value={url} />
       {url ? (
         <div className="flex flex-wrap items-end gap-3">
-          <span className="block aspect-[4/3] w-full max-w-40 overflow-hidden rounded-2xl bg-stone">
+          <span className="block aspect-video w-full max-w-40 overflow-hidden bg-stone">
             <img
               src={url}
               alt=""

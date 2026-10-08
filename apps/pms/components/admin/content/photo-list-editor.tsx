@@ -45,7 +45,7 @@ export function PhotoListEditor({ name, initial, assets, onChange, onBusyChange 
             const n = index + 1;
             return (
               <li key={id} className="grid min-w-0 gap-1.5 sm:w-32">
-                <span className="relative block aspect-square overflow-hidden rounded-[18px] bg-stone">
+                <span className="admin-grid-photo mx-auto bg-stone">
                   {asset ? (
                     // eslint-disable-next-line -- fixed-size thumbnail, plain img is the convention here (see components/hotel/*).
                     <img src={asset.url} alt="" width={asset.width} height={asset.height} className="size-full object-cover" />
@@ -54,8 +54,8 @@ export function PhotoListEditor({ name, initial, assets, onChange, onBusyChange 
                       <Image weight="fill" className="size-5" aria-hidden="true" />
                     </span>
                   )}
-                  {index === 0 ? <span className={tag('absolute top-2 left-2 bg-card/90 py-0.5')}>{t('media.cover')}</span> : null}
                 </span>
+                {index === 0 ? <span className={tag('mx-auto w-fit bg-card/90 py-0.5')}>{t('media.cover')}</span> : null}
                 <div className="flex items-center justify-center gap-1">
                   <button
                     type="button"

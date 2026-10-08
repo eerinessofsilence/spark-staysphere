@@ -1246,7 +1246,7 @@ function SelectionDetail({
   const heading = (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex min-w-0 items-center gap-4">
-        <span className="block size-16 shrink-0 overflow-hidden rounded-[18px] bg-stone">
+        <span className="block size-16 shrink-0 overflow-hidden bg-stone">
           {photo ? (
             <img src={photo.url} alt="" width={photo.width} height={photo.height} className="size-full object-cover" />
           ) : null}

@@ -452,7 +452,7 @@ function ProposalCard({
         <p className="mt-2 whitespace-pre-wrap text-sm">{proposal.input.description}</p>
         <p className="mt-2 text-xs text-muted-foreground">{t('assistant.photos.selected', { count: proposal.input.photos.length })} · {t(proposal.input.enabled ? 'assistant.service.onSale' : 'assistant.service.hidden')}</p>
         {proposal.input.photos.length ? <div className="mt-2 flex gap-2 overflow-x-auto">
-          {proposal.input.photos.map((url, index) => <img key={url} src={url} alt={index === 0 ? t('media.cover') : ''} className="size-16 shrink-0 rounded-xl object-cover" />)}
+          {proposal.input.photos.map((url, index) => <img key={url} src={url} alt={index === 0 ? t('media.cover') : ''} className="admin-grid-photo" />)}
         </div> : null}
       </> : null}
       {state === 'pending' ? (

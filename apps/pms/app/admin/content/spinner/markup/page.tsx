@@ -82,9 +82,9 @@ export default async function SpinnerMarkupPage({
             >
               {frame ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={frame.imageUrl} alt="" width={96} height={54} className="h-14 w-24 rounded-lg object-cover" />
+                <img src={frame.imageUrl} alt="" width={64} height={64} className="admin-grid-photo" />
               ) : (
-                <span className="h-14 w-24 rounded-lg bg-stone" />
+                <span className="admin-grid-photo bg-stone" />
               )}
               <span className="text-xs font-medium text-foreground">{t('frames.frameN', { n: angle })}</span>
               <span className="text-[11px] text-muted-foreground">

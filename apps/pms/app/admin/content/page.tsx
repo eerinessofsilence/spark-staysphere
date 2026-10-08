@@ -107,7 +107,7 @@ export default async function RoomTypesPage({
                             it, not only the photo and name — the rooms link and row menu sit
                             at a higher stacking level so their own clicks still reach them. */}
                         <Link href={href} className="group flex items-center gap-3 before:absolute before:inset-0">
-                          <span className="block size-14 shrink-0 overflow-hidden rounded-[18px] bg-stone">
+                          <span className="admin-grid-photo bg-stone">
                             {cover ? (
                               <img
                                 src={cover.url}

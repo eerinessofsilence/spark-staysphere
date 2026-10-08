@@ -65,7 +65,7 @@ export function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
               aria-label={t('mediaLib.open', { filename: tile.filename })}
               className="group block w-full cursor-pointer rounded-[18px] bg-card p-2 text-left shadow-soft transition-colors hover:bg-stone/40"
             >
-              <span className="block aspect-[4/3] overflow-hidden rounded-[14px] bg-stone">
+              <span className="admin-grid-photo mx-auto bg-stone">
                 <img
                   src={tile.url}
                   alt=""
@@ -113,7 +113,7 @@ export function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
               alt=""
               width={open.width}
               height={open.height}
-              className="max-h-[50vh] w-full rounded-[14px] bg-stone object-contain"
+              className="max-h-[50vh] w-full bg-stone object-contain"
             />
             <dl className="grid gap-3 text-sm sm:grid-cols-3">
               <div>

@@ -333,10 +333,10 @@ export default async function RoomContentPage({
                 alt=""
                 width={cover.width}
                 height={cover.height}
-                className="aspect-[4/3] w-full rounded-[14px] bg-stone object-cover"
+                className="aspect-video w-full bg-stone object-cover"
               />
             ) : (
-              <div className="grid aspect-[4/3] place-items-center rounded-[14px] bg-stone text-sm text-muted-foreground">
+              <div className="grid aspect-video place-items-center bg-stone text-sm text-muted-foreground">
                 {t('room.noPhoto')}
               </div>
             )}

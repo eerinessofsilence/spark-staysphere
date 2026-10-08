@@ -71,9 +71,9 @@ export default async function SpinnerContentPage() {
                   >
                     {frame ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={frame.imageUrl} alt="" width={112} height={63} className="h-16 w-28 rounded-lg object-cover" />
+                      <img src={frame.imageUrl} alt="" width={64} height={64} className="admin-grid-photo" />
                     ) : (
-                      <span className="h-16 w-28 rounded-lg bg-stone" />
+                      <span className="admin-grid-photo bg-stone" />
                     )}
                     <span className="text-xs font-medium">{t('frames.frameN', { n: angle })}</span>
                     <span className="text-[11px] text-muted-foreground">

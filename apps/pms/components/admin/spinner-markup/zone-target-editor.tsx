@@ -58,7 +58,7 @@ export function ZoneTargetEditor({ zone, dispatch, catalog }: {
 
       {selected ? (
         <div className="mt-3 overflow-hidden rounded-[18px] border border-border" data-testid="zone-room-preview">
-          {selected.photo ? <img src={selected.photo} alt={selected.roomTypeName} className="aspect-[16/9] w-full object-cover" /> : null}
+          {selected.photo ? <div className="p-3 pb-0"><img src={selected.photo} alt={selected.roomTypeName} className="aspect-video w-full object-cover" /></div> : null}
           <div className="space-y-1 p-3">
             <p className="font-medium text-foreground">{lRoomNumber(selected.number, locale)}</p>
             <p className="break-words text-sm text-foreground">{selected.roomTypeName}</p>

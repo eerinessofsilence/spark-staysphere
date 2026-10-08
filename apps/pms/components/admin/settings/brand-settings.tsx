@@ -330,7 +330,7 @@ function PreviewCard({
           width={preview.photoWidth}
           height={preview.photoHeight}
           loading="lazy"
-          className="aspect-[4/3] w-full rounded-[14px] object-cover"
+          className="aspect-video w-full object-cover"
         />
       ) : null}
       <div className="px-2 pt-4 pb-2">

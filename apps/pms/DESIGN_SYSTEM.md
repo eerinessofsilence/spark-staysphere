@@ -174,8 +174,11 @@ free-hand a `text-*xl` that happens to look right on one screen.
 
 - Spacing unit 4px; preferred steps 8, 12, 16, 24, 32, 48, 64, 96.
 - Controls are 44px minimum touch targets.
-- Pills for every action and chip (`rounded-full`). Inputs `rounded-2xl`. Cards, panels, and
-  photographs `rounded-[18px]`. Nothing between 8px and 16px except inputs.
+- Pills for every action and chip (`rounded-full`). Inputs `rounded-2xl`. Cards and panels
+  `rounded-[18px]`. Guest photographs follow their page containers. Admin grid and list photos
+  use `.admin-grid-photo`: a fixed 64×64px circle that cannot shrink. Inside detail pages,
+  cards and viewers, photos are wide rectangles without rounded corners; show maintenance
+  evidence uncropped in a 16:9 frame and allow opening the full original.
 - Elevation is `.shadow-soft` or `.shadow-soft-lg`, nothing stronger. Reach for a hairline first.
 - Frosted panels over photography use `.glass` (light) or `.glass-dark`.
 

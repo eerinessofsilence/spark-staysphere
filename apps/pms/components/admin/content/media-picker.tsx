@@ -145,7 +145,7 @@ export function MediaPicker({ open, onClose, assets, onPick, onPickMany, maxSele
                   className={cn('group relative block w-full cursor-pointer overflow-hidden rounded-[18px] border text-left transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border', checked ? 'border-accent ring-2 ring-accent' : 'border-border')}
                 >
                   {checked ? <CheckCircle weight="fill" className="absolute right-2 top-2 z-10 size-6 rounded-full bg-card text-accent-strong" aria-hidden="true" /> : null}
-                  <span className="block aspect-[4/3] overflow-hidden bg-stone">
+                  <span className="admin-grid-photo mx-auto mt-2 bg-stone">
                     <img
                       src={asset.url}
                       alt=""

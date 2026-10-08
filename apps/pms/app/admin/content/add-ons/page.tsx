@@ -220,7 +220,7 @@ export default async function ServicesPage({
                             <img
                               src={photo}
                               alt=""
-                              className="size-11 shrink-0 rounded-xl object-cover"
+                              className="admin-grid-photo"
                             />
                           ) : ServiceIcon ? (
                             <ServiceIcon className="size-5 shrink-0 text-muted-foreground" weight="fill" aria-hidden="true" />
