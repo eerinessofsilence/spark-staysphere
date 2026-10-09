@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      playwright_suite:
+        description: Playwright coverage
+        type: choice
+        default: critical
+        options: [critical, full]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -83,23 +90,12 @@ jobs:
     name: ${{ matrix.app }} end-to-end (${{ matrix.shard }}/${{ matrix.total }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PLAYWRIGHT_SUITE: ${{ github.event_name == 'workflow_dispatch' && inputs.playwright_suite == 'full' && 'full' || 'critical' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { app: pms, shard: 1, total: 8 }
-          - { app: pms, shard: 2, total: 8 }
-          - { app: pms, shard: 3, total: 8 }
-          - { app: pms, shard: 4, total: 8 }
-          - { app: pms, shard: 5, total: 8 }
-          - { app: pms, shard: 6, total: 8 }
-          - { app: pms, shard: 7, total: 8 }
-          - { app: pms, shard: 8, total: 8 }
-          - { app: guest, shard: 1, total: 4 }
-          - { app: guest, shard: 2, total: 4 }
-          - { app: guest, shard: 3, total: 4 }
-          - { app: guest, shard: 4, total: 4 }
-          - { app: site, shard: 1, total: 1 }
+        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.playwright_suite == 'full' && '[{"app":"pms","shard":1,"total":8},{"app":"pms","shard":2,"total":8},{"app":"pms","shard":3,"total":8},{"app":"pms","shard":4,"total":8},{"app":"pms","shard":5,"total":8},{"app":"pms","shard":6,"total":8},{"app":"pms","shard":7,"total":8},{"app":"pms","shard":8,"total":8},{"app":"guest","shard":1,"total":4},{"app":"guest","shard":2,"total":4},{"app":"guest","shard":3,"total":4},{"app":"guest","shard":4,"total":4},{"app":"site","shard":1,"total":1}]' || '[{"app":"pms","shard":1,"total":2},{"app":"pms","shard":2,"total":2},{"app":"guest","shard":1,"total":2},{"app":"guest","shard":2,"total":2},{"app":"site","shard":1,"total":1}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -120,7 +116,15 @@ jobs:
         run: npm run build:site
 
       - name: Run e2e suite
-        run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright test --shard=${{ matrix.shard }}/${{ matrix.total }}
+        env:
+          APP: ${{ matrix.app }}
+          SHARD: ${{ matrix.shard }}/${{ matrix.total }}
+        run: |
+          config=playwright.config.ts
+          if [ "$PLAYWRIGHT_SUITE" = "critical" ] && [ "$APP" != "site" ]; then
+            config=playwright.critical.config.ts
+          fi
+          npm exec --workspace="@staysphere/$APP" -- playwright test --config="$config" --shard="$SHARD"
 
       - name: Upload Playwright report
         if: failure()

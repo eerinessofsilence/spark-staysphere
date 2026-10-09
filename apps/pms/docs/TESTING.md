@@ -35,6 +35,31 @@ testable without real wall-clock time.
 
 ## End-to-end tests (Playwright) — `npm run test:e2e`
 
+### Required CI and the full suite
+
+Pull requests and pushes to `main` run the critical suite. PMS uses
+`playwright.critical.config.ts` for sign-in, bookings and inventory, front-desk
+changes, CMS persistence, housekeeping access and maintenance approval. Guest
+uses `../../guest/playwright.critical.config.ts` for demo booking, price changes,
+retry idempotency, trip access and cancellation, inventory conflicts and PMS
+catalog publication. Both retain desktop and phone coverage; API-only inventory
+contracts run once on desktop. Product Site keeps its complete pricing smoke suite.
+
+The required `End-to-end (Playwright)` check still fails if any critical shard
+fails. Typecheck, unit tests, lint, build and documentation checks remain mandatory.
+The critical run uses two PMS shards, two Guest shards and one Product Site shard.
+
+Run the critical PMS suite locally with:
+
+```bash
+npx playwright test --config=playwright.critical.config.ts
+```
+
+The full suite remains available through `npm run test:e2e`. In GitHub Actions,
+run the CI workflow manually with `playwright_suite=full` to use all eight PMS
+shards, four Guest shards and the Product Site shard. Layout, contrast, spinner
+editing and other extended coverage are preserved in that full run.
+
 ```
 e2e/assistant.spec.ts    — the AI room finder
 e2e/cabinet.spec.ts      — floor plan, front desk, the bookings desk (serial)

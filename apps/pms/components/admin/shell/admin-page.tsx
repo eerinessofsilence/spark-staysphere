@@ -23,9 +23,9 @@ export function AdminPage({
       id="main"
       className={cn(
         width === 'wide' ? 'container-page-start' : 'container-form',
-        // The bottom padding is the assistant launcher's clearance: 64px of orb
-        // plus its 24px inset, so the last row's controls can scroll above it.
-        'box-border min-w-0 max-w-full overflow-x-clip pt-4 pb-28 lg:pt-10',
+        // Below lg, the 64px launcher sits 88px above the safe area. Leave
+        // another 24px so the last row can scroll above it; desktop needs 112px.
+        'box-border min-w-0 max-w-full overflow-x-clip pt-4 pb-[calc(11rem+env(safe-area-inset-bottom))] lg:pt-10 lg:pb-28',
       )}
     >
       {loading ? null : <NavigationPreloader label={t('page.loading')} className="mb-4" />}

@@ -171,6 +171,11 @@ explanation, not the security boundary.
 
 ## Mobile viewport
 
+**The assistant launcher can cover the last row on narrow screens.** Below `lg` the
+64px button sits 88px above the bottom safe area. `AdminPage` needs 176px plus that
+safe area of bottom padding so the last row can scroll above it; the desktop
+112px clearance is insufficient. Keep the padding breakpoint aligned with the launcher.
+
 **An anchored guest popover can open below the visible tablet viewport.** The date and guest
 panels portal to `document.body`, so their desktop/tablet `top` must be calculated from the
 trigger's viewport rect and the rendered panel height. Prefer below, flip above when it fits,

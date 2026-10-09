@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { parseFilters } from '../lib/application/search-params';
 
 function isoDaysFromNow(days: number): string {
   const date = new Date();
@@ -7,10 +8,9 @@ function isoDaysFromNow(days: number): string {
 }
 
 // A far stay that moves each run, so reruns against the persisted D1 never run out of rooms.
-const offset = 120 + (Math.floor(Date.now() / 1000) % 200);
+let offset = 120 + (Math.floor(Date.now() / 1000) % 200);
 const stay = { checkIn: isoDaysFromNow(offset), checkOut: isoDaysFromNow(offset + 3), adults: 2, children: 0 };
 const guest = { firstName: 'Nadia', lastName: 'Petrova', email: 'nadia@example.com', phone: '91 555 0142' };
-const deluxeSeaRooms = ['401', '402', '403', '404', '405', '406', '407', '408'];
 
 async function quoteTotal(request: APIRequestContext, dates = stay): Promise<number> {
   const response = await request.post('/api/quotes', {
@@ -41,9 +41,23 @@ let chosenReference = '';
 let chosenKey = '';
 
 test('a guest can book the exact room they picked', async ({ request }, testInfo) => {
+  let availableRooms: Array<{ number: string }> = [];
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const response = await request.post('/api/public/catalog', {
+      data: { operation: 'floor-plan', hotelSlug: 'asteria-cove', criteria: stay, filters: parseFilters({}) },
+    });
+    expect(response.ok()).toBeTruthy();
+    const { plan } = await response.json();
+    availableRooms = plan.units.filter((unit: { roomSlug: string; status: string }) => unit.roomSlug === 'deluxe-sea' && unit.status === 'available');
+    if (availableRooms.length >= 2) break;
+    offset += 7;
+    stay.checkIn = isoDaysFromNow(offset);
+    stay.checkOut = isoDaysFromNow(offset + 3);
+  }
+  expect(availableRooms.length, 'the fixture needs two free Deluxe Sea View rooms').toBeGreaterThanOrEqual(2);
   const total = await quoteTotal(request);
 
-  for (const room of deluxeSeaRooms) {
+  for (const { number: room } of availableRooms) {
     const key = `inventory-${testInfo.project.name}-${Date.now()}-${room}`;
     const response = await book(request, key, total, { unitNumber: room });
     if (response.status() === 409) continue;
