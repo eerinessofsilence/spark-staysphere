@@ -18,20 +18,30 @@ test('one dashboard period controls all four summary cards', async ({ page, isMo
 
   const period = page.getByRole('region', { name: 'Summary period' });
   await expect(period).toBeVisible();
-  if (isMobile) await period.getByRole('button', { name: 'Filters' }).click();
-  let options = isMobile ? page.getByRole('dialog', { name: 'Summary period' }) : period;
+  async function showOptions() {
+    if (!isMobile) return period;
+    const dialog = page.getByRole('dialog', { name: 'Summary period' });
+    await expect(async () => {
+      if (!await dialog.isVisible()) await period.getByRole('button', { name: 'Filters' }).click();
+      await expect(dialog).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+    return dialog;
+  }
+  let options = await showOptions();
   await expect(options.getByRole('link', { name: 'Next 7 days' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('Arrivals & departures', { exact: true })).toBeVisible();
 
   await options.getByRole('link', { name: 'Next 30 days' }).click();
   await expect(page).toHaveURL(/\/admin\?period=next_30$/);
-  if (isMobile) await period.getByRole('button', { name: 'Filters' }).click();
-  options = isMobile ? page.getByRole('dialog', { name: 'Summary period' }) : period;
+  options = await showOptions();
   await expect(options.getByRole('link', { name: 'Next 30 days' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('Confirmed stays, by arrival date', { exact: true })).toBeVisible();
 
-  await options.getByRole('button', { name: 'Custom dates' }).click();
-  await expect(page.getByRole('dialog', { name: 'Custom dates' })).toBeVisible();
+  const calendar = page.getByRole('dialog', { name: 'Custom dates' });
+  await expect(async () => {
+    if (!await calendar.isVisible()) await options.getByRole('button', { name: 'Custom dates' }).click();
+    await expect(calendar).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 });
 
 test('compact dashboard charts expose every bar on hover, touch and keyboard', async ({ page, isMobile }) => {
@@ -42,10 +52,17 @@ test('compact dashboard charts expose every bar on hover, touch and keyboard', a
   await expect(mealBars).toHaveCount(7);
 
   const mealBar = mealBars.first();
-  if (isMobile) await mealBar.click();
-  else await mealBar.hover();
   const mealTooltip = page.getByRole('status').filter({ hasText: 'Breakfast' });
-  await expect(mealTooltip).toBeVisible();
+  await expect(async () => {
+    if (!await mealTooltip.isVisible()) {
+      if (isMobile) await mealBar.click();
+      else {
+        await page.mouse.move(0, 0);
+        await mealBar.hover();
+      }
+    }
+    await expect(mealTooltip).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await expectInsideViewport(page, mealTooltip);
 
   await mealBar.focus();

@@ -21,5 +21,6 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
+    env: { VITE_PMS_URL: process.env.VITE_PMS_URL ?? 'http://127.0.0.1:3001' },
   },
 })

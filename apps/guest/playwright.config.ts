@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 3000;
-const baseURL = `http://localhost:${PORT}`;
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
+const baseURL = `http://127.0.0.1:${PORT}`;
 
 /**
  * Guest runs against its own Worker plus the PMS Worker that owns hotel data.
@@ -28,9 +28,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev:pms-guest-test --prefix ../..',
-    url: baseURL,
+    command: 'node ../../scripts/dev-pms-guest-test.mjs',
+    url: `${baseURL}/brand/staysphere-logo-on-light.svg`,
     reuseExistingServer: false,
     timeout: 120_000,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
   },
 });

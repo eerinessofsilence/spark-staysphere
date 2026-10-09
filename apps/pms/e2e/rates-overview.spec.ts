@@ -102,6 +102,15 @@ test('date header stays visible while scrolling rates and follows horizontal dat
 
 test('an inactive room opens when clicking the empty right side of its full-width header', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  await page.goto('/admin/content/rooms/room_garden-studio');
+  await expect(page.getByRole('button', { name: 'Save room', exact: true })).toBeEnabled();
+  const hide = page.getByRole('button', { name: 'Hide from site', exact: true });
+  const wasVisible = await hide.isVisible();
+  if (wasVisible) {
+    await hide.click();
+    await expect(page.getByRole('button', { name: 'Show on site', exact: true })).toBeEnabled();
+  }
+  try {
   await page.goto('/admin/rates?days=7');
   const room = page.locator('[data-inactive-rate-room]').first();
   const summary = room.locator('summary');
@@ -118,6 +127,14 @@ test('an inactive room opens when clicking the empty right side of its full-widt
   await expect(room).toHaveAttribute('open', '');
   await page.mouse.click(clickX, box!.y + box!.height / 2);
   await expect(room).not.toHaveAttribute('open');
+  } finally {
+    if (wasVisible) {
+      await page.goto('/admin/content/rooms/room_garden-studio');
+      await expect(page.getByRole('button', { name: 'Save room', exact: true })).toBeEnabled();
+      await page.getByRole('button', { name: 'Show on site', exact: true }).click();
+      await expect(hide).toBeEnabled();
+    }
+  }
 });
 
 test('holiday rate review shows inventory and keeps pricing a deliberate action', async ({ page }) => {

@@ -58,7 +58,8 @@ test('free booking cells use the same dark tint as the rates grid', async ({ pag
   await expect(page.locator('html')).toHaveClass(/dark/);
   const freeNight = page.locator('[data-night-index][title]:not([data-today-night])').first();
   await expect(freeNight).toBeVisible();
-  await freeNight.hover();
+  await freeNight.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'center' }));
+  await freeNight.hover({ position: { x: 2, y: 2 } });
   const background = await freeNight.evaluate((element) => getComputedStyle(element).backgroundColor);
   await page.goto('/admin/rates?days=7');
   const rate = page.locator('[data-rate-price][data-rate-today="true"]').first();

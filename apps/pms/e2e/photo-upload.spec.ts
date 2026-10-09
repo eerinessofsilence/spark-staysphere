@@ -74,7 +74,7 @@ test("selects several library photos and keeps valid files when another upload f
   await expect(page.getByRole("button", { name: "Save hotel details" })).toBeEnabled();
   const input = page.locator('input[name="aboutPhotos"]');
   const before = (JSON.parse(await input.inputValue()) as string[]).length;
-  await page.getByRole("button", { name: "Choose from library", exact: true }).click();
+  await page.locator('[data-photo-editor="aboutPhotos"]').getByRole("button", { name: "Choose from library", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Choose from library", exact: true });
   const options = dialog.locator('button[aria-pressed="false"]:enabled');
   await options.nth(0).click();

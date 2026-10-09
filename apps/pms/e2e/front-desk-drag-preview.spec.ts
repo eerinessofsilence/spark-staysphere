@@ -22,7 +22,7 @@ test('dragging over free nights shows the add-booking action', async ({ page }, 
   const row = page.getByRole('group', { name: target!.room!, exact: true });
   const first = row.locator(`[data-night-index="${target!.start}"]`);
   const last = row.locator(`[data-night-index="${target!.end}"]`);
-  await first.scrollIntoViewIfNeeded();
+  await first.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'center' }));
   const firstBox = (await first.boundingBox())!;
   const lastBox = (await last.boundingBox())!;
   await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);

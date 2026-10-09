@@ -4,10 +4,15 @@ import type { BookingEngineAdapter, Clock, PaymentProvider } from '../domain/por
 import { BookingService } from './booking-service';
 
 const now = '2035-01-01T12:00:00.000Z';
-const quote = {
+const quote: Quote = {
   roomTypeId: 'room-test', ratePlanId: 'rate-test', addOnIds: [], available: true,
-  price: { total: 200, currency: 'EUR' },
-} as Quote;
+  checkIn: '2035-02-01', checkOut: '2035-02-03', adults: 2, children: 0,
+  status: 'available', remaining: 1, expiresAt: '2035-01-01T12:15:00.000Z',
+  price: {
+    nights: 2, nightlyPrice: 100, roomTotal: 200, addOnLines: [], addOnsTotal: 0,
+    taxesAndFees: 0, total: 200, currency: 'EUR', otaComparisonTotal: null, directSaving: 0,
+  },
+};
 
 function request(idempotencyKey: string, paymentMethod: BookingRequest['paymentMethod'] = 'card'): BookingRequest {
   return {

@@ -43,7 +43,7 @@ export async function POST(request: Request): Promise<Response> {
     const idempotencyKey = String(data.get('idempotencyKey') ?? '');
     if (!availableHotels.some((hotel) => hotel.slug === hotelSlug)) return Response.json({ error: 'invalid_hotel' }, { status: 400 });
     const uploads = data.getAll('photos');
-    if (uploads.length < 1 || uploads.length > MAX_MAINTENANCE_PHOTOS || uploads.some((file) => !(file instanceof File) || file.size > MAX_MAINTENANCE_PHOTO_BYTES)) {
+    if (uploads.length < 1 || uploads.length > MAX_MAINTENANCE_PHOTOS || uploads.some((file) => !(file instanceof File) || file.type !== 'image/jpeg' || file.size === 0 || file.size > MAX_MAINTENANCE_PHOTO_BYTES)) {
       return Response.json({ error: 'invalid_photos' }, { status: 400 });
     }
     if (description.length > MAX_MAINTENANCE_DESCRIPTION) return Response.json({ error: 'invalid_description' }, { status: 400 });

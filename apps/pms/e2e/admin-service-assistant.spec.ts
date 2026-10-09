@@ -6,8 +6,10 @@ test('assistant reviews upcoming rate opportunities on request', async ({ page }
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/accounting');
   const panel = page.getByRole('dialog', { name: 'Admin assistant', exact: true });
-  await page.getByRole('button', { name: 'Admin assistant', exact: true }).click();
-  await expect(panel).toBeVisible();
+  await expect(async () => {
+    if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Admin assistant', exact: true }).click();
+    await expect(panel).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await panel.getByRole('button', { name: 'Check rate opportunities' }).click();
   await expect(panel.getByText(/I found these dates worth reviewing|No strong rate signal|Rate data is unavailable/)).toBeVisible();
 });
@@ -27,7 +29,7 @@ test('assistant dismisses on an outside click and stays open for its own control
   await input.click();
   await expect(panel).toBeVisible();
 
-  await page.locator('#ledger-heading').click();
+  await page.getByRole('heading', { name: 'Accounting', level: 1, exact: true }).click();
   await expect(panel).toBeHidden();
 
   await launcher.click();

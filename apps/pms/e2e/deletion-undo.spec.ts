@@ -17,8 +17,8 @@ test('a saved record can be restored during the six-second delete window', async
   await page.goto('/admin/guests');
   const dialog = page.getByRole('dialog', { name: 'New guest', exact: true });
   await actUntil(
-    () => page.getByRole('button', { name: 'New guest', exact: true }).click(),
-    () => expect(dialog).toBeVisible(),
+    () => page.getByRole('button', { name: 'New guest', exact: true }).first().click(),
+    () => expect(dialog).toBeVisible({ timeout: 2_000 }),
   );
   await dialog.getByLabel('First name', { exact: true }).fill('Undo');
   await dialog.getByLabel('Last name', { exact: true }).fill(suffix);
@@ -30,8 +30,17 @@ test('a saved record can be restored during the six-second delete window', async
   await page.goto(`/admin/guests?q=${encodeURIComponent(email)}`);
   const row = page.getByRole('row').filter({ hasText: email });
   await expect(row).toBeVisible();
-  await row.getByRole('button', { name: 'Guest actions', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Delete guest', exact: true }).click();
+  const deleteGuest = page.getByRole('menuitem', { name: 'Delete guest', exact: true });
+  async function openActions() {
+    await actUntil(
+      async () => {
+        if (!await deleteGuest.isVisible()) await row.getByRole('button', { name: 'Guest actions', exact: true }).click();
+      },
+      () => expect(deleteGuest).toBeVisible({ timeout: 2_000 }),
+    );
+  }
+  await openActions();
+  await deleteGuest.click();
 
   const pending = page.locator('[data-deletion-toast]').filter({ hasText: guestName });
   await expect(pending).toBeVisible();
@@ -40,8 +49,8 @@ test('a saved record can be restored during the six-second delete window', async
   await expect(pending).toBeHidden();
   await expect(row).toBeVisible();
 
-  await row.getByRole('button', { name: 'Guest actions', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Delete guest', exact: true }).click();
+  await openActions();
+  await deleteGuest.click();
   await expect(page.getByText('Guest profile deleted.', { exact: true })).toBeVisible({ timeout: 10_000 });
   await page.reload();
   await expect(page.getByRole('row').filter({ hasText: email })).toHaveCount(0);

@@ -1,32 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { format } from 'date-fns';
-
-async function createAwaitingBooking(request: APIRequestContext, tag: string) {
-  let booking: { reference: string; createdAt: string } | undefined;
-  // Demo demand can fill a particular night. Find a free stay without resetting user data.
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const start = new Date();
-    start.setDate(start.getDate() + 160 + (Math.floor(Date.now() / 1000) % 160) + attempt * 3);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    const stay = { roomSlug: 'deluxe-sea', checkIn: start.toISOString().slice(0, 10), checkOut: end.toISOString().slice(0, 10), adults: 2, children: 0, addOnIds: [] };
-    const quoteResponse = await request.post('/api/quotes', { data: stay });
-    expect(quoteResponse.ok()).toBeTruthy();
-    const body = await quoteResponse.json();
-    const quote = body.quote ?? body;
-    if (!quote.available) continue;
-    const response = await request.post('/api/bookings', {
-      headers: { 'Idempotency-Key': `accounting-${tag}-${Date.now()}-${attempt}` },
-      data: { ...stay, expectedTotal: quote.price.total, paymentMethod: 'pay_at_hotel', guest: { firstName: 'Invoice', lastName: 'Preview Test', email: 'invoice-preview@example.com', phone: '5551234567' } },
-    });
-    if (response.status() === 409) continue;
-    expect(response.status()).toBe(201);
-    booking = (await response.json()).booking;
-    break;
-  }
-  expect(booking, 'a free stay should be available for the invoice preview').toBeDefined();
-  return booking!;
-}
+import { createAwaitingBooking } from './booking-fixture';
 
 async function showPaymentFilters(page: Page, mobile: boolean) {
   if (mobile) {
@@ -113,7 +87,7 @@ test('accounting tabs open a booking invoice and return to the register', async 
   await tabs.getByRole('link', { name: 'Invoices', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/accounting\/invoices$/);
   await expect(tabs.getByRole('link', { name: 'Invoices', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText('Demo invoices', { exact: true })).toBeVisible();
+  await expect(page.getByText(/these previews have no fiscal standing/)).toBeVisible();
   const row = page.getByRole('table', { name: 'Invoices', exact: true }).getByRole('row').filter({ hasText: `INV-${reference}` });
   await expect(row).toContainText('Awaiting payment');
   await page.screenshot({ path: testInfo.outputPath('invoices-register.png'), fullPage: false });
@@ -137,7 +111,7 @@ test('accounting tabs open a booking invoice and return to the register', async 
   await page.reload();
   await expect(tabs.getByRole('link', { name: 'Invoices', exact: true })).toHaveAttribute('aria-current', 'page');
   await tabs.getByRole('link', { name: 'Payments', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'By payment method' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Payments', level: 2, exact: true })).toBeVisible();
 });
 
 test('payment filters combine search, status, method and dates and survive reload', async ({ page, request }, testInfo) => {
@@ -147,25 +121,28 @@ test('payment filters combine search, status, method and dates and survive reloa
   await page.goto('/admin/accounting?page=5&pageSize=10&methodPageSize=50');
   const section = page.getByRole('region', { name: 'Payments', exact: true });
   const filters = await showPaymentFilters(page, mobile);
-  await filters.getByLabel('Booking or guest', { exact: true }).fill(booking.reference.toLowerCase());
   await filters.getByRole('combobox', { name: 'Status', exact: true }).click();
   await expect(page.getByRole('option', { name: 'Awaiting payment', exact: true })).toBeVisible();
   // Base UI deliberately guards pointer selection briefly when opening a popup.
   await page.waitForTimeout(450);
   await page.getByRole('option', { name: 'Awaiting payment', exact: true }).click();
+  await expect(page).toHaveURL(/status=awaiting/);
   await filters.getByRole('combobox', { name: 'Method', exact: true }).click();
   await expect(page.getByRole('option', { name: 'Pay at the hotel', exact: true })).toBeVisible();
   await page.waitForTimeout(450);
   await page.getByRole('option', { name: 'Pay at the hotel', exact: true }).click();
+  await expect(page).toHaveURL(/method=pay_at_hotel/);
   await filters.getByRole('button', { name: 'Choose booking dates' }).click();
   const calendar = page.getByRole('dialog', { name: 'Choose booking dates' });
   await expect(calendar).toBeVisible();
+  await expect(calendar).toHaveCSS('opacity', '1');
   const date = new Date(`${booking.createdAt.slice(0, 10)}T12:00:00`);
   await calendar.getByRole('button', { name: format(date, 'EEE d MMM'), exact: true }).click();
-  await calendar.getByRole('button', { name: 'Use dates', exact: true }).click();
   await expect(calendar).toBeHidden();
-  await filters.getByRole('button', { name: 'Apply filters', exact: true }).click();
-  await expect(page).toHaveURL(/status=awaiting/);
+  await expect(page).toHaveURL(/from=/);
+  await filters.getByLabel('Booking or guest', { exact: true }).fill(booking.reference.toLowerCase());
+  await filters.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`q=${booking.reference.toLowerCase()}`));
   const url = new URL(page.url());
   expect(url.searchParams.get('page')).toBeNull();
   expect(url.searchParams.get('q')).toBe(booking.reference.toLowerCase());
@@ -200,8 +177,9 @@ test('payment filters combine search, status, method and dates and survive reloa
   await expect(filters.getByRole('combobox', { name: 'Status', exact: true })).toContainText('All statuses');
 });
 
-test('payment pagination preserves filters and empty results can be reset', async ({ page }, testInfo) => {
+test('payment pagination preserves filters and empty results can be reset', async ({ page, request }, testInfo) => {
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  for (let index = 0; index < 11; index += 1) await createAwaitingBooking(request, `pagination-${testInfo.project.name}-${index}`);
   await page.goto('/admin/accounting?status=awaiting&method=pay_at_hotel&from=2020-01-01&to=2030-01-01&pageSize=10&methodPageSize=50');
   const section = page.getByRole('region', { name: 'Payments', exact: true });
   const next = section.getByRole('link', { name: 'Next page', exact: true });
@@ -213,7 +191,7 @@ test('payment pagination preserves filters and empty results can be reset', asyn
   expect(rows.every((row) => row.includes('Awaiting payment') && row.includes('Pay at the hotel'))).toBe(true);
   const filters = await showPaymentFilters(page, testInfo.project.name === 'mobile');
   await filters.getByLabel('Booking or guest', { exact: true }).fill('this-guest-does-not-exist');
-  await filters.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await filters.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(section.getByText('No payments match these filters', { exact: true })).toBeVisible();
   await expect(section.getByRole('table')).toHaveCount(0);
   await section.getByRole('link', { name: 'Reset filters', exact: true }).last().click();
@@ -272,13 +250,14 @@ test('unknown invoice shows an unavailable state and preserves register paginati
   expect(width.document).toBe(width.viewport);
 });
 
-test('invoice navigation follows the admin language', async ({ page, context, baseURL }) => {
+test('invoice navigation follows the admin language', async ({ page, request, context, baseURL }) => {
+  await createAwaitingBooking(request, 'invoice-language');
   await context.addCookies([{ name: 'admin-locale', value: 'ru', url: `${baseURL}/admin` }]);
   await page.goto('/admin/accounting/invoices');
   const tabs = page.getByRole('navigation', { name: 'Финансы', exact: true });
   await expect(tabs.getByRole('link', { name: 'Счета', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(tabs.getByRole('link', { name: 'Платежи', exact: true })).toBeVisible();
-  await expect(page.getByText('Демо-инвойсы', { exact: true })).toBeVisible();
+  await expect(page.getByText(/эти документы не имеют фискальной силы/)).toBeVisible();
   await page.getByRole('table', { name: 'Счета', exact: true }).getByRole('link', { name: /^Посмотреть счёт INV-/ }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Счёт', exact: true });
   await expect(dialog).toBeVisible();

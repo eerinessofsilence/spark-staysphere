@@ -7,13 +7,16 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const statePath = mkdtempSync(join(tmpdir(), 'staysphere-pms-guest-e2e-'));
+const guestPort = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const env = {
   ...process.env,
-  PMS_PORT: '3002',
-  PMS_API_UPSTREAM_PORT: '3002',
-  PMS_API_PROXY_PORT: '3001',
-  PMS_API_PROXY_CONTROL_PORT: '3101',
-  PMS_API_URL: 'http://127.0.0.1:3001',
+  GUEST_PORT: String(guestPort),
+  PMS_PORT: String(guestPort + 2),
+  PMS_API_UPSTREAM_PORT: String(guestPort + 2),
+  PMS_API_PROXY_PORT: String(guestPort + 1),
+  PMS_API_PROXY_CONTROL_PORT: String(guestPort + 101),
+  PMS_API_URL: `http://127.0.0.1:${guestPort + 1}`,
+  DEV_HOST: '127.0.0.1',
   STAYSPHERE_LOCAL_STATE_PATH: statePath,
 };
 const children = [];

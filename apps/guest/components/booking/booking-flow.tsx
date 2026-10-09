@@ -98,6 +98,7 @@ const BOOKING_ERROR_KEYS: Record<string, TranslationKey> = {
   payment_declined: 'book.errorPaymentDeclined',
   not_found: 'book.errorNotFound',
   quote_failed: 'book.errorQuoteFailed',
+  request_failed: 'book.errorGeneric',
 };
 
 export function BookingFlow({
@@ -175,7 +176,7 @@ export function BookingFlow({
 
   /** Any change to the stay or services is re-priced by the server, never locally. */
   const reprice = React.useCallback(
-    async (nextCriteria: StayCriteria, nextAddOnIds: string[]) => {
+    async (nextCriteria: StayCriteria, nextAddOnIds: string[], preserveError = false) => {
       if (nextCriteria.checkOut <= nextCriteria.checkIn) return;
       setRepricing(true);
       const result = await quoteStay({
@@ -189,7 +190,7 @@ export function BookingFlow({
       setRepricing(false);
       if (result.ok) {
         setQuote(result.quote);
-        setFlowError(null);
+        if (!preserveError) setFlowError(null);
       } else {
         setFlowError({ code: 'quote_failed', message: result.message });
       }
@@ -311,7 +312,7 @@ export function BookingFlow({
     // A changed price invalidates the attempt; the next try needs a fresh key.
     if (result.code === 'price_changed') {
       idempotencyKey.current = null;
-      await reprice(criteria, addOnIds);
+      await reprice(criteria, addOnIds, true);
     }
   };
 

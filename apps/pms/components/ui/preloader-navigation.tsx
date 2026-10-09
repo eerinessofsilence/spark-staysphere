@@ -35,7 +35,7 @@ export function usePreloaderRouter() {
 
 export function PreloaderLink({ onClick, href, ...props }: React.ComponentProps<typeof Link>) {
   const router = usePreloaderRouter();
-  return <Link {...props} href={href} onClick={(event) => {
+  return <Link {...props} href={href} onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
       || (props.target && props.target !== '_self') || (props.download != null && props.download !== false)

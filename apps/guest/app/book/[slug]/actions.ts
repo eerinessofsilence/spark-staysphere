@@ -82,6 +82,9 @@ export async function confirmBooking(input: ConfirmBookingInput): Promise<Confir
     const booking = await createPublicBooking(parsed.data, input.idempotencyKey);
     return { ok: true, reference: booking.reference };
   } catch (error) {
+    if (error instanceof PmsApiError && error.status >= 500) {
+      return { ok: false, code: 'request_failed', message: error.message };
+    }
     const bookingCodes: BookingErrorCode[] = [
       'invalid_request', 'unavailable', 'price_changed', 'payment_declined', 'not_found',
     ];

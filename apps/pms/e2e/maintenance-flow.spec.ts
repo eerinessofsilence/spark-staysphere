@@ -1,8 +1,18 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
 
-const hotelUrl = 'http://localhost:3100';
+const hotelUrl = `http://localhost:${process.env.PLAYWRIGHT_PORT ?? 3100}`;
 
 async function signIn(context: BrowserContext, email: string, destination: RegExp) {
+  await context.addInitScript(() => {
+    localStorage.setItem('admin-tour.seen.v1', '1');
+    localStorage.setItem('housekeeper-tour.housekeeper-demo.seen.v1', '1');
+    localStorage.setItem('housekeeper-report-tour.housekeeper-demo.seen.v1', '1');
+    for (const member of ['Housekeeper:housekeeper-demo', 'Hotelier:hotelier-demo']) {
+      localStorage.setItem(`maintenance-detail-tour.${member}.seen.v1`, '1');
+      localStorage.setItem(`maintenance-list-tour.${member}.seen.v1`, '1');
+      localStorage.setItem(`maintenance-report-tour.${member}.seen.v1`, '1');
+    }
+  });
   const page = await context.newPage();
   await page.goto('/admin/sign-in');
   await page.getByLabel('Email').fill(email);
@@ -13,6 +23,10 @@ async function signIn(context: BrowserContext, email: string, destination: RegEx
 }
 
 test('maintenance report, replacement approval and resolution cross role boundaries', async ({ page, browser }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('maintenance-detail-tour.Owner:elena.seen.v1', '1');
+    localStorage.setItem('maintenance-list-tour.Owner:elena.seen.v1', '1');
+  });
   let createdIssue: { id: string } | undefined;
   await page.context().addCookies([{ name: 'admin-locale', value: 'en', url: hotelUrl }]);
   await page.goto('/admin/housekeeping');
@@ -20,7 +34,7 @@ test('maintenance report, replacement approval and resolution cross role boundar
   const roomNumber = (await roomRow.getByRole('link').innerText()).trim();
   await roomRow.getByRole('combobox', { name: 'Assign housekeeper' }).selectOption('housekeeper-demo');
 
-  const housekeeperContext = await browser.newContext();
+  const housekeeperContext = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   await housekeeperContext.addCookies([{ name: 'admin-locale', value: 'en', url: hotelUrl }]);
   const housekeeperPage = await signIn(housekeeperContext, 'housekeeper@asteriacove.example', /\/housekeeper$/);
   try {
@@ -58,7 +72,7 @@ test('maintenance report, replacement approval and resolution cross role boundar
   await expect(photoImage).toBeVisible();
   const photoPath = await photoImage.getAttribute('src');
   expect(photoPath).toContain(`/photos/`);
-  const anonymous = await browser.newContext();
+  const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   try {
     const anonymousResponse = await anonymous.request.get(`${hotelUrl}${photoPath}`);
     expect([401, 403, 404]).toContain(anonymousResponse.status());
@@ -71,7 +85,7 @@ test('maintenance report, replacement approval and resolution cross role boundar
   await page.getByRole('button', { name: 'Request hotelier approval' }).click();
   await expect(page.getByRole('button', { name: 'Mark as fixed' })).toBeDisabled();
 
-  const hotelierContext = await browser.newContext();
+  const hotelierContext = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   await hotelierContext.addCookies([{ name: 'admin-locale', value: 'en', url: hotelUrl }]);
   const hotelierPage = await signIn(hotelierContext, 'hotelier@asteriacove.example', /\/admin(?:\?|$)/);
   try {

@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 test('assigned rooms, tablet access, evidence and offline sync', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('housekeeper-tour.housekeeper-demo.seen.v1', '1');
+    localStorage.setItem('housekeeper-report-tour.housekeeper-demo.seen.v1', '1');
+  });
   await page.goto('/admin/housekeeping');
   const row = page.locator('tbody tr').first();
   const number = (await row.getByRole('link').innerText()).trim();

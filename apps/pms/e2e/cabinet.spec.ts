@@ -84,6 +84,7 @@ test('the front desk lays out every room and filters by room type', async ({ pag
   // Nonsense parameters fall back to today, 14 nights and every room type. Any whole number of
   // nights up to 90 is a valid custom range, so the fallback needs one past that.
   await page.goto('/admin/front-desk?from=garbage&days=500&type=nope');
+  await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
   // On a phone the nights toggle lives in the filter sheet.
   const filters = page.getByRole('button', { name: /^Filters/ });
   if (await filters.isVisible()) {

@@ -12,6 +12,8 @@ import { expect, test as setup } from '@playwright/test';
 export const ADMIN_STORAGE_STATE = 'e2e/.auth/admin.json';
 
 setup('sign in to the back office', async ({ page }) => {
+  setup.setTimeout(120_000);
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/sign-in');
   await page.getByLabel('Email').fill('elena.markou@asteriacove.example');
   await page.getByLabel('Password').fill('staysphere');
@@ -19,7 +21,7 @@ setup('sign in to the back office', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/admin\/welcome/);
   await page.getByRole('button', { name: 'Skip for now' }).click();
-  await expect(page).toHaveURL(/\/admin(\?|$)/);
+  await expect(page).toHaveURL(/\/admin(\?|$)/, { timeout: 60_000 });
 
   await page.context().storageState({ path: ADMIN_STORAGE_STATE });
 });

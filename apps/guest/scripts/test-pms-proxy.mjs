@@ -50,7 +50,7 @@ const proxy = http.createServer((request, response) => {
     return;
   }
 
-  const headers = { ...request.headers, host: `localhost:${upstreamPort}` };
+  const headers = { ...request.headers };
   delete headers['accept-encoding'];
   const upstream = http.request({ hostname: '127.0.0.1', port: upstreamPort, path: request.url, method: request.method, headers }, (upstreamResponse) => {
     if (fault?.mode === 'lose-response') {

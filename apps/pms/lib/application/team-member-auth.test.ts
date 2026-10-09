@@ -16,6 +16,7 @@ vi.mock("./container", async () => {
   const { mockRoleStore } = await import("../infrastructure/role-store-mock");
   return {
     teamService: new TeamService(mockRoleStore),
+    tenantService: { findAccount: vi.fn(async () => null) },
     adminAuthConfig: () => ({ password: "test-password", sessionSecret: "test-session-secret" }),
   };
 });

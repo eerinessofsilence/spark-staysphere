@@ -30,11 +30,11 @@ test("uses the same uploader on all photo editing surfaces", async ({ page }) =>
     "/admin/media",
     "/admin/content/rooms/new",
     "/admin/content/add-ons/new",
-    "/admin/settings",
+    "/admin/content/hotel",
     "/admin/content/spinner/frames",
   ]) {
     await page.goto(path);
-    const zone = page.getByTestId("upload-dropzone");
+    const zone = page.getByTestId("upload-dropzone").first();
     await expect(zone).toBeVisible();
     await expect(zone.getByText("Drop photos here or choose files", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -49,12 +49,12 @@ test("uses the same uploader on all photo editing surfaces", async ({ page }) =>
       buffer: Buffer.from("not an image"),
     });
   await expect(page.getByRole("alert")).toContainText("JPEG");
-  await page.goto("/admin/settings");
-  const editor = page.locator('[data-photo-editor="brand-logo-preview"]');
+  await page.goto("/admin/content/hotel");
+  const editor = page.locator('[data-photo-editor="logoUrl"]');
   await expect(editor.getByTestId("upload-dropzone")).toBeVisible();
   await expect(editor.locator('input[type="file"]')).not.toHaveAttribute("multiple");
   await editor.locator('input[type="file"]').setInputFiles("public/images/hotel/cove.webp");
-  await expect(editor.getByRole("status")).toContainText("1 images saved to the media library.");
+  await expect(editor.getByRole("status")).toContainText("1 photos uploaded. Save changes to publish them.");
   await expect(editor.locator('input[type="hidden"]')).toHaveValue(/^\/media\/photos\//);
   await page.screenshot({
     path: `/tmp/shared-uploader-${test.info().project.name}.png`,

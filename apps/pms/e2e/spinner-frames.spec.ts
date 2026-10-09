@@ -27,6 +27,7 @@ test.describe.configure({ mode: 'serial' });
 
 test('uploading a new frame set replaces the orbit and clears its markers and zones', async ({ page }, testInfo) => {
   testInfo.skip(testInfo.project.name === 'mobile', 'The frame manager needs desktop width.');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
 
   await resetDemoState(page);
   await page.goto('/admin/content/spinner/frames');

@@ -114,13 +114,14 @@ test('a negative price and a duplicate page address are both rejected, and nothi
   await page.goto('/admin/content/rooms/room_deluxe-sea');
   await formReady(page, 'Save rate');
   const priceField = page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice');
+  const originalPrice = await priceField.inputValue();
   await priceField.fill('-10');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('Enter a price greater than 0.')).toBeVisible();
 
   // Reload and check the server-rendered value, not the field the failed submit left behind.
   await page.reload();
-  await expect(page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice')).toHaveValue('499');
+  await expect(page.locator('#rate-rate_deluxe-sea_flex-nightlyPrice')).toHaveValue(originalPrice);
 });
 
 test("a row's menu deletes a CMS add-on after confirming, and won't delete a seed one", async ({ page }) => {
@@ -162,6 +163,7 @@ test("a row's menu deletes a CMS add-on after confirming, and won't delete a see
 
 test('a room is added under its room type, shows on the front desk, and can be removed', async ({ page }) => {
   await page.goto('/admin/content/units/new?type=room_deluxe-sea');
+  await formReady(page, 'Create room');
   const number = page.locator('#unit-number');
   await expect(number).not.toHaveValue('');
 
@@ -179,10 +181,9 @@ test('a room is added under its room type, shows on the front desk, and can be r
   await expect(page.getByRole('group', { name: 'Room 499' })).toBeVisible();
 
   await page.goto('/admin/content/units/unit_499');
+  await formReady(page, 'Save room');
   page.on('dialog', (dialog) => dialog.accept());
-  await actUntil(
-    () => page.getByRole('button', { name: 'Remove Room 499' }).click(),
-    () => expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 5_000 }),
-  );
+  await page.getByRole('button', { name: 'Remove Room 499' }).click();
+  await expect(page).toHaveURL(/\/admin\/content\/units(#|$)/, { timeout: 20_000 });
   await expect(page.locator('#type-room_deluxe-sea').getByRole('link', { name: 'Room 499' })).toHaveCount(0);
 });

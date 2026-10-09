@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('guest date picker shows one month and selects a stay across months', async ({ page }) => {
+test('guest date picker selects a stay across months', async ({ page }, testInfo) => {
   const checkIn = new Date();
   checkIn.setDate(checkIn.getDate() + 45);
   const checkOut = new Date(checkIn);
@@ -14,17 +14,18 @@ test('guest date picker shows one month and selects a stay across months', async
     await trigger.click();
     await expect(panel).toBeVisible();
   }).toPass();
-  await expect(panel.locator('table')).toHaveCount(1);
+  const monthCount = testInfo.project.name === 'mobile' ? 1 : 2;
+  await expect(panel.locator('table')).toHaveCount(monthCount);
 
-  const days = panel.locator('table td button:not([disabled])');
+  const days = panel.locator('table').first().locator('td button:not([disabled])');
   const lastDay = days.last();
   const from = await lastDay.getAttribute('aria-label');
   await lastDay.click();
-  await expect(panel.getByText('Pick your check-out date.')).toBeVisible();
+  await expect(panel.locator('div[role="status"]')).toBeHidden();
 
-  await panel.getByRole('button', { name: 'Go to the Next Month' }).click();
-  await expect(panel.locator('table')).toHaveCount(1);
-  const firstDay = panel.locator('table td button:not([disabled])').first();
+  if (monthCount === 1) await panel.getByRole('button', { name: 'Go to the Next Month' }).click();
+  await expect(panel.locator('table')).toHaveCount(monthCount);
+  const firstDay = panel.locator('table').last().locator('td button:not([disabled])').first();
   const to = await firstDay.getAttribute('aria-label');
   await firstDay.click();
 

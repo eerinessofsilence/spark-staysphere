@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n/context';
 import { iconButton } from '@/lib/ui';
 import { cn } from '@/lib/utils';
 
-const buttonClass = cn(iconButton('dark'), 'pointer-events-auto size-10 bg-transparent hover:bg-white/15');
+const buttonClass = cn(iconButton('dark'), 'pointer-events-auto size-10 bg-transparent text-white hover:bg-white/15');
 
 /** The ink pill under the orbit: turn left, "360°", turn right. A press never starts a drag. */
 export function TurnControls({ onTurn }: { onTurn: (direction: 1 | -1) => void }) {

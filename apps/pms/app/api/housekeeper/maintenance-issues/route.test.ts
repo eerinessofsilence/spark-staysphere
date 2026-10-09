@@ -22,7 +22,7 @@ vi.mock('@/lib/application/container', () => ({
 import { AdminAuthError } from '@/lib/application/admin-session';
 import { GET, POST } from './route';
 
-function reportForm(file = new File([Uint8Array.from([1, 2, 3])], 'room.png', { type: 'image/png' })) {
+function reportForm(file = new File([Uint8Array.from([1, 2, 3])], 'room.jpg', { type: 'image/jpeg' })) {
   const form = new FormData();
   form.set('hotelSlug', 'asteria-cove');
   form.set('unitId', 'room-205');
@@ -69,7 +69,7 @@ describe('housekeeper maintenance HTTP contract', () => {
     expect(await response.json()).toMatchObject({ issueId: 'issue-1', created: true, notificationCount: 1 });
     expect(state.create).toHaveBeenCalledWith(expect.objectContaining({
       hotelSlug: 'asteria-cove', unitId: 'room-205', idempotencyKey: 'maintenance-report-key-1',
-      reporter: state.member, photos: [{ contentType: 'image/png', view: 'photo' }],
+      reporter: state.member, photos: [expect.objectContaining({ contentType: 'image/jpeg', view: 'photo' })],
     }));
     expect(new Uint8Array(state.create.mock.calls[0]![0].photos[0].bytes)).toEqual(new Uint8Array([1, 2, 3]));
   });

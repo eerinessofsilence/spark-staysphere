@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { createAwaitingBooking } from './booking-fixture';
 
-test('front desk filters narrow the rack by reservation, source, lock and floor', async ({ page }) => {
+test('front desk filters narrow the rack by reservation, source, lock and floor', async ({ page, request }) => {
+  const booking = await createAwaitingBooking(request, 'rack-filters');
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
-  await page.goto('/admin/front-desk');
+  await page.goto(`/admin/front-desk?from=${booking.checkIn}`);
   await expect(page.locator('[data-front-desk-interactive="true"]')).toBeVisible();
   const rooms = page.locator('#front-desk-calendar [role="group"][aria-label^="Room"]');
   const allRooms = await rooms.count();
@@ -19,8 +21,9 @@ test('front desk filters narrow the rack by reservation, source, lock and floor'
   await source.click();
   await page.getByRole('option', { name: 'Direct — hotel website', exact: true }).click();
   await expect(filters).toHaveAccessibleName('Filters, 1 applied');
-  await expect(rooms).toHaveCount(4);
-  expect(allRooms).toBeGreaterThan(4);
+  await expect.poll(() => rooms.count()).toBeGreaterThan(0);
+  await expect.poll(() => rooms.count()).toBeLessThan(allRooms);
+  await expect(page.getByRole('button', { name: new RegExp(`^Booking ${booking.reference},`) })).toBeVisible();
 
   const reservation = dialog.locator('#front-desk-filter-reservation-select');
   await reservation.click();

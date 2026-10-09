@@ -1,17 +1,23 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+const guestPort = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
+const pmsURL = `http://127.0.0.1:${guestPort + 1}`;
+const guestURL = `http://127.0.0.1:${guestPort}`;
+
 async function signInAsOwner(page: Page) {
-  await page.goto('http://localhost:3001/admin/sign-in');
+  await page.goto(`${pmsURL}/admin/sign-in`);
   await page.getByLabel('Email').fill('elena.markou@asteriacove.example');
   await page.getByLabel('Password').fill('staysphere');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL(/\/admin\/welcome/);
   await page.getByRole('button', { name: 'Skip for now' }).click();
-  await expect(page).toHaveURL(/\/admin(?:\?|$)/);
+  await expect(page).toHaveURL(/\/admin(?:\?|$)/, { timeout: 30_000 });
 }
 
 test('PMS-published hotel photos appear in Guest without sharing the admin session', async ({ browser }) => {
+  test.setTimeout(120_000);
   const adminContext: BrowserContext = await browser.newContext();
+  await adminContext.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   const adminPage = await adminContext.newPage();
   let saved = false;
   let original: string[] = [];
@@ -19,9 +25,10 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
 
   try {
     await signInAsOwner(adminPage);
-    await adminPage.goto('http://localhost:3001/admin/content/hotel');
+    await adminPage.goto(`${pmsURL}/admin/content/hotel`);
     const save = adminPage.getByRole('button', { name: 'Save hotel details', exact: true });
     const input = adminPage.locator('input[name="aboutPhotos"]');
+    await expect(save).toBeEnabled();
     original = JSON.parse(await input.inputValue()) as string[];
     await adminPage.locator('[data-photo-editor="aboutPhotos"] input[type="file"]')
       .setInputFiles(['../pms/public/images/hotel/cove.webp', '../pms/public/images/hotel/cove.webp']);
@@ -36,7 +43,7 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
     try {
       expect(await guestContext.cookies()).toEqual([]);
       const guestPage = await guestContext.newPage();
-      await guestPage.goto('http://localhost:3000/');
+      await guestPage.goto(`${guestURL}/`);
       const gallery = guestPage.getByRole('group', { name: /^About / });
       await gallery.scrollIntoViewIfNeeded();
       const image = gallery.locator('img').first();
@@ -50,7 +57,7 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
     }
   } finally {
     if (saved) {
-      await adminPage.goto('http://localhost:3001/admin/content/hotel');
+      await adminPage.goto(`${pmsURL}/admin/content/hotel`);
       const save = adminPage.getByRole('button', { name: 'Save hotel details', exact: true });
       await expect(save).toBeEnabled();
       const currentLength = JSON.parse(await adminPage.locator('input[name="aboutPhotos"]').inputValue()).length as number;

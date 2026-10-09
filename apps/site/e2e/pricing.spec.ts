@@ -5,8 +5,8 @@ test('pricing calculator configures rooms, channels, modules and billing', async
   await expect(page).toHaveURL(/\/pricing\/$/)
   await expect(page.getByRole('heading', { name: 'Build your direct-booking plan.' })).toBeVisible()
 
-  await page.getByRole('tab', { name: /Boutique/ }).click()
-  await expect(page.getByRole('tab', { name: /Boutique/ })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: /Mid-size hotels/ }).click()
+  await expect(page.getByRole('tab', { name: /Mid-size hotels/ })).toHaveAttribute('aria-selected', 'true')
   await page.getByLabel('Rooms, exact number').fill('65')
   await page.getByLabel('Rooms, exact number').press('Enter')
   await page.getByLabel('Connected channels, exact number').fill('4')
@@ -26,11 +26,13 @@ test('pricing calculator configures rooms, channels, modules and billing', async
 
   await included.getByRole('button', { name: 'Review your price' }).click()
   await page.getByRole('group', { name: 'Billing period' }).getByRole('button', { name: 'Monthly' }).click()
-  await expect(summary.getByText('Monthly')).toBeVisible()
+  await expect(summary.getByText('Monthly', { exact: true })).toBeVisible()
   const monthlyAmount = await summary.locator('span[aria-live="polite"]').first().innerText()
   await page.getByRole('group', { name: 'Billing period' }).getByRole('button', { name: /Yearly/ }).click()
-  await expect(summary.getByText('Yearly')).toBeVisible()
-  expect(await summary.locator('span[aria-live="polite"]').first().innerText()).toBe(monthlyAmount)
+  await expect(summary.getByText('Yearly', { exact: true })).toBeVisible()
+  const yearlyAmount = await summary.locator('span[aria-live="polite"]').first().innerText()
+  const amount = (value: string) => Number(value.replace(/[^\d.]/g, ''))
+  expect(amount(yearlyAmount)).toBeLessThan(amount(monthlyAmount))
   await expect(summary.getByText(/billed yearly/)).toBeVisible()
 })
 

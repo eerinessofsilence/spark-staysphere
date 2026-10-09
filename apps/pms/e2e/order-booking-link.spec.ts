@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { createAwaitingBooking } from './booking-fixture';
 
-test('service order links to the selected reservation and fills its guest and room', async ({ page }) => {
+test('service order links to the selected reservation and fills its guest and room', async ({ page, request }) => {
+  const booking = await createAwaitingBooking(request, 'order-link');
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/orders?view=all');
   const dialog = page.getByRole('dialog', { name: 'Create service order', exact: true });
@@ -11,7 +13,7 @@ test('service order links to the selected reservation and fills its guest and ro
   const toggle = dialog.getByRole('switch', { name: 'Link to a reservation', exact: true });
   await toggle.click();
   const search = dialog.getByRole('combobox', { name: 'Booking reference', exact: true });
-  await search.fill('example');
+  await search.fill(booking.reference);
   const suggestion = dialog.getByRole('option').first();
   await expect(suggestion).toBeVisible();
   const reference = await suggestion.locator('span').last().innerText();

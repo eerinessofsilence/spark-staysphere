@@ -11,7 +11,7 @@ const localBindingConfig = {
   compatibility_flags: ['nodejs_compat'],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   // Guest is stateless; all hotel data is read or changed through PMS_API_URL.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
   process.env.WRANGLER_LOG_PATH ??= '.wrangler/logs';
@@ -30,7 +30,12 @@ export default defineConfig(async () => {
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         persistState: false,
-        config: localBindingConfig,
+        config: {
+          ...localBindingConfig,
+          ...(command === 'serve' && process.env.PMS_API_URL
+            ? { vars: { PMS_API_URL: process.env.PMS_API_URL } }
+            : {}),
+        },
       }),
     ],
   };

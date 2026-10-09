@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type FocusEvent, type PointerEvent } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import './staysphere-logo.css';
@@ -102,11 +102,11 @@ export function StaySphereLogo({ href, className, footer = false }: {
       aria-label="StaySphere"
       className={cn('staysphere-logo-link inline-flex min-h-11 shrink-0 items-center rounded-full', footer && 'staysphere-logo-footer')}
       data-logo-highlighted={highlighted}
-      onPointerEnter={(event) => { if (event.pointerType !== 'touch') enter(); }}
-      onPointerLeave={(event) => { if (!event.currentTarget.matches(':focus-visible')) leave(); }}
+      onPointerEnter={(event: PointerEvent<HTMLAnchorElement>) => { if (event.pointerType !== 'touch') enter(); }}
+      onPointerLeave={(event: PointerEvent<HTMLAnchorElement>) => { if (!event.currentTarget.matches(':focus-visible')) leave(); }}
       onPointerCancel={leave}
-      onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) enter(); }}
-      onBlur={(event) => { if (!event.currentTarget.matches(':hover')) leave(); }}
+      onFocus={(event: FocusEvent<HTMLAnchorElement>) => { if (event.currentTarget.matches(':focus-visible')) enter(); }}
+      onBlur={(event: FocusEvent<HTMLAnchorElement>) => { if (!event.currentTarget.matches(':hover')) leave(); }}
       onClick={click}
     >
       <svg ref={svg} viewBox="0 0 718.05 125" width="718.05" height="125" aria-hidden="true" focusable="false" className={cn('staysphere-logo h-7 w-auto', className)}>

@@ -21,10 +21,11 @@ test('room search expands matches, folds other types and restores manual folds w
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   const manuallyVisible = await rooms.count();
 
-  const search = page.getByRole('searchbox', { name: 'Search by booking or room number' });
+  const search = page.getByRole('combobox', { name: 'Search by booking or room number' });
   await search.fill(` ${number.toLowerCase()} `);
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(calendar.locator(':scope > div > [role="group"]').first()).toHaveAttribute('aria-label', groupName);
+  const typeGroups = calendar.getByRole('group').filter({ has: page.locator(':scope > [role="button"][aria-expanded]') });
+  await expect(typeGroups.first()).toHaveAttribute('aria-label', groupName);
   await expect(calendar.getByRole('group', { name: roomLabel, exact: true })).toBeVisible();
   await expect.poll(async () => (await rooms.all()).length).toBeLessThan(total);
   for (const room of await rooms.all()) {
@@ -35,7 +36,7 @@ test('room search expands matches, folds other types and restores manual folds w
   expect(await collapsedGroups.count()).toBeGreaterThan(0);
   await expect(collapsedGroups.getByText('Available', { exact: true })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await search.locator('..').getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(search).toBeFocused();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(rooms).toHaveCount(manuallyVisible);
@@ -56,7 +57,7 @@ test('booking reference search is live and case-insensitive and still opens the 
   test.skip(await bookings.count() === 0, 'No existing booking in the selected dates');
   const label = (await bookings.first().getAttribute('aria-label'))!;
   const reference = /^Booking ([A-Z0-9]+),/.exec(label)![1]!;
-  const search = page.getByRole('searchbox', { name: 'Search by booking or room number' });
+  const search = page.getByRole('combobox', { name: 'Search by booking or room number' });
   await search.fill(reference.slice(0, -1).toLowerCase());
   await expect(calendar.getByRole('button', { name: label, exact: true })).toBeVisible();
   await search.fill(` ${reference.toLowerCase()} `);
@@ -66,5 +67,5 @@ test('booking reference search is live and case-insensitive and still opens the 
   }
   await calendar.getByRole('button', { name: label, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('dialog').getByRole('link', { name: 'Edit Booking', exact: true })).toHaveAttribute('href', `/admin/bookings/${reference}`);
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Open reservation', exact: true })).toHaveAttribute('href', `/admin/bookings/${reference}`);
 });

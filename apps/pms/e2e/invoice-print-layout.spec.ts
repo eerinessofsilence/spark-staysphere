@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { createAwaitingBooking } from './booking-fixture';
 
-test('branded invoice is readable on mobile and prints without the surrounding page', async ({ page }, testInfo) => {
+test('branded invoice is readable on mobile and prints without the surrounding page', async ({ page, request }, testInfo) => {
+  await createAwaitingBooking(request, 'invoice-print');
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/accounting/invoices');
   const invoiceLink = page.getByRole('link', { name: /^View invoice INV-/ }).first();

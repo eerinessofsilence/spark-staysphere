@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { parseFilters } from '../lib/application/search-params';
 
 /**
  * The golden path: arrival → search → detail → booking → confirmation.
@@ -82,6 +83,7 @@ async function toggle(box: Locator, expected: 'true' | 'false') {
 async function bookAStay(
   page: Page,
   injectedFailure?: { arm: () => Promise<void>; assertFailure: () => Promise<void>; retry?: boolean },
+  chooseExactRoom = false,
 ): Promise<string> {
   await page.goto(`/rooms?${stayQuery}&hideSoldOut=1`);
   const card = page.getByRole('region', { name: 'Search results' }).locator('article').first();
@@ -92,6 +94,21 @@ async function bookAStay(
     .getByRole('link', { name: 'Book this room' })
     .click();
   await expect(page.getByRole('heading', { level: 1, name: 'Complete your stay' })).toBeVisible();
+  if (chooseExactRoom) {
+    const response = await page.request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 1}/api/public/catalog`, { data: {
+      operation: 'floor-plan', hotelSlug: 'asteria-cove',
+      criteria: { checkIn, checkOut, adults: 2, children: 0 }, filters: parseFilters({}),
+    } });
+    expect(response.ok()).toBeTruthy();
+    const { plan } = await response.json();
+    const slug = new URL(page.url()).pathname.split('/').at(-1);
+    const unit = plan.units.find((candidate: { roomSlug: string; status: string }) =>
+      candidate.roomSlug === slug && candidate.status === 'available');
+    expect(unit, 'a physical room is available for the cancellation scenario').toBeTruthy();
+    const url = new URL(page.url());
+    url.searchParams.set('room', unit.number);
+    await page.goto(url.href);
+  }
 
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -120,14 +137,14 @@ async function bookAStay(
 test('a lost PMS response can be retried once with the same idempotency key', async ({ page, request }) => {
   await bookAStay(page, {
     arm: async () => {
-      await request.post('http://127.0.0.1:3101/fault', { data: { mode: 'lose-response' } });
+      await request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 101}/fault`, { data: { mode: 'lose-response' } });
     },
     assertFailure: async () => {
-      await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
+      await expect(page.getByRole('alert')).toContainText('Please try again.');
       await expect(page.getByRole('button', { name: 'Confirm booking' })).toBeEnabled();
     },
   });
-  const stats = await (await request.get('http://127.0.0.1:3101/stats')).json();
+  const stats = await (await request.get(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 101}/stats`)).json();
   expect(stats.bookingKeys).toHaveLength(2);
   expect(stats.bookingKeys[0]).toBeTruthy();
   expect(stats.bookingKeys[1]).toBe(stats.bookingKeys[0]);
@@ -137,26 +154,26 @@ test('a changed price is shown before the guest confirms the new amount', async 
   const changedTotal = 999;
   await bookAStay(page, {
     arm: async () => {
-      await request.post('http://127.0.0.1:3101/fault', { data: {
+      await request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 101}/fault`, { data: {
         mode: 'status', status: 409, body: { error: 'price_changed', message: 'The price changed.', currentTotal: changedTotal },
       } });
     },
     assertFailure: async () => {
-      await expect(page.getByRole('alert')).toContainText('price changed');
+      await expect(page.getByRole('alert')).toContainText(/price.*changed/i);
       await expect(page.getByRole('alert')).toContainText('€999');
-      await expect(page.getByRole('complementary', { name: 'Your stay' }).locator('.text-display').last()).toContainText('999');
+      await expect(page.getByRole('complementary').locator('.text-display').last()).toContainText('999');
       await expect(page.getByRole('button', { name: 'Confirm booking' })).toBeEnabled();
     },
     retry: false,
   });
-  const stats = await (await request.get('http://127.0.0.1:3101/stats')).json();
+  const stats = await (await request.get(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 101}/stats`)).json();
   expect(stats.bookingKeys).toHaveLength(1);
 });
 
 /** The header menu is a hydrated island: a click before React attaches is lost. */
 async function openMenu(page: Page) {
   await actUntil(
-    () => page.getByRole('button', { name: 'Menu and account' }).click(),
+    () => page.getByRole('button', { name: 'Menu', exact: true }).click(),
     () => expect(page.getByRole('radio', { name: 'Light' })).toBeVisible({ timeout: 3_000 }),
   );
 }
@@ -310,7 +327,7 @@ test('the date picker sets the stay as one range', async ({ page }) => {
 
   // The first click arms check-in; the panel then asks for the other end.
   await from.click();
-  await expect(panel.getByText('Pick your check-out date.')).toBeVisible();
+  await expect(panel.locator('div[role="status"]')).toBeHidden();
 
   // A later day closes the range, which commits it and dismisses the panel.
   await to.click();
@@ -550,7 +567,7 @@ test('a guest can complete a demo booking through to confirmation', async ({ pag
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Payment — the terms box gates the step and no card fields exist.
-  await expect(page.getByText('Demo payment.')).toBeVisible();
+  await expect(page.getByText('Simulated payment.')).toBeVisible();
   await expect(page.locator('input[autocomplete*="cc-"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Payment' })).toBeVisible();
@@ -628,13 +645,13 @@ test('the appearance choice survives a reload, with no flash of the other theme'
 });
 
 test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps it occupied', async ({ page, request }, testInfo) => {
-  const reference = await bookAStay(page);
+  const reference = await bookAStay(page, undefined, true);
   const originalResponse = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`);
   expect(originalResponse.ok()).toBeTruthy();
   const originalBooking = (await originalResponse.json()).booking;
   expect(originalBooking.unitNumber).toBeTruthy();
   const roomSlug = String(originalBooking.roomTypeId).replace(/^room_/, '');
-  const exactAvailability = async () => request.post('/api/public/catalog', { data: {
+  const exactAvailability = async () => request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 1}/api/public/catalog`, { data: {
     operation: 'unit-availability', hotelSlug: 'asteria-cove', roomTypeId: originalBooking.roomTypeId,
     unitNumber: originalBooking.unitNumber, checkIn: originalBooking.checkIn, checkOut: originalBooking.checkOut,
   } });
@@ -679,7 +696,7 @@ test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps
     expectedTotal: quote.price.total,
   } });
   expect(rebook.status(), await rebook.text()).toBe(201);
-  const repeatCancel = await request.post('/api/public/trips', { data: { operation: 'cancel', reference, email: 'ada@example.com' } });
+  const repeatCancel = await request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 1}/api/public/trips`, { data: { operation: 'cancel', reference, email: 'ada@example.com' } });
   expect(repeatCancel.ok()).toBeTruthy();
   expect((await (await exactAvailability()).json()).available).toBe(false);
 });

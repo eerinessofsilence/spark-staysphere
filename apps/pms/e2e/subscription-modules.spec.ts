@@ -21,7 +21,7 @@ test('module preview updates the estimate, removes modules and fits the viewport
   await page.getByRole('button', { name: 'Confirm demo payment' }).click();
   await expect(page).toHaveURL(/subscription$/);
   await expect(page.locator('[data-subscription-total]')).toHaveText('€158.00');
-  await expect(page.getByText('Active (demo)', { exact: false })).toBeVisible();
+  await expect(page.getByText('Active (demo)', { exact: true })).toBeVisible();
   const estimate = page.getByRole('complementary', { name: 'Monthly bill estimate' });
   await estimate.getByRole('button', { name: 'Remove module: Accounting and reporting', exact: true }).click();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();

@@ -4,6 +4,12 @@ test('documents use compact rows and open details without page overflow', async 
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/documents');
   const table = page.getByRole('table', { name: 'Documents', exact: true });
+  if (!(await table.isVisible())) {
+    await expect(async () => {
+      if (!(await table.isVisible())) await page.getByRole('button', { name: 'Add sample documents', exact: true }).click();
+      await expect(table).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
+  }
   await expect(table).toBeVisible();
   await expect(table.getByRole('columnheader', { name: 'Guest', exact: true })).toBeVisible();
   expect(await table.locator('tbody tr').count()).toBeLessThanOrEqual(10);

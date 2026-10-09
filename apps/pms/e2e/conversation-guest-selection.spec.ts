@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { createAwaitingBooking } from './booking-fixture';
 
-test('new conversation selects a guest and automatically links their booking', async ({ page }) => {
+test('new conversation selects a guest and automatically links their booking', async ({ page, request }) => {
+  await createAwaitingBooking(request, 'conversation');
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/communications');
   const dialog = page.getByRole('dialog', { name: 'New conversation', exact: true });

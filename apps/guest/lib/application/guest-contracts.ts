@@ -16,7 +16,7 @@ import type { Facade } from '../domain/room-units';
 import type { SpinnerPolygon } from '../domain/spinner-markup';
 
 /** DTOs exchanged over the PMS HTTP boundary; Guest owns no hotel data services. */
-export type BookingErrorCode = 'invalid_request' | 'unavailable' | 'price_changed' | 'payment_declined' | 'not_found';
+export type BookingErrorCode = 'invalid_request' | 'unavailable' | 'price_changed' | 'payment_declined' | 'not_found' | 'request_failed';
 
 export interface BookingConfirmation {
   booking: Booking;

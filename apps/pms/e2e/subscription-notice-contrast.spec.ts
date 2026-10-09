@@ -6,7 +6,10 @@ for (const theme of ['light', 'dark'] as const) {
       localStorage.setItem('admin-tour.seen.v1', '1');
       localStorage.setItem('spark.theme', selectedTheme);
     }, theme);
+    await page.clock.install();
     await page.goto('/admin');
+    await page.clock.setSystemTime(new Date(Date.now() + 40 * 86_400_000));
+    await page.clock.runFor(30_001);
     const notice = page.locator('[data-subscription-notice]');
     await expect(notice).toBeVisible();
     const colors = await notice.evaluate((element) => ({

@@ -4,7 +4,7 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const pmsPort = process.env.PMS_PORT ?? '3001';
 const availableApps = [
   { id: 'pms', name: 'PMS', workspace: '@staysphere/pms', port: pmsPort },
-  { id: 'guest', name: 'Guest', workspace: '@staysphere/guest', port: '3000' },
+  { id: 'guest', name: 'Guest', workspace: '@staysphere/guest', port: process.env.GUEST_PORT ?? '3000' },
   { id: 'site', name: 'Site', workspace: '@staysphere/site', port: null },
 ];
 const requestedApps = process.argv.slice(2);
@@ -68,6 +68,7 @@ process.on('SIGTERM', () => stopAll('SIGTERM'));
 for (const [index, app] of apps.entries()) {
   const args = ['run', 'dev', `--workspace=${app.workspace}`];
   if (app.port) args.push('--', '--port', app.port);
+  if (process.env.DEV_HOST) args.push('--host', process.env.DEV_HOST, '--strictPort');
 
   const child = spawn(npm, args, {
     env: process.env,

@@ -165,9 +165,13 @@ test('scan, review, attach, view and erase only at actual checkout', async ({ pa
   await expect(form).toBeHidden({ timeout: 30_000 });
   await page.goto(`/admin/guests/${encodeURIComponent(email)}?tab=documents`);
   await expect(page.getByRole('heading', { name: 'Reviewed Test SAMPLE', exact: true })).toBeVisible();
-  const preview = page.getByRole('button', { name: 'Open document for Reviewed Test SAMPLE', exact: true });
+  const preview = page.getByRole('row', { name: 'Open document for Reviewed Test SAMPLE', exact: true });
   await expect(preview).toBeVisible();
-  const src = await preview.locator('img').getAttribute('src');
+  await expect(preview).toHaveAttribute('tabindex', '0');
+  await preview.press('Enter');
+  const documentModal = page.getByRole('dialog', { name: 'Passport', exact: true });
+  await expect(documentModal).toBeVisible();
+  const src = await documentModal.locator('img').getAttribute('src');
   const before = await request.get(src!);
   expect(before.status()).toBe(200);
   expect(before.headers()['cache-control']).toContain('no-store');
@@ -175,9 +179,6 @@ test('scan, review, attach, view and erase only at actual checkout', async ({ pa
   expect((await anonymous.cookies()).length).toBe(0);
   expect((await anonymous.request.get(`http://localhost:${process.env.PLAYWRIGHT_PORT ?? 3100}${src}`, { maxRedirects: 0 })).status()).not.toBe(200);
   await anonymous.close();
-  await preview.click();
-  const documentModal = page.getByRole('dialog', { name: 'Passport', exact: true });
-  await expect(documentModal).toBeVisible();
   const bookingLink = documentModal.locator('a[href^="/admin/bookings/"]');
   const reference = (await bookingLink.innerText()).trim();
   await bookingLink.click();
@@ -190,7 +191,8 @@ test('scan, review, attach, view and erase only at actual checkout', async ({ pa
   expect((await request.get(src!)).status()).toBe(404);
   await page.goto(`/admin/guests/${encodeURIComponent(email)}?tab=documents`);
   await expect(page.getByText('Deleted after checkout', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Open document for Reviewed Test SAMPLE', exact: true }).click();
+  await expect(preview).toHaveAttribute('tabindex', '0');
+  await preview.press('Enter');
   await expect(documentModal.getByText('Deleted', { exact: true })).toBeVisible();
   await expect(documentModal.getByRole('link', { name: reference, exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Reviewed Test SAMPLE', exact: true })).toBeVisible();
