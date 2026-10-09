@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 
 test('guest date picker selects a stay across months', async ({ page }, testInfo) => {
   const checkIn = new Date();

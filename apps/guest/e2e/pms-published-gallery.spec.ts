@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from './test';
 
 const guestPort = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const pmsURL = `http://127.0.0.1:${guestPort + 1}`;

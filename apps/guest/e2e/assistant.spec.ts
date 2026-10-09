@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 
 /**
  * The AI room finder, run against the deterministic keyword interpreter —

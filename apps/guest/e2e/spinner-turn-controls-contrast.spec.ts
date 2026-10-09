@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 
 test('spinner turn arrows stay white on the dark control pill', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('spark.theme', 'dark'));

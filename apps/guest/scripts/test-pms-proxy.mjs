@@ -6,6 +6,8 @@ const upstreamPort = Number(process.env.PMS_API_UPSTREAM_PORT ?? 3002);
 let nextFault = null;
 let bookingKeys = [];
 let quoteTotalOverride = null;
+let clientSequence = 0;
+let testClientIp = null;
 
 function sendJson(response, status, value) {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -13,6 +15,13 @@ function sendJson(response, status, value) {
 }
 
 const control = http.createServer(async (request, response) => {
+  if (request.method === 'POST' && request.url === '/client') {
+    request.resume();
+    clientSequence = (clientSequence + 1) % 65_536;
+    testClientIp = `198.18.${Math.floor(clientSequence / 256)}.${clientSequence % 256}`;
+    sendJson(response, 200, { clientIp: testClientIp });
+    return;
+  }
   if (request.method === 'POST' && request.url === '/fault') {
     let body = '';
     for await (const chunk of request) body += chunk;
@@ -51,6 +60,9 @@ const proxy = http.createServer((request, response) => {
   }
 
   const headers = { ...request.headers };
+  // Miniflare strips CF-Connecting-IP from Worker fetches. Keep one simulated
+  // client per sequential test, including its retries and repeated requests.
+  if (testClientIp) headers['cf-connecting-ip'] = testClientIp;
   delete headers['accept-encoding'];
   const upstream = http.request({ hostname: '127.0.0.1', port: upstreamPort, path: request.url, method: request.method, headers }, (upstreamResponse) => {
     if (fault?.mode === 'lose-response') {

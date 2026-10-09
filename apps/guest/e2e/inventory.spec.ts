@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext } from './test';
 import { parseFilters } from '../lib/application/search-params';
 
 function isoDaysFromNow(days: number): string {
@@ -76,7 +76,7 @@ test('a guest can book the exact room they picked', async ({ request }, testInfo
   const readBack = await request.get(
     `/api/bookings/${chosenReference}?email=${encodeURIComponent(guest.email)}`,
   );
-  expect(readBack.ok()).toBeTruthy();
+  expect(readBack.ok(), `booking lookup returned ${readBack.status()}: ${await readBack.text()}`).toBeTruthy();
   const body = await readBack.json();
   expect((body.booking ?? body).unitNumber).toBe(chosenRoom);
 });
@@ -141,4 +141,14 @@ test('booking without choosing a room still works', async ({ request }, testInfo
   expect(response.status()).toBe(201);
   const { booking } = await response.json();
   expect(booking.unitNumber).toBeUndefined();
+});
+
+test('booking lookups keep their per-client limit', async ({ request }) => {
+  const url = `/api/bookings/${chosenReference}?email=${encodeURIComponent(guest.email)}`;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    expect((await request.get(url)).status()).toBe(200);
+  }
+  const throttled = await request.get(url);
+  expect(throttled.status()).toBe(429);
+  expect((await throttled.json()).error).toBe('rate_limited');
 });

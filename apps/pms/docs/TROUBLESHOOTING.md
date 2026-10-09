@@ -228,6 +228,13 @@ the test launcher started an isolated PMS elsewhere. Keep proxy ports tied to
 `PLAYWRIGHT_PORT`, preserve the incoming Host header for server actions, and let Playwright
 terminate the combined launcher with SIGTERM so it can stop its detached child servers.
 
+**Guest lookup tests share a rate-limit bucket unless the proxy assigns a client.** Miniflare
+strips `CF-Connecting-IP` from outgoing Worker fetches, so headers on browser/API requests
+cannot isolate clients at PMS. The Guest `../../guest/e2e/test.ts` fixture asks the test proxy for one
+client per scenario; the proxy supplies its IP on every PMS request. Keep Guest tests on one
+worker per server, and preserve the same client within a scenario so rate-limit assertions
+still exercise the real limit.
+
 **Waiting on page content that's already true before an action's server round trip finishes**
 (e.g. "No bookings yet" when the suite never creates one) lets `actUntil` return before that round
 trip is actually done — a `page.goto` right after can then race or cancel it. Wait on a signal
