@@ -216,6 +216,13 @@ each with a comment on which one and why.
 
 ## Playwright waits
 
+**Guest e2e needs its PMS URL in the Worker binding.** The combined test launcher passes
+`PMS_API_URL` to Vite, which must forward it through the Cloudflare plugin's local `vars`.
+Without that binding the Worker can fall back to a developer's PMS on port 3001, even when
+the test launcher started an isolated PMS elsewhere. Keep proxy ports tied to
+`PLAYWRIGHT_PORT`, preserve the incoming Host header for server actions, and let Playwright
+terminate the combined launcher with SIGTERM so it can stop its detached child servers.
+
 **Waiting on page content that's already true before an action's server round trip finishes**
 (e.g. "No bookings yet" when the suite never creates one) lets `actUntil` return before that round
 trip is actually done — a `page.goto` right after can then race or cancel it. Wait on a signal

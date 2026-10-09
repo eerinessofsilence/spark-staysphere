@@ -36,7 +36,7 @@ test('room search expands matches, folds other types and restores manual folds w
   expect(await collapsedGroups.count()).toBeGreaterThan(0);
   await expect(collapsedGroups.getByText('Available', { exact: true })).toHaveCount(0);
 
-  await search.locator('..').getByRole('button', { name: 'Clear search', exact: true }).click();
+  await search.locator('../..').getByRole('button', { name: 'Clear search', exact: true }).last().click();
   await expect(search).toBeFocused();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(rooms).toHaveCount(manuallyVisible);
