@@ -463,15 +463,6 @@ export function StayDatesField({
     );
   };
 
-  if (size === 'compact') {
-    return (
-      <>
-        {trigger('checkIn', t('search.checkIn'), checkIn)}
-        {trigger('checkOut', t('search.checkOut'), checkOut)}
-      </>
-    );
-  }
-
   return (
     <>
       {trigger('checkIn', t('search.checkIn'), checkIn)}
