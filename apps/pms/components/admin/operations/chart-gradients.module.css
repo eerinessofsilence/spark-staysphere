@@ -1,0 +1,93 @@
+.palette {
+  --plot-accent: var(--accent);
+  --plot-light: color-mix(in srgb, var(--accent) 30%, var(--card));
+  --plot-stone: color-mix(in srgb, var(--muted-foreground) 35%, var(--card));
+}
+
+/* Animate only the marks, keeping labels, layout and accessible values stable. */
+.fillHorizontal {
+  transform-origin: left center;
+  animation: fill-horizontal 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.fillVertical {
+  transform-origin: center bottom;
+  animation: fill-vertical 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.fillGauge {
+  animation: fill-gauge 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fill-horizontal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes fill-vertical {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes fill-gauge {
+  from { stroke-dashoffset: var(--gauge-fill); opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fillHorizontal, .fillVertical, .fillGauge {
+    animation: none;
+  }
+}
+
+.accent {
+  background: var(--plot-accent);
+}
+
+.light {
+  background: var(--plot-light);
+}
+
+.stone {
+  background: var(--plot-stone);
+}
+
+.bar {
+  background: var(--plot-accent);
+}
+
+.neutralBar {
+  background: var(--plot-stone);
+}
+
+.glow {
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--accent) 16%, transparent));
+}
+
+.mix {
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* The housekeeping mix bar's own five status colours (see globals.css's
+   --hk-* tokens for why they're their own scale, and the validation note) —
+   a part's own colour rather than a rank-ordered tone, so a status keeps
+   its colour across days as the mix of rooms behind it changes. */
+.hkOutOfOrder {
+  background: var(--hk-out-of-order);
+}
+
+.hkDirty {
+  background: var(--hk-dirty);
+}
+
+.hkInProgress {
+  background: var(--hk-in-progress);
+}
+
+.hkClean {
+  background: var(--hk-clean);
+}
+
+.hkInspected {
+  background: var(--hk-inspected);
+}

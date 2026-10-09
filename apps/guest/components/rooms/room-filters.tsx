@@ -1,0 +1,337 @@
+'use client';
+
+import * as React from 'react';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
+import { AdjustmentsHorizontalIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import type { CatalogFacets, RoomFilters as Filters } from '@/lib/application/guest-contracts';
+import { defaultRoomFilters } from '@/lib/application/guest-contracts';
+import {
+  activeFilterCount,
+  buildQuery,
+  filtersAreDefault,
+  type CatalogLayout,
+} from '@/lib/application/search-params';
+import type { RoomType, StayCriteria } from '@/lib/domain/schemas';
+import { useLocale, useT } from '@/lib/i18n/context';
+import { lBed, lCategory, lMoney, lRoomCount, lView } from '@/lib/i18n/format';
+import { fieldClass, pill } from '@/lib/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+
+interface RoomFiltersProps {
+  criteria: StayCriteria;
+  filters: Filters;
+  facets: CatalogFacets;
+  resultCount: number;
+  /** Carried through so filtering does not throw the guest back to the grid. */
+  layout?: CatalogLayout;
+}
+
+export function RoomFiltersPanel({ criteria, filters, facets, resultCount, layout }: RoomFiltersProps) {
+  const t = useT();
+  const { locale } = useLocale();
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const count = activeFilterCount(filters);
+
+  return (
+    <>
+      {/* Mobile: filters live in a bottom sheet so the results stay in view. */}
+      <div className="lg:hidden">
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger
+            render={
+              <button type="button" className={pill('secondary', 'w-full shadow-soft')}>
+                <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
+                {t('rooms.filters')}
+                {count > 0 ? (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            }
+          />
+          <SheetContent side="bottom" className="max-h-[85vh] gap-0 rounded-t-[18px] border-t border-border">
+            <SheetHeader className="border-b border-border px-6 py-4">
+              <SheetTitle className="text-display text-xl font-medium">{t('rooms.filterRooms')}</SheetTitle>
+            </SheetHeader>
+            <div className="overflow-y-auto px-6 pb-4">
+              <FilterControls
+                idPrefix="sheet"
+                criteria={criteria}
+                filters={filters}
+                facets={facets}
+                layout={layout}
+                showTitle={false}
+              />
+            </div>
+            <div className="border-t border-border bg-card px-6 py-4">
+              <button type="button" onClick={() => setSheetOpen(false)} className={pill('primary', 'w-full')}>
+                {t('rooms.showRooms', { rooms: lRoomCount(resultCount, locale) })}
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <aside
+        aria-label="Room filters"
+        className="hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:rounded-[18px] lg:bg-card lg:p-6 lg:shadow-soft"
+      >
+        <FilterControls idPrefix="side" criteria={criteria} filters={filters} facets={facets} layout={layout} />
+      </aside>
+    </>
+  );
+}
+
+interface FilterControlsProps {
+  idPrefix: string;
+  criteria: StayCriteria;
+  filters: Filters;
+  facets: CatalogFacets;
+  layout?: CatalogLayout;
+}
+
+function FilterControls({
+  idPrefix,
+  criteria,
+  filters,
+  facets,
+  layout,
+  // The bottom sheet puts its own title in its header; a second "Filters"
+  // right under "Filter rooms" is the sheet saying the same thing twice.
+  showTitle = true,
+}: FilterControlsProps & { showTitle?: boolean }) {
+  const t = useT();
+  const { locale } = useLocale();
+  const router = useRouter();
+  const [, startTransition] = React.useTransition();
+  const [priceDraft, setPriceDraft] = React.useState<[number, number]>([
+    filters.minPrice ?? facets.priceRange.min,
+    filters.maxPrice ?? facets.priceRange.max,
+  ]);
+
+  React.useEffect(() => {
+    setPriceDraft([filters.minPrice ?? facets.priceRange.min, filters.maxPrice ?? facets.priceRange.max]);
+  }, [filters.minPrice, filters.maxPrice, facets.priceRange.min, facets.priceRange.max]);
+
+  const apply = React.useCallback(
+    (next: Filters) => {
+      const query = buildQuery({ criteria, filters: next, layout });
+      startTransition(() => router.replace(`/rooms?${query}`, { scroll: false }));
+    },
+    [criteria, layout, router],
+  );
+
+  const toggle = <T,>(list: T[], value: T): T[] =>
+    list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
+
+  const isDefault = filtersAreDefault(filters);
+
+  return (
+    <div className="flex flex-col gap-7">
+      <div className={cn('flex items-center', showTitle ? 'justify-between' : 'justify-end')}>
+        {showTitle ? <h2 className="text-display text-xl font-medium">{t('rooms.filters')}</h2> : null}
+        <button
+          type="button"
+          disabled={isDefault}
+          onClick={() => apply({ ...defaultRoomFilters, sort: filters.sort })}
+          className={pill('ghost', 'h-8 px-3 text-accent-strong disabled:text-muted-foreground')}
+        >
+          <XMarkIcon className="size-4" aria-hidden="true" />
+          {t('rooms.reset')}
+        </button>
+      </div>
+
+      <Group title={t('rooms.nightlyBudget')} id={`${idPrefix}-budget`}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lMoney(priceDraft[0], 'EUR', locale)} – {lMoney(priceDraft[1], 'EUR', locale)} {t('rooms.aNight')}
+        </p>
+        <Slider
+          value={priceDraft}
+          min={facets.priceRange.min}
+          max={facets.priceRange.max}
+          step={5}
+          aria-label={t('rooms.nightlyBudget')}
+          onValueChange={(value) => {
+            if (Array.isArray(value)) setPriceDraft([value[0] ?? 0, value[1] ?? 0]);
+          }}
+          onValueCommitted={(value) => {
+            if (!Array.isArray(value)) return;
+            const [min, max] = value;
+            apply({
+              ...filters,
+              minPrice: min === facets.priceRange.min ? null : (min ?? null),
+              maxPrice: max === facets.priceRange.max ? null : (max ?? null),
+            });
+          }}
+        />
+      </Group>
+
+      <Group title={t('rooms.roomType')} id={`${idPrefix}-type`}>
+        <Chips
+          options={facets.categories.map((category) => ({ value: category, label: lCategory(category, locale) }))}
+          selected={filters.categories}
+          onToggle={(value) => apply({ ...filters, categories: toggle(filters.categories, value) })}
+        />
+      </Group>
+
+      <Group title={t('rooms.view')} id={`${idPrefix}-view`}>
+        <Chips
+          options={facets.views.map((view) => ({ value: view, label: lView(view, locale) }))}
+          selected={filters.views}
+          onToggle={(value) => apply({ ...filters, views: toggle(filters.views, value as RoomType['view']) })}
+        />
+      </Group>
+
+      <Group title={t('rooms.beds')} id={`${idPrefix}-beds`}>
+        <Chips
+          options={facets.bedTypes.map((bed) => ({ value: bed, label: lBed(bed, locale) }))}
+          selected={filters.bedTypes}
+          onToggle={(value) => apply({ ...filters, bedTypes: toggle(filters.bedTypes, value as RoomType['bedType']) })}
+        />
+      </Group>
+
+      <Group title={t('rooms.spaceAndFloor')} id={`${idPrefix}-space`}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SelectField
+            id={`${idPrefix}-min-area`}
+            label={t('rooms.minimumArea')}
+            value={filters.minArea === null ? '' : String(filters.minArea)}
+            onChange={(value) => apply({ ...filters, minArea: value === '' ? null : Number(value) })}
+            options={[
+              { value: '', label: t('rooms.anySize') },
+              { value: '40', label: t('rooms.orMoreArea', { size: '40' }) },
+              { value: '60', label: t('rooms.orMoreArea', { size: '60' }) },
+              { value: '80', label: t('rooms.orMoreArea', { size: '80' }) },
+            ]}
+          />
+          <SelectField
+            id={`${idPrefix}-min-floor`}
+            label={t('rooms.floor')}
+            value={filters.minFloor === null ? '' : String(filters.minFloor)}
+            onChange={(value) => apply({ ...filters, minFloor: value === '' ? null : Number(value) })}
+            options={[
+              { value: '', label: t('rooms.anyFloor') },
+              { value: '1', label: t('rooms.floorAndUp', { floor: '1' }) },
+              { value: '4', label: t('rooms.floorAndUp', { floor: '4' }) },
+              { value: '6', label: t('rooms.floorAndUp', { floor: '6' }) },
+            ]}
+          />
+        </div>
+      </Group>
+
+      <Group title={t('rooms.amenities')} id={`${idPrefix}-amenities`}>
+        <Chips
+          options={facets.amenities.map((amenity) => ({ value: amenity, label: amenity }))}
+          selected={filters.amenities}
+          onToggle={(value) => apply({ ...filters, amenities: toggle(filters.amenities, value) })}
+          emptyLabel={t('rooms.noAmenitiesYet')}
+        />
+      </Group>
+
+      <Group title={t('rooms.availability')} id={`${idPrefix}-availability`}>
+        <label
+          htmlFor={`${idPrefix}-hide-sold-out`}
+          className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm"
+        >
+          {t('rooms.hideFullyBooked')}
+          <Switch
+            id={`${idPrefix}-hide-sold-out`}
+            checked={!filters.includeSoldOut}
+            onCheckedChange={(checked) => apply({ ...filters, includeSoldOut: !checked })}
+            className="shrink-0"
+          />
+        </label>
+      </Group>
+    </div>
+  );
+}
+
+function Group({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
+  return (
+    <div role="group" aria-labelledby={id}>
+      <h3 id={id} className="mb-3 font-sans text-base font-medium tracking-normal">
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+/** Toggle chips: pressed state is carried by aria-pressed and by the ink fill. */
+function Chips<T extends string>({
+  options,
+  selected,
+  onToggle,
+  emptyLabel,
+}: {
+  options: { value: T; label: string }[];
+  selected: T[];
+  onToggle: (value: T) => void;
+  emptyLabel?: string;
+}) {
+  if (options.length === 0) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const pressed = selected.includes(option.value);
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={pressed}
+            onClick={() => onToggle(option.value)}
+            className={cn(
+              'inline-flex h-8 cursor-pointer items-center rounded-full border px-3 text-xs transition-colors',
+              pressed ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-stone',
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SelectField({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-xs text-muted-foreground">
+        {label}
+      </label>
+      <Select items={options} value={value} onValueChange={(next) => onChange(next ?? '')}>
+        <SelectTrigger id={id} className={cn(fieldClass, 'justify-between gap-2 py-0')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

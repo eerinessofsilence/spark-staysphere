@@ -4,16 +4,27 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      playwright_suite:
+        description: Playwright coverage
+        type: choice
+        default: critical
+        options: [critical, full]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Typecheck, unit tests, lint, build, docs
+  app-checks:
+    name: ${{ matrix.app }} checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [pms, guest]
     steps:
       - uses: actions/checkout@v4
 
@@ -25,24 +36,66 @@ jobs:
       - run: npm ci
 
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run typecheck:${{ matrix.app }}
 
-      - name: Unit tests (vitest)
-        run: npm run test
+      - name: Unit tests
+        run: npm run test:${{ matrix.app }}
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint:${{ matrix.app }}
 
       - name: Build
-        run: npm run build
+        run: npm run build:${{ matrix.app }}
 
       - name: Doc references
-        run: npm run check:docs
+        run: npm run check:docs:${{ matrix.app }}
 
-  e2e:
-    name: End-to-end (Playwright)
+  product-site:
+    name: Product Site checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
+    env:
+      VITE_PMS_URL: http://127.0.0.1:3001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - name: Unit tests
+        run: npm run test --workspace=@staysphere/site
+      - run: npm run lint:site
+      - run: npm run build:site
+
+  checks:
+    name: Typecheck, unit tests, lint, build, docs
+    if: always()
+    needs: [app-checks, product-site]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined app checks
+        env:
+          APP_CHECKS_RESULT: ${{ needs.app-checks.result }}
+          PRODUCT_SITE_RESULT: ${{ needs.product-site.result }}
+        run: |
+          if [ "$APP_CHECKS_RESULT" != "success" ] || [ "$PRODUCT_SITE_RESULT" != "success" ]; then
+            echo "App checks: $APP_CHECKS_RESULT; Product Site checks: $PRODUCT_SITE_RESULT"
+            exit 1
+          fi
+
+  e2e-shards:
+    name: ${{ matrix.app }} end-to-end (${{ matrix.shard }}/${{ matrix.total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_SUITE: ${{ github.event_name == 'workflow_dispatch' && inputs.playwright_suite == 'full' && 'full' || 'critical' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.playwright_suite == 'full' && '[{"app":"pms","shard":1,"total":8},{"app":"pms","shard":2,"total":8},{"app":"pms","shard":3,"total":8},{"app":"pms","shard":4,"total":8},{"app":"pms","shard":5,"total":8},{"app":"pms","shard":6,"total":8},{"app":"pms","shard":7,"total":8},{"app":"pms","shard":8,"total":8},{"app":"guest","shard":1,"total":4},{"app":"guest","shard":2,"total":4},{"app":"guest","shard":3,"total":4},{"app":"guest","shard":4,"total":4},{"app":"site","shard":1,"total":1}]' || '[{"app":"pms","shard":1,"total":2},{"app":"pms","shard":2,"total":2},{"app":"guest","shard":1,"total":2},{"app":"guest","shard":2,"total":2},{"app":"site","shard":1,"total":1}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,22 +106,47 @@ jobs:
 
       - run: npm ci
 
-      # No Cloudflare account or secrets needed: playwright.config.ts starts
-      # its own dev server, which runs against a locally emulated D1
-      # database (Miniflare) the same way `npm run dev` does — see
-      # TECH.md's Persistence section and docs/decisions/0001-d1-seed-overlay.md.
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npm exec --workspace=@staysphere/${{ matrix.app }} -- playwright install --with-deps chromium
+
+      - name: Build Product Site for preview
+        if: matrix.app == 'site'
+        env:
+          VITE_PMS_URL: http://127.0.0.1:3001
+        run: npm run build:site
 
       - name: Run e2e suite
-        run: npm run test:e2e
+        env:
+          APP: ${{ matrix.app }}
+          SHARD: ${{ matrix.shard }}/${{ matrix.total }}
+        run: |
+          config=playwright.config.ts
+          if [ "$PLAYWRIGHT_SUITE" = "critical" ] && [ "$APP" != "site" ]; then
+            config=playwright.critical.config.ts
+          fi
+          npm exec --workspace="@staysphere/$APP" -- playwright test --config="$config" --shard="$SHARD"
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: ${{ matrix.app }}-playwright-report-${{ matrix.shard }}-of-${{ matrix.total }}
           path: |
-            playwright-report/
-            test-results/
+            apps/${{ matrix.app }}/playwright-report/
+            apps/${{ matrix.app }}/test-results/
           retention-days: 7
+
+  e2e:
+    name: End-to-end (Playwright)
+    if: always()
+    needs: [e2e-shards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined Playwright result
+        env:
+          E2E_RESULT: ${{ needs.e2e-shards.result }}
+        run: |
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "Playwright shard result: $E2E_RESULT"
+            exit 1
+          fi

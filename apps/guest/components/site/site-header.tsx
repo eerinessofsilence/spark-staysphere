@@ -1,0 +1,63 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { useT } from '@/lib/i18n/context';
+import { LanguagePicker } from '@/components/site/language-picker';
+import { SiteMenu } from '@/components/site/site-menu';
+import { StaySphereLogo } from '@/components/site/staysphere-logo';
+import { cn } from '@/lib/utils';
+
+interface SiteHeaderProps {
+  /** Query string carrying the current stay so navigation never loses the dates. */
+  stayQuery?: string;
+  /**
+   * The compact stay search. On a booking site the search is most of the
+   * navigation, so it still takes the header's own centre; the two links a
+   * returning guest looks for sit beside it. Shown from `lg` up, where there
+   * is room for both; narrower screens keep the full bar on the page.
+   */
+  search?: ReactNode;
+  className?: string;
+}
+
+const navLinkClass =
+  'min-h-11 rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors flex items-center hover:bg-stone/60 hover:text-foreground';
+
+export function SiteHeader({ stayQuery, search, className }: SiteHeaderProps) {
+  const t = useT();
+  const suffix = stayQuery ? `?${stayQuery}` : '';
+
+  return (
+    <header className={cn('container-page sticky top-0 z-40 pt-3 sm:pt-4', className)}>
+      <div className="glass flex h-14 items-center gap-2 rounded-full pr-2 pl-4 shadow-soft sm:h-16 sm:pl-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-2">
+          <StaySphereLogo href={`/${suffix}`} className="h-6 sm:h-7" />
+
+          {/* From `lg` there is room beside the search for the two links a
+              returning guest actually goes looking for; everything else
+              (sign in, hotel admin) stays behind the menu, where a first-time
+              visitor never needs to see it. Below `lg` all of it lives there
+              together, so a phone has exactly one nav to open. */}
+          <nav aria-label="Primary" className="hidden shrink-0 items-center gap-1 lg:flex">
+            <Link href={`/rooms${suffix}`} className={navLinkClass}>
+              {t('nav.allRooms')}
+            </Link>
+            <Link href={`/trips${suffix}`} className={navLinkClass}>
+              {t('nav.myTrips')}
+            </Link>
+          </nav>
+        </div>
+
+        <div className="flex flex-1 justify-center lg:flex-none">
+          {search ? <div className="hidden lg:block">{search}</div> : null}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 lg:justify-self-end">
+          <LanguagePicker />
+          <SiteMenu stayQuery={stayQuery} />
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,124 @@
+'use client';
+
+import * as React from 'react';
+import { Preloader } from '@/components/ui/preloader';
+import { useActionState } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { idleFormState, type ContentFormState } from '@/app/admin/content/_lib/form-state';
+import { toast } from '@/components/admin/shell/toast';
+import { useAdminT } from '@/lib/i18n/admin/context';
+import { fieldClass, pill } from '@/lib/ui';
+import { cn } from '@/lib/utils';
+
+interface RatePriceFormProps {
+  action: (state: ContentFormState, formData: FormData) => Promise<ContentFormState>;
+  version: number;
+  idPrefix: string;
+  roomName: string;
+  currency: string;
+  nightlyPrice: number;
+  otaComparisonPrice?: number;
+  previewHref?: string;
+}
+
+/** One row of a table: the column header names both inputs, so their labels are read, not drawn. */
+export function RatePriceForm({
+  action,
+  version,
+  idPrefix,
+  roomName,
+  currency,
+  nightlyPrice,
+  otaComparisonPrice,
+  previewHref,
+}: RatePriceFormProps) {
+  const t = useAdminT();
+  const [state, dispatch, pending] = useActionState(action, idleFormState);
+  const [currentVersion, setCurrentVersion] = React.useState(version);
+
+  React.useEffect(() => { setCurrentVersion(version); }, [version]);
+
+  React.useEffect(() => {
+    if (state.status === 'success') {
+      if (state.version !== undefined) setCurrentVersion(state.version);
+      if (previewHref) toast.preview(`${roomName}: ${state.message}`, previewHref, t('rates.previewOnSite'));
+      else toast.success(`${roomName}: ${state.message} ${t('rates.previewUnavailable')}`);
+    } else if (state.status === 'error') {
+      toast.error(`${roomName}: ${state.message}`);
+    }
+  }, [state, roomName, previewHref, t]);
+
+  const priceError = state.fieldErrors?.nightlyPrice?.[0];
+  const otaError = state.fieldErrors?.otaComparisonPrice?.[0];
+  const formError = state.status === 'error' && !priceError && !otaError ? state.message : null;
+  const inputClass = cn(fieldClass, 'w-20 px-3 tabular-nums');
+
+  // `onSubmit`, not `<form action>`: React resets every uncontrolled field
+  // once a form action finishes, which after a rejected price put the old
+  // number back under the new error. `ContentForm` documents and avoids the
+  // same reset the same way.
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    React.startTransition(() => dispatch(new FormData(event.currentTarget)));
+  };
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="grid gap-1">
+      <input type="hidden" name="version" value={currentVersion} />
+      <div className="flex items-center gap-2">
+        <label htmlFor={`${idPrefix}-price`} className="sr-only">
+          {t('ops.nightlyPriceLabel', { currency, room: roomName })}
+        </label>
+        <input
+          id={`${idPrefix}-price`}
+          name="nightlyPrice"
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          defaultValue={nightlyPrice}
+          aria-invalid={priceError ? true : undefined}
+          aria-describedby={priceError ? `${idPrefix}-price-error` : undefined}
+          className={inputClass}
+        />
+        <label htmlFor={`${idPrefix}-ota`} className="sr-only">
+          {t('ops.bookingSitePriceLabel', { currency, room: roomName })}
+        </label>
+        <input
+          id={`${idPrefix}-ota`}
+          name="otaComparisonPrice"
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          placeholder="—"
+          defaultValue={otaComparisonPrice}
+          aria-invalid={otaError ? true : undefined}
+          aria-describedby={otaError ? `${idPrefix}-ota-error` : undefined}
+          className={inputClass}
+        />
+        <button type="submit" disabled={pending} className={pill('secondary', 'px-4')}>
+          {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+          <span aria-hidden="true">{t('ops.save')}</span>
+          <span className="sr-only">{t('ops.saveRateFor', { room: roomName })}</span>
+        </button>
+      </div>
+      {priceError ? (
+        <p id={`${idPrefix}-price-error`} role="alert" className="text-xs font-medium text-danger">
+          {priceError}
+        </p>
+      ) : null}
+      {otaError ? (
+        <p id={`${idPrefix}-ota-error`} role="alert" className="text-xs font-medium text-danger">
+          {otaError}
+        </p>
+      ) : null}
+      {formError ? (
+        <p role="alert" className="text-xs font-medium text-danger">
+          {formError}
+        </p>
+      ) : null}
+      <Preloader active={pending} label={t('form.saving')} className="mt-3" />
+    </form>
+  );
+}

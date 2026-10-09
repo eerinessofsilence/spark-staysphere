@@ -1,0 +1,214 @@
+.visual {
+  --orb-highlight: #919191;
+  --orb-accent: #606060;
+  --orb-mid: #363636;
+  --orb-shade: #222222;
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* `OrbitVisual`: the launcher's layers laid over a filled `bg-primary` pill
+   and clipped to it — the pill keeps its own shape and colour, the orb only
+   lends its motion. Recoloured off the pill's own tokens so the mesh reads on
+   ink by day and lime by night, and no halo: the pill's fill is the body.
+   The SVG stretches to the box (`preserveAspectRatio="none"`); sized so the
+   outermost ribbon (~42/120 of the viewBox) just reaches the pill's edge. */
+.stretched {
+  --orb-highlight: var(--primary-foreground);
+  --orb-accent: color-mix(in srgb, var(--primary-foreground) 70%, transparent);
+  --orb-mid: color-mix(in srgb, var(--primary) 82%, var(--primary-foreground));
+  --orb-shade: var(--primary);
+}
+
+.stretched .halo {
+  display: none;
+}
+
+.stretched .orb {
+  inset: -22%;
+  width: 144%;
+  height: 144%;
+  filter: none;
+}
+
+/* The assistant stays monochrome in both themes. */
+.halo {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 55% 25%, var(--orb-accent) 0%, transparent 58%),
+    radial-gradient(ellipse at 45% 75%, var(--orb-mid) 0%, transparent 62%);
+  filter: blur(10px);
+  opacity: 0.28;
+  transition:
+    opacity 400ms ease,
+    scale 500ms ease;
+}
+
+.orb {
+  position: absolute;
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--ink) 24%, transparent));
+  transition:
+    opacity 250ms ease,
+    scale 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.body,
+.mesh,
+.light,
+.ribbons,
+.filaments {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+}
+
+.label {
+  position: relative;
+  color: #f7f5f0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: 0 1px 4px var(--ink);
+  transition: opacity 200ms ease;
+}
+
+.visual[data-open='true'] .label {
+  opacity: 0;
+}
+
+.close {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f7f5f0;
+  filter: drop-shadow(0 1px 3px var(--ink));
+  opacity: 0;
+  scale: 0.7;
+  rotate: -45deg;
+  transition:
+    opacity 200ms ease,
+    scale 300ms ease,
+    rotate 300ms ease;
+}
+
+.visual[data-open='true'] .orb {
+  opacity: 1;
+  scale: 1;
+}
+
+.visual[data-open='true'] .halo {
+  opacity: 0.28;
+}
+
+.visual[data-open='true'] .close {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+:global(:is(button, a):focus-visible) .visual[data-paused='false'] .halo {
+  opacity: 0.5;
+}
+
+@media (hover: hover) {
+  :global(:is(button, a):hover) .visual[data-paused='false'] .halo {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .body {
+    animation: drift 5s ease-in-out infinite;
+  }
+  .mesh {
+    animation: mesh-turn 7s ease-in-out infinite;
+  }
+  .ribbons {
+    animation: orbit 12s linear infinite;
+  }
+  .filaments {
+    animation: orbit 9s linear infinite reverse;
+  }
+  .light {
+    animation: shimmer 4s ease-in-out infinite;
+  }
+
+  .visual * {
+    animation-play-state: paused;
+  }
+
+  .visual[data-paused='false'] * {
+    animation-play-state: running;
+  }
+
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] * {
+    animation-play-state: running;
+  }
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] .halo {
+    scale: 1.12;
+  }
+  :global(:is(button, a):focus-visible) .visual[data-paused='false'] .orb {
+    scale: 1.06;
+  }
+
+  @media (hover: hover) {
+    :global(:is(button, a):hover) .visual[data-paused='false'] * {
+      animation-play-state: running;
+    }
+    :global(:is(button, a):hover) .visual[data-paused='false'] .halo {
+      scale: 1.12;
+    }
+    :global(:is(button, a):hover) .visual[data-paused='false'] .orb {
+      scale: 1.06;
+    }
+  }
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: rotate(-5deg) scale(0.98, 1.02);
+  }
+  50% {
+    transform: rotate(7deg) scale(1.03, 0.97);
+  }
+}
+
+@keyframes mesh-turn {
+  0%,
+  100% {
+    transform: rotate(0deg) scaleX(1);
+  }
+  50% {
+    transform: rotate(-14deg) scaleX(0.94);
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: rotate(-15deg);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(45deg);
+  }
+}

@@ -1,0 +1,44 @@
+import { expect, test } from '@playwright/test';
+import { createAwaitingBooking } from './booking-fixture';
+
+test('service order links to the selected reservation and fills its guest and room', async ({ page, request }) => {
+  const booking = await createAwaitingBooking(request, 'order-link');
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
+  await page.goto('/admin/orders?view=all');
+  const dialog = page.getByRole('dialog', { name: 'Create service order', exact: true });
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.getByRole('button', { name: 'Create order', exact: true }).click();
+    await expect(dialog).toBeVisible({ timeout: 2000 });
+  }).toPass();
+  const toggle = dialog.getByRole('switch', { name: 'Link to a reservation', exact: true });
+  await toggle.click();
+  const search = dialog.getByRole('combobox', { name: 'Booking reference', exact: true });
+  await search.fill(booking.reference);
+  const suggestion = dialog.getByRole('option').first();
+  await expect(suggestion).toBeVisible();
+  const reference = await suggestion.locator('span').last().innerText();
+  await suggestion.click();
+  await expect(search).toHaveValue(reference);
+  const guest = dialog.getByLabel('Guest', { exact: true });
+  await expect(guest).not.toHaveValue('');
+  await expect(guest).toHaveAttribute('readonly', '');
+  await expect(dialog.getByLabel('Room', { exact: true })).toHaveAttribute('readonly', '');
+  const guestName = await guest.inputValue();
+  await toggle.click();
+  await expect(search).toHaveCount(0);
+  await expect(guest).not.toHaveAttribute('readonly', '');
+  await toggle.click();
+  await search.fill(reference);
+  const serviceName = `Booking link check ${Date.now()}`;
+  await dialog.getByLabel('Service', { exact: true }).fill(serviceName);
+  await dialog.getByLabel('Total', { exact: true }).fill('5');
+  await dialog.getByRole('button', { name: 'Create order', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const row = page.getByRole('row').filter({ hasText: serviceName });
+  await expect(row).toContainText(guestName);
+  await row.getByRole('button', { name: /^Actions for order / }).click();
+  const openBooking = page.getByRole('menuitem', { name: 'Open booking', exact: true });
+  await expect(openBooking).toHaveAttribute('href', `/admin/bookings/${reference}`);
+  await openBooking.click();
+  await expect(page).toHaveURL(`/admin/bookings/${reference}`);
+});

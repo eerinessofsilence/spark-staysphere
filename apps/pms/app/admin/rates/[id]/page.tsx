@@ -1,0 +1,164 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { catalogService, contentServiceFor, DEMO_HOTEL_SLUG, guestAppUrl, hotelRepository } from '@/lib/application/container';
+import { getSelectedHotelSlug } from '@/lib/application/hotel-context';
+import { isIsoDate, toIsoDate } from '@/lib/application/search-params';
+import { getAdminLocale } from '@/lib/i18n/admin/server';
+import { adminPageTitle, adminT } from '@/lib/i18n/admin/translate';
+import { DATE_FNS_LOCALES } from '@/lib/i18n/format';
+import { WINDOW_OPTIONS, MAX_CUSTOM_WINDOW } from '@/components/admin/front-desk/front-desk-shared';
+import { DateWindowToolbar } from '@/components/admin/operations/date-window-toolbar';
+import { RatePlanRow } from '@/components/admin/rates/rate-plan-row';
+import { RateStayRulesRows } from '@/components/admin/rates/rate-stay-rules-rows';
+import { RateStayRulesForm } from '@/components/admin/rates/rate-stay-rules-form';
+import { RatesDateHeader } from '@/components/admin/rates/rates-date-header';
+import { StickyRatesGrid } from '@/components/admin/rates/sticky-rates-grid';
+import { RoomQuotaRow } from '@/components/admin/rates/room-quota-row';
+import { buildDateWindow, roomRatesHref } from '@/components/admin/rates/rates-shared';
+import { AdminPage, AdminPageHeader } from '@/components/admin/shell/admin-page';
+import { AddRoomRateButton } from '@/components/admin/content/add-room-rate-button';
+import { createRoomRateAction, updateBaseRateAction, updateDateRateAction, updateDateRateRangeAction, updateRateCloseoutAction, updateRateStayRulesAction } from '../actions';
+
+export const dynamic = 'force-dynamic';
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+async function loadRoom(id: string) {
+  const selectedSlug = await getSelectedHotelSlug();
+  const hotel = await catalogService.getHotel(selectedSlug);
+  const rooms = await hotelRepository.listRooms(hotel.id);
+  const room = rooms.find((candidate) => candidate.id === id);
+  return room ? { room, hotel, selectedSlug } : null;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const t = adminT(await getAdminLocale());
+  const found = await loadRoom(id);
+  return { title: adminPageTitle(t, found?.room.name ?? t('nav.roomRates')) };
+}
+
+const DEFAULT_WINDOW = 14;
+
+/**
+ * One room type's own rates screen: its quota, and every one of its rate
+ * plans with a base price form and dated overrides. Opened from its row on the
+ * overview (`/admin/rates`), where the same prices are displayed read-only.
+ */
+export default async function RoomRatesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { id } = await params;
+  const found = await loadRoom(id);
+  if (!found) notFound();
+  const { room, hotel, selectedSlug } = found;
+  const contentService = contentServiceFor(selectedSlug);
+
+  const locale = await getAdminLocale();
+  const t = adminT(locale);
+  const dateFnsLocale = DATE_FNS_LOCALES[locale];
+  const query = await searchParams;
+  const today = toIsoDate(new Date());
+  const rawFrom = first(query.from);
+  const from = isIsoDate(rawFrom) ? rawFrom : today;
+  const rawDays = Number(first(query.days));
+  const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= MAX_CUSTOM_WINDOW ? rawDays : DEFAULT_WINDOW;
+  const { dates, windowEnd, columns, minWidth } = buildDateWindow(from, days);
+
+  const [rates, availability] = await Promise.all([
+    contentService.listRatesContent(room.id),
+    hotelRepository.getAvailability(room.id, from, windowEnd),
+  ]);
+  const remaining = new Map(availability.map((night) => [night.date, night.remaining]));
+
+  return (
+    <AdminPage>
+      <AdminPageHeader
+        breadcrumbs={[{ label: t('nav.roomRates'), href: '/admin/rates' }]}
+        title={room.name}
+        description={hotel.currency}
+        actions={
+          <AddRoomRateButton
+            rooms={[{ id: room.id, name: room.name }]}
+            currency={hotel.currency}
+            createRateAction={createRoomRateAction}
+          />
+        }
+      />
+
+      <DateWindowToolbar
+        from={from}
+        days={days}
+        today={today}
+        locale={locale}
+        t={t}
+        windowOptions={WINDOW_OPTIONS}
+        hrefFor={(params) => roomRatesHref(room.id, params)}
+      />
+
+      <div className="mt-5">
+        <StickyRatesGrid
+          minWidth={minWidth}
+          header={<RatesDateHeader dates={dates} columns={columns} dateFnsLocale={dateFnsLocale} t={t} today={today} />}
+        >
+          <details data-rate-room open className="group/room">
+          <RoomQuotaRow room={room} remaining={remaining} dates={dates} columns={columns} locale={locale} t={t} today={today} />
+          {rates.length === 0 ? (
+            <div className="grid" style={{ gridTemplateColumns: columns }}>
+              <div className="sticky left-0 z-20 bg-card px-4 py-3">
+                <span className="text-sm text-muted-foreground">{t('rates.noRate')}</span>
+              </div>
+            </div>
+          ) : (
+            rates.map((rate, index) => (
+              <div key={rate.id}>
+                <RatePlanRow
+                  rate={rate}
+                  roomName={room.name}
+                  dates={dates}
+                  columns={columns}
+                  updateAction={updateBaseRateAction.bind(null, room.id, rate.id)}
+                  updateDateAction={updateDateRateAction.bind(null, room.id, rate.id)}
+                  updateRangeAction={updateDateRateRangeAction.bind(null, room.id, rate.id)}
+                  previewRoomSlug={selectedSlug === DEMO_HOTEL_SLUG && !room.hidden && index === 0 ? room.slug : undefined}
+                  guestBaseUrl={guestAppUrl('/') ?? undefined}
+                  previewDate={dates.find((date) => date >= today) ?? today}
+                  locale={locale}
+                  t={t}
+                  today={today}
+                />
+                <RateStayRulesRows
+                  rate={rate}
+                  dates={dates}
+                  columns={columns}
+                  href={roomRatesHref(room.id, { from, days })}
+                  action={updateRateCloseoutAction.bind(null, room.id, rate.id)}
+                  t={t}
+                  today={today}
+                />
+              </div>
+            ))
+          )}
+          </details>
+        </StickyRatesGrid>
+      </div>
+      {rates.length ? (
+        <div className="mt-6 rounded-[18px] bg-card px-5 shadow-soft sm:px-6">
+          {rates.map((rate) => (
+            <RateStayRulesForm
+              key={`${rate.id}-${rate.version}`}
+              rate={rate}
+              action={updateRateStayRulesAction.bind(null, room.id, rate.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </AdminPage>
+  );
+}

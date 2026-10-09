@@ -1,0 +1,32 @@
+.env
+.env.local
+.env.*.local
+!.env.example
+.dev.vars
+node_modules/
+public/vendor/document-ocr/
+.next/
+.vinext/
+dist/
+.wrangler/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+npm-debug.log*
+*.tsbuildinfo
+.playwright/
+e2e/.artifacts/
+# The signed-in browser state e2e/auth.setup.ts records for the other projects
+e2e/.auth/
+# CC0 Poly Haven assets for scripts/asteria-cove.blend — re-fetch with scripts/fetch-polyhaven.py
+scripts/blender-assets/
+
+# Vercel / Nitro build output (`npm run build:vercel`)
+.vercel/
+.output/
+.vercel
+.env*
+
+# Local scratch output from testing generated PDFs (accounting reports, content menu)
+output/

@@ -1,0 +1,202 @@
+'use client';
+
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { fieldClass, pill } from '@/lib/ui';
+import { resetDemoState, setRoomStatus } from '@/app/admin/actions';
+import type { SaleToggleResult } from '@/components/admin/content/add-on-sale-toggle';
+import { useUndoableToggle } from '@/components/admin/content/use-undoable-toggle';
+import type { RoomStatus } from '@/lib/domain/schemas';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import { STATUS_LABEL } from '@/lib/i18n/format';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import { toast } from '@/components/admin/shell/toast';
+
+const OVERRIDE_VALUES: (RoomStatus | 'auto')[] = ['auto', 'available', 'limited', 'last_room', 'sold_out'];
+
+/** Forces a room's status for every date, overriding the simulated demand curve. */
+export function RoomStatusControl({
+  roomTypeId,
+  roomName,
+  value,
+}: {
+  roomTypeId: string;
+  roomName: string;
+  value: RoomStatus | 'auto';
+}) {
+  const router = useRouter();
+  const locale = useAdminLocale();
+  const t = useAdminT();
+  const [pending, setPending] = React.useState(false);
+  const id = `status-${roomTypeId}`;
+  const overrideOptions = React.useMemo(
+    () =>
+      OVERRIDE_VALUES.map((option) => ({
+        value: option,
+        label: option === 'auto' ? t('ops.overrideAuto') : STATUS_LABEL[locale][option],
+      })),
+    [locale, t],
+  );
+
+  return (
+    <div className="flex w-full min-w-0 items-center gap-2">
+      <label htmlFor={id} className="sr-only">
+        {t('ops.overrideLabel', { room: roomName })}
+      </label>
+      <Select
+        items={overrideOptions}
+        value={value}
+        disabled={pending}
+        onValueChange={async (next) => {
+          setPending(true);
+          const status = (next ?? 'auto') as RoomStatus | 'auto';
+          try {
+            await setRoomStatus({ roomTypeId, status });
+            const label = overrideOptions.find((option) => option.value === status)?.label ?? status;
+            toast.success(t('ops.overrideSaved', { room: roomName, label }));
+          } catch {
+            toast.error(t('ops.overrideFailed', { room: roomName }));
+          }
+          router.refresh();
+          setPending(false);
+        }}
+      >
+        <SelectTrigger id={id} className={cn(fieldClass, 'min-w-0 justify-between gap-2 py-0 disabled:opacity-60')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+          {overrideOptions.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {pending ? (
+        <ArrowPathIcon className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The on-sale switch in the add-on list. It acts the moment it is flipped — a long list on a phone
+ * is easy to brush while scrolling — so for a few seconds afterwards it offers to put it back.
+ *
+ * Takes the save action as a prop (`setAddOnOnSaleAction`, the same one the add-on's own page
+ * uses via `AddOnSaleToggle`) rather than importing one directly, so this list and that page can
+ * never drift into two different ideas of what "on sale" means or how a conflict is reported.
+ */
+export function AddOnToggle({
+  addOnId,
+  addOnName,
+  enabled,
+  action,
+}: {
+  addOnId: string;
+  addOnName: string;
+  enabled: boolean;
+  action: (id: string, enabled: boolean) => Promise<SaleToggleResult>;
+}) {
+  const router = useRouter();
+  const t = useAdminT();
+  const { pending, setPending, message, setMessage, undoTo, setUndoTo } = useUndoableToggle<boolean>();
+  const id = `addon-toggle-${addOnId}`;
+
+  const change = async (checked: boolean, offerUndo: boolean) => {
+    setPending(true);
+    setMessage('');
+    const result = await action(addOnId, checked);
+    if (result.ok) {
+      setUndoTo(offerUndo ? !checked : null);
+      toast.success(
+        result.message || (checked ? t('ops.addOnOnSale', { addOn: addOnName }) : t('ops.addOnWithdrawn', { addOn: addOnName })),
+      );
+      router.refresh();
+    } else {
+      // A version conflict or a validation failure must not look like it
+      // saved — the switch itself already reflects the server's last-known
+      // state once router.refresh() below runs, so this message is what
+      // tells the hotel team the flip they just made did not take.
+      setUndoTo(null);
+      setMessage(result.message);
+      toast.error(result.message);
+      router.refresh();
+    }
+    setPending(false);
+  };
+
+  return (
+    <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <label htmlFor={id} className="flex cursor-pointer items-center gap-3">
+        <Switch
+          id={id}
+          aria-label={addOnName}
+          checked={enabled}
+          disabled={pending}
+          onCheckedChange={(checked) => change(checked, true)}
+          className="shrink-0"
+        />
+        <span className={cn('font-medium', !enabled && 'text-muted-foreground')}>
+          {enabled ? t('ops.onSale') : t('ops.withdrawn')}
+          <span className="sr-only"> — {addOnName}</span>
+        </span>
+      </label>
+      {pending ? (
+        <ArrowPathIcon className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+      ) : undoTo !== null ? (
+        <button
+          type="button"
+          onClick={() => change(undoTo, false)}
+          className="cursor-pointer font-medium underline underline-offset-2"
+        >
+          <span aria-hidden="true">{t('ops.undo')}</span>
+          <span className="sr-only">{t('ops.undoFor', { addOn: addOnName })}</span>
+        </button>
+      ) : null}
+      {message ? (
+        <p role="status" aria-live="polite" className="w-full text-xs text-muted-foreground basis-full">
+          {message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ResetDemoButton() {
+  const router = useRouter();
+  const t = useAdminT();
+  const [mounted, setMounted] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
+
+  return (
+    <button
+      type="button"
+      disabled={!mounted || pending}
+      onClick={async () => {
+        setPending(true);
+        try {
+          await resetDemoState();
+          toast.success(t('ops.demoReset'));
+        } catch {
+          toast.error(t('ops.demoResetFailed'));
+        }
+        router.refresh();
+        setPending(false);
+      }}
+      className={pill('secondary')}
+    >
+      {pending ? <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" /> : null}
+      {t('ops.resetDemo')}
+    </button>
+  );
+}

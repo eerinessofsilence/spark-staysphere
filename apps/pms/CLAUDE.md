@@ -1,0 +1,146 @@
+# SPARK StaySphere 360
+
+SPARK StaySphere 360 is a white-label 3D hotel booking and direct-sales platform. The demo hotel is **Asteria Cove** and the product line is **“See the stay. Book the room.”**
+
+## Product intent
+
+The product must feel like one connected booking experience, not a landing page or a disconnected screen set. Guests explore the hotel, filter rooms, inspect the exact room/view, choose services, and complete a clearly labelled demo booking. Hotel teams manage inventory, add-ons, and bookings in `/admin`, and edit the catalog itself — the hotel's copy, room types, rates, and add-ons — in `/admin/content`, without a deploy.
+
+## Current scope
+
+The guest journey is built end to end: arrival (`/`), catalog (`/rooms`, including a floor plan
+where a guest picks the exact room), room detail (`/rooms/[slug]`), a six-step demo booking
+(`/book/[slug]`), and confirmation (`/booking/[reference]`). Quotes and bookings are exposed as
+server actions and as `POST /api/quotes`, `POST /api/bookings`, and `GET /api/bookings/:reference`;
+the back office is server actions only, no new API routes.
+
+The hotel's back office (`/admin`) has its own shell and two groups of screens, every one of them
+live on demo data. Operations: an overview, a rooms × nights front desk, a housekeeping board
+(`/admin/housekeeping`: every physical room's cleaning status — dirty, in progress, clean,
+inspected, out of order — read next to who is in it today, set from the row or the room's own page
+with a note, persisted per room in D1 behind its own `permHousekeeping` permission), bookings with
+detail and cancel, and rates & availability. Content: the CMS at `/admin/content` — room types, their physical
+rooms (`/admin/content/units`: a type is created first, then its rooms), rates and add-ons, the
+hotel's own copy, and the building spinner (`/admin/content/spinner`: its frames, key angles and
+start frame, and the zones drawn on those key-angle frames, each bound to a room, a floor, a room
+type, or a link — see `docs/decisions/0006-spinner-markup.md`) (see TECH.md's "Content management
+(CMS)" and "Back office").
+
+The UI is photography-led: hero areas with hotspots, room galleries, and licensed stock
+photography stored locally in `public/images`. The arrival stage's facade/roof/cove photo is
+replaced by a draggable building spinner (`Hotel.spinner`, `BuildingSpinner`)
+— a baked 160-frame orbit drawn to a canvas, not a live 3D scene — whose hotspots open the rooms
+on each floor; see `SPINNER_SPEC.md` for why a baked sequence replaced an earlier, same-day
+three.js attempt. That spinner and the room gallery's panorama sphere (`PanoramaViewer`) are one
+module, `components/view-360/`, whose README.md is the handoff doc for both. On top of it, a hotel
+team can upload the orbit's own frames and choose its key angles and start frame
+(`/admin/content/spinner/frames`), and draw and bind zones — polygons that only exist on those
+key-angle frames — in `/admin/content/spinner/markup`; see
+`docs/decisions/0006-spinner-markup.md`. Playwright covers the golden path at 1440px and 390px.
+
+Bookings, payment attempts, admin overrides, and inventory holds persist to D1 (falling back to
+in-memory when no D1 binding is configured) — see `lib/infrastructure/durable-hotel-repository.ts`
+and TECH.md's Persistence section.
+
+A persistent AI room finder — a round control on every guest route — turns a spoken or typed
+request into a filter object through a `RoomSearchInterpreter` port (OpenAI, or a deterministic
+keyword fallback with no key configured), sanitises it against the live catalog, and hands the
+result to the same `CatalogService`/`buildPriceBreakdown` path everything else uses; see TECH.md's
+"AI concierge" section. The back office has its own, as a chat beside the page: a typed request
+("set the Deluxe Sea View rate to 320", "create a room type and a room for it", "open room rates")
+becomes a question when something is still needed, or a proposal the team member confirms before
+anything is written, through the same CMS mutators the forms use — TECH.md's "Admin assistant".
+The back office also has a guest inbox, `/admin/communications` (`lib/application/communications-service.ts`,
+D1 with the usual in-memory fallback): one thread per guest, channel and stay, with unread counts on
+the bell and the sidebar item. Guests write in from the chat on their confirmation page
+(`POST /api/conversations`, read back with `GET /api/conversations/:id?email=`) and, when a relay
+is wired up, by email through `POST /api/inbound/email` behind `INBOUND_EMAIL_SECRET`; desk replies
+on email, WhatsApp and SMS leave through the `OutboundMessenger` port, whose demo adapter only logs —
+see TECH.md's "Communications".
+
+The back office speaks English, German and Russian (`lib/i18n/admin`, picked on `/admin/account`,
+a cookie the server reads), separately from the guest site's own eight-language picker — TECH.md's
+"Languages".
+
+`/admin` is behind a two-step sign-in (`app/(auth)/admin`: a team address and the shared
+password, then what the team member is here for), a signed session cookie the layout and every
+admin server action check, and `ContentService`'s `authorize` — TECH.md's "Sign-in". The five demo
+roles (`lib/application/team-directory.ts`) are real, enforced permissions, not a cosmetic label:
+`admin-session.ts`'s `requirePermission` gates `ContentService`'s mutators and a handful of server
+actions against the matrix `/admin/settings/team` shows. What it is not yet: real *accounts* — one
+shared password stands in for a per-member one, so the role is real but who's behind it is on
+trust.
+
+Still future work: per-member accounts on `/admin` (their own passwords, not one shared one),
+saved brand settings and media uploads, the property's own photography, and production PMS,
+channel manager, payment, and CRM integrations.
+
+## Technical decisions
+
+- TypeScript strict mode; Zod is the runtime contract boundary.
+- Business rules live in `lib/application`, not React components.
+- Data access goes through `HotelRepository` and integration ports in `lib/domain/ports.ts`.
+- Bookings, payment attempts, admin overrides, and inventory holds are durable (D1, falling back
+  to in-memory). The room/rate/add-on catalog's *baseline* is always static seed data
+  (`lib/infrastructure/mock-data.ts`), in every backend; `/admin/content` edits are a CMS overlay
+  on top of it, never a change to the seed itself — see TECH.md's "Content management (CMS)".
+- CMS business rules (slugs, references, currency, media, optimistic concurrency) live in
+  `lib/application/content-service.ts`, the same layer as the rest of the app's rules — never in
+  a component or a server action.
+- All money flows through `buildPriceBreakdown` in `lib/domain/pricing.ts`; components never
+  compute a total.
+- The 360° views are imported only from `@/components/view-360` (lint-enforced); inside, pure
+  maths is a tested function, a hook owns one side effect, a component only composes — see
+  `components/view-360/README.md` and `docs/decisions/0005-view-360-module.md`.
+- `lib/application/container.ts` is the only module that may import `lib/infrastructure`.
+- UI follows `DESIGN_SYSTEM.md › Rules` — they exist because the first pass looked generic. Ink
+  pills, clay accent, Phosphor filled icons, photography, no eyebrows, no stat tiles, no icon
+  cards. `lib/ui.ts` holds the shared shapes (`pill`, `tag`, `iconButton`, `fieldClass`).
+- Layout is a grid of Tailwind theme tokens in `app/globals.css`: `container-page`/`-reading`/`-form`,
+  the `gutter` spacing step, and named column templates (`grid-cols-sidebar`, `-sidebar-start`,
+  `-media`, `-main-aside`, `-shell`). No page free-hands `max-w-[…px]` or a `grid-cols-[…]` split —
+  see `DESIGN_SYSTEM.md › Layout grid`.
+- PMS or channel manager is the production source of truth for inventory, rates, and reservations.
+- OTA integrations require official partner access; no scraping.
+- Live payment is out of scope. Production must use provider-hosted/tokenized collection.
+
+## Commit conventions
+
+Always write [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood — `type(scope): summary`, e.g. `feat(booking): add idempotent hold confirmation`. Never a bare, generic message; this applies to every commit, not just feature work. See CONTRIBUTING.md for the full convention and AGENTS.md for working rules.
+
+## Next implementation order
+
+1. ~~Guest-facing room search/catalog and detail route.~~ Done.
+2. ~~Quote → hold → demo payment → booking confirmation.~~ Done.
+3. ~~`/admin` demo and mock adapter controls.~~ Done.
+4. ~~Photography-led redesign with the design rules enshrined.~~ Done.
+5. ~~Persist demo state (D1) so bookings survive a restart and are shared across isolates.~~ Done.
+6. ~~Basic CMS in `/admin/content` for the hotel copy, room types, rates, and add-ons, with a D1
+   overlay on the seed catalog.~~ Done.
+7. ~~Back office for the demo: shell, overview, front desk, bookings with cancel, rates &
+   availability, and the CMS in the same shell; physical rooms and the guest floor plan.~~ Done.
+8. ~~CMS markup for the building spinner: `/admin/content/spinner`, drawing and binding zones on
+   its key-angle frames (`docs/decisions/0006-spinner-markup.md`).~~ Done.
+9. ~~Upload path for the spinner's own orbit frames, and CMS control of key angles and the start
+   frame: `/admin/content/spinner/frames`, re-encoding to WebP in the browser and writing to R2
+   (`docs/decisions/0006-spinner-markup.md`).~~ Done.
+10. Replace stock photography with the property's own throughout the rest of the site (hero areas,
+    room galleries), and add real 360 tiles if the property has them — the spinner's own frames
+    already have an upload path (step 9); the general photo library still does not
+    (`MediaStoragePort` is declared, not implemented).
+11. ~~Auth on `/admin` — a session, and `ContentService`'s `authorize` as the one gate.~~ Done as a
+    shared password over the demo team, each member's role a real, enforced permission
+    (`requirePermission`) rather than a label; per-member accounts (their own password each) are
+    still ahead. Then the first real PMS or channel-manager adapter behind the existing ports. A
+    production PMS/channel-manager also becomes the owner of prices,
+    rates and room assignment, which `TECH.md` documents but the CMS and rates screen do not
+    enforce.
+12. Deployment: Cloudflare Workers via `npm run build` and `npm run deploy`, or Vercel via
+    `npm run build:vercel` with Turso standing in for D1 and Vercel Blob for R2 — TECH.md's
+    "Hosting".
+13. CMS v2, if ever needed: file uploads to R2 for the general media library
+    (`MediaStoragePort` is declared, not implemented — the spinner's own frames already upload to
+    R2 through a separate, narrower port, step 9), saved brand settings, draft/versioned content,
+    multi-hotel support (`hotel_id` is already in every overlay row).
+
+Read `AGENTS.md`, `TECH.md`, and `DESIGN_SYSTEM.md` before changing architecture or UI.

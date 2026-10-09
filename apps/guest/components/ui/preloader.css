@@ -1,0 +1,32 @@
+.preloader {
+  --preloader-size: 24px;
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.preloader-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.preloader-logo {
+  width: calc(var(--preloader-size) * 5.7444);
+  height: var(--preloader-size);
+  flex: none;
+}
+
+.preloader--page {
+  --preloader-size: clamp(32px, 10vw, 48px);
+  display: flex;
+  flex-direction: column;
+  padding-block: 1.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}

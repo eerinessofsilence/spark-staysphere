@@ -1,0 +1,218 @@
+import { addDays, format, isValid, parseISO } from 'date-fns';
+import { roomCategories, type RoomCategory } from '../domain/room-attributes';
+import { MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, MIN_CHILDREN, ROOM_NUMBER } from '../domain/schemas';
+import type { RoomType, StayCriteria } from '../domain/schemas';
+import { defaultRoomFilters, type RoomFilters, type SortOrder } from './guest-contracts';
+
+export type SearchParamsInput = Record<string, string | string[] | undefined>;
+
+export const searchParamKeys = {
+  checkIn: 'checkIn',
+  checkOut: 'checkOut',
+  adults: 'adults',
+  children: 'children',
+  view: 'view',
+  bed: 'bed',
+  category: 'category',
+  amenity: 'amenity',
+  minPrice: 'minPrice',
+  maxPrice: 'maxPrice',
+  minArea: 'minArea',
+  minFloor: 'minFloor',
+  hideSoldOut: 'hideSoldOut',
+  sort: 'sort',
+  addOn: 'addOn',
+  layout: 'layout',
+  room: 'room',
+} as const;
+
+/** Exported so any caller validating a `view`/`bedType` (e.g. the assistant's sanitiser) shares this one union. */
+export const roomViews: RoomType['view'][] = ['sea', 'garden', 'pool', 'city'];
+export const roomBedTypes: RoomType['bedType'][] = ['king', 'queen', 'twin'];
+const views = roomViews;
+const bedTypes = roomBedTypes;
+const sortOrders: SortOrder[] = ['recommended', 'price_asc', 'price_desc', 'area_desc'];
+
+/**
+ * How the catalog draws its results. Not a filter — it changes nothing about
+ * which rooms come back — but it lives in the URL with them so the choice
+ * survives a filter change and travels with a shared link.
+ */
+export type CatalogLayout = 'grid' | 'list' | 'plan';
+
+export function parseLayout(params: SearchParamsInput): CatalogLayout {
+  const value = first(params[searchParamKeys.layout]);
+  return value === 'list' || value === 'plan' ? value : 'grid';
+}
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function many(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  const raw = Array.isArray(value) ? value : [value];
+  return raw.flatMap((entry) => entry.split(',')).map((entry) => entry.trim()).filter(Boolean);
+}
+
+function toInt(value: string | undefined, fallback: number | null): number | null {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Exported so callers outside a URL (the assistant's sanitiser) can reuse the one check. */
+/**
+ * `href` with the guest's stay carried along, so a link out of the arrival
+ * screen lands on the same dates. The stay's keys win over any the link
+ * already names; the link's own keys (`view=sea`, say) are kept.
+ */
+export function withStayQuery(href: string, stayQuery?: string): string {
+  const [path = '', query] = href.split('?');
+  const params = new URLSearchParams(query ?? '');
+  if (stayQuery) new URLSearchParams(stayQuery).forEach((value, key) => params.set(key, value));
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+}
+
+export function isIsoDate(value: string | undefined | null): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value));
+}
+
+/** The one adults clamp, shared by URL parsing and the assistant's sanitiser. */
+export function clampAdults(value: number): number {
+  return Math.min(MAX_ADULTS, Math.max(MIN_ADULTS, Math.round(value)));
+}
+
+/** The one children clamp, shared by URL parsing and the assistant's sanitiser. */
+export function clampChildren(value: number): number {
+  return Math.min(MAX_CHILDREN, Math.max(MIN_CHILDREN, Math.round(value)));
+}
+
+export function toIsoDate(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
+
+/** A demo stay three weeks out, so the calendar always opens on a bookable range. */
+export function defaultCriteria(today: Date = new Date()): StayCriteria {
+  const checkIn = addDays(today, 21);
+  return {
+    checkIn: toIsoDate(checkIn),
+    checkOut: toIsoDate(addDays(checkIn, 3)),
+    adults: 2,
+    children: 0,
+  };
+}
+
+/** Never throws: an unparseable URL degrades to the default stay rather than a 500. */
+export function parseCriteria(params: SearchParamsInput, today: Date = new Date()): StayCriteria {
+  const fallback = defaultCriteria(today);
+  const rawCheckIn = first(params[searchParamKeys.checkIn]);
+  const rawCheckOut = first(params[searchParamKeys.checkOut]);
+
+  const checkIn = isIsoDate(rawCheckIn) ? rawCheckIn : fallback.checkIn;
+  const parsedCheckOut = isIsoDate(rawCheckOut) ? rawCheckOut : fallback.checkOut;
+  const checkOut =
+    parsedCheckOut > checkIn ? parsedCheckOut : toIsoDate(addDays(parseISO(checkIn), 1));
+
+  const adults = clampAdults(toInt(first(params[searchParamKeys.adults]), 2) ?? 2);
+  const children = clampChildren(toInt(first(params[searchParamKeys.children]), 0) ?? 0);
+
+  return { checkIn, checkOut, adults, children };
+}
+
+export function parseFilters(params: SearchParamsInput): RoomFilters {
+  const sort = first(params[searchParamKeys.sort]);
+  return {
+    minPrice: toInt(first(params[searchParamKeys.minPrice]), null),
+    maxPrice: toInt(first(params[searchParamKeys.maxPrice]), null),
+    views: many(params[searchParamKeys.view]).filter((v): v is RoomType['view'] =>
+      views.includes(v as RoomType['view']),
+    ),
+    bedTypes: many(params[searchParamKeys.bed]).filter((v): v is RoomType['bedType'] =>
+      bedTypes.includes(v as RoomType['bedType']),
+    ),
+    categories: many(params[searchParamKeys.category]).filter((v): v is RoomCategory =>
+      roomCategories.includes(v as RoomCategory),
+    ),
+    amenities: many(params[searchParamKeys.amenity]),
+    minArea: toInt(first(params[searchParamKeys.minArea]), null),
+    minFloor: toInt(first(params[searchParamKeys.minFloor]), null),
+    includeSoldOut: first(params[searchParamKeys.hideSoldOut]) !== '1',
+    sort: sortOrders.includes(sort as SortOrder) ? (sort as SortOrder) : 'recommended',
+  };
+}
+
+export function parseAddOnIds(params: SearchParamsInput): string[] {
+  return many(params[searchParamKeys.addOn]);
+}
+
+export function parseRoomNumber(params: SearchParamsInput): string | null {
+  const value = first(params[searchParamKeys.room]);
+  return value && ROOM_NUMBER.test(value) ? value : null;
+}
+
+export function filtersAreDefault(filters: RoomFilters): boolean {
+  return (
+    filters.minPrice === null &&
+    filters.maxPrice === null &&
+    filters.views.length === 0 &&
+    filters.bedTypes.length === 0 &&
+    filters.categories.length === 0 &&
+    filters.amenities.length === 0 &&
+    filters.minArea === null &&
+    filters.minFloor === null &&
+    filters.includeSoldOut === defaultRoomFilters.includeSoldOut
+  );
+}
+
+export function activeFilterCount(filters: RoomFilters): number {
+  return (
+    (filters.minPrice !== null || filters.maxPrice !== null ? 1 : 0) +
+    filters.views.length +
+    filters.bedTypes.length +
+    filters.categories.length +
+    filters.amenities.length +
+    (filters.minArea !== null ? 1 : 0) +
+    (filters.minFloor !== null ? 1 : 0) +
+    (filters.includeSoldOut ? 0 : 1)
+  );
+}
+
+interface QueryInput {
+  criteria: StayCriteria;
+  filters?: RoomFilters;
+  addOnIds?: string[];
+  /** Carried through so changing a filter does not throw the guest back to the grid. */
+  layout?: CatalogLayout;
+  /** A room picked on the floor plan. */
+  roomNumber?: string;
+}
+
+/** Builds the canonical query string so every link in the app carries the stay. */
+export function buildQuery({ criteria, filters, addOnIds, layout, roomNumber }: QueryInput): string {
+  const params = new URLSearchParams();
+  params.set(searchParamKeys.checkIn, criteria.checkIn);
+  params.set(searchParamKeys.checkOut, criteria.checkOut);
+  params.set(searchParamKeys.adults, String(criteria.adults));
+  params.set(searchParamKeys.children, String(criteria.children));
+
+  if (filters) {
+    if (filters.minPrice !== null) params.set(searchParamKeys.minPrice, String(filters.minPrice));
+    if (filters.maxPrice !== null) params.set(searchParamKeys.maxPrice, String(filters.maxPrice));
+    if (filters.minArea !== null) params.set(searchParamKeys.minArea, String(filters.minArea));
+    if (filters.minFloor !== null) params.set(searchParamKeys.minFloor, String(filters.minFloor));
+    filters.views.forEach((view) => params.append(searchParamKeys.view, view));
+    filters.bedTypes.forEach((bed) => params.append(searchParamKeys.bed, bed));
+    filters.categories.forEach((category) => params.append(searchParamKeys.category, category));
+    filters.amenities.forEach((amenity) => params.append(searchParamKeys.amenity, amenity));
+    if (!filters.includeSoldOut) params.set(searchParamKeys.hideSoldOut, '1');
+    if (filters.sort !== 'recommended') params.set(searchParamKeys.sort, filters.sort);
+  }
+
+  addOnIds?.forEach((id) => params.append(searchParamKeys.addOn, id));
+  if (layout && layout !== 'grid') params.set(searchParamKeys.layout, layout);
+  if (roomNumber) params.set(searchParamKeys.room, roomNumber);
+
+  return params.toString();
+}

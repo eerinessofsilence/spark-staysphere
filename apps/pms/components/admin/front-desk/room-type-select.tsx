@@ -1,0 +1,60 @@
+'use client';
+
+import * as React from 'react';
+import { usePreloaderRouter as useRouter } from '@/components/ui/preloader-navigation';
+import { useAdminT } from '@/lib/i18n/admin/context';
+import { fieldClass } from '@/lib/ui';
+import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { frontDeskHref } from './front-desk-shared';
+
+interface RoomTypeSelectProps {
+  options: { id: string; name: string }[];
+  value: string | null;
+  from: string;
+  days: number;
+  id?: string;
+  className?: string;
+}
+
+export function RoomTypeSelect({ options, value, from, days, id = 'front-desk-room-type', className }: RoomTypeSelectProps) {
+  const router = useRouter();
+  const t = useAdminT();
+  const [pending, startTransition] = React.useTransition();
+  const items = [
+    { value: '', label: t('frontDesk.allRoomTypes') },
+    ...options.map((option) => ({ value: option.id, label: option.name })),
+  ];
+
+  return (
+    <div className={cn('w-full sm:w-64', className)}>
+      <label htmlFor={id} className="sr-only">
+        {t('frontDesk.roomType')}
+      </label>
+      <Select
+        items={items}
+        value={value ?? ''}
+        disabled={pending}
+        onValueChange={(next) => {
+          const type = next || null;
+          startTransition(() => router.replace(frontDeskHref({ from, days, type }), { scroll: false }));
+        }}
+      >
+        <SelectTrigger id={id} className={cn(fieldClass, 'justify-between gap-2 py-0 disabled:opacity-60')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-2xl border border-border bg-card p-1.5 shadow-soft ring-0">
+          {items.map((item) => (
+            <SelectItem
+              key={item.value}
+              value={item.value}
+              className="rounded-xl py-2 pl-2.5 text-sm data-highlighted:bg-stone data-highlighted:text-foreground"
+            >
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

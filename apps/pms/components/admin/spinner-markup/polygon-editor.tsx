@@ -1,0 +1,1162 @@
+'use client';
+
+import * as React from 'react';
+import {
+  curveFromPoint,
+  curvesOf,
+  edgeMidpoint,
+  flattenPolygon,
+  isEdgeCurved,
+  packEdgeCurve,
+  selfIntersects,
+  snapPolygonToNeighbours,
+  type Point,
+} from '@/lib/domain/polygon/geometry';
+import type { SpinnerZoneTarget } from '@/lib/domain/spinner-markup';
+import { useAdminLocale, useAdminT } from '@/lib/i18n/admin/context';
+import type { AdminTranslationKey } from '@/lib/i18n/admin/dictionaries';
+import { pluralCount } from '@/lib/i18n/plural';
+import { MarkupCanvas, screenToNormalized, type ImageSize } from './markup-canvas';
+import {
+  createInitialState,
+  movedPolygon,
+  reducer,
+  serializeZone,
+  withCurve,
+  withInsertedVertex,
+  withoutVertex,
+  type EditorZone,
+} from './editor-state';
+import { dragSteps, loadOrder, nearestKeyAngle, nextStop, ringDelta, wrap } from '@/components/view-360';
+import {
+  IconMagnet,
+  IconPencil,
+  IconPointer,
+  IconRedo,
+  IconSpin,
+  IconSquare,
+  IconTrash,
+  IconTurnLeft,
+  IconTurnRight,
+  IconUndo,
+} from './icons';
+import { ShortcutsPanel } from './shortcuts-panel';
+import { EDITOR_STYLES } from './styles';
+import { ContourSummary, ZoneList } from './zone-list';
+import { ZoneTargetEditor, type SpinnerMarkupCatalog } from './zone-target-editor';
+
+// The polygon editor over an image, laid out like a design tool: the canvas
+// fills the editor, the zone list floats on the left, the selected zone's
+// properties on the right, the draw tools in a dock at the bottom centre and
+// the shortcuts behind a "?" in the bottom-right corner.
+//
+// Every edit is local state. Autosave, if `onSave` is passed, carries it to
+// the database: 2 seconds after the last edit, one batch
+// `{ upserts, deletes }` for every change at once.
+//
+// Keyboard shortcuts work only while focus is inside the editor: embedded in
+// a page, it must not steal that page's arrows, Delete or space bar.
+//
+// Ported from `svg-editor-kit`'s `client/polygon-editor.jsx`, retyped for
+// this repo's zones (a polygon plus a `SpinnerZoneTarget`) — see
+// `ZoneTargetEditor` for the one piece that is specific to this catalog
+// rather than the reusable kit.
+
+const AUTOSAVE_DELAY = 2000;
+const NUDGE_GESTURE_GAP = 600; // a burst of arrow presses faster than this is one history step
+const SNAP_TOLERANCE_PX = 8; // the magnet's radius, in the source image's own pixels
+const NOTICE_TIMEOUT = 5000;
+
+// The handle on screen: 9px unmagnified, ~4.5px at four times zoom. It
+// shrinks as you zoom in — aiming at a vertex gets more precise, not less.
+const HANDLE_PX_AT_1X = 9;
+const handleScreenPx = (zoom: number) => HANDLE_PX_AT_1X / (1 + (zoom - 1) * 0.33);
+
+const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
+
+const TOOLS = [
+  { id: 'select', label: 'editor.toolSelect', key: 'V', Icon: IconPointer },
+  { id: 'polygon', label: 'editor.toolPolygon', key: 'P', Icon: IconPencil },
+  { id: 'rect', label: 'editor.toolRect', key: 'R', Icon: IconSquare },
+  { id: 'spin', label: 'editor.toolSpin', key: 'S', Icon: IconSpin },
+] as const satisfies ReadonlyArray<{ id: string; label: AdminTranslationKey; key: string; Icon: unknown }>;
+
+type Tool = (typeof TOOLS)[number]['id'];
+
+/** How many frames are asked for at once while the rest of the sequence loads behind the drag. */
+const PRELOAD_BATCH = 12;
+const PRELOAD_INTERVAL = 120;
+/** Frames a second a turn runs at — the pace of the guest spinner's own (`use-orbit.ts`'s STEP_FPS). */
+const TURN_FPS = 60;
+
+const SAVE_LABELS: Record<SaveStatus, AdminTranslationKey> = {
+  saved: 'editor.saved',
+  pending: 'editor.pending',
+  saving: 'editor.saving',
+  error: 'editor.saveFailed',
+};
+
+type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
+
+interface Notice {
+  variant: 'error' | 'info';
+  title: string;
+  description?: string;
+}
+
+function isTypingTarget(target: HTMLElement): boolean {
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+}
+
+export interface SaveBatch {
+  upserts: Array<{ id: string; polygon: EditorZone['polygon']; target: SpinnerZoneTarget | null }>;
+  deletes: string[];
+}
+
+export type SaveResult = { ok: true } | { ok: false; error?: string };
+
+export interface PolygonEditorHandle {
+  /** Save now, without waiting for the timer. `true` means everything is written and error-free. */
+  flush: () => Promise<boolean>;
+  getZones: () => EditorZone[];
+  isSaved: () => boolean;
+  select: (id: string | null) => void;
+}
+
+export interface PolygonEditorProps {
+  image: ImageSize;
+  /** `[{ id, polygon, target }]`; read once on mount. Pass a different `key` for a different frame. */
+  initialZones?: EditorZone[];
+  /** Every physical room and room type a zone can point to. */
+  catalog: SpinnerMarkupCatalog;
+  onSave?: (batch: SaveBatch) => Promise<SaveResult>;
+  onChange?: (zones: EditorZone[]) => void;
+  onSelectionChange?: (id: string | null) => void;
+  onNotify?: (notice: Notice) => void;
+  /** A zone's label in the list and in messages — usually what its target resolves to. */
+  zoneLabel?: (zone: EditorZone) => string | null;
+  /**
+   * An image sequence this canvas can be dragged through — the property's
+   * own orbit, on the admin side. `index` is the frame being marked up;
+   * a drag settles on the nearest `stop` and reports it through `onSettle`,
+   * which is where the caller swaps in that frame's own zones.
+   */
+  sequence?: {
+    frames: Array<{ index: number; imageUrl: string }>;
+    /** The frames a drag may settle on — the only ones a zone can live on. */
+    stops: number[];
+    index: number;
+    onSettle: (index: number) => void;
+  };
+  autosaveDelay?: number;
+  showShortcuts?: boolean;
+  showList?: boolean;
+  toolbarStart?: React.ReactNode;
+  toolbarEnd?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+export const PolygonEditor = React.forwardRef<PolygonEditorHandle, PolygonEditorProps>(function PolygonEditor(
+  {
+    image,
+    initialZones = [],
+    catalog,
+    onSave,
+    onChange,
+    onSelectionChange,
+    onNotify,
+    zoneLabel,
+    sequence,
+    autosaveDelay = AUTOSAVE_DELAY,
+    showShortcuts = true,
+    showList = true,
+    toolbarStart = null,
+    toolbarEnd = null,
+    className = '',
+    style,
+  },
+  ref,
+) {
+  const t = useAdminT();
+  const locale = useAdminLocale();
+  // Handlers read `t` through a ref, like the other callbacks below, so a
+  // language change never has to rebuild the keyboard and pointer plumbing.
+  const tRef = React.useRef(t);
+  tRef.current = t;
+
+  const [state, dispatch] = React.useReducer(reducer, initialZones, createInitialState);
+  const [tool, setTool] = React.useState<Tool>('select');
+  const [draft, setDraft] = React.useState<{ points: Point[]; cursor: Point } | null>(null); // the P tool
+  const [rectDraft, setRectDraft] = React.useState<{ start: Point; current: Point; pointerId: number } | null>(null); // the R tool
+  const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved');
+  // Which frame of `sequence` the canvas is showing: null while it shows the
+  // frame being marked up, a frame index while a drag is turning the building.
+  const [spinFrame, setSpinFrame] = React.useState<number | null>(null);
+  const [notice, setNotice] = React.useState<Notice | null>(null);
+
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  // The draft is mirrored into a ref: handlers read it synchronously, without
+  // going through the state updaters StrictMode runs twice.
+  const draftRef = React.useRef<{ points: Point[]; cursor: Point } | null>(null);
+  const vertexDragRef = React.useRef<{ kind: 'body' | 'vertex' | 'edge'; hotspotId: string; index?: number; last?: Point; started: boolean } | null>(null);
+  const nudgeAtRef = React.useRef(0);
+  const spinDragRef = React.useRef<{ startX: number; startFrame: number } | null>(null);
+  const turnRef = React.useRef<number | null>(null);
+  const spinFrameRef = React.useRef<number | null>(null);
+  const savedRef = React.useRef(new Map(initialZones.map((z) => [z.id, serializeZone(z)])));
+  const warnedInvalidRef = React.useRef('');
+
+  const { zones, selectedId } = state;
+  const selected = zones.find((item) => item.id === selectedId) ?? null;
+  const autosave = Boolean(onSave);
+
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+  const saveStatusRef = React.useRef(saveStatus);
+  saveStatusRef.current = saveStatus;
+
+  const onSaveRef = React.useRef(onSave);
+  onSaveRef.current = onSave;
+  const onNotifyRef = React.useRef(onNotify);
+  onNotifyRef.current = onNotify;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+  const onSelectionChangeRef = React.useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+  const zoneLabelRef = React.useRef(zoneLabel);
+  zoneLabelRef.current = zoneLabel;
+
+  // ── messages ──────────────────────────────────────────────────────────────
+
+  const notify = React.useCallback((message: Notice) => {
+    if (onNotifyRef.current) onNotifyRef.current(message);
+    else setNotice(message);
+  }, []);
+
+  React.useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(null), NOTICE_TIMEOUT);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const reportedZonesRef = React.useRef(zones);
+  React.useEffect(() => {
+    if (reportedZonesRef.current === zones) return;
+    reportedZonesRef.current = zones;
+    onChangeRef.current?.(zones);
+  }, [zones]);
+
+  const reportedSelectionRef = React.useRef(selectedId);
+  React.useEffect(() => {
+    if (reportedSelectionRef.current === selectedId) return;
+    reportedSelectionRef.current = selectedId;
+    onSelectionChangeRef.current?.(selectedId);
+  }, [selectedId]);
+
+  // ── coordinates ───────────────────────────────────────────────────────────
+
+  const [unitsPerPixel, setUnitsPerPixel] = React.useState(1);
+  const [zoom, setZoom] = React.useState(1);
+
+  const onViewChange = React.useCallback(({ zoom: nextZoom, svg }: { zoom: number; svg: SVGSVGElement | null }) => {
+    setZoom(nextZoom);
+    const ctm = svg?.getScreenCTM();
+    if (ctm) {
+      const scale = Math.hypot(ctm.a, ctm.b);
+      if (scale > 0) setUnitsPerPixel(1 / scale);
+    }
+  }, []);
+
+  const normFromEvent = React.useCallback(
+    (event: { clientX: number; clientY: number }): Point | null => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+      const point = screenToNormalized(svg, event.clientX, event.clientY, image);
+      return point ? [clamp01(point[0]), clamp01(point[1])] : null;
+    },
+    [image],
+  );
+
+  /** The "click on the first vertex closes the contour" threshold — roughly 8 screen pixels. */
+  const closeThreshold = React.useCallback(() => {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    const scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1;
+    return 8 / scale / Math.min(image.width, image.height);
+  }, [image]);
+
+  // ── autosave ──────────────────────────────────────────────────────────────
+
+  const computeDiff = React.useCallback(() => {
+    const current = stateRef.current.zones;
+    const currentIds = new Set(current.map((z) => z.id));
+    const upserts: SaveBatch['upserts'] = [];
+    const invalid: string[] = [];
+
+    for (const [index, zone] of current.entries()) {
+      if (savedRef.current.get(zone.id) === serializeZone(zone)) continue;
+
+      const name = nameOf(zone, index);
+      if (zone.polygon.points.length < 3) {
+        invalid.push(tRef.current('editor.invalidFewPoints', { name }));
+      } else if (selfIntersects(flattenPolygon(zone.polygon))) {
+        invalid.push(tRef.current('editor.invalidCross', { name }));
+      } else {
+        upserts.push({ id: zone.id, polygon: zone.polygon, target: zone.target });
+      }
+    }
+
+    const deletes = [...savedRef.current.keys()].filter((id) => !currentIds.has(id));
+    return { upserts, deletes, invalid };
+  }, []);
+
+  function nameOf(zone: EditorZone, index: number): string {
+    return zoneLabelRef.current?.(zone) || tRef.current('editor.zoneN', { n: index + 1 });
+  }
+
+  const flush = React.useCallback(async () => {
+    const save = onSaveRef.current;
+    if (!save) return true;
+
+    const { upserts, deletes, invalid } = computeDiff();
+
+    const invalidKey = invalid.join('|');
+    if (invalid.length > 0 && warnedInvalidRef.current !== invalidKey) {
+      warnedInvalidRef.current = invalidKey;
+      notify({ variant: 'error', title: tRef.current('editor.zoneNotSaved'), description: invalid.join('. ') });
+    }
+    if (invalid.length === 0) warnedInvalidRef.current = '';
+
+    if (upserts.length === 0 && deletes.length === 0) {
+      setSaveStatus(invalid.length > 0 ? 'error' : 'saved');
+      return invalid.length === 0;
+    }
+
+    setSaveStatus('saving');
+
+    let error: string | null = null;
+    try {
+      const result = await save({ upserts, deletes });
+      if (result && result.ok === false) error = result.error ?? tRef.current('editor.unknownError');
+    } catch (thrown) {
+      error = thrown instanceof Error ? thrown.message : tRef.current('editor.unknownError');
+    }
+
+    if (error) {
+      setSaveStatus('error');
+      notify({ variant: 'error', title: tRef.current('editor.autosaveFailed'), description: error });
+      return false;
+    }
+
+    for (const item of upserts) {
+      const live = stateRef.current.zones.find((z) => z.id === item.id);
+      // The zone might have moved again between the request and its
+      // response — the next cycle will pick that up; here we record only
+      // what was actually written.
+      savedRef.current.set(item.id, serializeZone({ id: item.id, polygon: item.polygon, target: item.target }));
+      if (live && serializeZone(live) !== serializeZone({ id: item.id, polygon: item.polygon, target: item.target })) {
+        setSaveStatus('pending');
+      }
+    }
+    for (const id of deletes) savedRef.current.delete(id);
+
+    setSaveStatus((current) => (current === 'saving' ? (invalid.length > 0 ? 'error' : 'saved') : current));
+    return invalid.length === 0;
+  }, [computeDiff, notify]);
+
+  const flushRef = React.useRef(flush);
+  flushRef.current = flush;
+
+  React.useEffect(() => {
+    if (!autosave) return undefined;
+
+    const { upserts, deletes, invalid } = computeDiff();
+    if (upserts.length === 0 && deletes.length === 0 && invalid.length === 0) {
+      // Every change has been taken back — a zone drawn and deleted again
+      // before the timer fired. There is nothing to write, so the status has
+      // to stop saying there is: it gates `beforeunload` and the flush before
+      // a frame change.
+      setSaveStatus((current) => (current === 'saving' ? current : 'saved'));
+      return undefined;
+    }
+
+    setSaveStatus('pending');
+    const timer = setTimeout(() => flushRef.current(), autosaveDelay);
+    return () => clearTimeout(timer);
+  }, [zones, computeDiff, autosave, autosaveDelay]);
+
+  React.useEffect(() => {
+    if (!autosave) return undefined;
+
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (saveStatusRef.current === 'saved') return;
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [autosave]);
+
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      flush: () => flushRef.current(),
+      getZones: () => stateRef.current.zones,
+      isSaved: () => saveStatusRef.current === 'saved',
+      select: (id: string | null) => dispatch({ type: 'select', id }),
+    }),
+    [],
+  );
+
+  // ── the orbit ─────────────────────────────────────────────────────────────
+
+  const frameCount = sequence?.frames.length ?? 0;
+  const sequenceIndex = sequence?.index ?? 0;
+  spinFrameRef.current = spinFrame;
+
+  const stopTurn = React.useCallback(() => {
+    if (turnRef.current === null) return;
+    cancelAnimationFrame(turnRef.current);
+    turnRef.current = null;
+  }, []);
+
+  React.useEffect(() => stopTurn, [stopTurn]);
+
+  /**
+   * Turns the building to `target` frame by frame instead of cutting to it,
+   * the way the guest spinner turns: stepping on the clock rather than once
+   * per tick, so the journey takes the same time on a 120Hz screen as on a
+   * 60Hz one, and never more than one frame at a time so a late tick holds
+   * the turn where it is instead of jumping across the facade.
+   */
+  const turnTo = React.useCallback(
+    (target: number, onArrive: () => void) => {
+      stopTurn();
+      const from = spinFrameRef.current ?? sequenceIndex;
+      const delta = ringDelta(from, target, frameCount);
+      if (delta === 0) {
+        onArrive();
+        return;
+      }
+
+      const direction = delta > 0 ? 1 : -1;
+      const total = Math.abs(delta);
+      const startedAt = performance.now();
+      let stepped = 0;
+
+      const tick = (now: number) => {
+        const due = Math.floor(((now - startedAt) / 1000) * TURN_FPS);
+        stepped = Math.min(total, Math.max(stepped, Math.min(due, stepped + 1)));
+        setSpinFrame(wrap(from + direction * stepped, frameCount));
+        if (stepped >= total) {
+          turnRef.current = null;
+          onArrive();
+          return;
+        }
+        turnRef.current = requestAnimationFrame(tick);
+      };
+      turnRef.current = requestAnimationFrame(tick);
+    },
+    [frameCount, sequenceIndex, stopTurn],
+  );
+
+  /**
+   * The frames are pulled in behind the drag, nearest to the one on screen
+   * first, in small batches: asking for all 160 at once stalls the first turn
+   * behind its own requests. Same order the guest spinner loads in
+   * (`loadOrder`), so both surfaces warm the same cache.
+   */
+  React.useEffect(() => {
+    if (!sequence || frameCount === 0) return undefined;
+
+    const urls = new Map(sequence.frames.map((frame) => [frame.index, frame.imageUrl]));
+    const order = loadOrder(sequenceIndex, frameCount);
+    const images: HTMLImageElement[] = [];
+    let at = 0;
+
+    const timer = setInterval(() => {
+      for (let taken = 0; taken < PRELOAD_BATCH && at < order.length; taken += 1, at += 1) {
+        const url = urls.get(order[at]!);
+        if (!url) continue;
+        const image = new Image();
+        image.src = url;
+        images.push(image);
+      }
+      if (at >= order.length) clearInterval(timer);
+    }, PRELOAD_INTERVAL);
+
+    return () => {
+      clearInterval(timer);
+      // Dropping the src cancels whatever is still in flight when the frame changes.
+      for (const image of images) image.src = '';
+    };
+  }, [sequence, frameCount, sequenceIndex]);
+
+  /** A drag turns the building; letting go glides on to the nearest markable frame. */
+  const endSpin = React.useCallback(() => {
+    const drag = spinDragRef.current;
+    spinDragRef.current = null;
+    if (!drag || !sequence) return;
+
+    const current = spinFrameRef.current;
+    if (current === null) return;
+    const target = nearestKeyAngle(sequence.stops, current, frameCount);
+    if (target === null) return;
+
+    turnTo(target, () => {
+      if (target !== sequence.index) sequence.onSettle(target);
+    });
+  }, [sequence, frameCount, turnTo]);
+
+  /**
+   * The guest's own turn control, on the admin side: one press jumps to the
+   * next frame that can carry zones, in that direction, and opens it.
+   */
+  const turn = React.useCallback(
+    (direction: 1 | -1) => {
+      if (!sequence) return;
+      const from = spinFrameRef.current ?? sequence.index;
+      const target = nextStop(sequence.stops, from, direction, frameCount);
+      if (target === null || target === from) return;
+      turnTo(target, () => {
+        if (target !== sequence.index) sequence.onSettle(target);
+      });
+    },
+    [sequence, frameCount, turnTo],
+  );
+
+  // ── operations ────────────────────────────────────────────────────────────
+
+  const addPolygon = React.useCallback(
+    (points: Point[]) => {
+      if (selfIntersects(points)) {
+        notify({ variant: 'error', title: tRef.current('editor.zoneNotCreated'), description: tRef.current('editor.sidesCross') });
+        return;
+      }
+      dispatch({ type: 'add', zone: { id: crypto.randomUUID(), polygon: { points }, target: null } });
+      setTool('select');
+    },
+    [notify],
+  );
+
+  /**
+   * Closes the draft contour. `addPolygon` cannot be called INSIDE `setDraft`'s
+   * updater: StrictMode runs a dev-mode updater twice, which would create two
+   * zones per Enter. The updater has to be pure, so the draft is read from a
+   * ref, and creating the zone happens outside it.
+   */
+  const closeDraft = React.useCallback(() => {
+    const current = draftRef.current;
+    if (!current) return;
+
+    draftRef.current = null;
+    setDraft(null);
+
+    if (current.points.length >= 3) addPolygon(current.points);
+    else notify({ variant: 'error', title: tRef.current('editor.zoneNotCreated'), description: tRef.current('editor.needThreePoints') });
+  }, [addPolygon, notify]);
+
+  const duplicateSelected = React.useCallback(() => {
+    const id = stateRef.current.selectedId;
+    if (!id) return;
+    dispatch({ type: 'duplicate', id, newId: crypto.randomUUID(), dx: 10 / image.width, dy: 10 / image.height });
+  }, [image]);
+
+  const nudgeSelected = React.useCallback((dx: number, dy: number) => {
+    const current = stateRef.current;
+    const target = current.zones.find((z) => z.id === current.selectedId);
+    if (!target) return;
+
+    const now = Date.now();
+    if (now - nudgeAtRef.current > NUDGE_GESTURE_GAP) dispatch({ type: 'gesture-start' });
+    nudgeAtRef.current = now;
+
+    dispatch({ type: 'gesture-patch', id: target.id, patch: { polygon: movedPolygon(target.polygon, dx, dy) } });
+  }, []);
+
+  const deleteVertex = React.useCallback(
+    (zone: EditorZone, index: number) => {
+      if (zone.polygon.points.length <= 3) {
+        notify({
+          variant: 'error',
+          title: tRef.current('editor.vertexNotDeleted'),
+          description: tRef.current('editor.vertexMin'),
+        });
+        return;
+      }
+      dispatch({ type: 'patch', id: zone.id, patch: { polygon: withoutVertex(zone.polygon, index) } });
+    },
+    [notify],
+  );
+
+  const insertVertex = React.useCallback((zone: EditorZone, edgeIndex: number, point: Point) => {
+    dispatch({ type: 'patch', id: zone.id, patch: { polygon: withInsertedVertex(zone.polygon, edgeIndex, point) } });
+  }, []);
+
+  /**
+   * The magnet: the selected polygon's vertices are pulled to its
+   * neighbours' vertices and sides. Fixes one- or two-pixel gaps between
+   * neighbouring polygons — aligned to the eye, mismatched by coordinate.
+   *
+   * Only on command, never on its own: something already outlined must
+   * never move silently.
+   */
+  const snapSelected = React.useCallback(() => {
+    const current = stateRef.current;
+    const target = current.zones.find((item) => item.id === current.selectedId);
+    if (!target) return;
+
+    const neighbours = current.zones.filter((item) => item.id !== target.id).map((item) => item.polygon);
+
+    const { points, snapped } = snapPolygonToNeighbours(target.polygon, neighbours, {
+      width: image.width,
+      height: image.height,
+      tolerance: SNAP_TOLERANCE_PX,
+    });
+
+    const tt = tRef.current;
+    if (snapped === 0) {
+      notify({ variant: 'info', title: tt('editor.nothingToSnap'), description: tt('editor.nothingWithin', { px: SNAP_TOLERANCE_PX }) });
+      return;
+    }
+
+    dispatch({ type: 'patch', id: target.id, patch: { polygon: { ...target.polygon, points } } });
+    const vertexForms = { one: tt('editor.vertexOne'), few: tt('editor.vertexFew'), many: tt('editor.vertexMany'), other: tt('editor.vertexOther') };
+    notify({ variant: 'info', title: tt('editor.snapped', { vertices: pluralCount(locale, snapped, vertexForms) }) });
+  }, [image, locale, notify]);
+
+  const straightenEdge = React.useCallback((zone: EditorZone, edgeIndex: number) => {
+    dispatch({ type: 'patch', id: zone.id, patch: { polygon: withCurve(zone.polygon, edgeIndex, 0) } });
+  }, []);
+
+  // ── keyboard ──────────────────────────────────────────────────────────────
+  //
+  // The handler sits on the editor's root, not on `window`: keys only reach
+  // here while focus is inside. The root is focusable (tabIndex=-1), so a
+  // click on the canvas moves focus into the editor by itself.
+
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (isTypingTarget(event.target as HTMLElement)) return;
+
+    // `event.code` everywhere, not `event.key`: the code is the physical
+    // key, independent of layout. On a non-Latin layout, `event.key` for
+    // Ctrl+D is not "d", the check misses, `preventDefault` is skipped, and
+    // the browser opens its bookmark dialog instead of duplicating the zone.
+    if (event.ctrlKey || event.metaKey) {
+      if (event.code === 'KeyZ') {
+        event.preventDefault();
+        dispatch({ type: event.shiftKey ? 'redo' : 'undo' });
+      } else if (event.code === 'KeyD') {
+        event.preventDefault();
+        duplicateSelected();
+      }
+      return;
+    }
+
+    switch (event.code) {
+      case 'KeyV':
+        setTool('select');
+        break;
+      case 'KeyP':
+        setTool('polygon');
+        break;
+      case 'KeyR':
+        setTool('rect');
+        break;
+      case 'KeyS':
+        if (sequence) setTool('spin');
+        break;
+      case 'KeyM':
+        snapSelected();
+        break;
+      case 'Enter':
+      case 'NumpadEnter':
+        closeDraft();
+        break;
+      case 'Escape':
+        draftRef.current = null;
+        setDraft(null);
+        setRectDraft(null);
+        dispatch({ type: 'select', id: null });
+        break;
+      case 'Delete':
+      case 'Backspace':
+        if (stateRef.current.selectedId) {
+          event.preventDefault();
+          dispatch({ type: 'remove', id: stateRef.current.selectedId });
+        }
+        break;
+      case 'ArrowLeft':
+      case 'ArrowRight':
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        if (!stateRef.current.selectedId) break;
+        event.preventDefault();
+        const step = event.shiftKey ? 10 : 1;
+        const dx = (event.code === 'ArrowLeft' ? -step : event.code === 'ArrowRight' ? step : 0) / image.width;
+        const dy = (event.code === 'ArrowUp' ? -step : event.code === 'ArrowDown' ? step : 0) / image.height;
+        nudgeSelected(dx, dy);
+        break;
+      }
+      default:
+    }
+  }
+
+  // ── mouse on the canvas ───────────────────────────────────────────────────
+
+  function onBackgroundPointerDown(event: React.PointerEvent) {
+    if (event.button !== 0) return;
+
+    if (tool === 'spin' && sequence) {
+      // A drag takes over from a turn in progress, from wherever it reached.
+      stopTurn();
+      spinDragRef.current = { startX: event.clientX, startFrame: spinFrameRef.current ?? sequence.index };
+      return;
+    }
+
+    const point = normFromEvent(event);
+    if (!point) return;
+
+    if (tool === 'polygon') {
+      const current = draftRef.current;
+
+      if (!current) {
+        const next = { points: [point], cursor: point };
+        draftRef.current = next;
+        setDraft(next);
+        return;
+      }
+
+      const [firstX, firstY] = current.points[0]!;
+      if (current.points.length >= 3 && Math.hypot(point[0] - firstX, point[1] - firstY) < closeThreshold()) {
+        closeDraft();
+        return;
+      }
+
+      // Pointer events do not carry a reliable click count. Clicking the
+      // last vertex again (including a double-click) finishes the contour.
+      const [lastX, lastY] = current.points[current.points.length - 1]!;
+      if (current.points.length >= 3 && Math.hypot(point[0] - lastX, point[1] - lastY) < closeThreshold()) {
+        closeDraft();
+        return;
+      }
+
+      const next = { ...current, points: [...current.points, point], cursor: point };
+      draftRef.current = next;
+      setDraft(next);
+      return;
+    }
+
+    if (tool === 'rect') {
+      setRectDraft({ start: point, current: point, pointerId: event.pointerId });
+      return;
+    }
+
+    // A press inside a polygon is a bid to drag it whole. Vertex and edge
+    // handles catch the event first (stopPropagation), so only a press on
+    // the fill itself reaches here.
+    const node = (event.target as HTMLElement).closest?.('[data-hotspot-id]') as HTMLElement | null;
+    if (node) {
+      const zone = stateRef.current.zones.find((item) => item.id === node.dataset.hotspotId);
+      if (zone) {
+        dispatch({ type: 'select', id: zone.id });
+        // The drag itself only starts if the cursor actually moves — otherwise
+        // a plain click on a polygon would become an empty history step.
+        vertexDragRef.current = { kind: 'body', hotspotId: zone.id, last: point, started: false };
+      }
+      return;
+    }
+
+    // A click past every polygon and vertex clears the selection.
+    if (!(event.target as HTMLElement).closest?.('[data-vertex]')) {
+      dispatch({ type: 'select', id: null });
+    }
+  }
+
+  function onPointerMoveCanvas(event: React.PointerEvent) {
+    const spin = spinDragRef.current;
+    if (spin) {
+      setSpinFrame(wrap(spin.startFrame + dragSteps(event.clientX - spin.startX, frameCount), frameCount));
+      return;
+    }
+
+    const drag = vertexDragRef.current;
+
+    if (drag) {
+      const point = normFromEvent(event);
+      if (!point) return;
+      const target = stateRef.current.zones.find((z) => z.id === drag.hotspotId);
+      if (!target) return;
+
+      // A history snapshot on the first real movement, not on press: a click
+      // on a handle with no drag would otherwise leave an empty undo step.
+      if (!drag.started) {
+        drag.started = true;
+        dispatch({ type: 'gesture-start' });
+      }
+
+      if (drag.kind === 'body') {
+        dispatch({
+          type: 'gesture-patch',
+          id: drag.hotspotId,
+          patch: { polygon: movedPolygon(target.polygon, point[0] - drag.last![0], point[1] - drag.last![1]) },
+        });
+        drag.last = point;
+        return;
+      }
+
+      if (drag.kind === 'vertex') {
+        const points = target.polygon.points.map((p, i): Point => (i === drag.index ? point : p));
+        dispatch({ type: 'gesture-patch', id: drag.hotspotId, patch: { polygon: { ...target.polygon, points } } });
+        return;
+      }
+
+      // The edge handle follows the cursor freely: across the chord (bow)
+      // and along it (an asymmetric arc). Both fractions pack into `curves[index]`.
+      const points = target.polygon.points;
+      const a = points[drag.index!]!;
+      const b = points[(drag.index! + 1) % points.length]!;
+      const [along, across] = curveFromPoint(a, b, point);
+
+      dispatch({
+        type: 'gesture-patch',
+        id: drag.hotspotId,
+        patch: { polygon: withCurve(target.polygon, drag.index!, packEdgeCurve(along, across)) },
+      });
+      return;
+    }
+
+    if (draft) {
+      const point = normFromEvent(event);
+      if (point && draftRef.current) {
+        const next = { ...draftRef.current, cursor: point };
+        draftRef.current = next;
+        setDraft(next);
+      }
+      return;
+    }
+
+    if (rectDraft) {
+      const point = normFromEvent(event);
+      if (point) setRectDraft((current) => (current ? { ...current, current: point } : current));
+    }
+  }
+
+  function onPointerUpCanvas() {
+    if (spinDragRef.current) {
+      endSpin();
+      return;
+    }
+
+    if (vertexDragRef.current) {
+      vertexDragRef.current = null;
+      return;
+    }
+
+    if (rectDraft) {
+      const { start, current } = rectDraft;
+      setRectDraft(null);
+      const minSide = 4 / Math.min(image.width, image.height);
+      if (Math.abs(current[0] - start[0]) > minSide && Math.abs(current[1] - start[1]) > minSide) {
+        addPolygon([
+          [start[0], start[1]],
+          [current[0], start[1]],
+          [current[0], current[1]],
+          [start[0], current[1]],
+        ]);
+      }
+    }
+  }
+
+  function onZoneClick(zone: EditorZone) {
+    if (tool !== 'select') return;
+    dispatch({ type: 'select', id: zone.id });
+  }
+
+  function onVertexPointerDown(event: React.PointerEvent, zone: EditorZone, index: number) {
+    event.stopPropagation();
+    if (event.button !== 0) return;
+
+    if (event.altKey) {
+      deleteVertex(zone, index);
+      return;
+    }
+
+    vertexDragRef.current = { kind: 'vertex', hotspotId: zone.id, index, started: false };
+  }
+
+  function onEdgeHandlePointerDown(event: React.PointerEvent, zone: EditorZone, index: number, point: Point) {
+    event.stopPropagation();
+    if (event.button !== 0) return;
+
+    if (event.altKey) {
+      insertVertex(zone, index, point);
+      return;
+    }
+
+    vertexDragRef.current = { kind: 'edge', hotspotId: zone.id, index, started: false };
+  }
+
+  // ── rendering ─────────────────────────────────────────────────────────────
+
+  const zoneClassName = React.useCallback(
+    (zone: EditorZone, isSelected: boolean) => {
+      const draggable = tool === 'select' ? ' hs-draggable' : '';
+      return `hs ${isSelected ? 'hs-selected' : 'hs-idle'} hs-clickable${draggable}`;
+    },
+    [tool],
+  );
+
+  // The draw tools float at the bottom centre of the canvas, the way a
+  // design tool docks its toolbar: the image keeps the full working area.
+  const dock = (
+    <div className="pe-float pe-dock" role="toolbar" aria-label={t('editor.drawingTools')}>
+      {TOOLS.filter((item) => item.id !== 'spin' || sequence).map(({ id, label, key, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          className="pe-btn"
+          data-active={tool === id || undefined}
+          aria-pressed={tool === id}
+          aria-label={`${t(label)} (${key})`}
+          title={`${t(label)} — ${key}`}
+          onClick={() => setTool(id)}
+        >
+          <Icon className="pe-icon" />
+        </button>
+      ))}
+
+      {sequence ? (
+        <>
+          <span className="pe-dock-sep" aria-hidden="true" />
+          <button
+            type="button"
+            className="pe-btn"
+            aria-label={t('editor.turnLeft')}
+            title={t('editor.turnLeftTitle')}
+            disabled={sequence.stops.length < 2}
+            onClick={() => turn(-1)}
+          >
+            <IconTurnLeft className="pe-icon" />
+          </button>
+          <span className="pe-dock-label">360°</span>
+          <button
+            type="button"
+            className="pe-btn"
+            aria-label={t('editor.turnRight')}
+            title={t('editor.turnRightTitle')}
+            disabled={sequence.stops.length < 2}
+            onClick={() => turn(1)}
+          >
+            <IconTurnRight className="pe-icon" />
+          </button>
+        </>
+      ) : null}
+
+      <span className="pe-dock-sep" aria-hidden="true" />
+
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label={t('editor.snap')}
+        title={t('editor.snapTitle')}
+        disabled={!selected}
+        onClick={snapSelected}
+      >
+        <IconMagnet className="pe-icon" />
+      </button>
+      <button
+        type="button"
+        className="pe-btn pe-btn-danger"
+        aria-label={selected ? t('zones.delete', { name: nameOf(selected, zones.indexOf(selected)) }) : t('zones.deleteTitle')}
+        title={t('zones.deleteTitle')}
+        disabled={!selected}
+        onClick={() => selected && dispatch({ type: 'remove', id: selected.id })}
+      >
+        <IconTrash className="pe-icon" />
+      </button>
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label={t('editor.undo')}
+        title={t('editor.undoTitle')}
+        disabled={state.past.length === 0}
+        onClick={() => dispatch({ type: 'undo' })}
+      >
+        <IconUndo className="pe-icon" />
+      </button>
+      <button
+        type="button"
+        className="pe-btn"
+        aria-label={t('editor.redo')}
+        title={t('editor.redoTitle')}
+        disabled={state.future.length === 0}
+        onClick={() => dispatch({ type: 'redo' })}
+      >
+        <IconRedo className="pe-icon" />
+      </button>
+    </div>
+  );
+
+  const vertexSize = handleScreenPx(zoom) * unitsPerPixel;
+
+  const px = ([x, y]: Point) => `${x * image.width},${y * image.height}`;
+
+  const edgeHandles = selected
+    ? selected.polygon.points.map((a, index) => {
+        const points = selected.polygon.points;
+        const b = points[(index + 1) % points.length]!;
+        const curve = curvesOf(selected.polygon)[index] ?? 0;
+        return { index, curved: isEdgeCurved(curve), at: edgeMidpoint(a, b, curve) };
+      })
+    : [];
+
+  const editorChildren = (
+    <>
+      {selected ? (
+        <g>
+          {edgeHandles.map((handle) => (
+            <circle
+              key={`edge-${handle.index}`}
+              data-vertex
+              cx={handle.at[0] * image.width}
+              cy={handle.at[1] * image.height}
+              r={vertexSize * 0.45}
+              className="hs-edge-handle"
+              onPointerDown={(event) => onEdgeHandlePointerDown(event, selected, handle.index, handle.at)}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                if (handle.curved) straightenEdge(selected, handle.index);
+              }}
+            />
+          ))}
+
+          {selected.polygon.points.map((point, index) => (
+            <rect
+              key={index}
+              data-vertex
+              x={point[0] * image.width - vertexSize / 2}
+              y={point[1] * image.height - vertexSize / 2}
+              width={vertexSize}
+              height={vertexSize}
+              className="hs-vertex"
+              style={{ cursor: 'move' }}
+              onPointerDown={(event) => onVertexPointerDown(event, selected, index)}
+            />
+          ))}
+        </g>
+      ) : null}
+
+      {draft ? (
+        <g>
+          <polyline points={[...draft.points, draft.cursor].map(px).join(' ')} className="hs-draft" fill="none" />
+          {draft.points.length >= 3 ? (
+            <line
+              x1={draft.cursor[0] * image.width}
+              y1={draft.cursor[1] * image.height}
+              x2={draft.points[0]![0] * image.width}
+              y2={draft.points[0]![1] * image.height}
+              className="hs-draft"
+            />
+          ) : null}
+          <rect
+            x={draft.points[0]![0] * image.width - vertexSize / 2}
+            y={draft.points[0]![1] * image.height - vertexSize / 2}
+            width={vertexSize}
+            height={vertexSize}
+            className="hs-vertex"
+            style={{ cursor: draft.points.length >= 3 ? 'pointer' : undefined }}
+            onPointerDown={(event) => {
+              if (event.button !== 0 || draft.points.length < 3) return;
+              event.stopPropagation();
+              closeDraft();
+            }}
+          />
+        </g>
+      ) : null}
+
+      {rectDraft ? (
+        <rect
+          x={Math.min(rectDraft.start[0], rectDraft.current[0]) * image.width}
+          y={Math.min(rectDraft.start[1], rectDraft.current[1]) * image.height}
+          width={Math.abs(rectDraft.current[0] - rectDraft.start[0]) * image.width}
+          height={Math.abs(rectDraft.current[1] - rectDraft.start[1]) * image.height}
+          className="hs-draft"
+        />
+      ) : null}
+    </>
+  );
+
+  const selectedIndex = selected ? zones.indexOf(selected) : -1;
+
+  // Mid-turn the canvas is showing a frame these zones were not drawn on, so
+  // they are hidden until it settles — the same rule the guest spinner follows.
+  const turning = Boolean(sequence) && spinFrame !== null && spinFrame !== sequenceIndex;
+  const shownFrame = sequence && spinFrame !== null ? sequence.frames.find((frame) => frame.index === spinFrame) : undefined;
+  const shownImage = shownFrame ? { ...image, url: shownFrame.imageUrl } : image;
+
+  return (
+    <div data-pe-root tabIndex={-1} className={`pe-root ${className}`} style={style} onKeyDown={onKeyDown}>
+      <style>{EDITOR_STYLES}</style>
+
+      <MarkupCanvas
+        editable
+        image={shownImage}
+        items={turning ? [] : zones}
+        selectedId={selectedId}
+        svgRef={svgRef}
+        itemClassName={zoneClassName}
+        onItemClick={onZoneClick}
+        onBackgroundPointerDown={onBackgroundPointerDown}
+        onPointerMoveCanvas={onPointerMoveCanvas}
+        onPointerUpCanvas={onPointerUpCanvas}
+        onViewChange={onViewChange}
+        cursor={tool === 'spin' ? 'grab' : tool === 'select' ? undefined : 'crosshair'}
+        className="pe-canvas"
+      >
+        {turning ? null : editorChildren}
+      </MarkupCanvas>
+
+      {showList ? <ZoneList zones={zones} selected={selected} dispatch={dispatch} zoneLabel={zoneLabel} /> : null}
+
+      <aside className="pe-float pe-float-right" aria-label={t('editor.zoneProperties')}>
+        <div className="pe-side-head">
+          {toolbarStart}
+          <h2 className="pe-side-title pe-truncate">{selected ? nameOf(selected, selectedIndex) : t('editor.frame')}</h2>
+          <div className="pe-head-end">
+            {autosave ? <span className="pe-save" data-error={saveStatus === 'error' || undefined}>{t(SAVE_LABELS[saveStatus])}</span> : null}
+            {autosave && saveStatus === 'error' ? (
+              <button type="button" className="pe-btn pe-btn-outline" onClick={() => flushRef.current()}>
+                {t('editor.retry')}
+              </button>
+            ) : null}
+            {toolbarEnd}
+          </div>
+        </div>
+
+        {notice ? (
+          <p className="pe-notice" data-variant={notice.variant} role="status">
+            {notice.title}
+            {notice.description ? `: ${notice.description}` : ''}
+          </p>
+        ) : null}
+
+        <div className="pe-panel-body">
+          {selected ? (
+            <>
+              <ContourSummary selected={selected} dispatch={dispatch} />
+              <ZoneTargetEditor zone={selected} dispatch={dispatch} catalog={catalog} />
+            </>
+          ) : (
+            <p className="pe-empty">{t('editor.selectPrompt')}</p>
+          )}
+        </div>
+      </aside>
+
+      {dock}
+
+      {showShortcuts ? <ShortcutsPanel /> : null}
+    </div>
+  );
+});
