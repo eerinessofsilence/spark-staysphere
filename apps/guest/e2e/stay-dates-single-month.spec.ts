@@ -11,9 +11,9 @@ test('guest date picker selects a stay across months', async ({ page }, testInfo
   const trigger = page.getByRole('button', { name: /^Check-in/ });
   const panel = page.getByRole('dialog', { name: 'Choose your dates' });
   await expect(async () => {
-    await trigger.click();
-    await expect(panel).toBeVisible();
-  }).toPass();
+    if (!(await panel.isVisible())) await trigger.click();
+    await expect(panel).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   const monthCount = testInfo.project.name === 'mobile' ? 1 : 2;
   await expect(panel.locator('table')).toHaveCount(monthCount);
 

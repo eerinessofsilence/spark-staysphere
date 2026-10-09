@@ -104,11 +104,12 @@ test('an inactive room opens when clicking the empty right side of its full-widt
   await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/content/rooms/room_garden-studio');
   await expect(page.getByRole('button', { name: 'Save room', exact: true })).toBeEnabled();
-  const hide = page.getByRole('button', { name: 'Hide from site', exact: true });
+  const hide = page.getByRole('button', { name: 'Hide from the site', exact: true });
+  await expect(hide.or(page.getByRole('button', { name: 'Show on the site', exact: true }))).toBeVisible();
   const wasVisible = await hide.isVisible();
   if (wasVisible) {
     await hide.click();
-    await expect(page.getByRole('button', { name: 'Show on site', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Show on the site', exact: true })).toBeEnabled();
   }
   try {
   await page.goto('/admin/rates?days=7');
@@ -131,7 +132,7 @@ test('an inactive room opens when clicking the empty right side of its full-widt
     if (wasVisible) {
       await page.goto('/admin/content/rooms/room_garden-studio');
       await expect(page.getByRole('button', { name: 'Save room', exact: true })).toBeEnabled();
-      await page.getByRole('button', { name: 'Show on site', exact: true }).click();
+      await page.getByRole('button', { name: 'Show on the site', exact: true }).click();
       await expect(hide).toBeEnabled();
     }
   }

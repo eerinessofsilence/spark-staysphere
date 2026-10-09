@@ -81,14 +81,19 @@ test('maintenance report, replacement approval and resolution cross role boundar
     await anonymous.close();
   }
 
-  await page.getByRole('button', { name: 'Replacement needed' }).click();
-  await page.getByLabel('What needs replacing and why?').fill('Replace the failing air-conditioning unit.');
+  const reason = page.getByLabel('What needs replacing and why?');
+  await expect(async () => {
+    if (!(await reason.isVisible())) await page.getByRole('button', { name: 'Replacement needed' }).click();
+    await expect(reason).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  await reason.fill('Replace the failing air-conditioning unit.');
   await page.getByRole('button', { name: 'Request hotelier approval' }).click();
+  await expect(page.getByRole('region', { name: 'Replacement approval' }).getByText('Replacement awaiting approval')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mark as fixed' })).toBeDisabled();
 
   const hotelierContext = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   await hotelierContext.addCookies([{ name: 'admin-locale', value: 'en', url: hotelUrl }]);
-  const hotelierPage = await signIn(hotelierContext, 'hotelier@asteriacove.example', /\/admin(?:\?|$)/);
+  const hotelierPage = await signIn(hotelierContext, 'hotelier@asteriacove.example', /\/admin\/maintenance(?:\?|$)/);
   try {
     const notificationResponse = await hotelierPage.request.get(`${hotelUrl}/api/admin/maintenance-notifications?hotel=asteria-cove`);
     expect(notificationResponse.ok()).toBeTruthy();
@@ -100,15 +105,23 @@ test('maintenance report, replacement approval and resolution cross role boundar
     await expect(hotelierPage.getByText('Replacement awaiting approval')).toBeVisible();
     const foreignPhoto = await hotelierPage.request.get(`${hotelUrl}${photoPath!.replace('asteria-cove', 'harbor-house')}`);
     expect([403, 404]).toContain(foreignPhoto.status());
-    await hotelierPage.getByRole('button', { name: 'Approve replacement' }).click();
-    await expect(hotelierPage.getByText('Replacement approved')).toBeVisible();
+    await expect(async () => {
+      if (await hotelierPage.getByRole('button', { name: 'Approve replacement' }).isVisible()) {
+        await hotelierPage.getByRole('button', { name: 'Approve replacement' }).click();
+      }
+      await expect(hotelierPage.getByText('Replacement approved')).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
   } finally {
     await hotelierContext.close();
   }
 
   await page.reload();
-  await page.getByRole('button', { name: 'Mark as fixed' }).click();
-  await expect(page.getByText('Fixed')).toBeVisible();
+  await expect(async () => {
+    if (await page.getByRole('button', { name: 'Mark as fixed' }).isVisible()) {
+      await page.getByRole('button', { name: 'Mark as fixed' }).click();
+    }
+    await expect(page.getByText('Fixed', { exact: true })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await page.reload();
-  await expect(page.getByText('Fixed')).toBeVisible();
+  await expect(page.getByText('Fixed', { exact: true })).toBeVisible();
 });

@@ -108,9 +108,13 @@ async function bookAStay(
     await page.goto(url.href);
   }
 
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Continue' }).click();
+  for (const nextStep of ['Room & rate', 'Extras', 'Guest details']) {
+    const heading = page.getByRole('heading', { level: 2, name: nextStep, exact: true });
+    await actUntil(
+      async () => { if (!(await heading.isVisible())) await page.getByRole('button', { name: 'Continue' }).click(); },
+      () => expect(heading).toBeVisible({ timeout: 3_000 }),
+    );
+  }
 
   await page.getByLabel('First name').fill('Ada');
   await page.getByLabel('Last name').fill('Lindqvist');

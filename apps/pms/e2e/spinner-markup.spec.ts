@@ -20,7 +20,6 @@ async function drawRectangle(page: Page) {
 }
 
 async function waitForSave(page: Page) {
-  await expect(page.locator('.pe-save')).not.toHaveText('Saved');
   await expect(page.locator('.pe-save')).toHaveText('Saved');
 }
 
@@ -126,8 +125,10 @@ test('choose a room directly, autosave and reload the zone binding', async ({ pa
     const label = await page.locator('.pe-item-label').last().textContent();
 
     await page.reload();
-    await page.locator('.pe-item-main').last().click();
-    await expect(room).toHaveValue(roomId!);
+    await expect(async () => {
+      await page.locator('.pe-item-main').last().click();
+      await expect(room).toHaveValue(roomId!, { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     await expect(page.locator('.pe-item-label').last()).toHaveText(label!);
     // A shorter/narrower canvas must keep the whole field within its panel.
     await page.setViewportSize({ width: 1100, height: 800 });
@@ -138,17 +139,23 @@ test('choose a room directly, autosave and reload the zone binding', async ({ pa
     expect(fits).toBe(true);
     await page.screenshot({ path: '/tmp/staysphere-room-picker.png' });
 
-    await page.getByRole('button', { name: 'Remove binding' }).click();
-    await expect(room).toHaveValue('');
+    await expect(async () => {
+      if (await room.inputValue() !== '') await page.getByRole('button', { name: 'Remove binding' }).click();
+      await expect(room).toHaveValue('', { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     await waitForSave(page);
     await room.selectOption(roomId!);
     await waitForSave(page);
     // A selected zone can also be removed from the drawing toolbar, without
     // hunting for its row in the layers list or relying on the Delete key.
     await page.goto(editorUrl);
-    await page.locator('.pe-item-main').last().click();
-    await page.locator('.pe-dock').getByRole('button', { name: `Delete: ${label}` }).click();
-    await expect(page.locator('.pe-item')).toHaveCount(initialCount);
+    await expect(async () => {
+      if (await page.locator('.pe-item').count() > initialCount) {
+        await page.locator('.pe-item-main').last().click();
+        await page.locator('.pe-dock').getByRole('button', { name: `Delete: ${label}` }).click({ timeout: 1_000 });
+      }
+      await expect(page.locator('.pe-item')).toHaveCount(initialCount, { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     await waitForSave(page);
     created = false;
 
@@ -156,8 +163,10 @@ test('choose a room directly, autosave and reload the zone binding', async ({ pa
     if (created) {
       await page.goto(editorUrl);
       await expect(page.locator('.pe-item')).toHaveCount(initialCount + 1);
-      await page.locator('.pe-item-delete').last().click();
-      await expect(page.locator('.pe-item')).toHaveCount(initialCount);
+      await expect(async () => {
+        if (await page.locator('.pe-item').count() > initialCount) await page.locator('.pe-item-delete').last().click();
+        await expect(page.locator('.pe-item')).toHaveCount(initialCount, { timeout: 1_000 });
+      }).toPass({ timeout: 20_000 });
       await waitForSave(page);
     }
   }

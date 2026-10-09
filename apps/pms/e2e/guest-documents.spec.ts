@@ -190,9 +190,9 @@ test('scan, review, attach, view and erase only at actual checkout', async ({ pa
   await expect(page.getByRole('button', { name: 'Change the stay’s status' })).toContainText('Checked out');
   expect((await request.get(src!)).status()).toBe(404);
   await page.goto(`/admin/guests/${encodeURIComponent(email)}?tab=documents`);
-  await expect(page.getByText('Deleted after checkout', { exact: true })).toBeVisible();
   await expect(preview).toHaveAttribute('tabindex', '0');
   await preview.press('Enter');
+  await expect(documentModal.getByText('Deleted after checkout', { exact: true })).toBeVisible();
   await expect(documentModal.getByText('Deleted', { exact: true })).toBeVisible();
   await expect(documentModal.getByRole('link', { name: reference, exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Reviewed Test SAMPLE', exact: true })).toBeVisible();
