@@ -30,6 +30,7 @@ export function SpinnerZonesOverlay({
   frameSize,
   stage,
   hidden,
+  alwaysVisible = false,
   stayQuery,
   rooms,
 }: {
@@ -38,6 +39,8 @@ export function SpinnerZonesOverlay({
   stage: Size;
   /** True while the building is turning — zones hide the same way markers do. */
   hidden: boolean;
+  /** Keep the first migrated frame's room outlines visible as a selection hint. */
+  alwaysVisible?: boolean;
   stayQuery?: string;
   rooms?: Record<string, RoomFacts>;
 }) {
@@ -95,7 +98,9 @@ export function SpinnerZonesOverlay({
                   'pointer-events-auto cursor-pointer transition-[fill,stroke] duration-200 focus-visible:outline-none',
                   lit
                     ? 'fill-white/20 stroke-accent [filter:drop-shadow(0_1px_4px_rgb(22_22_22/0.45))]'
-                    : 'fill-transparent stroke-transparent',
+                    : alwaysVisible
+                      ? 'fill-white/20 stroke-white/90 [filter:drop-shadow(0_1px_2px_rgb(22_22_22/0.4))]'
+                      : 'fill-transparent stroke-transparent',
                 )}
               />
             );
@@ -110,10 +115,10 @@ export function SpinnerZonesOverlay({
             return (
               <span
                 className="glass pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-full px-3 py-1.5 text-xs font-medium text-foreground"
-                style={{ left: rect.x + cx * rect.width, top: rect.y + cy * rect.height - 8 }}
+                style={{ left: rect.x + cx * rect.width, top: rect.y + cy * rect.height - 24 }}
               >
-                {title}
-                {line ? <span className="font-normal text-muted-foreground"> · {line}</span> : null}
+                <span className="block text-center font-semibold">{title}</span>
+                {line ? <span className="block font-normal text-muted-foreground">{line}</span> : null}
               </span>
             );
           })()

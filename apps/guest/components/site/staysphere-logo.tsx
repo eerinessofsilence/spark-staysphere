@@ -54,7 +54,7 @@ export function StaySphereLogo({ href, className, footer = false }: {
     sheenAnimation.current = sheen.current?.animate([
       { transform: 'translateX(-568px)' },
       { transform: 'translateX(568px)' },
-    ], { duration: 800, easing: 'ease-in-out', fill: 'forwards' }) ?? null;
+    ], { duration: 1000, easing: 'ease-in-out', fill: 'forwards' }) ?? null;
 
     const transforms = Array.from(svg.current?.querySelectorAll<SVGGElement>('[data-logo-stripe]') ?? [])
       .map((element) => ({ element, transform: getComputedStyle(element).transform }));
@@ -120,7 +120,7 @@ export function StaySphereLogo({ href, className, footer = false }: {
           ))}
           <linearGradient id={`${id}-sheen`}>
             <stop offset="0.25" stopColor="var(--logo-sheen)" stopOpacity="0" />
-            <stop offset="0.5" stopColor="var(--logo-sheen)" stopOpacity="0.65" />
+            <stop offset="0.5" stopColor="var(--logo-sheen)" stopOpacity="0.9" />
             <stop offset="0.75" stopColor="var(--logo-sheen)" stopOpacity="0" />
           </linearGradient>
         </defs>

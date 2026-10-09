@@ -234,6 +234,7 @@ export function BuildingSpinner({
         frameSize={frameSize}
         stage={stage}
         hidden={orbit.isTurning}
+        alwaysVisible={frameIndex === 140}
         stayQuery={stayQuery}
         rooms={rooms}
       />

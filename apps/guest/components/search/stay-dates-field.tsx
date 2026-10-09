@@ -4,7 +4,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { DayPicker, type DayButton, type Modifiers } from 'react-day-picker';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { addDays, differenceInCalendarDays, format, isAfter, parseISO } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, getDay, isAfter, isSameMonth, parseISO } from 'date-fns';
 import { useLocale, useT } from '@/lib/i18n/context';
 import { DATE_FNS_LOCALES, lDateShort, lNights } from '@/lib/i18n/format';
 import { formatDateShort } from '@/lib/formatting';
@@ -79,7 +79,7 @@ function CalendarDayButton({
         modifiers.today &&
           !edge &&
           'font-medium after:absolute after:bottom-1.5 after:size-1 after:rounded-full after:bg-accent',
-        edge && 'bg-primary font-medium text-primary-foreground hover:bg-primary',
+        edge && 'z-10 bg-primary font-medium text-primary-foreground hover:bg-primary',
         modifiers.disabled && 'text-muted-foreground/45 line-through hover:bg-transparent',
         className,
       )}
@@ -101,14 +101,14 @@ export const CALENDAR_CLASS_NAMES = {
   button_next: iconButton('light', 'size-9'),
   month_caption: 'flex h-9 items-center justify-center',
   caption_label: 'text-display text-base',
-  month_grid: 'mt-3 w-full border-collapse',
+  month_grid: 'mt-3 w-full border-separate border-spacing-0',
   weekdays: 'flex',
   weekday: 'flex-1 pb-2 text-xs font-normal text-muted-foreground',
   week: 'flex w-full',
   // The circles already fade; without this the band behind them snaps.
   day: 'relative flex-1 p-0 text-center transition-colors',
-  range_start: 'rounded-l bg-stone',
-  range_end: 'rounded-r bg-stone',
+  range_start: 'rounded-l bg-[linear-gradient(90deg,transparent_50%,var(--color-stone)_50%)]',
+  range_end: 'rounded-r bg-[linear-gradient(90deg,var(--color-stone)_50%,transparent_50%)]',
   range_middle: 'bg-stone',
   disabled: 'text-muted-foreground/45',
   hidden: 'invisible',
@@ -240,6 +240,35 @@ export function StayDatesField({
 
   // Preview the nights between the armed check-in and the day under the cursor.
   const previewing = draft.from && !draft.to && hovered && isAfter(hovered, draft.from);
+  const previewBand =
+    previewing && draft.from && hovered
+      ? Array.from(
+          { length: differenceInCalendarDays(hovered, draft.from) },
+          (_, index) => addDays(draft.from!, index + 1),
+        )
+      : [];
+  const previewBandKeys = new Set(previewBand.map((day) => format(day, ISO_FORMAT)));
+  const previewHasDay = (day: Date) => previewBandKeys.has(format(day, ISO_FORMAT));
+  const previewCornerTopLeft: Date[] = [];
+  const previewCornerTopRight: Date[] = [];
+  const previewCornerBottomLeft: Date[] = [];
+  const previewCornerBottomRight: Date[] = [];
+  for (const day of previewBand) {
+    const weekday = (getDay(day) + 6) % 7;
+    const left = addDays(day, -1);
+    const right = addDays(day, 1);
+    const above = addDays(day, -7);
+    const below = addDays(day, 7);
+    const hasLeft = weekday > 0 && isSameMonth(day, left) && previewHasDay(left);
+    const hasRight = weekday < 6 && isSameMonth(day, right) && previewHasDay(right);
+    const hasAbove = isSameMonth(day, above) && previewHasDay(above);
+    const hasBelow = isSameMonth(day, below) && previewHasDay(below);
+
+    if (!hasLeft && !hasAbove) previewCornerTopLeft.push(day);
+    if (!hasRight && !hasAbove) previewCornerTopRight.push(day);
+    if (!hasLeft && !hasBelow) previewCornerBottomLeft.push(day);
+    if (!hasRight && !hasBelow) previewCornerBottomRight.push(day);
+  }
   const previewMiddle =
     previewing && draft.from && hovered && differenceInCalendarDays(hovered, draft.from) > 1
       ? { from: addDays(draft.from, 1), to: addDays(hovered, -1) }
@@ -302,10 +331,21 @@ export function StayDatesField({
         onSelect={(_range, day, modifiers) => selectDay(day, modifiers)}
         onDayMouseEnter={(day) => setHovered(day)}
         onDayMouseLeave={() => setHovered(undefined)}
-        modifiers={{ preview_middle: previewMiddle, preview_end: previewEnd }}
+        modifiers={{
+          preview_middle: previewMiddle,
+          preview_end: previewEnd,
+          preview_corner_top_left: previewCornerTopLeft,
+          preview_corner_top_right: previewCornerTopRight,
+          preview_corner_bottom_left: previewCornerBottomLeft,
+          preview_corner_bottom_right: previewCornerBottomRight,
+        }}
         modifiersClassNames={{
           preview_middle: 'bg-stone/55',
-          preview_end: 'rounded-r bg-stone/55',
+          preview_end: 'bg-stone/55',
+          preview_corner_top_left: 'rounded-tl-[8px]',
+          preview_corner_top_right: 'rounded-tr-[8px]',
+          preview_corner_bottom_left: 'rounded-bl-[8px]',
+          preview_corner_bottom_right: 'rounded-br-[8px]',
         }}
         classNames={CALENDAR_CLASS_NAMES}
         components={CALENDAR_COMPONENTS}
@@ -422,6 +462,15 @@ export function StayDatesField({
       </button>
     );
   };
+
+  if (size === 'compact') {
+    return (
+      <>
+        {trigger('checkIn', t('search.checkIn'), checkIn)}
+        {trigger('checkOut', t('search.checkOut'), checkOut)}
+      </>
+    );
+  }
 
   return (
     <>

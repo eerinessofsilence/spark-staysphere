@@ -219,7 +219,7 @@ export function GuestsField({
 
   if (size === 'compact') {
     return (
-      <div className="relative flex items-center border-r border-border pr-1">
+      <div className="relative flex items-center">
         <button
           ref={triggerRef}
           id={id}

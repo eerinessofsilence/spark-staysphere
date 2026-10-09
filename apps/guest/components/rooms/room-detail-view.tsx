@@ -256,7 +256,7 @@ export function RoomDetailView({ offer, hotel, addOns, quote, criteria }: RoomDe
                   the primary action. A second sentence spells out what the
                   policy actually buys the guest, since "free cancellation"
                   alone reads as marketing until it says free of what. */}
-              <div className="mt-5 flex items-start gap-3 rounded-3xl bg-success/10 p-4 text-base">
+              <div className="mt-5 flex max-w-[50%] items-start gap-3 rounded-3xl bg-success/10 p-4 text-base">
                 <CalendarCheck
                   weight="fill"
                   className="mt-0.5 size-5 shrink-0 text-success"

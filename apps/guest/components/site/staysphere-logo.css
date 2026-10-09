@@ -7,13 +7,17 @@
 .dark .staysphere-logo-link {
   --logo-mark: #fff;
   --logo-wordmark: #d4ff3a;
-  --logo-sheen: #f0ffb3;
+  --logo-sheen: #fff;
 }
 
 .staysphere-logo-link.staysphere-logo-footer {
   --logo-mark: #d8d8d8;
   --logo-wordmark: #d8d8d8;
   --logo-sheen: #d4ff3a;
+}
+
+.dark .staysphere-logo-link.staysphere-logo-footer {
+  --logo-sheen: #fff;
 }
 
 .staysphere-logo {
