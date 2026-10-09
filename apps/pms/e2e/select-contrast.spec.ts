@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 test('a highlighted currency keeps the standard foreground text', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('admin-tour.seen.v1', '1'));
   await page.goto('/admin/content/hotel');
-  await page.getByRole('button', { name: 'Skip' }).click();
 
   await page.getByRole('combobox', { name: 'Currency' }).click();
   const selectedCurrency = page.getByRole('option', { name: 'Euro (EUR)' });

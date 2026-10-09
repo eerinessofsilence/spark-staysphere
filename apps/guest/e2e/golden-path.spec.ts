@@ -101,11 +101,9 @@ async function bookAStay(
     } });
     expect(response.ok()).toBeTruthy();
     const { plan } = await response.json();
-    const slug = new URL(page.url()).pathname.split('/').at(-1);
-    const unit = plan.units.find((candidate: { roomSlug: string; status: string }) =>
-      candidate.roomSlug === slug && candidate.status === 'available');
+    const unit = plan.units.find((candidate: { status: string }) => candidate.status === 'available');
     expect(unit, 'a physical room is available for the cancellation scenario').toBeTruthy();
-    const url = new URL(page.url());
+    const url = new URL(`/book/${unit.roomSlug}?${stayQuery}`, page.url());
     url.searchParams.set('room', unit.number);
     await page.goto(url.href);
   }
@@ -645,8 +643,10 @@ test('the appearance choice survives a reload, with no flash of the other theme'
 });
 
 test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps it occupied', async ({ page, request }, testInfo) => {
+  const lookupHeaders = { 'cf-connecting-ip': `198.18.${testInfo.retry}.${testInfo.project.name === 'mobile' ? 2 : 1}` };
+  await page.setExtraHTTPHeaders(lookupHeaders);
   const reference = await bookAStay(page, undefined, true);
-  const originalResponse = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`);
+  const originalResponse = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`, { headers: lookupHeaders });
   expect(originalResponse.ok()).toBeTruthy();
   const originalBooking = (await originalResponse.json()).booking;
   expect(originalBooking.unitNumber).toBeTruthy();
@@ -678,7 +678,7 @@ test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps
   // it specifically, not that the tab's count hit zero.
   await page.getByRole('tab', { name: /Upcoming/ }).click();
   await expect(page.getByText(reference, { exact: true })).toHaveCount(0);
-  const cancelledRead = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`);
+  const cancelledRead = await request.get(`/api/bookings/${reference}?email=${encodeURIComponent('ada@example.com')}`, { headers: lookupHeaders });
   expect((await cancelledRead.json()).booking.status).toBe('cancelled');
   expect((await (await exactAvailability()).json()).available).toBe(true);
 
@@ -696,7 +696,7 @@ test('a guest cancels a stay, rebooks the same room, and a repeated cancel keeps
     expectedTotal: quote.price.total,
   } });
   expect(rebook.status(), await rebook.text()).toBe(201);
-  const repeatCancel = await request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 1}/api/public/trips`, { data: { operation: 'cancel', reference, email: 'ada@example.com' } });
-  expect(repeatCancel.ok()).toBeTruthy();
+  const repeatCancel = await request.post(`http://127.0.0.1:${Number(process.env.PLAYWRIGHT_PORT ?? 3000) + 1}/api/public/trips`, { headers: lookupHeaders, data: { operation: 'cancel', reference, email: 'ada@example.com' } });
+  expect(repeatCancel.ok(), await repeatCancel.text()).toBeTruthy();
   expect((await (await exactAvailability()).json()).available).toBe(false);
 });

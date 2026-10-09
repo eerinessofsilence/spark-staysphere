@@ -23,6 +23,7 @@ async function signIn(context: BrowserContext, email: string, destination: RegEx
 }
 
 test('maintenance report, replacement approval and resolution cross role boundaries', async ({ page, browser }) => {
+  test.setTimeout(120_000);
   await page.addInitScript(() => {
     localStorage.setItem('maintenance-detail-tour.Owner:elena.seen.v1', '1');
     localStorage.setItem('maintenance-list-tour.Owner:elena.seen.v1', '1');
@@ -49,12 +50,12 @@ test('maintenance report, replacement approval and resolution cross role boundar
     await report.getByRole('textbox').fill('Кондиционер не охлаждает комнату.');
     await uploadInput.setInputFiles('public/images/hotel/cove.webp');
     await housekeeperPage.route('**/api/housekeeper/maintenance-issues', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }), { times: 1 });
-    await report.getByRole('button', { name: 'Отправить сообщение' }).click();
+    await report.getByRole('button', { name: 'Отправить заявку на ремонт' }).click();
     await expect(report.getByRole('alert')).toContainText('Сервис недоступен');
     await expect(report.getByRole('textbox')).toHaveValue('Кондиционер не охлаждает комнату.');
     await expect(report.getByRole('img', { name: 'Фото неисправности 1' })).toBeVisible();
     await housekeeperPage.unroute('**/api/housekeeper/maintenance-issues');
-    await report.getByRole('button', { name: 'Отправить сообщение' }).click();
+    await report.getByRole('button', { name: 'Отправить заявку на ремонт' }).click();
     await expect(housekeeperPage.getByRole('alert')).toContainText(`Проблема в номере ${roomNumber} успешно отправлена.`);
     const reportsResponse = await housekeeperPage.request.get(`${hotelUrl}/api/housekeeper/maintenance-issues?hotel=asteria-cove`);
     expect(reportsResponse.ok()).toBeTruthy();

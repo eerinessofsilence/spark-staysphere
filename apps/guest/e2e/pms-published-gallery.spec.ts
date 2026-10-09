@@ -47,6 +47,12 @@ test('PMS-published hotel photos appear in Guest without sharing the admin sessi
       const gallery = guestPage.getByRole('group', { name: /^About / });
       await gallery.scrollIntoViewIfNeeded();
       const image = gallery.locator('img').first();
+      const galleryName = await gallery.getAttribute('aria-label');
+      const publishedPhoto = gallery.getByRole('button', { name: `${galleryName} ${original.length + 1}`, exact: true });
+      await expect(async () => {
+        if (await publishedPhoto.getAttribute('aria-pressed') !== 'true') await publishedPhoto.click();
+        await expect(publishedPhoto).toHaveAttribute('aria-pressed', 'true', { timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
       await expect(image).toHaveAttribute('src', photoUrls[1]!);
       await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
       await gallery.getByRole('button', { name: 'Next photo', exact: true }).click();

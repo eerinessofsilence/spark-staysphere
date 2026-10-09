@@ -29,7 +29,7 @@ test('assistant dismisses on an outside click and stays open for its own control
   await input.click();
   await expect(panel).toBeVisible();
 
-  await page.getByRole('heading', { name: 'Accounting', level: 1, exact: true }).click();
+  await page.mouse.click(2, 2);
   await expect(panel).toBeHidden();
 
   await launcher.click();
