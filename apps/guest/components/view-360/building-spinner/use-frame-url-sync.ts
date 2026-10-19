@@ -3,10 +3,9 @@
 import * as React from 'react';
 
 /**
- * Keeps `?frame=N` in the address bar in step with the orbit, so the view a
- * guest shares or reloads opens where they left it (`app/page.tsx` reads it
- * back). Written at most once per animation frame, with `replaceState` — a
- * drag must neither flood the history nor re-render the route.
+ * Persists the settled frame for sharing/reloading. The caller disables this
+ * while turning: the router intercepts replaceState, so writing every frame
+ * would notify navigation subscribers on the animation's hot path.
  */
 export function useFrameUrlSync(frameIndex: number, enabled: boolean) {
   React.useEffect(() => {
@@ -15,9 +14,10 @@ export function useFrameUrlSync(frameIndex: number, enabled: boolean) {
     const request = requestAnimationFrame(() => {
       if (window.location.pathname !== pathname) return;
       const params = new URLSearchParams(window.location.search);
+      if (params.get('frame') === String(frameIndex)) return;
       params.set('frame', String(frameIndex));
       try {
-        window.history.replaceState(window.history.state, '', `${pathname}?${params.toString()}`);
+        window.history.replaceState(window.history.state, '', `${pathname}?${params.toString()}${window.location.hash}`);
       } catch {
         // Sandboxed embeds refuse history writes; the spinner works without the deep link.
       }

@@ -22,6 +22,12 @@ import { useCanvasFrame, useFrameSequence } from './use-frame-sequence';
 import { useFrameUrlSync } from './use-frame-url-sync';
 import { useOrbit } from './use-orbit';
 
+// This Vite refresh runtime misses hook-only modules' signatures. Give the
+// scene a new identity on module updates instead of reusing incompatible hooks.
+const sceneRevision = import.meta.hot
+  ? (import.meta.hot.data.sceneRevision = (import.meta.hot.data.sceneRevision ?? 0) + 1)
+  : 0;
+
 export interface BuildingSpinnerProps {
   spinner: BuildingSpinnerData;
   /** Zones configured by PMS — see `SpinnerZonesOverlay`. Only ever shown on a key-angle frame. */
@@ -53,7 +59,11 @@ export interface BuildingSpinnerProps {
  * `useOrbit`, the address bar is `useFrameUrlSync`, and every rule about where
  * the orbit or a hotspot is lives in `orbit.ts`.
  */
-export function BuildingSpinner({
+export function BuildingSpinner(props: BuildingSpinnerProps) {
+  return <BuildingSpinnerScene key={sceneRevision} {...props} />;
+}
+
+function BuildingSpinnerScene({
   spinner,
   zones,
   fallbackPhoto,
@@ -96,16 +106,19 @@ export function BuildingSpinner({
     });
   });
   const frames = useFrameSequence(spinner.frames, frameCount, opening);
+  const drawFrame = useCanvasFrame(canvasRef, frames, opening, stage, frameSize);
   const orbit = useOrbit({
     frameCount,
     keyAngles,
     openingFrame: opening,
     enabled: active && !frames.hasError,
+    isFrameReady: frames.isFrameReady,
+    drawFrame,
     onTurnStart: () => setActiveHotspot(null),
   });
   const { frameIndex } = orbit;
-  useCanvasFrame(canvasRef, frames.readyImage(frameIndex), stage, frameSize);
-  useFrameUrlSync(frameIndex, active);
+  const frameImage = frames.readyImage(frameIndex);
+  useFrameUrlSync(frameIndex, active && !orbit.isTurning);
 
   // Prepared once for the whole orbit; only the interpolation runs per frame.
   const tracks = React.useMemo(
@@ -138,7 +151,7 @@ export function BuildingSpinner({
   }, [visible, activeHotspot]);
 
   /** Hover previews the card; a click pins it, so it survives the pointer leaving. */
-  const shownId = activeHotspot ?? hoveredHotspot;
+  const shownId = orbit.isTurning ? null : activeHotspot ?? hoveredHotspot;
   const anchor = useMarkerAnchor(stageRef, markerRefs, shownId, `${stage.width}x${stage.height}@${frameIndex}`);
   const { cardRef, style: cardStyle } = useAnchoredCard<HTMLAnchorElement>(anchor, stage);
 
@@ -236,7 +249,7 @@ export function BuildingSpinner({
         zones={zonesOnFrame}
         frameSize={frameSize}
         stage={stage}
-        hidden={orbit.isTurning}
+        hidden={orbit.isTurning || !frameImage}
         alwaysVisible={zonesOnFrame.length > 0}
         stayQuery={stayQuery}
         rooms={rooms}

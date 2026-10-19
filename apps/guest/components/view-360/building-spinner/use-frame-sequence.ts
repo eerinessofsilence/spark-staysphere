@@ -12,43 +12,103 @@ const BACKGROUND_BATCH_DELAY_MS = 120;
 const FRAME_LOAD_RETRY_DELAY_MS = 1000;
 
 /**
- * Fetches an orbit's frames nearest-first — the opening frame and a batch
- * either side at once, then the rest of the ring in the background — so
- * arriving costs one frame, not the whole sequence, and a later spin never
- * waits on the network. A frame that fails is retried once; the opening frame
- * failing twice sets `hasError`, and the spinner falls back to its still photo.
+ * Downloads frames nearest-first, but prepares bitmap resources only for the
+ * requested arc. Background bitmap creation must not compete with an active
+ * turn. A frame is retried once; a broken opening or requested frame falls
+ * back to the still photo. The bitmap cache fits any shortest arc without
+ * retaining the entire ring's uncompressed pixels.
  */
 export function useFrameSequence(frames: SpinnerFrame[], frameCount: number, openingFrame: number) {
   const imagesRef = React.useRef<(HTMLImageElement | null)[]>([]);
+  const bitmapsRef = React.useRef<(ImageBitmap | null)[]>([]);
+  const requestedRef = React.useRef(new Set<number>());
+  const preparingRef = React.useRef(new Set<number>());
+  const generationRef = React.useRef(0);
+  const retriesRef = React.useRef(new Set<number>());
   const readyRef = React.useRef<Set<number>>(new Set());
-  // Bumped per decoded frame, so a frame the guest is waiting on is drawn the moment it lands.
-  const [readyCount, setReadyCount] = React.useState(0);
+  const failedRef = React.useRef<Set<number>>(new Set());
+  const listenersRef = React.useRef(new Set<(index: number) => void>());
+  const [isOpeningReady, setIsOpeningReady] = React.useState(false);
   const [hasError, setHasError] = React.useState(false);
   const openingRef = React.useRef(openingFrame);
 
   const loadFrame = React.useCallback(
-    (index: number, retried = false) => {
-      if (imagesRef.current[index]) return;
+    (index: number, retried = false, prepare = false) => {
+      if (prepare) requestedRef.current.add(index);
+      if (readyRef.current.has(index)) return;
       const frame = frames[index];
       if (!frame) return;
-      const image = new Image();
+      const existing = imagesRef.current[index];
+      const image = existing ?? new Image();
+      const generation = generationRef.current;
+      const failed = () => {
+        if (generation !== generationRef.current) return;
+        image.onload = null;
+        image.onerror = null;
+        preparingRef.current.add(index);
+        if (!retried) {
+          const timer = window.setTimeout(() => {
+            retriesRef.current.delete(timer);
+            imagesRef.current[index] = null;
+            preparingRef.current.delete(index);
+            loadFrame(index, true);
+          }, FRAME_LOAD_RETRY_DELAY_MS);
+          retriesRef.current.add(timer);
+        } else {
+          failedRef.current.add(index);
+          if (index === openingRef.current) setHasError(true);
+        }
+      };
+      const prepareImage = async () => {
+        if (preparingRef.current.has(index)) return;
+        preparingRef.current.add(index);
+        try {
+          await image.decode();
+          let bitmap: ImageBitmap | null = null;
+          try {
+            bitmap = await createImageBitmap(image);
+          } catch {
+            // Browsers without bitmap support can still draw the decoded image.
+          }
+          if (generation !== generationRef.current) {
+            bitmap?.close();
+            return;
+          }
+          bitmapsRef.current[index] = bitmap;
+          preparingRef.current.delete(index);
+          readyRef.current.add(index);
+          while (readyRef.current.size > Math.ceil(frameCount / 2) + 1) {
+            const oldest = readyRef.current.values().next().value;
+            if (oldest === undefined) break;
+            bitmapsRef.current[oldest]?.close();
+            bitmapsRef.current[oldest] = null;
+            readyRef.current.delete(oldest);
+          }
+          if (bitmap) {
+            image.onload = null;
+            image.onerror = null;
+            imagesRef.current[index] = null;
+            image.src = '';
+          }
+          if (index === openingRef.current) setIsOpeningReady(true);
+          listenersRef.current.forEach((listener) => listener(index));
+        } catch {
+          failed();
+        }
+      };
+      if (existing) {
+        if (prepare && image.complete && image.naturalWidth > 0) void prepareImage();
+        return;
+      }
       imagesRef.current[index] = image;
       image.decoding = 'async';
       image.onload = () => {
-        readyRef.current.add(index);
-        setReadyCount((count) => count + 1);
+        if (requestedRef.current.has(index)) void prepareImage();
       };
-      image.onerror = () => {
-        imagesRef.current[index] = null;
-        if (!retried) {
-          window.setTimeout(() => loadFrame(index, true), FRAME_LOAD_RETRY_DELAY_MS);
-        } else if (index === openingRef.current) {
-          setHasError(true);
-        }
-      };
+      image.onerror = failed;
       image.src = frame.imageUrl;
     },
-    [frames],
+    [frames, frameCount],
   );
 
   React.useEffect(() => {
@@ -57,7 +117,7 @@ export function useFrameSequence(frames: SpinnerFrame[], frameCount: number, ope
     const perSide = touch ? PRELOAD_BATCH_MOBILE : PRELOAD_BATCH_DESKTOP;
     const order = loadOrder(openingRef.current, frameCount);
     const firstBatch = 1 + perSide * 2;
-    order.slice(0, firstBatch).forEach((index) => loadFrame(index));
+    order.slice(0, firstBatch).forEach((index) => loadFrame(index, false, index === openingRef.current));
 
     let next = firstBatch;
     const timer = window.setInterval(() => {
@@ -65,18 +125,59 @@ export function useFrameSequence(frames: SpinnerFrame[], frameCount: number, ope
       next += perSide * 2;
       if (next >= order.length) window.clearInterval(timer);
     }, BACKGROUND_BATCH_DELAY_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      generationRef.current += 1;
+      retriesRef.current.forEach((retry) => window.clearTimeout(retry));
+      retriesRef.current.clear();
+      imagesRef.current.forEach((image) => {
+        if (!image) return;
+        image.onload = null;
+        image.onerror = null;
+      });
+      bitmapsRef.current.forEach((bitmap) => bitmap?.close());
+      imagesRef.current = [];
+      bitmapsRef.current = [];
+      readyRef.current.clear();
+      failedRef.current.clear();
+      requestedRef.current.clear();
+      preparingRef.current.clear();
+    };
   }, [loadFrame, frameCount]);
 
   /** The decoded image for `index`, or `null` while it is still on its way. */
   const readyImage = React.useCallback(
-    (index: number): HTMLImageElement | null => (readyRef.current.has(index) ? (imagesRef.current[index] ?? null) : null),
-    // `readyCount` is what makes a newly decoded frame come back non-null.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [readyCount],
+    (index: number): HTMLImageElement | ImageBitmap | null =>
+      readyRef.current.has(index) ? (bitmapsRef.current[index] ?? imagesRef.current[index] ?? null) : null,
+    [],
   );
 
-  return { readyImage, hasError };
+  const subscribe = React.useCallback((listener: (index: number) => void) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
+
+  /** Prioritise a requested frame instead of waiting for its background batch. */
+  const isFrameReady = React.useCallback(
+    (index: number) => {
+      if (readyRef.current.has(index)) {
+        readyRef.current.delete(index);
+        readyRef.current.add(index);
+        return true;
+      }
+      if (failedRef.current.has(index) || !frames[index]) {
+        setHasError(true);
+        return false;
+      }
+      loadFrame(index, false, true);
+      return false;
+    },
+    [frames, loadFrame],
+  );
+
+  return { readyImage, isFrameReady, subscribe, isOpeningReady, hasError };
 }
 
 /**
@@ -84,34 +185,57 @@ export function useFrameSequence(frames: SpinnerFrame[], frameCount: number, ope
  * One canvas rather than an `<img>` per frame: a 160-frame orbit would
  * otherwise leave 160 full-size images in the DOM after one full turn.
  *
- * The backing store is resized only when the stage is — resizing clears the
- * canvas, and a frame that hasn't decoded yet should leave the last one
- * showing rather than flash the stage empty mid-drag.
+ * Painting runs directly inside the orbit's animation callback, without a
+ * React render/effect between selecting a frame and presenting it. React only
+ * handles resize and subscription lifetimes.
  */
 export function useCanvasFrame(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  image: HTMLImageElement | null,
+  sequence: Pick<ReturnType<typeof useFrameSequence>, 'readyImage' | 'subscribe'>,
+  openingFrame: number,
   stage: Size,
   frame: Size,
 ) {
-  React.useEffect(() => {
+  const currentFrameRef = React.useRef(openingFrame);
+  const drawnImageRef = React.useRef<HTMLImageElement | ImageBitmap | null>(null);
+  const configRef = React.useRef({ readyImage: sequence.readyImage, stage, frame });
+  configRef.current = { readyImage: sequence.readyImage, stage, frame };
+
+  const drawFrame = React.useCallback((index: number): boolean => {
+    const { readyImage, stage, frame } = configRef.current;
+    const image = readyImage(index);
     const canvas = canvasRef.current;
-    if (!canvas || stage.width === 0 || stage.height === 0) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!image || !canvas || stage.width === 0 || stage.height === 0) return false;
+    const rect = coverRect(frame, stage);
+    // Extra backing pixels beyond the capture's resolution add raster work, not detail.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2, frame.width / rect.width);
     const width = Math.round(stage.width * dpr);
     const height = Math.round(stage.height * dpr);
-    const context = canvas.getContext('2d');
-    if (!context) return;
+    const context = canvas.getContext('2d', { alpha: false, desynchronized: true });
+    if (!context) return false;
+    if (image === drawnImageRef.current && canvas.width === width && canvas.height === height) return true;
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
     }
-    if (!image) return;
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.setTransform(width / stage.width, 0, 0, height / stage.height, 0, 0);
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
-    const rect = coverRect(frame, stage);
-    context.clearRect(0, 0, stage.width, stage.height);
+    // The opaque cover image fills the stage; clearing first only adds another full-canvas pass.
     context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
-  }, [canvasRef, image, stage.width, stage.height, frame.width, frame.height]);
+    currentFrameRef.current = index;
+    drawnImageRef.current = image;
+    return true;
+  }, [canvasRef]);
+
+  React.useLayoutEffect(() => {
+    drawnImageRef.current = null;
+    drawFrame(currentFrameRef.current);
+  }, [drawFrame, stage.width, stage.height, frame.width, frame.height]);
+
+  React.useLayoutEffect(() => sequence.subscribe((index) => {
+    if (index === currentFrameRef.current) drawFrame(index);
+  }), [sequence.subscribe, drawFrame]);
+
+  return drawFrame;
 }

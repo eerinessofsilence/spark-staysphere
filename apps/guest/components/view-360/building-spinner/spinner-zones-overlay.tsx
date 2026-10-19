@@ -17,10 +17,8 @@ import { cn } from '@/lib/utils';
  * `zones` is pre-filtered to the current frame — nothing here reads
  * `frameIndex` itself.
  *
- * Same interaction as the flat-photo areas' floor bands (`hotel-scene.tsx`):
- * invisible until hovered or focused, so the facade doesn't read as a web of
- * outlines (see `git show f6c8e26`, the commit that dropped the spinner's
- * earlier always-on outline layer for exactly that reason). A label chip
+ * Marked stops show quiet outlines; hover or keyboard focus adds the lime
+ * highlight. Other zones stay faint while one is highlighted. A label chip
  * follows the outline's centroid; a click goes straight to the zone's
  * target — there's no anchored preview card here the way a pinned marker
  * gets one, since a zone's shape is already the affordance.
@@ -69,7 +67,7 @@ export function SpinnerZonesOverlay({
 
   return (
     <>
-      <svg className="pointer-events-none absolute inset-0 z-[5] size-full" role="group" aria-label={t('rooms.chooseYourRoom')}>
+      <svg className="pointer-events-none absolute inset-0 z-[5] size-full text-[#d4ff3a]" role="group" aria-label={t('rooms.chooseYourRoom')}>
         <g transform={`translate(${rect.x} ${rect.y}) scale(${rect.width / frameSize.width} ${rect.height / frameSize.height})`}>
           {zones.map((zone) => {
             const lit = zone.id === hoveredId;
@@ -79,7 +77,9 @@ export function SpinnerZonesOverlay({
                 key={zone.id}
                 data-testid="spinner-zone"
                 d={toPathData(zone.polygon, frameSize.width, frameSize.height)}
-                strokeWidth={2 * (frameSize.width / rect.width)}
+                strokeWidth={lit ? 1.5 : 1}
+                vectorEffect="non-scaling-stroke"
+                strokeOpacity={lit ? 1 : hovered ? 0.18 : 0.4}
                 strokeLinejoin="round"
                 tabIndex={0}
                 role="link"
@@ -95,11 +95,11 @@ export function SpinnerZonesOverlay({
                   router.push(withStayQuery(zone.href, stayQuery));
                 }}
                 className={cn(
-                  'pointer-events-auto cursor-pointer transition-[fill,stroke] duration-200 focus-visible:outline-none',
+                  'pointer-events-auto cursor-pointer transition-[fill,stroke,stroke-opacity,stroke-width] duration-150 focus-visible:outline-none',
                   lit
-                    ? 'fill-white/20 stroke-accent [filter:drop-shadow(0_1px_4px_rgb(22_22_22/0.45))]'
+                    ? 'fill-current/15 stroke-current'
                     : alwaysVisible
-                      ? 'fill-white/20 stroke-white/90 [filter:drop-shadow(0_1px_2px_rgb(22_22_22/0.4))]'
+                      ? 'fill-transparent stroke-white'
                       : 'fill-transparent stroke-transparent',
                 )}
               />
