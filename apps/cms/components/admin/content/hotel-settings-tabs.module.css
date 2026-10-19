@@ -1,0 +1,24 @@
+.enterForward {
+  animation: hotel-tab-enter-forward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.enterBackward {
+  animation: hotel-tab-enter-backward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hotel-tab-enter-forward {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes hotel-tab-enter-backward {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enterForward,
+  .enterBackward {
+    animation: none;
+  }
+}

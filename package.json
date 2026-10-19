@@ -1,0 +1,22 @@
+{
+  "name": "staysphere-cms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "workspaces": ["apps/cms", "apps/guest", "apps/site"],
+  "scripts": {
+    "dev": "node scripts/dev-all.mjs",
+    "dev:cms": "npm run dev --workspace=@staysphere/cms -- --port 3101 --strictPort",
+    "dev:guest": "npm run dev --workspace=@staysphere/guest -- --port 3100 --strictPort",
+    "dev:site": "npm run dev --workspace=@staysphere/site -- --port 5273 --strictPort",
+    "build:cms": "npm run build --workspace=@staysphere/cms",
+    "build:guest": "npm run build --workspace=@staysphere/guest",
+    "build:site": "npm run build --workspace=@staysphere/site",
+    "typecheck:cms": "npm run typecheck --workspace=@staysphere/cms",
+    "typecheck:guest": "npm run typecheck --workspace=@staysphere/guest",
+    "lint:cms": "npm run lint --workspace=@staysphere/cms",
+    "lint:guest": "npm run lint --workspace=@staysphere/guest",
+    "lint:site": "npm run lint --workspace=@staysphere/site"
+  }
+}

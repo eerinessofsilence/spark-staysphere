@@ -1,0 +1,945 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+.admin-grid-photo {
+  display: block;
+  position: relative;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  max-width: 64px;
+  max-height: 64px;
+  flex: 0 0 64px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.spinner-markup-frame-photo {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  max-width: 72px;
+  max-height: 72px;
+  flex: 0 0 72px;
+}
+
+.admin-grid-photo > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/**
+ * `hover:` alone stays on until the next tap on a touch screen — there is no
+ * pointer to move away and clear `:hover`, so a phone's last-tapped nav row
+ * (or any other `hover:`-styled control) reads as highlighted right next to
+ * the one that's actually current. `can-hover:` is the same styles, gated
+ * to devices that can actually hover — a mouse or trackpad — so touch never
+ * sees a stuck state. Prefer this over `hover:` for anything whose hover
+ * style could be mistaken for a *selected* state (nav rows, list rows).
+ */
+@custom-variant can-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body-stack);
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-heading: var(--font-display-stack);
+  --font-display: var(--font-display-stack);
+  --font-accent: var(--font-accent-stack);
+  --spacing-gutter: var(--gutter);
+  --color-ink: var(--ink);
+  --color-canvas: var(--canvas);
+  --color-stone: var(--stone);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-tint-clay: var(--tint-clay);
+  --color-tint-clay-ink: var(--tint-clay-ink);
+  --color-tint-sand: var(--tint-sand);
+  --color-tint-sand-ink: var(--tint-sand-ink);
+  --color-tint-sage: var(--tint-sage);
+  --color-tint-sage-ink: var(--tint-sage-ink);
+  --color-tint-rose: var(--tint-rose);
+  --color-tint-rose-ink: var(--tint-rose-ink);
+  --color-tint-stone: var(--tint-stone);
+  --color-tint-stone-ink: var(--tint-stone-ink);
+  --color-glass-tint: var(--glass-tint);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-raised-foreground: var(--surface-raised-foreground);
+  --color-muted-text: var(--muted-text);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-status-new: var(--status-new);
+  --color-status-confirmed: var(--status-confirmed);
+  --color-status-due-in: var(--status-due-in);
+  --color-status-in-house: var(--status-in-house);
+  --color-status-due-out: var(--status-due-out);
+  --color-status-checked-out: var(--status-checked-out);
+  --color-status-offer: var(--status-offer);
+  --color-status-no-show: var(--status-no-show);
+  --color-status-neutral: var(--status-neutral);
+  --color-star: var(--star);
+  --color-stay-confirmed: var(--stay-confirmed);
+  --color-stay-confirmed-ink: var(--stay-confirmed-ink);
+  --color-stay-due-in: var(--stay-due-in);
+  --color-stay-in-house: var(--stay-in-house);
+  --color-stay-due-out: var(--stay-due-out);
+  --color-stay-checked-out: var(--stay-checked-out);
+  --color-stay-checked-out-ink: var(--stay-checked-out-ink);
+  --color-stay-no-show: var(--stay-no-show);
+  --color-stay-no-show-ink: var(--stay-no-show-ink);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * The layout grid — see DESIGN_SYSTEM.md › Layout grid. One page width per
+ * kind of page, one gutter that is both the side margin and the gap between a
+ * page's layout columns, and named column templates, so no page free-hands a
+ * max-w-[1400px] or a grid-cols-[minmax(0,1fr)_22rem] of its own.
+ */
+@theme {
+  --container-page: 87.5rem;
+  --container-reading: 62.5rem;
+  /* Same width as `--container-page`, not its own value: an admin editor
+     capped narrower than its sibling admin pages read as a layout bug — the
+     content visibly stopped short of where every other page's did — rather
+     than as a deliberate, narrower reading width. */
+  --container-form: 87.5rem;
+
+  --grid-template-columns-sidebar: minmax(0, 1fr) minmax(0, 22rem);
+  --grid-template-columns-sidebar-start: minmax(0, 22rem) minmax(0, 1fr);
+  --grid-template-columns-media: minmax(0, 16rem) minmax(0, 1fr);
+  --grid-template-columns-main-aside: minmax(0, 2fr) minmax(0, 1fr);
+  --grid-template-columns-shell: 17.5rem minmax(0, 1fr);
+}
+
+@utility container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-page);
+  padding-inline: var(--gutter);
+}
+
+/*
+ * `container-page`, left-aligned instead of centred — `AdminPage`'s "wide"
+ * variant, sitting in the sidebar column next to `container-form`'s
+ * left-aligned "narrow" one. Same reasoning as `container-form` above: two
+ * admin pages should start their heading at the same x-position, which
+ * centring would break past `--container-page`'s own width (rare, but real
+ * on a wide monitor). `container-page` itself stays centred for the guest
+ * site's own top-level pages, which have no sidebar to line up against.
+ */
+@utility container-page-start {
+  margin-inline: 0;
+  width: 100%;
+  max-width: var(--container-page);
+  padding-inline: var(--gutter);
+}
+
+@utility container-reading {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-reading);
+  padding-inline: var(--gutter);
+}
+
+/*
+ * Left-aligned, not centred: unlike `container-page`/`container-reading`
+ * (top-level guest pages, no sidebar to line up against), `container-form`
+ * is only ever `AdminPage`'s "narrow" variant, sitting in the same sidebar
+ * column as "wide" pages. Centering it would start its heading at a
+ * different x-position than a "wide" page's whenever the column is wider
+ * than 68.75rem — the two would visibly jump sideways navigating between
+ * them. Left-aligned, both start flush with the column; only the unused
+ * width sits on the right.
+ */
+@utility container-form {
+  margin-inline: 0;
+  width: 100%;
+  max-width: var(--container-form);
+  padding-inline: var(--gutter);
+}
+
+/*
+ * next/font sets the *-family variables on <body>, so the stacks must be
+ * declared on body too: a custom property is resolved where it is declared,
+ * and on :root those family variables do not exist yet.
+ */
+body {
+  /*
+   * San Francisco is not shipped: `-apple-system` hands back the device's own
+   * interface face on macOS and iOS, which is what Apple's licence allows.
+   * Inter follows for everything else so Windows and Android keep the same
+   * character instead of dropping to Segoe or Roboto. Display and body are one
+   * family here, the way the platform itself does it — the difference between
+   * a title and a paragraph is size and weight, not a second typeface.
+   */
+  --font-ui-stack:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', var(--font-ui-family), system-ui,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display-stack: var(--font-ui-stack);
+  --font-body-stack: var(--font-ui-stack);
+  --font-accent-stack: var(--font-accent-family), Georgia, 'Times New Roman', serif;
+  font-family: var(--font-body-stack);
+}
+
+:root {
+
+  /* Palette — see DESIGN_SYSTEM.md. Ink does the work; clay is the only accent. */
+  --ink: #161616;
+  --canvas: #f3f1ec;
+  --stone: #e9e5dd;
+
+  /*
+   * Flat tints: the surface paints fact and inclusion chips, the ink colours
+   * the mark on an amenity card. Warm throughout, with one muted sage — no
+   * blue, no purple, no neon, per the accent rule. The accent still belongs
+   * to the section-label dot, focus, and savings.
+   */
+  --tint-clay: #f4e6dd;
+  --tint-clay-ink: #9a4e2c;
+  --tint-sand: #efe7d3;
+  --tint-sand-ink: #7f6a35;
+  --tint-sage: #e2e9de;
+  --tint-sage-ink: #4c6a4e;
+  --tint-rose: #f1e2e0;
+  --tint-rose-ink: #93565a;
+  --tint-stone: #e9e5dd;
+  --tint-stone-ink: #5f5e58;
+  --accent: #b8603a;
+  --accent-strong: #9a4e2c;
+  --accent-soft: #f4e6dd;
+
+  /*
+   * Frosting. The tint is the warm white the ink pills print on, not plain
+   * white: a pure-white frost is the one cold surface in a warm scheme, and
+   * over a blue sea it reads as grey. The edge is what makes a translucent
+   * patch read as glass rather than as a hole in the photograph.
+   */
+  --glass-tint: #f7f5f0;
+  --glass-edge: rgb(255 255 255 / 70%);
+  /* Both nudged darker than they read by eye: the old pair missed 4.5:1
+     on the surfaces they actually print on — muted on a stone chip,
+     warning on a white admin row. */
+  --muted-text: #66665f;
+  --success: #287e6b;
+  --warning: #a55b13;
+  --danger: #c44b52;
+  /* One status vocabulary across the desk, booking, orders, housekeeping and guest views. */
+  --status-new: #db931e;
+  --status-confirmed: #168bb6;
+  --status-due-in: #399c86;
+  --status-in-house: #648a20;
+  --status-due-out: #a55b13;
+  --status-checked-out: #d46a24;
+  --status-offer: #6862d2;
+  --status-no-show: #d65e67;
+  --status-neutral: #77736e;
+  /* A proper gold for a filled star icon, not `--warning` — that one is
+     tuned dark for 4.5:1 text contrast, which reads as brown at icon size. */
+  --star: #c99a2e;
+  /* Deeper fills in the same hues keep names readable on the occupancy bars. */
+  --stay-confirmed: #176b89;
+  --stay-confirmed-ink: #ffffff;
+  --stay-due-in: #247c69;
+  --stay-in-house: #58751d;
+  --stay-due-out: #895015;
+  --stay-checked-out: #a9541d;
+  --stay-checked-out-ink: #ffffff;
+
+  /* The housekeeping mix chart uses the same hues as its status badges. */
+  --hk-out-of-order: var(--status-no-show);
+  --hk-dirty: var(--status-due-out);
+  --hk-in-progress: var(--status-new);
+  --hk-clean: var(--status-due-in);
+  --hk-inspected: var(--status-in-house);
+  --stay-no-show: #a64049;
+  --stay-no-show-ink: #ffffff;
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: #f7f5f0;
+  /*
+   * The primary pill's hover, its own token because the pill is not always
+   * ink: by night it is lime, and a fixed "slightly lighter ink" would be
+   * wrong there. Every primary control reads this rather than a literal.
+   */
+  --primary-hover: #2b2b2b;
+  /*
+   * The one surface allowed to stay light on a dark page: the stay search
+   * on a phone. By day it is the same white as any card; by night it is a
+   * warm-white panel on the near-black canvas, the way the reference lifts
+   * its search out of the rest of the screen. See `.surface-raised` below.
+   */
+  --surface-raised: #ffffff;
+  --surface-raised-foreground: var(--ink);
+  --secondary: #ffffff;
+  --secondary-foreground: var(--ink);
+  --muted: var(--stone);
+  --muted-foreground: var(--muted-text);
+  --accent-foreground: #ffffff;
+  --destructive: var(--danger);
+  --border: #ddd9d0;
+  --input: #ddd9d0;
+  --ring: var(--accent);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 1rem;
+  --gutter: 1rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@media (width >= 40rem) {
+  :root {
+    --gutter: 1.5rem;
+  }
+}
+
+@media (width >= 64rem) {
+  :root {
+    --gutter: 2rem;
+  }
+}
+
+/*
+ * The back office's own accent: a clear blue in place of the guest site's
+ * clay, so operator screens read as a tool rather than as the brochure.
+ * Keyed off the admin shell being on the page with `:has()` rather than a
+ * wrapper class, because dialogs portal to <body> — outside the shell — and
+ * must pick the blue up too. The clay tint follows the accent so no warm
+ * chip is left behind on an admin screen.
+ */
+html:has([data-admin-shell]) {
+  --accent: #1f6fe0;
+  --accent-strong: #1757b8;
+  --accent-soft: #e3eefc;
+  --tint-clay: #e3eefc;
+  --tint-clay-ink: #1757b8;
+}
+
+/* Subscription notices use the product's clay/lime palette within the admin shell. */
+[data-subscription-notice],
+[data-subscription-expiry-toast] {
+  --accent: #b8603a;
+  --accent-soft: #f4e6dd;
+}
+.dark [data-subscription-notice],
+.dark [data-subscription-expiry-toast] {
+  --accent: #d4ff3a;
+  --accent-soft: #2b3311;
+}
+
+.dark {
+  /*
+   * The night scheme. Not the cold shadcn greys this block shipped with: a
+   * near-black canvas, dark grey cards with warm-white text, and one electric
+   * lime where the day scheme has clay. Same token names, so a component
+   * written for the day reads correctly here without knowing which it is on.
+   * Scoped by a `.dark` wrapper rather than a theme switch — today only the
+   * arrival page opts in.
+   */
+  --ink: #161616;
+  --canvas: #141414;
+  --stone: #262626;
+  --tint-clay: #33251d;
+  --tint-clay-ink: #e59b76;
+  --tint-sand: #2c2921;
+  --tint-sand-ink: #d3bb7f;
+  --tint-sage: #21281f;
+  --tint-sage-ink: #9dc09c;
+  --tint-rose: #2f2422;
+  --tint-rose-ink: #e0a3a4;
+  --tint-stone: #262626;
+  --tint-stone-ink: #b5b3ac;
+  --accent: #d4ff3a;
+  --accent-strong: #c9f52e;
+  --accent-soft: #2b3311;
+  /* The same status hues, with quieter surfaces against the dark rack. */
+  --stay-confirmed: #294a57;
+  --stay-confirmed-ink: #f4f6f7;
+  --stay-due-in: #294d45;
+  --stay-in-house: #3b4b2a;
+  --stay-due-out: #57422b;
+  --stay-checked-out: #5a3d2d;
+  --stay-checked-out-ink: #f4f2ec;
+  --stay-no-show: #57353a;
+  --stay-no-show-ink: #f4f2ec;
+  --glass-tint: #1a1a1a;
+  --glass-edge: rgb(255 255 255 / 14%);
+  --muted-text: #a8a69f;
+  /* Softer than the day's greens read against black; a neon success would fight the lime. */
+  --success: #72ccb6;
+  --warning: #e4a968;
+  --danger: #ee949c;
+  --status-new: #f1bb69;
+  --status-confirmed: #74cce7;
+  --status-due-in: #78cfb9;
+  --status-in-house: #aed078;
+  --status-due-out: #dcaa74;
+  --status-checked-out: #f1a675;
+  --status-offer: #b0a9f0;
+  --status-no-show: #f099a0;
+  --status-neutral: #aaa69f;
+  --star: #e0b23c;
+  /* Same five hues, restepped for the dark surface and re-validated — not a lightened copy of the light values. */
+  --hk-out-of-order: var(--status-no-show);
+  --hk-dirty: var(--status-due-out);
+  --hk-in-progress: var(--status-new);
+  --hk-clean: var(--status-due-in);
+  --hk-inspected: var(--status-in-house);
+  --background: var(--canvas);
+  --foreground: #f4f2ec;
+  --card: #1e1e1e;
+  --card-foreground: #f4f2ec;
+  --popover: #1e1e1e;
+  --popover-foreground: #f4f2ec;
+  /* By night the primary action is the lime pill, with the canvas as its text. */
+  --primary: #d4ff3a;
+  --primary-foreground: #141414;
+  --primary-hover: #c2ec2e;
+  --surface-raised: #f4f2ec;
+  --surface-raised-foreground: #141414;
+  --secondary: #262626;
+  --secondary-foreground: #f4f2ec;
+  --muted: #262626;
+  --muted-foreground: var(--muted-text);
+  --accent-foreground: #141414;
+  --destructive: var(--danger);
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #d4ff3a;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /*
+   * `body` alone leaves `html` transparent. iOS Safari's elastic overscroll —
+   * an edge swipe, a drag that runs past the end of a scrollable area — can
+   * momentarily reveal whatever sits behind the document, which through a
+   * transparent `html` is the WebView's own black canvas. The arrival scene
+   * is full of edge-adjacent touch interaction (dragging the photo, paging
+   * hotspots), exactly where that swipe fires. Filling `html` with the same
+   * canvas token removes the flash even if the bounce still happens, and
+   * `overscroll-behavior-x` on both stops the horizontal bounce outright —
+   * the document never legitimately scrolls sideways, so there is nothing
+   * lost by refusing to rubber-band on that axis.
+   */
+  html {
+    @apply bg-background;
+    overscroll-behavior-x: none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overscroll-behavior-x: none;
+  }
+  /* Visible accent focus ring with offset on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /*
+   * A browser's own UA stylesheet gives `<button>` the arrow cursor, not the
+   * hand — Tailwind stopped correcting this in v4's preflight, so it is
+   * reinstated here, once, for every button-like element rather than as a
+   * `cursor-pointer` on each call site. `pill()`/`iconButton()` (`lib/ui.ts`)
+   * still carry their own for a element that isn't a real `<button>`; this is
+   * the fallback for everything else — shadcn primitives (`Select`'s
+   * trigger, `Switch`, `Checkbox`), and every plain `<button>` that predates
+   * those helpers. Skipped once a control is actually disabled, so it falls
+   * back to the browser's own not-allowed/default cursor instead of lying
+   * about being clickable.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='switch']:not([aria-disabled='true']),
+  [role='checkbox']:not([aria-disabled='true']),
+  [role='radio']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  [role='combobox']:not([aria-disabled='true']),
+  [role='menuitem']:not([aria-disabled='true']),
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+  /* Material-style selection controls, using the active product theme. Labels
+     provide the larger touch target while the visible mark stays 24px. */
+  input[type='checkbox']:not(.sr-only),
+  input[type='radio']:not(.sr-only) {
+    appearance: none;
+    display: inline-grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+    margin: 0;
+    border: 2px solid var(--muted-foreground);
+    background-color: transparent;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  }
+  input[type='checkbox']:not(.sr-only) {
+    border-radius: 0.375rem;
+  }
+  input[type='radio']:not(.sr-only) {
+    border-radius: 50%;
+  }
+  input[type='checkbox']:not(.sr-only):is(:checked, :indeterminate) {
+    border-color: var(--accent);
+    background-color: var(--accent);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 1.125rem 1.125rem;
+  }
+  input[type='checkbox']:not(.sr-only):checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m5 12 4.5 4.5L19 7' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  input[type='checkbox']:not(.sr-only):indeterminate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M5 12h14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  .dark:not(:has([data-admin-shell])) input[type='checkbox']:not(.sr-only):checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m5 12 4.5 4.5L19 7' stroke='%23141414' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .dark:not(:has([data-admin-shell])) input[type='checkbox']:not(.sr-only):indeterminate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M5 12h14' stroke='%23141414' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  html.dark:has([data-admin-shell]) [data-slot='checkbox'][data-checked] {
+    color: #ffffff;
+  }
+  input[type='radio']:not(.sr-only):checked {
+    border-color: var(--accent);
+    background-image: radial-gradient(circle, var(--accent) 0 0.3125rem, transparent 0.34375rem);
+  }
+  input[type='checkbox']:not(.sr-only):hover:not(:disabled),
+  input[type='radio']:not(.sr-only):hover:not(:disabled) {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.375rem color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  input[type='checkbox']:not(.sr-only):focus-visible,
+  input[type='radio']:not(.sr-only):focus-visible {
+    box-shadow: 0 0 0 0.375rem color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  input[type='checkbox']:not(.sr-only):disabled,
+  input[type='radio']:not(.sr-only):disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  /*
+   * A numeric field's up/down spinner is drawn by the browser, not the
+   * product — a different size and shape on every engine, and never the
+   * pill chrome every other field carries. Every `input[type=number]`
+   * reads as the same plain field as `TextInput`, with nothing appended.
+   */
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display-stack);
+    font-weight: 700;
+    letter-spacing: -0.022em;
+  }
+}
+
+@layer utilities {
+  /*
+   * Display type: the interface face at bold, tracked in. Apple's own titles
+   * tighten as they grow, so the negative tracking does the work a second
+   * typeface used to do.
+   */
+  .text-display {
+    font-family: var(--font-display-stack);
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.05;
+  }
+
+  /* One italic phrase per screen at most. Never for body copy or labels. */
+  .text-accent-italic {
+    font-family: var(--font-accent-stack);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /*
+   * Frosted panel over photography — the one place the product blurs.
+   *
+   * The lit edge belongs to the class, not to the call site: a frosted
+   * surface only reads as glass once it has one, and every frosted surface
+   * here wants the same one. It is a border rather than an inset shadow so
+   * that `shadow-soft` can still be added on top without one overwriting
+   * the other.
+   *
+   * The dark counterpart is this same class under `.dark`, not a second one
+   * to remember to swap in — a panel that is frosted white on a dark page is
+   * the bug that a separate class invites.
+   */
+  .glass {
+    background: color-mix(in srgb, var(--glass-tint) 74%, transparent);
+    border: 1px solid var(--glass-edge);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  .dark .glass {
+    background: color-mix(in srgb, var(--glass-tint) 62%, transparent);
+    backdrop-filter: blur(18px) saturate(120%);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
+  }
+
+  /*
+   * A bar docked over the page itself, not over a photograph — the admin
+   * save bar. `.glass` is tuned for photography: its warm-white tint is the
+   * canvas colour, so over a plain page it has nothing to frost and reads
+   * as a grey strip. This one earns its edges on its own: a cooler, more
+   * transparent white so the fields scrolling under it show through, a lit
+   * top edge and inner sheen, a dark hairline outside so it holds its shape
+   * on the canvas, and a lifted shadow.
+   */
+  .glass-bar {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 55%), rgb(255 255 255 / 25%)),
+      rgb(255 255 255 / 30%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 90%),
+      inset 0 -1px 0 rgb(255 255 255 / 30%),
+      0 0 0 1px rgb(22 22 22 / 8%),
+      0 12px 40px -12px rgb(22 22 22 / 28%),
+      0 2px 6px rgb(22 22 22 / 6%);
+  }
+
+  .dark .glass-bar {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 3%)),
+      rgb(30 30 30 / 55%);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 14%),
+      0 0 0 1px rgb(255 255 255 / 10%),
+      0 12px 40px -12px rgb(0 0 0 / 60%);
+  }
+
+  /*
+   * A lens, not a panel: the round marker that sits on the photograph of the
+   * building. `.glass` is a frosted sheet — flat, tinted, one lit edge — and
+   * as a small disc over a facade it read as a grey ring around an ink dot.
+   * A disc this size wants to look like a frosted button instead — the
+   * Control Centre kind: a milky fill the facade still shows through, a
+   * highlight down the upper half, a lit top edge, a shaded lower lip, and a
+   * dark hairline outside so it holds its shape on a white wall as well as
+   * over the trees. It was first tried nearly clear; on the white building
+   * that was invisible, and the pin on it with it.
+   *
+   * White-based on both schemes: it lies on the photograph, not on the page,
+   * and the photograph doesn't change with the theme.
+   */
+  .glass-lens {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 45%), rgb(255 255 255 / 0%) 55%),
+      rgb(255 255 255 / 58%);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 95%),
+      inset 0 -1px 1px rgb(0 0 0 / 10%),
+      0 0 0 1px rgb(0 0 0 / 12%),
+      0 8px 20px -8px rgb(0 0 0 / 45%),
+      0 1px 2px rgb(0 0 0 / 15%);
+  }
+
+  /*
+   * The raised surface: the stay search on a phone. By day it is a white
+   * card like any other. By night it stays light — a warm-white panel is how
+   * the reference lifts its search off the near-black canvas — so the
+   * controls on it have to read as if they were on the day scheme: a white
+   * hairline is invisible on white, a dark hover fill is a hole in it, and
+   * the night's muted grey does not pass contrast on it. The tokens those
+   * controls consume are re-pointed here rather than in the components,
+   * which go on reading `border-border` and `text-muted-foreground` without
+   * knowing which surface they landed on.
+   */
+  .surface-raised {
+    background: var(--surface-raised);
+    color: var(--surface-raised-foreground);
+  }
+
+  .dark .surface-raised {
+    --foreground: var(--surface-raised-foreground);
+    --muted-text: #6b6b66;
+    --muted-foreground: var(--muted-text);
+    --border: #ddd9d0;
+    --stone: #e9e5dd;
+    --accent: #b8603a;
+  }
+
+  /* Soft, low-contrast elevation. Borders do the structural work. */
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgb(22 22 22 / 4%), 0 12px 32px -16px rgb(22 22 22 / 16%);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 2px 4px rgb(22 22 22 / 5%), 0 28px 60px -28px rgb(22 22 22 / 24%);
+  }
+
+  /*
+   * For a rail that already tells you it scrolls — snap points, a peek of
+   * the next card, round arrow buttons — the browser's own scrollbar track
+   * under it is a second, uglier affordance for the same fact. Touch and
+   * keyboard scrolling still work; only the drawn track goes.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    scrollbar-color: transparent transparent;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+
+  /*
+   * The one piece of motion on an otherwise still page: a heading arrives
+   * from slightly below as it comes into view, the way the large product
+   * pages do it. Long and heavily eased — a fast reveal reads as a jump.
+   *
+   * Two gates before anything is hidden. `.js` is set by the head script, so
+   * a document that cannot run the observer never has its copy hidden in the
+   * first place; and a visitor who asked for less motion is simply given the
+   * finished state, with nothing to wait for.
+   */
+  [data-reveal] {
+    transition:
+      opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      translate 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .js [data-reveal='pending'] {
+      opacity: 0;
+      translate: 0 1.5rem;
+    }
+  }
+}
+
+/*
+ * Pannellum (public/vendor/pannellum) ships its own chrome. The sphere sits
+ * over a photograph of the same place until it has loaded, so its grey grid
+ * and loading box must not paint over that; markers are our own pills.
+ */
+.pnlm-container {
+  /* Its stylesheet is injected after this one, so order alone would lose. */
+  background: transparent !important;
+}
+.pnlm-load-box,
+.pnlm-about-msg {
+  display: none !important;
+}
+.pnlm-hotspot-base.pnlm-marker {
+  cursor: pointer;
+}
+/* Invisible corner points: Pannellum projects them, we read them back to draw outlines. */
+.pnlm-hotspot-base.pnlm-vertex {
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Route fallbacks only appear when a navigation lasts beyond a brief pause. */
+@keyframes route-loading-reveal {
+  to { opacity: 1; visibility: visible; }
+}
+
+.route-loading {
+  opacity: 0;
+  visibility: hidden;
+  animation: route-loading-reveal 0s 250ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading {
+    animation-duration: 0.01ms !important;
+    animation-delay: 250ms !important;
+  }
+}
+
+/* A page's "Print" button, whichever one owns the printable content:
+   the invoice modal's own copy, or an accounting report's table — everything
+   else on the page is hidden, so only that one marked element comes out of
+   the printer. */
+/* Invoices are paper documents in either site colour scheme. */
+.invoice-document {
+  --foreground: #161616;
+  --muted-foreground: #66665f;
+  --border: #ddd9d0;
+  background: #fff;
+  color: #161616;
+  border-radius: 18px;
+  padding: clamp(20px, 4vw, 40px);
+}
+.invoice-total { background: #f4e6dd; }
+.invoice-number h2 { color: #9a4e2c; }
+
+@media print {
+  @page { size: A4; margin: 0; }
+  html:has(#invoice-printable),
+  body:has(#invoice-printable) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  /* Remove other content from layout, including every modal wrapper. Visibility
+     alone keeps the underlying page's height and produces blank print pages. */
+  body:has(#invoice-printable) *:not(:has(#invoice-printable)):not(#invoice-printable):not(#invoice-printable *) {
+    display: none !important;
+  }
+  body:has(#invoice-printable) *:has(#invoice-printable) {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    translate: none !important;
+    scale: none !important;
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+  #invoice-printable {
+    display: block !important;
+    position: static !important;
+    width: 100%;
+    padding: 16mm;
+    border-radius: 0;
+    font-size: 10pt;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #invoice-printable .invoice-parties { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #invoice-printable .invoice-number { text-align: right; }
+  #invoice-printable .invoice-table-wrap { overflow: visible; }
+  #invoice-printable table { min-width: 0; font-size: 9pt; }
+  #invoice-printable tr,
+  #invoice-printable .invoice-brand,
+  #invoice-printable .invoice-parties,
+  #invoice-printable .invoice-total,
+  #invoice-printable footer { break-inside: avoid; }
+
+  /* Reports retain their existing dedicated print surface. */
+  body:has(#report-printable) * { visibility: hidden; }
+  #report-printable, #report-printable * { visibility: visible; }
+  #report-printable { position: absolute; inset: 0; padding: 1.5rem; }
+}

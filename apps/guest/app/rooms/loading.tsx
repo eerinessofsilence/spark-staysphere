@@ -1,0 +1,27 @@
+'use client';
+
+import { useT } from '@/lib/i18n/context';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Preloader } from '@/components/ui/preloader';
+import { GuestLoadingFrame } from '@/components/site/guest-loading-frame';
+
+export default function RoomsLoading() {
+  const t = useT();
+  return (
+    <GuestLoadingFrame>
+      <Preloader label={t('rooms.loadingRooms')} size="page" delay={0} />
+      <Skeleton className="h-4 w-40" />
+      <Skeleton className="mt-6 h-12 w-72" />
+      <Skeleton className="mt-4 h-4 w-96 max-w-full" />
+      <Skeleton className="mt-6 h-20 w-full rounded-[18px]" />
+      <div className="mt-8 grid gap-6 lg:grid-cols-sidebar-start lg:gap-8">
+        <Skeleton className="hidden h-[32rem] rounded-[18px] lg:block" />
+        <div className="grid gap-6">
+          {[0, 1, 2].map((index) => (
+            <Skeleton key={index} className="h-72 rounded-[18px]" />
+          ))}
+        </div>
+      </div>
+    </GuestLoadingFrame>
+  );
+}
